@@ -9,6 +9,23 @@ You can find my portfolio at [adalynnskidmore@myportfolio.com](https://adalynnsk
 
 Please direct all questions, requests, and concerns to adalynnskidmore1@gmail.com
 
+## How to open this Project
+1. Clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
+2. Download UnityHub from https://unity.com/download
+3. Download and install Unity version 6000.0.50f1 via UnityHub or from https://unity.com/releases/editor/archive
+4. Open UnityHub
+5. Navigate to Add => Add project from disk
+6. Select the location of the cloned repo from step 1
+7. Open the project
+8. Click "Play"
+
+## How to see the code in this project
+All of the code in this project is in the Assets/Scripts folder.
+
+If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/Scripts/MovementModes/BasicMovementMode
+
+If you intend to get a full understanding of the project, start with ACCharacterController.cs, then go through MovementController.cs, MovementMode.cs, and BasicMovementMode.cs (the latter two are in a subfolder of the main scripts folder) and from there, read through anything you like.
+
 ## Future Changes:
 ### High Priority Changes
 - Add Camera System
@@ -17,11 +34,13 @@ Please direct all questions, requests, and concerns to adalynnskidmore1@gmail.co
 - Add a dash that feels good
 - Make character move with ground transform
 - Fix collision bugs
+- Add automated tests to run
 
 ### Medium Priority Changes
 - Add basic character model and animations
 - Add animation interface
 - Tune performance
+- Refactor for improved readability in some areas
 
 ### Low Priority Changes (these would be really cool but realistically I won't get to them for a while)
 - Add Juice and polish
