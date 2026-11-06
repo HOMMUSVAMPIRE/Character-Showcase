@@ -141,6 +141,7 @@ namespace Character
                 finalRotation = initialRotation;
                 computing = false;
                 dirty = false;
+                return;
             }
 
             finalInertia = velocityOverride ?? initialInertia + velocityChange;

@@ -86,8 +86,8 @@ namespace Character
             // Apply jump input to the character
             (this as JumpMode).ProcessMovementDataForJump(ref movementData, inputs, controller);
 
-            // If we are falling too fast, limit our fall speed.
-            if (movementData.finalVelocity.y < -maxFallSpeed)
+            // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
+            if (maxFallSpeed > 0f && movementData.finalVelocity.y < -maxFallSpeed)
             {
                 movementData.ForceMovementVector(new Vector3(movementData.finalMovementVector.x, maxFallSpeed * movementData.deltaTime * -1f, movementData.finalMovementVector.z));
             }

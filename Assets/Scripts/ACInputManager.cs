@@ -22,18 +22,17 @@ namespace Character
         /// </summary>
         private void Awake()
         {
-            if (instance != null)
+            if (instance != null && instance != this)
             {
                 Destroy(this.gameObject);
+                return;
             }
-            else
-            {
-                instance = this;
-            }
+            instance = this;
             inputs = new()
             {
                 movementVector = Vector3.zero,
                 jump = new(),
+                dash = new(),
             };
         }
 
@@ -58,7 +57,8 @@ namespace Character
             var newInputs = new Inputs()
             {
                 movementVector = moveVector,
-                jump = jump
+                jump = jump,
+                dash = inputs.dash ?? new InputButton(),
             };
 
             inputs = newInputs;

@@ -73,7 +73,7 @@ namespace Character
             MovementData data = new MovementData()
             {
                 deltaTime = Time.fixedDeltaTime,
-                initialPosition = float.IsNormal(rb.position.x) ? rb.position : transform.position,
+                initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position,
                 initialRotation = transform.rotation,
                 cameraLook = cameraTransform.rotation,
             };
@@ -164,6 +164,8 @@ namespace Character
 
             Vector3 cast = data.finalMovementVector;
             float castMag = cast.magnitude;
+            // If the character isn't moving this frame there's nothing to resolve; bail out before producing a NaN direction.
+            if (castMag < 1e-6f) { return true; }
             Vector3 castNorm = cast / castMag;
 
             Vector3 capsuleTop = data.initialPosition + relativeCapsuleTop - cast;
@@ -243,7 +245,7 @@ namespace Character
         /// <param name="force"></param>
         public void AddForce(Vector3 force)
         {
-            AddVelocityChange(force * Time.deltaTime / rb.mass);
+            AddVelocityChange(force * Time.fixedDeltaTime / rb.mass);
         }
 
         /// <summary>
