@@ -43,6 +43,28 @@ namespace Character
         [Tooltip("A mask which defines the physics layers which affect where the character can move and how")]
         public LayerMask movementLayerMask = 0;
 
+        [Header("Collision")]
+        [SerializeField]
+        [Tooltip("The character's capsule collider — collision sweeps use its size. Auto-fetched in Awake if left empty.")]
+        private CapsuleCollider capsule;
+        [SerializeField]
+        [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
+        private float maxStepHeight = 0.35f;
+        [SerializeField]
+        [Tooltip("Maximum slope angle (degrees) the character treats as walkable ground.")]
+        private float maxSlopeAngle = 55f;
+        [SerializeField]
+        [Tooltip("Small buffer kept between the character and surfaces to avoid jitter.")]
+        private float skinWidth = 0.02f;
+        [SerializeField]
+        [Tooltip("Distance below the feet the character will probe to stick to descending slopes.")]
+        private float groundSnapDistance = 0.3f;
+
+        private void Awake()
+        {
+            if (capsule == null) { capsule = GetComponent<CapsuleCollider>(); }
+        }
+
         [Tooltip("The transform on which the character is currently standing")]
         public Transform groundTransform;
         // TODO: A series of matrices which will be used to move the character with whatever they are standing on prior to movement calculations
@@ -137,78 +159,195 @@ namespace Character
         {
             groundTransform = null;
 
-            Vector3 gravityNorm = Vector3.down;
-            var hits = Physics.SphereCastAll(position - (gravityNorm * (groundCheckRadius * 2)), groundCheckRadius, gravityNorm, groundCheckRadius * 4, movementLayerMask, QueryTriggerInteraction.Ignore);
+            float r = groundCheckRadius > 0f ? groundCheckRadius : (capsule != null ? Mathf.Max(0.05f, capsule.radius - 0.05f) : 0.45f);
+            // Start just above the feet so we can detect ground slightly below them, and reject things above them.
+            float startOffset = r + 0.02f;
+            Vector3 start = position + Vector3.up * startOffset;
+            // Probe down to just below the feet plus a small tolerance so we stay grounded across tiny gaps.
+            float castDist = startOffset + 0.1f;
+
+            var hits = Physics.SphereCastAll(start, r, Vector3.down, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
+            float best = float.PositiveInfinity;
             foreach (var hit in hits)
             {
                 if (hit.transform.IsChildOf(transform)) { continue; }
-                if (hit.distance == 0 || hit.distance > (groundCheckRadius * 2) + 0.05f) { continue; }
-                groundTransform = hit.transform.root;
-                return true;
+                if (hit.distance <= 0f) { continue; }
+                if (Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                if (hit.distance < best)
+                {
+                    best = hit.distance;
+                    groundTransform = hit.transform.root;
+                }
             }
-            return false;
+            return float.IsFinite(best);
         }
 
         /// <summary>
-        /// Determine whether the character can move in the way called for by it's movement data, and fix any inconsistencies
+        /// Resolve the character's intended motion against the world: sweep the capsule, slide along
+        /// walkable slopes, step up onto low ledges (stairs), and stick to descending slopes.
         /// </summary>
-        /// <param name="data"></param>
-        /// <returns></returns>
         public bool CheckMovementValid(ref MovementData data)
         {
-            // pre-store some useful variables that will make this more readable later
-            var capsuleHeight = 2f;
-            var capsuleRadius = 0.5f;
-            Vector3 relativeCapsuleTop = Vector3.up * (capsuleHeight - capsuleRadius);
-            Vector3 relativeCapsuleBot = Vector3.up * capsuleRadius;
+            Vector3 move = data.finalMovementVector;
+            if (move.sqrMagnitude < 1e-12f) { return true; }
 
-            Vector3 cast = data.finalMovementVector;
-            float castMag = cast.magnitude;
-            // If the character isn't moving this frame there's nothing to resolve; bail out before producing a NaN direction.
-            if (castMag < 1e-6f) { return true; }
-            Vector3 castNorm = cast / castMag;
+            Vector3 pos = data.initialPosition;
 
-            Vector3 capsuleTop = data.initialPosition + relativeCapsuleTop - cast;
-            Vector3 capsuleBot = data.initialPosition + relativeCapsuleBot - cast;
+            // Split into horizontal (slide/step-up) and vertical (gravity/jump) components so they resolve independently.
+            Vector3 horiz = new Vector3(move.x, 0f, move.z);
+            float vert = move.y;
 
-            float castRadius = capsuleRadius - 0.1f;
+            Vector3 horizResolved = ResolveHorizontal(pos, horiz, data.initialGrounded);
+            pos += horizResolved;
 
-            float minDist = float.PositiveInfinity;
-            Vector3 hitNorm = Vector3.zero;
+            Vector3 vertResolved = ResolveVertical(pos, vert);
+            pos += vertResolved;
 
-            // Capsule-cast along the movement vector and for each hit...
-            var hits = Physics.CapsuleCastAll(capsuleTop, capsuleBot, castRadius, castNorm, castMag * 3f, movementLayerMask, QueryTriggerInteraction.Ignore);
-            foreach (var hit in hits)
+            Vector3 totalResolved = horizResolved + vertResolved;
+
+            // Snap to ground when walking off a ledge onto a slope or descending stairs to avoid losing grounded state.
+            if (data.initialGrounded && vert <= 0f && horiz.sqrMagnitude > 1e-8f)
             {
-                // If the character has already moved past the obstacle or if the character IS the object we hit, ignore it
-                if (hit.distance < castMag || hit.transform.IsChildOf(transform)) { continue; }
-                // If the hit is farther than we intend to move this frame, ignore it
-                if (hit.distance > castMag * 2) { continue; }
-
-                // Add to our hit normal (see note below
-                hitNorm += hit.normal;
-
-                // Figure out which obstacle in our path we will hit first
-                if (hit.distance < minDist)
-                { 
-                    minDist = hit.distance;
+                if (CapsuleSweep(pos, Vector3.down, groundSnapDistance + skinWidth, out var snapHit))
+                {
+                    if (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
+                    {
+                        float drop = Mathf.Max(0f, snapHit.distance - skinWidth);
+                        totalResolved += Vector3.down * drop;
+                    }
                 }
             }
-            hitNorm = hitNorm.normalized;
 
-            // Adjust the character's movement to avoid moving through the obstacle
-            // TODO: this requires a lot of refinement, particularly on inclined surfaces to avoid slipping
-            if (float.IsFinite(minDist) && minDist < castMag * 2f)
+            data.ForceMovementVector(totalResolved);
+            return true;
+        }
+
+        /// <summary>
+        /// Resolve horizontal motion: sweep forward, slide along walls/walkable slopes, attempt step-up for low ledges.
+        /// </summary>
+        private Vector3 ResolveHorizontal(Vector3 feetPos, Vector3 horizMove, bool grounded)
+        {
+            float mag = horizMove.magnitude;
+            if (mag < 1e-6f) { return Vector3.zero; }
+            Vector3 dir = horizMove / mag;
+
+            if (!CapsuleSweep(feetPos, dir, mag + skinWidth, out var hit))
             {
-                float cutDist = ((castMag * 2) - minDist);
-                float parallel = -Vector3.Dot(hitNorm, castNorm);
-                float perpendicular = 1 - parallel;
-                float xzCutDist = cutDist * perpendicular;
-                float yCutDist = cutDist * parallel;
-                data.ForceMovementVector(cast + hitNorm * cutDist);
+                return horizMove;
             }
 
-            return true;
+            float travel = Mathf.Max(0f, hit.distance - skinWidth);
+            Vector3 traveled = dir * travel;
+            Vector3 remaining = horizMove - traveled;
+
+            float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
+
+            // Walkable slope (ramp): project remaining motion onto the slope and continue up/down it.
+            if (slopeAngle <= maxSlopeAngle && hit.normal.y > 0.01f)
+            {
+                Vector3 slid = Vector3.ProjectOnPlane(remaining, hit.normal);
+                return traveled + slid;
+            }
+
+            // Stair / low ledge: try to step up and over.
+            if (grounded)
+            {
+                Vector3 stepped = TryStepUp(feetPos, dir, mag);
+                if (stepped.sqrMagnitude > traveled.sqrMagnitude) { return stepped; }
+            }
+
+            // Wall: slide along it in the horizontal plane.
+            Vector3 wallNormal = new Vector3(hit.normal.x, 0f, hit.normal.z);
+            if (wallNormal.sqrMagnitude < 1e-6f) { return traveled; }
+            wallNormal.Normalize();
+            Vector3 slide = Vector3.ProjectOnPlane(remaining, wallNormal);
+            slide.y = 0f;
+            float slideMag = slide.magnitude;
+            if (slideMag < 1e-6f) { return traveled; }
+
+            // Make sure the slide direction isn't itself blocked.
+            if (CapsuleSweep(feetPos + traveled, slide / slideMag, slideMag + skinWidth, out var slideHit))
+            {
+                float slideTravel = Mathf.Max(0f, slideHit.distance - skinWidth);
+                return traveled + (slide / slideMag) * slideTravel;
+            }
+            return traveled + slide;
+        }
+
+        /// <summary>
+        /// Attempt the classic step-up: lift the capsule by maxStepHeight, move forward, then drop back down.
+        /// Returns Vector3.zero if the step cannot be made (headroom blocked, no floor, or floor too steep).
+        /// </summary>
+        private Vector3 TryStepUp(Vector3 feetPos, Vector3 dir, float distance)
+        {
+            // 1) Make sure there's headroom to lift up.
+            if (CapsuleSweep(feetPos, Vector3.up, maxStepHeight + skinWidth, out _)) { return Vector3.zero; }
+            Vector3 raised = feetPos + Vector3.up * maxStepHeight;
+
+            // 2) Sweep forward from the raised position.
+            if (CapsuleSweep(raised, dir, distance + skinWidth, out var fwdHit))
+            {
+                float travel = Mathf.Max(0f, fwdHit.distance - skinWidth);
+                if (travel < 1e-4f) { return Vector3.zero; }
+                raised += dir * travel;
+            }
+            else
+            {
+                raised += dir * distance;
+            }
+
+            // 3) Drop back down and make sure we land on walkable ground.
+            if (!CapsuleSweep(raised, Vector3.down, maxStepHeight + skinWidth, out var downHit)) { return Vector3.zero; }
+            if (Vector3.Angle(downHit.normal, Vector3.up) > maxSlopeAngle) { return Vector3.zero; }
+
+            float drop = Mathf.Max(0f, downHit.distance - skinWidth);
+            Vector3 landed = raised - Vector3.up * drop;
+            // Only accept if we actually ended up above the starting foot height (otherwise this isn't a step up).
+            if (landed.y <= feetPos.y + 1e-4f) { return Vector3.zero; }
+            return landed - feetPos;
+        }
+
+        /// <summary>
+        /// Resolve vertical motion: sweep up/down and clamp at the nearest contact.
+        /// </summary>
+        private Vector3 ResolveVertical(Vector3 feetPos, float verticalDelta)
+        {
+            if (Mathf.Abs(verticalDelta) < 1e-6f) { return Vector3.zero; }
+            Vector3 dir = verticalDelta > 0f ? Vector3.up : Vector3.down;
+            float mag = Mathf.Abs(verticalDelta);
+            if (!CapsuleSweep(feetPos, dir, mag + skinWidth, out var hit)) { return dir * mag; }
+            float travel = Mathf.Max(0f, hit.distance - skinWidth);
+            return dir * travel;
+        }
+
+        /// <summary>
+        /// Capsule-sweep from a feet-anchored position in the given direction, returning the closest non-self hit.
+        /// </summary>
+        private bool CapsuleSweep(Vector3 feetPos, Vector3 direction, float distance, out RaycastHit closest)
+        {
+            closest = default;
+            if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
+
+            float radius = (capsule != null ? capsule.radius : 0.5f) - skinWidth;
+            if (radius <= 0f) { radius = 0.01f; }
+            float height = capsule != null ? Mathf.Max(capsule.height, capsule.radius * 2f) : 2f;
+            Vector3 localCenter = capsule != null ? capsule.center : new Vector3(0f, 1f, 0f);
+            float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skinWidth);
+            Vector3 center = feetPos + localCenter;
+            Vector3 bot = center - Vector3.up * halfSegment;
+            Vector3 top = center + Vector3.up * halfSegment;
+
+            var hits = Physics.CapsuleCastAll(top, bot, radius, direction.normalized, distance, movementLayerMask, QueryTriggerInteraction.Ignore);
+            float min = float.PositiveInfinity;
+            bool found = false;
+            foreach (var h in hits)
+            {
+                if (h.transform.IsChildOf(transform)) { continue; }
+                // hit.distance of 0 means we started already overlapping — skip so we can slide out instead of locking up.
+                if (h.distance <= 0f) { continue; }
+                if (h.distance < min) { min = h.distance; closest = h; found = true; }
+            }
+            return found;
         }
 
         /// <summary>
