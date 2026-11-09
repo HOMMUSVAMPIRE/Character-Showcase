@@ -107,7 +107,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: 8983899932423906658}
   characterModelRoot: {fileID: 4141439858110070132}
-  animator: {fileID: 7589722390046593240}
+  animator: {fileID: 85645544229661655}
+  speedDampTime: 0.1
+  airborneDelay: 0.12
   rotationFixSpeed: 10
 --- !u!136 &2503010006209077673
 CapsuleCollider:
@@ -188,10 +190,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 4590347357105916578}
+  - {fileID: 6327675122943177133}
   m_Father: {fileID: 5072992517839684357}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &4052828330268749129
+--- !u!1001 &5790172829654177350
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -244,6 +246,14 @@ PrefabInstance:
       value: Mannequin
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: 0e62825eea9ca44eda12def1fb1dd704, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+      propertyPath: m_CullingMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
@@ -252,13 +262,13 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
---- !u!4 &4590347357105916578 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 4052828330268749129}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &7589722390046593240 stripped
+--- !u!95 &85645544229661655 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 4052828330268749129}
+  m_PrefabInstance: {fileID: 5790172829654177350}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6327675122943177133 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  m_PrefabInstance: {fileID: 5790172829654177350}
   m_PrefabAsset: {fileID: 0}

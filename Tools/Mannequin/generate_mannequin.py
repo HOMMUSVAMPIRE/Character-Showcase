@@ -1,9 +1,9 @@
 """
-Generates a rigged, skinned humanoid mannequin and exports it as an FBX for Unity.
+Generates a rigged, skinned, animated humanoid mannequin and exports it as an FBX for Unity.
 
 The body is built with Blender's Skin modifier around a stick skeleton, then smoothed, rigged with an armature
 using Unity's standard humanoid bone names (so Unity's Humanoid avatar maps it automatically), and skinned with
-automatic (heat) weights. The model is built in a T-pose, facing -Y in Blender (which is +Z, Unity's forward).
+automatic (heat) weights. Animation clips come from mannequin_animations.py. The model is built in a T-pose, facing -Y in Blender (which is +Z, Unity's forward).
 
 Usage (Blender 4.x, from the repo root):
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
@@ -18,6 +18,9 @@ import sys
 
 import bpy
 from mathutils import Vector
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import mannequin_animations  # noqa: E402  (needs the script directory on sys.path first)
 
 # ---------------------------------------------------------------------------------------------------------------
 # Proportions. +X is the character's left, -Y is forward, +Z is up.
@@ -285,6 +288,8 @@ def main():
     rig = build_armature()
     body = skin_to_armature(body, visor, rig)
     validate(body, rig)
+    clips = mannequin_animations.build_actions(rig)
+    print(f"[mannequin] animation clips={clips}")
 
     if preview_dir:
         render_previews(preview_dir)
@@ -308,7 +313,11 @@ def main():
         armature_nodetype="NULL",
         use_armature_deform_only=True,
         mesh_smooth_type="FACE",
-        bake_anim=False,
+        bake_anim=True,
+        bake_anim_use_all_actions=True,  # One FBX take per action: Idle, Walk, Run, Rise, Fall.
+        bake_anim_use_nla_strips=False,
+        bake_anim_force_startend_keying=True,
+        bake_anim_simplify_factor=0.0,  # Keep every baked key; simplification can break loop seams.
     )
     print(f"[mannequin] exported {output}")
 

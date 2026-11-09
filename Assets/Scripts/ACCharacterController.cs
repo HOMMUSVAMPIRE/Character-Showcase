@@ -23,6 +23,8 @@ namespace Character
             {
                 // Rotate the character's visual representation smoothly to avoid unnatural "snapping"
                 animationController.SmoothRotateVisuals(Time.deltaTime);
+                // Drive the character's animations from the most recently completed movement step
+                animationController.UpdateAnimator(movementController != null ? movementController.lastFrameMovementData : null, Time.deltaTime);
             }
         }
 
