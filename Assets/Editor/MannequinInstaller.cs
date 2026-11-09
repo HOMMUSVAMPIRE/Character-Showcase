@@ -51,6 +51,7 @@ namespace CharacterShowcase.EditorTools
                 }
 
                 string previousIKSettings = null;
+                string previousFootPlacementSettings = null;
 
                 // Remove the placeholder capsule and any previous install, so re-running replaces rather than stacks.
                 foreach (Transform child in modelParent.Cast<Transform>().ToList())
@@ -62,6 +63,10 @@ namespace CharacterShowcase.EditorTools
                     {
                         // Carry IK settings over to the new instance. (Targets parented under the old model are lost.)
                         previousIKSettings = EditorJsonUtility.ToJson(oldIK);
+                    }
+                    if (isPreviousInstall && child.TryGetComponent(out FootPlacementIK oldFootPlacement))
+                    {
+                        previousFootPlacementSettings = EditorJsonUtility.ToJson(oldFootPlacement);
                     }
                     if (isPlaceholder || isPreviousInstall) { Object.DestroyImmediate(child.gameObject); }
                 }
@@ -85,6 +90,10 @@ namespace CharacterShowcase.EditorTools
                 // (Not `??`: it bypasses Unity's null check, so a "missing" component could be returned instead of added.)
                 if (!model.TryGetComponent(out CharacterIK ik)) { ik = model.AddComponent<CharacterIK>(); }
                 if (previousIKSettings != null) { EditorJsonUtility.FromJsonOverwrite(previousIKSettings, ik); }
+
+                // Automatic foot placement on uneven ground, fed through CharacterIK's procedural channel.
+                if (!model.TryGetComponent(out FootPlacementIK footPlacement)) { footPlacement = model.AddComponent<FootPlacementIK>(); }
+                if (previousFootPlacementSettings != null) { EditorJsonUtility.FromJsonOverwrite(previousFootPlacementSettings, footPlacement); }
 
                 var animationController = root.GetComponent<AnimationController>();
                 if (animationController != null)

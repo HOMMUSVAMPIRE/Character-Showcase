@@ -53,6 +53,10 @@ namespace Character
         // True while the goal/hint came from a Transform. If that Transform is then destroyed, the limb holds its last
         // position (rather than jumping to goalPosition/hintPosition) until a new goal is set or the weight fades out.
         [System.NonSerialized] internal bool followingGoalTarget, followingHintTarget;
+        // Per-frame procedural goal (see CharacterIK.SetProceduralGoal), layered under the manual goal above.
+        [System.NonSerialized] internal Vector3 proceduralPosition;
+        [System.NonSerialized] internal Quaternion proceduralRotation = Quaternion.identity;
+        [System.NonSerialized] internal float proceduralPositionWeight, proceduralRotationWeight;
 
         public float CurrentPositionWeight => currentPositionWeight;
         public float CurrentRotationWeight => currentRotationWeight;
@@ -83,6 +87,13 @@ namespace Character
 
         [Tooltip("Draw targets, hints, and lines from the limbs to them in the Scene view.")]
         [SerializeField] private bool drawGizmos = true;
+
+        /// <summary>
+        /// Raised at the start of every IK pass, before any limb is solved. Procedural IK systems (such as
+        /// FootPlacementIK) subscribe to read the animated pose via the Animator (GetIKPosition, bodyPosition, ...),
+        /// adjust the body, and submit goals with SetProceduralGoal. Only valid to use the Animator's IK API inside it.
+        /// </summary>
+        public event System.Action<Animator> BeforeSolve;
 
         private Animator animator;
         private bool receivedIKCallback;
@@ -161,6 +172,20 @@ namespace Character
         /// <summary>Fades an elbow or knee back to its animation.</summary>
         public void ClearHint(IKLimb limb) => GetLimb(limb).hintWeight = 0f;
 
+        /// <summary>
+        /// Submits a procedural goal for this frame only. Call it from a BeforeSolve handler every frame it should
+        /// apply; it has no blend time of its own, so the caller smooths it. Procedural goals sit underneath goals set
+        /// with SetGoal / SetGoalTarget, which blend on top and so take priority.
+        /// </summary>
+        public void SetProceduralGoal(IKLimb limb, Vector3 position, Quaternion rotation, float positionWeight, float rotationWeight)
+        {
+            IKLimbSettings s = GetLimb(limb);
+            s.proceduralPosition = position;
+            s.proceduralRotation = rotation;
+            s.proceduralPositionWeight = Mathf.Clamp01(positionWeight);
+            s.proceduralRotationWeight = Mathf.Clamp01(rotationWeight);
+        }
+
         /// <summary>Fades every limb back to pure animation.</summary>
         public void ClearAll()
         {
@@ -198,7 +223,8 @@ namespace Character
         {
             // OnAnimatorIK only runs when the controller layer has IK Pass enabled. If IK is wanted but the callback
             // never arrives, say so once instead of silently doing nothing.
-            bool anyActive = masterWeight > 0f && (leftFoot.IsActive || rightFoot.IsActive || leftHand.IsActive || rightHand.IsActive);
+            bool anyActive = masterWeight > 0f && (BeforeSolve != null
+                || leftFoot.IsActive || rightFoot.IsActive || leftHand.IsActive || rightHand.IsActive);
             activeTime = anyActive && animator.isActiveAndEnabled && animator.runtimeAnimatorController != null ? activeTime + Time.deltaTime : 0f;
             if (!receivedIKCallback && !warnedAboutIKPass && activeTime > 0.5f)
             {
@@ -214,6 +240,8 @@ namespace Character
             if (layerIndex != 0) { return; }
             receivedIKCallback = true;
             float dt = Time.deltaTime;
+
+            BeforeSolve?.Invoke(animator);
 
             ApplyLimb(leftFoot, AvatarIKGoal.LeftFoot, AvatarIKHint.LeftKnee, dt);
             ApplyLimb(rightFoot, AvatarIKGoal.RightFoot, AvatarIKHint.RightKnee, dt);
@@ -254,21 +282,34 @@ namespace Character
             float positionWeight = s.currentPositionWeight * masterWeight;
             float rotationWeight = s.currentRotationWeight * masterWeight;
             float hintWeight = s.currentHintWeight * masterWeight;
+            float proceduralPositionWeight = Mathf.Clamp01(s.proceduralPositionWeight) * masterWeight;
+            float proceduralRotationWeight = Mathf.Clamp01(s.proceduralRotationWeight) * masterWeight;
 
-            // Unity only applies a hint while its limb's goal is active. To let an elbow or knee be overridden on its
-            // own, raise the goal weight to the hint weight and move the goal partway back to where the animation
-            // put the hand or foot, so the end result still only moves the hand or foot by `positionWeight`.
-            Vector3 goalPosition = s.lastGoalPosition;
-            float appliedPositionWeight = positionWeight;
-            if (hintWeight > positionWeight)
-            {
-                Vector3 animated = animator.GetIKPosition(goal);
-                goalPosition = Vector3.Lerp(animated, s.lastGoalPosition, hintWeight > 0f ? positionWeight / hintWeight : 0f);
-                appliedPositionWeight = hintWeight;
-            }
+            // Compose the result layer by layer: the animation, then procedural IK (e.g. foot placement) blended over
+            // it, then manually set goals blended over that, so a scripted target always wins over automatic ones.
+            Vector3 animatedPosition = animator.GetIKPosition(goal);
+            Quaternion animatedRotation = animator.GetIKRotation(goal);
+            Vector3 desiredPosition = Vector3.Lerp(
+                Vector3.Lerp(animatedPosition, s.proceduralPosition, proceduralPositionWeight),
+                s.lastGoalPosition, positionWeight);
+            Quaternion desiredRotation = Quaternion.Slerp(
+                Quaternion.Slerp(animatedRotation, s.proceduralRotation, proceduralRotationWeight),
+                s.lastGoalRotation, rotationWeight);
+            float combinedPositionWeight = 1f - (1f - proceduralPositionWeight) * (1f - positionWeight);
+            float combinedRotationWeight = 1f - (1f - proceduralRotationWeight) * (1f - rotationWeight);
+
+            // Unity blends a goal as lerp(animated, target, weight), so choose the target that makes that equal the
+            // desired result. Unity also only applies a hint while its limb's goal is active, so to let an elbow or
+            // knee be overridden on its own the goal weight is raised to the hint weight, with the target moved back
+            // toward the animated position to compensate.
+            float appliedPositionWeight = Mathf.Max(combinedPositionWeight, hintWeight);
+            Vector3 goalPosition = appliedPositionWeight > 0f
+                ? animatedPosition + (desiredPosition - animatedPosition) / appliedPositionWeight
+                : animatedPosition;
 
             animator.SetIKPositionWeight(goal, appliedPositionWeight);
-            animator.SetIKRotationWeight(goal, rotationWeight);
+            // Rotation targets are absolute, so apply the already-blended rotation at full weight.
+            animator.SetIKRotationWeight(goal, combinedRotationWeight > 0f ? 1f : 0f);
             animator.SetIKHintPositionWeight(hint, hintWeight);
             if (s.currentPositionWeight <= 0f && s.currentRotationWeight <= 0f && s.positionWeight <= 0f && s.rotationWeight <= 0f)
             {
@@ -277,8 +318,12 @@ namespace Character
             if (s.currentHintWeight <= 0f && s.hintWeight <= 0f) { s.followingHintTarget = false; }
 
             if (appliedPositionWeight > 0f) { animator.SetIKPosition(goal, goalPosition); }
-            if (rotationWeight > 0f) { animator.SetIKRotation(goal, s.lastGoalRotation); }
+            if (combinedRotationWeight > 0f) { animator.SetIKRotation(goal, desiredRotation); }
             if (hintWeight > 0f) { animator.SetIKHintPosition(hint, s.lastHintPosition); }
+
+            // Procedural goals must be re-sent every frame by whatever produces them.
+            s.proceduralPositionWeight = 0f;
+            s.proceduralRotationWeight = 0f;
         }
 
 #if UNITY_EDITOR

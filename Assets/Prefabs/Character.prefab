@@ -107,8 +107,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: 8983899932423906658}
   characterModelRoot: {fileID: 4141439858110070132}
-  animator: {fileID: 6228622141534252001}
-  ik: {fileID: 3555268248158504984}
+  animator: {fileID: 7395491857102851528}
+  ik: {fileID: 687824794125882854}
   speedDampTime: 0.1
   airborneDelay: 0.12
   rotationFixSpeed: 10
@@ -191,10 +191,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 40723723735921051}
+  - {fileID: 3477408373015910322}
   m_Father: {fileID: 5072992517839684357}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &511747344866776688
+--- !u!1001 &4019608905732091993
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -264,25 +264,28 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 3555268248158504984}
+      addedObject: {fileID: 687824794125882854}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1594487450619267282}
   m_SourcePrefab: {fileID: 100100000, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
---- !u!4 &40723723735921051 stripped
+--- !u!4 &3477408373015910322 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 511747344866776688}
+  m_PrefabInstance: {fileID: 4019608905732091993}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &854415841541073697 stripped
+--- !u!1 &4254191706060442888 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 511747344866776688}
+  m_PrefabInstance: {fileID: 4019608905732091993}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &3555268248158504984
+--- !u!114 &687824794125882854
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 854415841541073697}
+  m_GameObject: {fileID: 4254191706060442888}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ef9aa62930bcb4b76a74ae49589c5351, type: 3}
@@ -330,8 +333,37 @@ MonoBehaviour:
     hintWeight: 0
     blendTime: 0.2
   drawGizmos: 1
---- !u!95 &6228622141534252001 stripped
+--- !u!114 &1594487450619267282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4254191706060442888}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dac7617e867749f1ab41d43ca5cee6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Character.FootPlacementIK
+  weight: 1
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  maxStepUp: 0.45
+  maxStepDown: 0.45
+  maxSlopeAngle: 50
+  ignoreCollidersUnder: {fileID: 0}
+  plantedHeight: 0.04
+  liftedHeight: 0.18
+  alignToGround: 1
+  footSmoothTime: 0.05
+  adjustPelvis: 1
+  maxPelvisDrop: 0.4
+  pelvisSmoothTime: 0.1
+  groundedFadeTime: 0.12
+  drawGizmos: 1
+--- !u!95 &7395491857102851528 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 511747344866776688}
+  m_PrefabInstance: {fileID: 4019608905732091993}
   m_PrefabAsset: {fileID: 0}

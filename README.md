@@ -60,7 +60,9 @@ ik.SetHint(IKLimb.LeftFoot, kneeTarget.position, 0.5f);                 // push 
 ik.ClearGoal(IKLimb.RightHand);                                         // fade back to the animation
 ```
 
-To try it in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
+FootPlacementIK uses the same system to plant the feet on slopes, stairs and bumps automatically: it raycasts under each animated foot, shifts the foot to the real ground while keeping the animation's foot lift, tilts planted feet to the slope, and lowers the pelvis so the lower foot can reach. It feeds a per-frame procedural channel underneath the manual goals, so targets set from code still take priority. To try it, run Tools > Character Showcase > Create Foot Placement Test Area to add stairs, ramps and bumps in front of the character.
+
+To try manual targets in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
 
 ## Future Changes:
 ### High Priority Changes
