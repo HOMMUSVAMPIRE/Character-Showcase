@@ -377,9 +377,15 @@ namespace Character
             {
                 Vector3 pos = movementData.initialPosition + movementData.finalMovementVector;
                 Quaternion rot = movementData.finalRotation;
+                // The body must be kinematic: Move only interpolates for kinematic bodies (on a dynamic body it is
+                // a teleport, which makes the character visibly step at the physics rate), and a dynamic body would
+                // also be pushed around by the physics solver on top of this controller's own collision handling.
                 rb.Move(pos, rot);
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
             }
         }
 

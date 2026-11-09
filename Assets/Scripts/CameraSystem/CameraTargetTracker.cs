@@ -8,17 +8,17 @@ namespace CameraSystem
     /// </summary>
     public class CameraTargetTracker
     {
+        // Samples of the target's *physics* pose, taken once per physics step. Velocity and landings are measured
+        // from these, never from per-frame transform deltas: if the target only moves on physics steps, per-frame
+        // deltas alternate between spikes and zero, which reads as constant hard landings and bogus speeds.
         private Vector3 previousSample, currentSample;
         private float previousSampleTime, currentSampleTime;
         private bool hasSamples;
 
-        // Per-frame fallback sampling for targets that are not moved during FixedUpdate.
-        private Vector3 lastFramePosition;
-
         private float previousVerticalSpeed;
 
-        // If the target's Rigidbody already interpolates, its transform is smooth every frame and must not be
-        // interpolated again (that would interpolate already-interpolated samples, adding lag and wobble).
+        // If the target has a Rigidbody, its position is the physics pose (the transform may be interpolated).
+        // If that Rigidbody also interpolates, the transform is already smooth and must not be interpolated again.
         private Rigidbody body;
 
         /// <summary>True if the tracker is interpolating between physics steps itself this frame.</summary>
@@ -41,48 +41,33 @@ namespace CameraSystem
 
         public void Reset(Transform target)
         {
+            body = target != null ? target.GetComponentInParent<Rigidbody>() : null;
             Vector3 p = target != null ? target.position : Vector3.zero;
-            previousSample = currentSample = lastFramePosition = Position = p;
+            previousSample = currentSample = body != null ? body.position : p;
+            Position = p;
             previousSampleTime = currentSampleTime = Time.fixedTime;
             Velocity = Vector3.zero;
             previousVerticalSpeed = 0f;
             hasSamples = target != null;
-            body = target != null ? target.GetComponentInParent<Rigidbody>() : null;
             TeleportedThisFrame = true;
             LandingSpeedThisFrame = 0f;
         }
 
         /// <summary>Call once per frame from LateUpdate.</summary>
-        public void Update(Transform target, CameraFollowSettings settings, LandingSettings landing, float deltaTime)
+        public void Update(Transform target, CameraFollowSettings settings, LandingSettings landing)
         {
             TeleportedThisFrame = false;
             LandingSpeedThisFrame = 0f;
             if (target == null) { return; }
             if (!hasSamples) { Reset(target); }
 
-            Vector3 now = target.position;
-
-            bool rigidbodyInterpolates = body != null && body.interpolation != RigidbodyInterpolation.None;
-            SelfInterpolating = settings.interpolateTarget && !rigidbodyInterpolates;
-
-            if (SelfInterpolating)
+            // A physics step has run since the newest sample: take a new one and update velocity and landings.
+            if (!Mathf.Approximately(Time.fixedTime, currentSampleTime))
             {
-                // A new physics step has run since our newest sample: shift the samples along.
-                if (!Mathf.Approximately(Time.fixedTime, currentSampleTime))
-                {
-                    previousSample = currentSample;
-                    previousSampleTime = currentSampleTime;
-                    currentSample = now;
-                    currentSampleTime = Time.fixedTime;
-
-                    float stepTime = Mathf.Max(currentSampleTime - previousSampleTime, 1e-4f);
-                    Velocity = (currentSample - previousSample) / stepTime;
-                }
-                else if ((now - currentSample).sqrMagnitude > 1e-10f)
-                {
-                    // Moved outside of physics (e.g. teleported from Update): trust the new position.
-                    currentSample = now;
-                }
+                previousSample = currentSample;
+                previousSampleTime = currentSampleTime;
+                currentSample = body != null ? body.position : target.position;
+                currentSampleTime = Time.fixedTime;
 
                 if ((currentSample - previousSample).sqrMagnitude > settings.teleportDistance * settings.teleportDistance)
                 {
@@ -90,34 +75,33 @@ namespace CameraSystem
                     Velocity = Vector3.zero;
                     TeleportedThisFrame = true;
                 }
+                else
+                {
+                    float stepTime = Mathf.Max(currentSampleTime - previousSampleTime, 1e-4f);
+                    Velocity = (currentSample - previousSample) / stepTime;
 
+                    // Landing: was falling fast, and vertical speed has suddenly mostly stopped.
+                    if (previousVerticalSpeed < -landing.minImpactSpeed && Velocity.y > previousVerticalSpeed * 0.35f)
+                    {
+                        LandingSpeedThisFrame = -previousVerticalSpeed;
+                    }
+                }
+                previousVerticalSpeed = Velocity.y;
+            }
+
+            bool rigidbodyInterpolates = body != null && body.interpolation != RigidbodyInterpolation.None;
+            SelfInterpolating = settings.interpolateTarget && !rigidbodyInterpolates;
+
+            if (SelfInterpolating)
+            {
                 // Render time is between the last two physics steps (like Rigidbody interpolation).
                 float alpha = Mathf.Clamp01((Time.time - currentSampleTime) / Mathf.Max(Time.fixedDeltaTime, 1e-4f));
                 Position = Vector3.Lerp(previousSample, currentSample, alpha);
             }
             else
             {
-                Vector3 delta = now - lastFramePosition;
-                if (delta.sqrMagnitude > settings.teleportDistance * settings.teleportDistance)
-                {
-                    TeleportedThisFrame = true;
-                    Velocity = Vector3.zero;
-                }
-                else if (deltaTime > 1e-5f)
-                {
-                    Velocity = delta / deltaTime;
-                }
-                Position = now;
+                Position = target.position;
             }
-            lastFramePosition = now;
-
-            // Landing: was falling fast, and vertical speed has suddenly mostly stopped.
-            float vy = Velocity.y;
-            if (!TeleportedThisFrame && previousVerticalSpeed < -landing.minImpactSpeed && vy > previousVerticalSpeed * 0.35f)
-            {
-                LandingSpeedThisFrame = -previousVerticalSpeed;
-            }
-            previousVerticalSpeed = vy;
         }
     }
 }

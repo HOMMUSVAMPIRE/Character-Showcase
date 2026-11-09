@@ -247,7 +247,7 @@ namespace CameraSystem
 
             if (target == null) { return; }
 
-            tracker.Update(target, follow, landing, dt);
+            tracker.Update(target, follow, landing);
             if (tracker.TeleportedThisFrame) { Snap(); }
 
             activeZone = CameraZone.Find(tracker.Position);
