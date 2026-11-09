@@ -16,6 +16,14 @@ namespace Character
         private void Update()
         {
             // TODO: collect inputs if not driven by the player
+
+            // Visual-only smoothing runs at render rate. Doing it in FixedUpdate makes the model visibly step at the
+            // physics rate, even with Rigidbody interpolation enabled.
+            if (animationController != null)
+            {
+                // Rotate the character's visual representation smoothly to avoid unnatural "snapping"
+                animationController.SmoothRotateVisuals(Time.deltaTime);
+            }
         }
 
         private void FixedUpdate()
@@ -26,12 +34,6 @@ namespace Character
                 movementController.ProcessMovementInputs(ACInputManager.instance.inputs);
 
                 movementController.MovementCleanup();
-            }
-            // Update the animation controller's movement related variables
-            if (animationController != null)
-            {
-                // Rotate the character's visual representation smoothly to avoid unnatural "snapping"
-                animationController.SmoothRotateVisuals(Time.fixedDeltaTime);
             }
         }
 

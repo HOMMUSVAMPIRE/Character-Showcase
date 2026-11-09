@@ -32,12 +32,15 @@ namespace Character
 
         /// <summary>
         /// Rotates the visual representation of the character smoothly to match the current facing direction
-        /// this allows the character's movement to feel snappy without the character's visuals looking unnatural when rapidly changing direction
+        /// this allows the character's movement to feel snappy without the character's visuals looking unnatural when rapidly changing direction.
+        /// Call this every rendered frame (not from FixedUpdate), so the rotation updates smoothly rather than in physics-rate steps.
         /// </summary>
         /// <param name="deltaTime"></param>
         public void SmoothRotateVisuals(float deltaTime)
         {
-            characterModelRoot.transform.rotation = Quaternion.Slerp(lastRotation, transform.rotation, deltaTime * rotationFixSpeed);
+            // Exponential smoothing keeps the turn speed the same regardless of frame rate.
+            float t = 1f - Mathf.Exp(-rotationFixSpeed * deltaTime);
+            characterModelRoot.transform.rotation = Quaternion.Slerp(lastRotation, transform.rotation, t);
             lastRotation = characterModelRoot.transform.rotation;
         }
     }

@@ -100,7 +100,9 @@ namespace Character
             {
                 deltaTime = Time.fixedDeltaTime,
                 initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position,
-                initialRotation = transform.rotation,
+                // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a
+                // smoothed render pose that lags behind the simulation.
+                initialRotation = rb.rotation,
                 cameraLook = cameraTransform.rotation,
             };
 

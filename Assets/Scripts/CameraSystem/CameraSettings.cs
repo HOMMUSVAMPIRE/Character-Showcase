@@ -201,8 +201,10 @@ namespace CameraSystem
     [Serializable]
     public class CameraFollowSettings
     {
-        [Tooltip("Interpolate the target between physics steps. Removes stutter when the target moves in FixedUpdate " +
-                 "without Rigidbody interpolation. Adds up to one physics step of latency.")]
+        [Tooltip("Interpolate the target between physics steps. Removes camera stutter when the target moves in FixedUpdate " +
+                 "without Rigidbody interpolation. Adds up to one physics step of latency. Skipped automatically when the " +
+                 "target's Rigidbody already interpolates. Note this only smooths the camera: the target itself will " +
+                 "still visibly step unless its Rigidbody interpolates, so prefer enabling Rigidbody interpolation.")]
         public bool interpolateTarget = true;
         [Tooltip("A jump in target position larger than this in a single step is treated as a teleport: smoothing is skipped.")]
         [Min(0.1f)] public float teleportDistance = 5f;

@@ -17,6 +17,13 @@ namespace CameraSystem
 
         private float previousVerticalSpeed;
 
+        // If the target's Rigidbody already interpolates, its transform is smooth every frame and must not be
+        // interpolated again (that would interpolate already-interpolated samples, adding lag and wobble).
+        private Rigidbody body;
+
+        /// <summary>True if the tracker is interpolating between physics steps itself this frame.</summary>
+        public bool SelfInterpolating { get; private set; }
+
         /// <summary>Render-time position of the target (interpolated if enabled).</summary>
         public Vector3 Position { get; private set; }
         /// <summary>Estimated world-space velocity of the target.</summary>
@@ -40,6 +47,7 @@ namespace CameraSystem
             Velocity = Vector3.zero;
             previousVerticalSpeed = 0f;
             hasSamples = target != null;
+            body = target != null ? target.GetComponentInParent<Rigidbody>() : null;
             TeleportedThisFrame = true;
             LandingSpeedThisFrame = 0f;
         }
@@ -54,7 +62,10 @@ namespace CameraSystem
 
             Vector3 now = target.position;
 
-            if (settings.interpolateTarget)
+            bool rigidbodyInterpolates = body != null && body.interpolation != RigidbodyInterpolation.None;
+            SelfInterpolating = settings.interpolateTarget && !rigidbodyInterpolates;
+
+            if (SelfInterpolating)
             {
                 // A new physics step has run since our newest sample: shift the samples along.
                 if (!Mathf.Approximately(Time.fixedTime, currentSampleTime))
