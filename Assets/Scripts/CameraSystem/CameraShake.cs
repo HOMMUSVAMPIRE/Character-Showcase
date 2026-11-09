@@ -8,7 +8,8 @@ namespace CameraSystem
     /// </summary>
     public class CameraShake
     {
-        private readonly float seed = Random.value * 1000f;
+        // Chosen lazily: this object is created by CameraRig's field initializers, where Unity forbids Random calls.
+        private float seed = -1f;
         private float time;
 
         public float Trauma { get; private set; }
@@ -26,6 +27,7 @@ namespace CameraSystem
             if (!settings.enabled) { Trauma = 0f; return; }
             if (Trauma <= 0f) { return; }
 
+            if (seed < 0f) { seed = Random.value * 1000f; }
             time += deltaTime * settings.frequency;
             float intensity = Mathf.Pow(Trauma, settings.traumaExponent);
 
