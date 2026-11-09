@@ -79,6 +79,11 @@ namespace Character
             if (movementData.initialGrounded)
             {
                 movementData.initialVelocity = new Vector3(movementData.initialVelocity.x, -g, movementData.initialVelocity.z);
+                // Inertia is what actually drives movement. Without this, gravity piles up in inertia.y every grounded
+                // frame (the floor blocks the motion but never resets inertia), so walking off a ledge after standing
+                // for a while launches the character downward far faster than a normal fall. This frame's gravity
+                // (added via velocityChange above) still applies, which keeps a slight downward push to stay grounded.
+                movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0f), movementData.initialInertia.z);
             }
 
             // Apply movement input to the character

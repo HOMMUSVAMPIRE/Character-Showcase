@@ -57,8 +57,12 @@ namespace Character
         [Tooltip("Small buffer kept between the character and surfaces to avoid jitter.")]
         private float skinWidth = 0.02f;
         [SerializeField]
-        [Tooltip("Distance below the feet the character will probe to stick to descending slopes.")]
-        private float groundSnapDistance = 0.3f;
+        [Tooltip("Distance below the feet the character will probe to stick to descending slopes. Keep small — anything larger than the gap between stair treads feels like teleporting instead of falling when walking off a ledge.")]
+        private float groundSnapDistance = 0.1f;
+
+        // How far below the feet the floor can be while still counting as grounded. The ground snap always closes
+        // this gap, so the character never hovers inside it.
+        private const float GroundedTolerance = 0.1f;
 
         private void Awake()
         {
@@ -160,11 +164,14 @@ namespace Character
             groundTransform = null;
 
             float r = groundCheckRadius > 0f ? groundCheckRadius : (capsule != null ? Mathf.Max(0.05f, capsule.radius - 0.05f) : 0.45f);
-            // Start just above the feet so we can detect ground slightly below them, and reject things above them.
-            float startOffset = r + 0.02f;
-            Vector3 start = position + Vector3.up * startOffset;
-            // Probe down to just below the feet plus a small tolerance so we stay grounded across tiny gaps.
-            float castDist = startOffset + 0.1f;
+            // Start with the bottom of the sphere just above the feet so we can detect ground slightly below them,
+            // and reject things above them.
+            const float startLift = 0.02f;
+            Vector3 start = position + Vector3.up * (r + startLift);
+            // Sweep the sphere's bottom from startLift above the feet to GroundedTolerance below them. Distance is
+            // measured from the sphere's bottom, so the radius must NOT be added here — doing so made the character
+            // count as grounded up to (r + tolerance) above the floor, cancelling their fall while still in the air.
+            float castDist = startLift + GroundedTolerance;
 
             var hits = Physics.SphereCastAll(start, r, Vector3.down, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
             float best = float.PositiveInfinity;
@@ -205,16 +212,23 @@ namespace Character
 
             Vector3 totalResolved = horizResolved + vertResolved;
 
-            // Snap to ground when walking off a ledge onto a slope or descending stairs to avoid losing grounded state.
-            if (data.initialGrounded && vert <= 0f && horiz.sqrMagnitude > 1e-8f)
+            // Snap to ground while grounded so the character sits on the floor and follows descending slopes.
+            // Allowed drop is the larger of:
+            //  - GroundedTolerance: the gap CheckGrounded already counts as "on the ground". Grounded gravity is tiny
+            //    (inertia is reset each grounded frame), so without closing this gap the character hovers above the
+            //    floor for a while after landing.
+            //  - The most a walkable slope could drop over the horizontal distance moved this frame.
+            // Anything further is a ledge, and gravity handles it (so walking off a ledge isn't a teleport).
+            if (data.initialGrounded && vert <= 0f)
             {
-                if (CapsuleSweep(pos, Vector3.down, groundSnapDistance + skinWidth, out var snapHit))
+                float horizDist = new Vector2(horizResolved.x, horizResolved.z).magnitude;
+                float maxSlopeDrop = Mathf.Min(groundSnapDistance, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
+                float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + skinWidth;
+                if (CapsuleSweep(pos, Vector3.down, maxDrop + skinWidth, out var snapHit)
+                    && Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
                 {
-                    if (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
-                    {
-                        float drop = Mathf.Max(0f, snapHit.distance - skinWidth);
-                        totalResolved += Vector3.down * drop;
-                    }
+                    float drop = Mathf.Max(0f, snapHit.distance - skinWidth);
+                    if (drop <= maxDrop) { totalResolved += Vector3.down * drop; }
                 }
             }
 
