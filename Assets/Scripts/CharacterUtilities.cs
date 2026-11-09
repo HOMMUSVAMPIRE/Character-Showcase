@@ -70,6 +70,10 @@ namespace Character
         // A timestamp for when the character was last on the ground
         public float lastGroundedTime = 0f;
 
+        // Seconds since the character was last on the ground (0 while grounded). Drives coyote time, the coyote
+        // gravity curve and the air steering curve.
+        public float timeSinceGrounded = 0f;
+
         // The state of the character on the previous frame
         public CharacterState previousState;
 

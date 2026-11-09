@@ -69,13 +69,38 @@ FootPlacementIK uses the same system to plant the feet on slopes, stairs and bum
 
 To try manual targets in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
 
+## Automated Tests
+Play mode tests in Assets/Tests/PlayMode spawn the real Character prefab with real physics and drive its MovementController with scripted inputs. Together with the camera tests, they cover:
+- settling on the ground without hovering, sinking or drifting
+- falling within gravity's limits, including walking off a ledge after standing still
+- stopping at walls, jumping and landing
+- climbing stairs and standing on a ramp without sliding
+- riding sliding, rising and spinning platforms, and keeping a platform's momentum when jumping off
+- coyote time easing gravity in after leaving the ground
+- the camera rig, which follows a plain Transform, independent of the character code:
+  - third and first person placement, and mode blending and events
+  - pitch limits and zoom limits
+  - collision with walls, while ignoring the target's own colliders
+  - smooth follow and teleport snapping
+  - shake and ShakeAll
+  - first person target hiding
+  - speed FOV and the landing dip
+  - CameraZone overrides
+
+Run them from Window > General > Test Runner > PlayMode > Run All, or from the command line with Unity closed:
+
+```
+/Applications/Unity/Hub/Editor/<version>/Unity.app/Contents/MacOS/Unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults.xml
+```
+
+The character scripts are in the CharacterShowcase assembly (Assets/Scripts), and editor tools are in CharacterShowcase.Editor (Assets/Editor), so the tests can reference them.
+
 ## Future Changes:
 ### High Priority Changes
 - Prevent sliding on inclines (Bug exists because of current collision handling and prevention)
 - Enable stairs traversal
 - Add a dash that feels good
 - Fix collision bugs
-- Add automated tests to run
 
 ### Medium Priority Changes
 - Add animation interface

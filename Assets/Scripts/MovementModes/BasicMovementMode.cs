@@ -71,7 +71,7 @@ namespace Character
         {
             // How much gravity do we apply
             // TODO: this could be it's own function, but for now, this suffices
-            float g = gravityStrength * (movementData.initialGrounded ? 0.5f : coyoteTimeGravityCurve.Evaluate(Time.fixedTime - movementData.lastGroundedTime));
+            float g = gravityStrength * (movementData.initialGrounded ? 0.5f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded));
             // Apply gravity to the character
             movementData.velocityChange += Vector3.down * g * movementData.deltaTime;
 
@@ -116,7 +116,7 @@ namespace Character
             else
             {
                 // We are not grounded, so determine the extent to which we are able to move
-                steeringEffectiveness *= airSteeringStrengthCurve.Evaluate(Time.fixedTime - movementData.lastGroundedTime) * airSteeringStrength;
+                steeringEffectiveness *= airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength;
             }
 
             // if there is any input and we can move, Move the character at their walking speed in the direction of their input, relative to the camera. Face the direction they are moving.
@@ -139,7 +139,7 @@ namespace Character
         public void ProcessMovementDataForJump(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             // If we're on the ground and not already in a jump, reset the number of jumps available to us
-            if (!movementData.previousState.HasFlag(CharacterState.Jumping) && ((Time.fixedTime - movementData.lastGroundedTime) <= coyoteTime))
+            if (!movementData.previousState.HasFlag(CharacterState.Jumping) && (movementData.timeSinceGrounded <= coyoteTime))
             {
                 controller.ResetJumps();
             }

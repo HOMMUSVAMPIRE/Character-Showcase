@@ -100,3 +100,6 @@ InitTestScene*.unity*
 
 # Python bytecode from the Tools/ scripts
 __pycache__/
+
+# Test runner output
+TestResults*.xml

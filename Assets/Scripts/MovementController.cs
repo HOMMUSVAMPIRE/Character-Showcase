@@ -101,8 +101,12 @@ namespace Character
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
 
-        // The time at which the character was last on the ground
-        [HideInInspector] public float lastGroundedTime = 0f;
+        // The time at which the character was last on the ground (negative infinity until they first touch it)
+        // Runtime state, so not serialized: a saved value (the prefab used to store 0) would override "never grounded".
+        [System.NonSerialized] public float lastGroundedTime = float.NegativeInfinity;
+
+        // Caps time since grounded so "never grounded" stays a finite number when evaluating curves with it.
+        private const float MaxTimeSinceGrounded = 1000f;
 
         /// <summary>
         /// Transforms inputs into character movement
@@ -142,10 +146,13 @@ namespace Character
             if (data.initialGrounded)
             {
                 lastGroundedTime = Time.fixedTime;
-                data.lastGroundedTime = lastGroundedTime;
-
                 data.state = data.state | CharacterState.Grounded;
             }
+            // Always pass these on, including while airborne: coyote time and the coyote gravity and air steering
+            // curves all measure time since leaving the ground. (Previously they were only set while grounded, so in
+            // the air they measured time since the game started and those features never took effect.)
+            data.lastGroundedTime = lastGroundedTime;
+            data.timeSinceGrounded = Mathf.Min(Time.fixedTime - lastGroundedTime, MaxTimeSinceGrounded);
 
             // Setup initial movement data before calculation to avoid weird behaviour
             data.directMovementVector = Vector3.zero;
