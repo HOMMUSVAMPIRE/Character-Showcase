@@ -26,9 +26,22 @@ If you intend to get an idea of my coding style, how I write code, and how I sol
 
 If you intend to get a full understanding of the project, start with ACCharacterController.cs, then go through MovementController.cs, MovementMode.cs, and BasicMovementMode.cs (the latter two are in a subfolder of the main scripts folder) and from there, read through anything you like.
 
+## Camera System
+The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a CameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector.
+
+Features: first person and over-the-shoulder third person with smooth blending between them, zoom (zooming all the way in switches to first person), shoulder swapping (automatic when a wall blocks the current side), aiming, camera collision, follow damping, target interpolation for physics-driven targets, speed-based FOV, head bob, landing dips, trauma-based camera shake, optional auto-recentering, hiding the character up close, and CameraZone volumes that override camera behaviour in an area.
+
+| Action | Keyboard & Mouse | Gamepad |
+| --- | --- | --- |
+| Look | Mouse | Right stick |
+| Zoom | Scroll wheel | D-pad up / down |
+| Toggle first / third person | V | Right stick press |
+| Swap shoulder | Q | Right bumper |
+| Aim | Right mouse button | Left trigger |
+| Release cursor | Escape (click to re-lock) | |
+
 ## Future Changes:
 ### High Priority Changes
-- Add Camera System
 - Prevent sliding on inclines (Bug exists because of current collision handling and prevention)
 - Enable stairs traversal
 - Add a dash that feels good
