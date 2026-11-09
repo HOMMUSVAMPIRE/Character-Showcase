@@ -107,7 +107,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: 8983899932423906658}
   characterModelRoot: {fileID: 4141439858110070132}
-  animator: {fileID: 85645544229661655}
+  animator: {fileID: 6228622141534252001}
+  ik: {fileID: 3555268248158504984}
   speedDampTime: 0.1
   airborneDelay: 0.12
   rotationFixSpeed: 10
@@ -190,10 +191,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6327675122943177133}
+  - {fileID: 40723723735921051}
   m_Father: {fileID: 5072992517839684357}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &5790172829654177350
+--- !u!1001 &511747344866776688
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -260,15 +261,77 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3555268248158504984}
   m_SourcePrefab: {fileID: 100100000, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
---- !u!95 &85645544229661655 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 5790172829654177350}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &6327675122943177133 stripped
+--- !u!4 &40723723735921051 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
-  m_PrefabInstance: {fileID: 5790172829654177350}
+  m_PrefabInstance: {fileID: 511747344866776688}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &854415841541073697 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  m_PrefabInstance: {fileID: 511747344866776688}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3555268248158504984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 854415841541073697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef9aa62930bcb4b76a74ae49589c5351, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Character.CharacterIK
+  masterWeight: 1
+  leftFoot:
+    goalTarget: {fileID: 0}
+    goalPosition: {x: 0, y: 0, z: 0}
+    goalRotation: {x: 0, y: 0, z: 0, w: 1}
+    positionWeight: 0
+    rotationWeight: 0
+    hintTarget: {fileID: 0}
+    hintPosition: {x: 0, y: 0, z: 0}
+    hintWeight: 0
+    blendTime: 0.2
+  rightFoot:
+    goalTarget: {fileID: 0}
+    goalPosition: {x: 0, y: 0, z: 0}
+    goalRotation: {x: 0, y: 0, z: 0, w: 1}
+    positionWeight: 0
+    rotationWeight: 0
+    hintTarget: {fileID: 0}
+    hintPosition: {x: 0, y: 0, z: 0}
+    hintWeight: 0
+    blendTime: 0.2
+  leftHand:
+    goalTarget: {fileID: 0}
+    goalPosition: {x: 0, y: 0, z: 0}
+    goalRotation: {x: 0, y: 0, z: 0, w: 1}
+    positionWeight: 0
+    rotationWeight: 0
+    hintTarget: {fileID: 0}
+    hintPosition: {x: 0, y: 0, z: 0}
+    hintWeight: 0
+    blendTime: 0.2
+  rightHand:
+    goalTarget: {fileID: 0}
+    goalPosition: {x: 0, y: 0, z: 0}
+    goalRotation: {x: 0, y: 0, z: 0, w: 1}
+    positionWeight: 0
+    rotationWeight: 0
+    hintTarget: {fileID: 0}
+    hintPosition: {x: 0, y: 0, z: 0}
+    hintWeight: 0
+    blendTime: 0.2
+  drawGizmos: 1
+--- !u!95 &6228622141534252001 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  m_PrefabInstance: {fileID: 511747344866776688}
   m_PrefabAsset: {fileID: 0}

@@ -51,6 +51,17 @@ To change the model or its animations, edit Tools/Mannequin/generate_mannequin.p
 
 Then in Unity, run Tools > Character Showcase > Install Mannequin Model to reapply the import settings, rebuild the Animator Controller, and update the Character prefab.
 
+### IK
+CharacterIK (on the mannequin, reachable via AnimationController.IK) layers inverse kinematics over the animations. Hands and feet can be pulled to target positions and rotations, and elbows and knees bent toward hint positions. Each has its own 0-1 weight that fades smoothly in and out, blending with the animation underneath. Targets can be Transforms assigned in the inspector or positions set from code:
+
+```csharp
+ik.SetGoal(IKLimb.RightHand, doorHandle.position, doorHandle.rotation); // reach for a handle
+ik.SetHint(IKLimb.LeftFoot, kneeTarget.position, 0.5f);                 // push the left knee outward
+ik.ClearGoal(IKLimb.RightHand);                                         // fade back to the animation
+```
+
+To try it in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
+
 ## Future Changes:
 ### High Priority Changes
 - Prevent sliding on inclines (Bug exists because of current collision handling and prevention)

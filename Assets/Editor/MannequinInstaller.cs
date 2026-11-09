@@ -50,12 +50,19 @@ namespace CharacterShowcase.EditorTools
                     return;
                 }
 
+                string previousIKSettings = null;
+
                 // Remove the placeholder capsule and any previous install, so re-running replaces rather than stacks.
                 foreach (Transform child in modelParent.Cast<Transform>().ToList())
                 {
                     bool isPlaceholder = child.name == PlaceholderName && child.GetComponent<SkinnedMeshRenderer>() == null
                                          && !PrefabUtility.IsAnyPrefabInstanceRoot(child.gameObject);
                     bool isPreviousInstall = PrefabUtility.GetCorrespondingObjectFromSource(child.gameObject) == modelAsset;
+                    if (isPreviousInstall && child.TryGetComponent(out CharacterIK oldIK))
+                    {
+                        // Carry IK settings over to the new instance. (Targets parented under the old model are lost.)
+                        previousIKSettings = EditorJsonUtility.ToJson(oldIK);
+                    }
                     if (isPlaceholder || isPreviousInstall) { Object.DestroyImmediate(child.gameObject); }
                 }
 
@@ -74,11 +81,17 @@ namespace CharacterShowcase.EditorTools
                 // Keep animating while hidden in first person, so the shadow the camera keeps still animates.
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
+                // IK layered over the animations. Lives on the Animator's GameObject, as OnAnimatorIK requires.
+                // (Not `??`: it bypasses Unity's null check, so a "missing" component could be returned instead of added.)
+                if (!model.TryGetComponent(out CharacterIK ik)) { ik = model.AddComponent<CharacterIK>(); }
+                if (previousIKSettings != null) { EditorJsonUtility.FromJsonOverwrite(previousIKSettings, ik); }
+
                 var animationController = root.GetComponent<AnimationController>();
                 if (animationController != null)
                 {
                     var serialized = new SerializedObject(animationController);
                     serialized.FindProperty("animator").objectReferenceValue = animator;
+                    serialized.FindProperty("ik").objectReferenceValue = ik;
                     serialized.ApplyModifiedPropertiesWithoutUndo();
                 }
 
@@ -237,6 +250,12 @@ namespace CharacterShowcase.EditorTools
             land.hasExitTime = false;
             land.duration = 0.08f;
             land.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+
+            // OnAnimatorIK (and so CharacterIK) only runs on layers with IK Pass enabled. Layers are returned by
+            // copy, so modify the array and assign it back.
+            AnimatorControllerLayer[] layers = controller.layers;
+            layers[0].iKPass = true;
+            controller.layers = layers;
 
             AssetDatabase.SaveAssets();
             return controller;

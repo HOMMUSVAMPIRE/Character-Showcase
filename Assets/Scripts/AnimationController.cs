@@ -15,6 +15,11 @@ namespace Character
         private GameObject characterModelRoot;
         [SerializeField] [Tooltip("A reference to the animator component on the character model")]
         private Animator animator;
+        [SerializeField] [Tooltip("A reference to the IK component on the character model, which layers IK targets for the hands, feet, elbows and knees over the animations")]
+        private CharacterIK ik;
+
+        /// <summary>IK for the character's hands, feet, elbows and knees, blended over its animations. May be null.</summary>
+        public CharacterIK IK => ik;
 
         // Animator parameter names, shared with the editor tooling that builds the Animator Controller.
         public const string SpeedParameter = "Speed";
