@@ -71,10 +71,30 @@ namespace Character
 
         [Tooltip("The transform on which the character is currently standing")]
         public Transform groundTransform;
-        // TODO: A series of matrices which will be used to move the character with whatever they are standing on prior to movement calculations
-        private Matrix4x4 lastFrameGroundTransformToWorldMatrix;
-        private Matrix4x4 groundTransformToWorldMatrix;
-        private Matrix4x4 worldToGroundTransformMatrix;
+
+        [Header("Moving Ground")]
+        [SerializeField]
+        [Tooltip("Carry the character along with whatever they are standing on (moving platforms, elevators).")]
+        private bool moveWithGround = true;
+        [SerializeField]
+        [Tooltip("Also turn the character with ground that rotates about the vertical axis (spinning platforms).")]
+        private bool rotateWithGround = true;
+        [SerializeField]
+        [Tooltip("When leaving moving ground (jumping or walking off), keep its velocity so the character doesn't stop dead in mid-air.")]
+        private bool inheritGroundVelocity = true;
+        [SerializeField]
+        [Tooltip("Ground that moves further than this in one physics step is treated as teleporting, and doesn't carry the character.")]
+        private float maxGroundCarryPerStep = 2f;
+
+        // The ground the character stood on at the end of the last step, and the character's pose relative to it.
+        private Transform carrierGround;
+        private Vector3 carrierLocalPosition;
+        private Quaternion carrierRotation = Quaternion.identity;
+        // Ground yaw applied since the visuals last consumed it (see ConsumeGroundRotation).
+        private Quaternion pendingGroundRotation = Quaternion.identity;
+
+        /// <summary>Velocity of the ground carrying the character during the last step (zero on static ground or in the air).</summary>
+        public Vector3 GroundVelocity { get; private set; }
 
         // How many more times the character can begin a jump (gets reset when grounded)
         [HideInInspector] public int jumpsRemaining = 0;
@@ -112,11 +132,10 @@ namespace Character
             data.initialInertia = hasLastFrameMovement ? lastFrameMovementData.finalInertia : Vector3.zero;
             data.initialVelocity = hasLastFrameMovement ? lastFrameMovementData.finalVelocity : Vector3.zero;
 
-            // Check whether the character is starting on the ground this frame via spherecast downwards
+            // Move with whatever the character was standing on, then check whether the character is starting on the
+            // ground this frame via spherecast downwards
             // TODO: avoid hard coding gravity direction
-            data.initialGrounded = CheckGrounded(data.initialPosition, out groundTransform);
-            groundTransformToWorldMatrix = groundTransform?.localToWorldMatrix ?? Matrix4x4.identity;
-            worldToGroundTransformMatrix = groundTransform?.worldToLocalMatrix ?? Matrix4x4.identity;
+            data.initialGrounded = ApplyGroundCarry(ref data);
             data.initialGroundTransform = groundTransform;
 
             // If we are on the ground, update related data on the movement data object
@@ -130,7 +149,7 @@ namespace Character
 
             // Setup initial movement data before calculation to avoid weird behaviour
             data.directMovementVector = Vector3.zero;
-            data.targetRotation = rb.rotation;
+            data.targetRotation = data.initialRotation; // Includes any turn from rotating ground.
 
             data.velocityChange = pendingVelocityChange;
             pendingVelocityChange = Vector3.zero;
@@ -152,6 +171,106 @@ namespace Character
 
             // Use the character's rigidbody to execute the movement for this frame
             CompleteMovement(data);
+
+            RememberGround(data);
+        }
+
+        /// <summary>
+        /// Carries the character with the ground they stood on last step (position, and yaw if enabled), then checks
+        /// whether they are grounded. If the carried position isn't grounded (e.g. they just jumped), the carry is
+        /// skipped and the ground's velocity is added to their inertia instead, so they keep its momentum.
+        /// Returns whether the character is grounded, and sets groundTransform.
+        /// </summary>
+        private bool ApplyGroundCarry(ref MovementData data)
+        {
+            GroundVelocity = Vector3.zero;
+            Vector3 carry = Vector3.zero;
+            Quaternion turn = Quaternion.identity;
+
+            if (moveWithGround && carrierGround != null)
+            {
+                GetGroundPose(carrierGround, out Vector3 groundPosition, out Quaternion groundRotation);
+                carry = groundPosition + groundRotation * carrierLocalPosition - data.initialPosition;
+                if (rotateWithGround) { turn = YawOnly(groundRotation * Quaternion.Inverse(carrierRotation)); }
+                if (carry.sqrMagnitude > maxGroundCarryPerStep * maxGroundCarryPerStep)
+                {
+                    carry = Vector3.zero; // Teleported: don't drag the character across the level.
+                    turn = Quaternion.identity;
+                }
+            }
+
+            Vector3 carriedPosition = data.initialPosition + carry;
+            // Static ground still produces a tiny non-zero carry from floating point error; don't apply that.
+            bool groundMoved = carry.sqrMagnitude > 1e-10f || Quaternion.Angle(Quaternion.identity, turn) > 1e-3f;
+            if (!groundMoved)
+            {
+                return CheckGrounded(data.initialPosition, out groundTransform);
+            }
+
+            if (CheckGrounded(carriedPosition, out groundTransform))
+            {
+                data.initialPosition = carriedPosition;
+                data.initialRotation = turn * data.initialRotation;
+                pendingGroundRotation = turn * pendingGroundRotation;
+                GroundVelocity = carry / data.deltaTime;
+                return true;
+            }
+
+            // Left the moving ground: keep moving at its velocity rather than stopping dead.
+            if (inheritGroundVelocity)
+            {
+                data.initialInertia += carry / data.deltaTime;
+            }
+            return CheckGrounded(data.initialPosition, out groundTransform);
+        }
+
+        /// <summary>Records the character's pose relative to their ground at the end of the step, for the next carry.</summary>
+        private void RememberGround(MovementData data)
+        {
+            carrierGround = data.initialGrounded ? groundTransform : null;
+            if (carrierGround == null) { return; }
+
+            GetGroundPose(carrierGround, out Vector3 groundPosition, out Quaternion groundRotation);
+            Vector3 finalPosition = data.initialPosition + data.finalMovementVector;
+            carrierLocalPosition = Quaternion.Inverse(groundRotation) * (finalPosition - groundPosition);
+            carrierRotation = groundRotation;
+        }
+
+        /// <summary>
+        /// The ground's physics pose. For ground with a Rigidbody, use the body's pose rather than its transform, which
+        /// may be an interpolated render pose that lags the simulation.
+        /// </summary>
+        private static void GetGroundPose(Transform ground, out Vector3 position, out Quaternion rotation)
+        {
+            if (ground.TryGetComponent(out Rigidbody body))
+            {
+                position = body.position;
+                rotation = body.rotation;
+            }
+            else
+            {
+                position = ground.position;
+                rotation = ground.rotation;
+            }
+        }
+
+        /// <summary>The part of a rotation that turns about the world up axis.</summary>
+        private static Quaternion YawOnly(Quaternion rotation)
+        {
+            Vector3 forward = Vector3.ProjectOnPlane(rotation * Vector3.forward, Vector3.up);
+            if (forward.sqrMagnitude < 1e-6f) { return Quaternion.identity; }
+            return Quaternion.Euler(0f, Vector3.SignedAngle(Vector3.forward, forward, Vector3.up), 0f);
+        }
+
+        /// <summary>
+        /// Returns the ground yaw applied to the character since the last call, and resets it. Used by visuals that
+        /// smooth their own rotation, so they turn with spinning ground instead of lagging behind it.
+        /// </summary>
+        public Quaternion ConsumeGroundRotation()
+        {
+            Quaternion turn = pendingGroundRotation;
+            pendingGroundRotation = Quaternion.identity;
+            return turn;
         }
 
         /// <summary>
@@ -185,7 +304,9 @@ namespace Character
                 if (hit.distance < best)
                 {
                     best = hit.distance;
-                    groundTransform = hit.transform.root;
+                    // The object actually hit (its Rigidbody's transform, if it has one) - not the hierarchy root,
+                    // which for a platform parented under a static "Environment" object would never move.
+                    groundTransform = hit.transform;
                 }
             }
             return float.IsFinite(best);
@@ -396,8 +517,6 @@ namespace Character
         {
             lastFrameMovementData = currentMovementData;
             currentMovementData = null;
-
-            lastFrameGroundTransformToWorldMatrix = groundTransformToWorldMatrix;
         }
 
         /// <summary>

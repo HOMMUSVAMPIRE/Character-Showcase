@@ -1,4 +1,5 @@
 using Character;
+using Level;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -6,8 +7,9 @@ using UnityEngine;
 namespace CharacterShowcase.EditorTools
 {
     /// <summary>
-    /// Builds a small obstacle course in the open scene for testing foot placement: stairs, a gentle and a steep ramp,
-    /// and scattered low bumps. Sized to stay within the movement controller's step height (0.35 m) and slope limit (55°).
+    /// Builds a small obstacle course in the open scene for testing foot placement and moving ground: stairs, a gentle
+    /// and a steep ramp, scattered low bumps, and moving platforms (a slider, an elevator and a spinner). Sized to stay
+    /// within the movement controller's step height (0.35 m) and slope limit (55°).
     /// </summary>
     public static class FootPlacementTestArea
     {
@@ -16,12 +18,12 @@ namespace CharacterShowcase.EditorTools
         [MenuItem("Tools/Character Showcase/Create Foot Placement Test Area")]
         public static void Create()
         {
+            // Rebuild rather than keep an existing course, so it always matches this code (undoable with Ctrl/Cmd+Z).
             GameObject existing = GameObject.Find(RootName);
             if (existing != null)
             {
-                Selection.activeGameObject = existing;
-                Debug.Log($"[FootPlacementTestArea] '{RootName}' already exists in the scene; selected it.");
-                return;
+                Undo.DestroyObjectImmediate(existing);
+                Debug.Log($"[FootPlacementTestArea] Replacing the existing '{RootName}'.");
             }
 
             // Place the course a few meters in front of the character, on its ground level.
@@ -66,6 +68,15 @@ namespace CharacterShowcase.EditorTools
                     (float)random.NextDouble() * 10f - 5f);
             }
 
+            // Moving platforms. Each top surface starts 0.3 m up, so the character can step straight onto it.
+            Platform(root, "Sliding Platform", new Vector3(-3.5f, 0.15f, 9f), new Vector3(2.5f, 0.3f, 2.5f),
+                travel: new Vector3(0f, 0f, 5f), spin: Vector3.zero);
+            Platform(root, "Elevator", new Vector3(0f, 0.15f, 9f), new Vector3(2f, 0.3f, 2f),
+                travel: new Vector3(0f, 3f, 0f), spin: Vector3.zero);
+            Box(root, "Elevator Top Ledge", new Vector3(0f, 1.65f, 11f), new Vector3(2f, 3.3f, 2f));
+            Platform(root, "Spinning Platform", new Vector3(4f, 0.15f, 9f), new Vector3(3f, 0.3f, 3f),
+                travel: Vector3.zero, spin: new Vector3(0f, 45f, 0f));
+
             Selection.activeGameObject = root.gameObject;
             EditorSceneManager.MarkSceneDirty(root.gameObject.scene);
             Debug.Log($"[FootPlacementTestArea] Created '{RootName}' at {origin}. Save the scene to keep it.");
@@ -80,6 +91,15 @@ namespace CharacterShowcase.EditorTools
             box.transform.localPosition = localPosition;
             box.transform.localScale = size;
             return box.transform;
+        }
+
+        private static void Platform(Transform parent, string name, Vector3 localPosition, Vector3 size, Vector3 travel, Vector3 spin)
+        {
+            Transform platform = Box(parent, name, localPosition, size);
+            platform.gameObject.AddComponent<Rigidbody>();
+            var mover = platform.gameObject.AddComponent<MovingPlatform>();
+            mover.travel = travel; // Meters along the platform's own axes (its scale doesn't apply).
+            mover.spinDegreesPerSecond = spin;
         }
 
         /// <summary>A slab tilted to the given angle, rising away from the character, with a platform at the top.</summary>

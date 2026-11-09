@@ -22,7 +22,8 @@ namespace Character
             if (animationController != null)
             {
                 // Rotate the character's visual representation smoothly to avoid unnatural "snapping"
-                animationController.SmoothRotateVisuals(Time.deltaTime);
+                Quaternion groundRotation = movementController != null ? movementController.ConsumeGroundRotation() : Quaternion.identity;
+                animationController.SmoothRotateVisuals(Time.deltaTime, groundRotation);
                 // Drive the character's animations from the most recently completed movement step
                 animationController.UpdateAnimator(movementController != null ? movementController.lastFrameMovementData : null, Time.deltaTime);
             }

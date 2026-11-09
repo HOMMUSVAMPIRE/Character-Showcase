@@ -73,8 +73,12 @@ namespace Character
         /// Call this every rendered frame (not from FixedUpdate), so the rotation updates smoothly rather than in physics-rate steps.
         /// </summary>
         /// <param name="deltaTime"></param>
-        public void SmoothRotateVisuals(float deltaTime)
+        /// <param name="groundRotation">Rotation applied to the whole character by the ground they stand on since the
+        /// last call (e.g. a spinning platform). The visuals take it on immediately instead of smoothing toward it, so
+        /// they turn with the platform rather than lagging behind.</param>
+        public void SmoothRotateVisuals(float deltaTime, Quaternion groundRotation)
         {
+            lastRotation = groundRotation * lastRotation;
             // Exponential smoothing keeps the turn speed the same regardless of frame rate.
             float t = 1f - Mathf.Exp(-rotationFixSpeed * deltaTime);
             characterModelRoot.transform.rotation = Quaternion.Slerp(lastRotation, transform.rotation, t);

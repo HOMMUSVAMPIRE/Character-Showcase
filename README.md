@@ -26,6 +26,11 @@ If you intend to get an idea of my coding style, how I write code, and how I sol
 
 If you intend to get a full understanding of the project, start with ACCharacterController.cs, then go through MovementController.cs, MovementMode.cs, and BasicMovementMode.cs (the latter two are in a subfolder of the main scripts folder) and from there, read through anything you like.
 
+## Moving Ground
+The character rides along with whatever it stands on. Each physics step, before moving, the character is carried by however far its ground moved, and turned with it if it spins. It then moves relative to the ground as normal. Leaving moving ground, by jumping or walking off, keeps the ground's velocity, so the character doesn't stop dead in mid-air. These options can be toggled on the MovementController.
+
+Moving platforms should be kinematic Rigidbodies moved in FixedUpdate with interpolation enabled; the MovingPlatform component does this. Tools > Character Showcase > Create Foot Placement Test Area adds a sliding platform, an elevator and a spinning platform to try it.
+
 ## Camera System
 The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a CameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector.
 
@@ -69,7 +74,6 @@ To try manual targets in the editor, right-click the CharacterIK component and c
 - Prevent sliding on inclines (Bug exists because of current collision handling and prevention)
 - Enable stairs traversal
 - Add a dash that feels good
-- Make character move with ground transform
 - Fix collision bugs
 - Add automated tests to run
 
