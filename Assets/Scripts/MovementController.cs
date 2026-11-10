@@ -98,12 +98,21 @@ namespace Character
 
         // How many more times the character can begin a jump (gets reset when grounded)
         [HideInInspector] public int jumpsRemaining = 0;
+
+        // The character's dash timers and counters (used by movement modes that support dashing)
+        public DashState dash { get; } = new DashState();
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
 
         // The time at which the character was last on the ground (negative infinity until they first touch it)
         // Runtime state, so not serialized: a saved value (the prefab used to store 0) would override "never grounded".
         [System.NonSerialized] public float lastGroundedTime = float.NegativeInfinity;
+
+        // The time at which the character last started a jump (negative infinity if they never have)
+        [System.NonSerialized] public float lastJumpTime = float.NegativeInfinity;
+
+        /// <summary>Whether the character has started a jump since they were last on the ground.</summary>
+        public bool HasJumpedSinceGrounded => lastJumpTime >= lastGroundedTime;
 
         // Caps time since grounded so "never grounded" stays a finite number when evaluating curves with it.
         private const float MaxTimeSinceGrounded = 1000f;
@@ -141,6 +150,15 @@ namespace Character
             // TODO: avoid hard coding gravity direction
             data.initialGrounded = ApplyGroundCarry(ref data);
             data.initialGroundTransform = groundTransform;
+
+            // On leaving the ground (walking off an edge or jumping), keep moving at the speed the character was going.
+            // On the ground, walking is applied directly each frame rather than stored as inertia, so without this the
+            // character would stop dead in the air until air steering kicks in.
+            if (!data.initialGrounded && hasLastFrameMovement && lastFrameMovementData.initialGrounded)
+            {
+                Vector3 walking = lastFrameMovementData.finalVelocity - lastFrameMovementData.finalInertia;
+                data.initialInertia += new Vector3(walking.x, 0f, walking.z);
+            }
 
             // If we are on the ground, update related data on the movement data object
             if (data.initialGrounded)
@@ -348,12 +366,14 @@ namespace Character
             //    (inertia is reset each grounded frame), so without closing this gap the character hovers above the
             //    floor for a while after landing.
             //  - The most a walkable slope could drop over the horizontal distance moved this frame.
+            //  - While walking, the step height, so the character walks down stairs instead of floating off each step.
             // Anything further is a ledge, and gravity handles it (so walking off a ledge isn't a teleport).
             if (data.initialGrounded && vert <= 0f)
             {
                 float horizDist = new Vector2(horizResolved.x, horizResolved.z).magnitude;
                 float maxSlopeDrop = Mathf.Min(groundSnapDistance, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
                 float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + skinWidth;
+                if (horizDist > 1e-4f) { maxDrop = Mathf.Max(maxDrop, maxStepHeight + skinWidth); }
                 if (CapsuleSweep(pos, Vector3.down, maxDrop + skinWidth, out var snapHit)
                     && Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
                 {
@@ -562,6 +582,7 @@ namespace Character
             if (jumpsRemaining > 0)
             {
                 jumpsRemaining--;
+                lastJumpTime = Time.fixedTime;
                 return true;
             }
             else

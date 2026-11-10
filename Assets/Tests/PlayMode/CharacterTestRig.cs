@@ -135,6 +135,22 @@ namespace CharacterShowcase.Tests
             return inputs;
         }
 
+        /// <summary>Dash held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
+        public static Inputs Dash(int heldSteps, Vector3 direction = default)
+        {
+            Inputs inputs = Move(direction);
+            inputs.dash = new InputButton
+            {
+                value = true,
+                justPressed = heldSteps == 0,
+                holdDuration = heldSteps * Time.fixedDeltaTime,
+            };
+            return inputs;
+        }
+
+        public bool Dashing => Movement.lastFrameMovementData != null
+                               && Movement.lastFrameMovementData.state.HasFlag(CharacterState.Dashing);
+
         /// <summary>Reads a private serialized tuning value from the character's movement mode asset.</summary>
         public T MovementSetting<T>(string fieldName)
         {

@@ -7,7 +7,7 @@ namespace Character
     /// A Scriptable Object type which defines a very standard character movement scheme
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
-    public class BasicMovementMode : MovementMode, WalkRunMode, JumpMode
+    public class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode
     {
         [Header("Speed")]
         [Tooltip("How fast the character moves by default")]
@@ -22,6 +22,8 @@ namespace Character
         [Tooltip("A curve which determines the impact of holding down the jump button on continued upwards momentum")]
         [SerializeField] private AnimationCurve jumpStrengthCurve = new();
         [SerializeField] private int maxJumps;
+        [Tooltip("A jump starts if the button was pressed at most this many seconds ago, so a press just before landing still jumps. Holding the button doesn't start new jumps.")]
+        [SerializeField] private float jumpInputBuffer = 0.1f;
 
         [Header("Gravity & Falling")]
         [Tooltip("The base acceleration applied to the character when falling")]
@@ -38,6 +40,28 @@ namespace Character
         [SerializeField] private float airSteeringStrength;
         [Tooltip("A curve that determines how quickly after leaving the ground that the player can steer their character in the air")]
         [SerializeField] private AnimationCurve airSteeringStrengthCurve = new();
+        [Tooltip("How quickly (m/s²) air steering changes the character's horizontal velocity, before the strength and curve above")]
+        [SerializeField] private float airAcceleration = 80f;
+        [Tooltip("How quickly (m/s²) the character slows down in the air with no steering input")]
+        [SerializeField] private float airDrag = 4f;
+
+        [Header("Dashing")]
+        [Tooltip("How fast the character moves during a dash")]
+        [SerializeField] private float dashSpeed = 30f;
+        [Tooltip("How long a dash lasts, in seconds")]
+        [SerializeField] private float dashDuration = 0.15f;
+        [Tooltip("A curve over the dash (0 = start, 1 = end) scaling its speed, so a dash can burst out and ease off")]
+        [SerializeField] private AnimationCurve dashSpeedCurve = AnimationCurve.Linear(0f, 1f, 1f, 0.75f);
+        [Tooltip("The fraction of the dash's speed the character keeps as momentum once the dash ends")]
+        [Range(0f, 1f)] [SerializeField] private float dashEndSpeedRetention = 0.3f;
+        [Tooltip("Seconds after a dash starts before another can begin")]
+        [SerializeField] private float dashCooldown = 0.4f;
+        [Tooltip("How many dashes the character can perform before landing again")]
+        [SerializeField] private int maxAirDashes = 1;
+        [Tooltip("If the dash button is pressed this many seconds before a dash is available, dash as soon as it is")]
+        [SerializeField] private float dashInputBuffer = 0.1f;
+        [Tooltip("Jumping during a dash cancels it into the jump. This is the fraction of the dash's speed carried into the jump")]
+        [Range(0f, 1f)] [SerializeField] private float dashJumpSpeedRetention = 0.5f;
 
         [Header("QualityOfLife")]
         [Tooltip("Dampens the impact of horizontal velocity on the character's movement while grounded")]
@@ -48,6 +72,9 @@ namespace Character
         float WalkRunMode.runSpeed { get => runSpeed; set => runSpeed = value; }
         float JumpMode.jumpStrength { get => jumpStrength; set => jumpStrength = value; }
         int JumpMode.maxJumps { get => maxJumps; set => maxJumps = value; }
+        float DashMode.dashSpeed { get => dashSpeed; set => dashSpeed = value; }
+        float DashMode.dashDuration { get => dashDuration; set => dashDuration = value; }
+        int DashMode.maxAirDashes { get => maxAirDashes; set => maxAirDashes = value; }
 
         /// <summary>
         /// Determines whether the character can perform a jump
@@ -58,6 +85,16 @@ namespace Character
         public bool CanJump(MovementData data, MovementController controller)
         {
             return data.previousState.HasFlag(CharacterState.Jumping) || controller.TryUseJump();
+        }
+
+        /// <summary>
+        /// Whether the jump button press is fresh enough to start a new jump (holding the button only continues one)
+        /// </summary>
+        /// <param name="inputs"></param>
+        /// <returns></returns>
+        private bool IsNewJumpPress(Inputs inputs)
+        {
+            return inputs.jump != null && inputs.jump.value && inputs.jump.holdDuration <= jumpInputBuffer;
         }
 
         /// <summary>
@@ -88,14 +125,97 @@ namespace Character
 
             // Apply movement input to the character
             (this as WalkRunMode).ProcessMovementDataForWalk(ref movementData, inputs, controller);
-            // Apply jump input to the character
-            (this as JumpMode).ProcessMovementDataForJump(ref movementData, inputs, controller);
+            // Apply dash input to the character. A dash takes over the character's movement while it lasts.
+            ProcessMovementDataForDash(ref movementData, inputs, controller);
+            // Apply jump input to the character (not while dashing, including the dash's last frame, where the dash's
+            // velocity override would make the jump use up a jump without any effect)
+            if (!movementData.state.HasFlag(CharacterState.Dashing))
+            {
+                (this as JumpMode).ProcessMovementDataForJump(ref movementData, inputs, controller);
+            }
 
             // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
             if (maxFallSpeed > 0f && movementData.finalVelocity.y < -maxFallSpeed)
             {
                 movementData.ForceMovementVector(new Vector3(movementData.finalMovementVector.x, maxFallSpeed * movementData.deltaTime * -1f, movementData.finalMovementVector.z));
             }
+        }
+
+        /// <summary>
+        /// Determines whether the character can begin a dash this frame: the button has been newly pressed (or was
+        /// pressed within the input buffer), the cooldown is over, and they have an air dash left if airborne
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="inputs"></param>
+        /// <param name="controller"></param>
+        /// <returns></returns>
+        public bool CanDash(MovementData data, Inputs inputs, MovementController controller)
+        {
+            DashState dash = controller.dash;
+            bool pressed = inputs.dash != null && inputs.dash.value && !dash.pressConsumed && inputs.dash.holdDuration <= dashInputBuffer;
+            bool hasAirDash = data.initialGrounded || dash.airDashesUsed < maxAirDashes;
+            return pressed && !dash.IsDashing && dash.cooldownRemaining <= 0f && hasAirDash;
+        }
+
+        /// <summary>
+        /// Reads dash button input and turns it into a short, fast burst of movement. While dashing, the character moves
+        /// at the dash's speed in a straight line, ignoring gravity and steering; when the dash ends they keep a fraction
+        /// of its speed as momentum, which the grounded friction or the landing then eases out.
+        /// </summary>
+        /// <param name="movementData"></param>
+        /// <param name="inputs"></param>
+        /// <param name="controller"></param>
+        public void ProcessMovementDataForDash(ref MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            DashState dash = controller.dash;
+            float deltaTime = movementData.deltaTime;
+
+            // Advance timers, and give back air dashes on the ground
+            dash.cooldownRemaining = Mathf.Max(0f, dash.cooldownRemaining - deltaTime);
+            if (movementData.initialGrounded) { dash.airDashesUsed = 0; }
+            if (inputs.dash == null || !inputs.dash.value) { dash.pressConsumed = false; }
+
+            // Start a dash in the direction of movement input (relative to the camera), or straight ahead without input
+            if (CanDash(movementData, inputs, controller))
+            {
+                Vector3 direction = movementData.cameraLookFlat * inputs.movementVector;
+                if (direction.sqrMagnitude < 0.01f) { direction = movementData.initialRotation * Vector3.forward; }
+                direction.y = 0f;
+                dash.direction = direction.normalized;
+                dash.timeRemaining = dashDuration;
+                dash.cooldownRemaining = dashCooldown;
+                dash.pressConsumed = true;
+                if (!movementData.initialGrounded) { dash.airDashesUsed++; }
+            }
+
+            if (!dash.IsDashing) { return; }
+
+            // Jumping cancels the dash into the jump, keeping some of the dash's speed; the jump then runs as normal this
+            // frame. Only a press made after the dash began counts, so a jump held from before it doesn't cancel it.
+            float dashElapsed = dashDuration - dash.timeRemaining;
+            bool jumpPressedDuringDash = IsNewJumpPress(inputs) && inputs.jump.holdDuration < dashElapsed;
+            bool hasJump = movementData.initialGrounded || controller.jumpsRemaining > 0;
+            if (jumpPressedDuringDash && hasJump)
+            {
+                dash.timeRemaining = 0f;
+                Vector3 momentum = dash.direction * (dashSpeed * dashJumpSpeedRetention);
+                movementData.initialInertia = new Vector3(momentum.x, 0f, momentum.z);
+                movementData.directMovementVector = Vector3.zero; // Momentum only, so walking doesn't stack on top of it.
+                return;
+            }
+
+            // Dash: take over the character's velocity entirely (no gravity, no steering), and face the dash
+            float progress = 1f - dash.timeRemaining / Mathf.Max(dashDuration, 1e-4f);
+            float speed = dashSpeed * dashSpeedCurve.Evaluate(progress);
+            dash.timeRemaining = Mathf.Max(0f, dash.timeRemaining - deltaTime);
+
+            // On the final frame of the dash, hand over to momentum rather than stopping dead
+            if (!dash.IsDashing) { speed = dashSpeed * dashEndSpeedRetention; }
+
+            movementData.velocityOverride = dash.direction * speed;
+            movementData.directMovementVector = Vector3.zero;
+            movementData.targetRotation = Quaternion.LookRotation(dash.direction, Vector3.up);
+            movementData.state = movementData.state | CharacterState.Dashing;
         }
 
         /// <summary>
@@ -117,6 +237,9 @@ namespace Character
             {
                 // We are not grounded, so determine the extent to which we are able to move
                 steeringEffectiveness *= airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength;
+                SteerInAir(ref movementData, inputs, controller, steeringEffectiveness);
+                movementData.state = movementData.state | CharacterState.Moving;
+                return;
             }
 
             // if there is any input and we can move, Move the character at their walking speed in the direction of their input, relative to the camera. Face the direction they are moving.
@@ -131,6 +254,40 @@ namespace Character
         }
 
         /// <summary>
+        /// Steers the character's horizontal momentum in the air. Rather than adding walking movement on top of the
+        /// momentum carried off the ground (which would double the character's speed), the horizontal velocity is
+        /// accelerated toward the steering input at walking speed. Any speed beyond walking speed in the steering
+        /// direction is kept (e.g. from a dash jump), and with no input the character slowly loses speed.
+        /// </summary>
+        /// <param name="movementData"></param>
+        /// <param name="inputs"></param>
+        /// <param name="controller"></param>
+        /// <param name="steeringEffectiveness">How much control the character has right now (0 = none)</param>
+        private void SteerInAir(ref MovementData movementData, Inputs inputs, MovementController controller, float steeringEffectiveness)
+        {
+            Vector3 inertia = movementData.initialInertia;
+            Vector2 velocity = new Vector2(inertia.x, inertia.z);
+            Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
+            Vector2 steerDirection = new Vector2(steer.x, steer.z);
+            float input = Mathf.Clamp01(steerDirection.magnitude);
+
+            if (input > 0.001f && steeringEffectiveness > 0f)
+            {
+                steerDirection /= steerDirection.magnitude;
+                float speedAlongInput = Vector2.Dot(velocity, steerDirection);
+                Vector2 target = steerDirection * Mathf.Max(walkSpeed * controller.movementSpeedMultiplier * input, speedAlongInput);
+                velocity = Vector2.MoveTowards(velocity, target, airAcceleration * steeringEffectiveness * movementData.deltaTime);
+                movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(steer, Vector3.up), steeringEffectiveness);
+            }
+            else if (input <= 0.001f)
+            {
+                velocity = Vector2.MoveTowards(velocity, Vector2.zero, airDrag * movementData.deltaTime);
+            }
+
+            movementData.initialInertia = new Vector3(velocity.x, inertia.y, velocity.y);
+        }
+
+        /// <summary>
         /// Reads jump button input and translates that into satisfying jumps
         /// </summary>
         /// <param name="movementData"></param>
@@ -138,26 +295,28 @@ namespace Character
         /// <param name="controller"></param>
         public void ProcessMovementDataForJump(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            // If we're on the ground and not already in a jump, reset the number of jumps available to us
-            if (!movementData.previousState.HasFlag(CharacterState.Jumping) && (movementData.timeSinceGrounded <= coyoteTime))
+            // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
+            // jumps available to us. Not if we left the ground by jumping, though: a quick tap jump would otherwise land
+            // back inside the coyote window and get its jump refunded.
+            if (!movementData.previousState.HasFlag(CharacterState.Jumping) && (movementData.timeSinceGrounded <= coyoteTime)
+                && (movementData.initialGrounded || !controller.HasJumpedSinceGrounded))
             {
                 controller.ResetJumps();
             }
 
-            // When the jump button is down, and we can perform a jump, do a jump
-            if (inputs.jump.value && CanJump(movementData, controller))
+            // Figure out what our velocity would be this frame of a jump
+            // TODO: As noted before, this should ideally be calculated based on a jump height, but for now, this is based on a velocity curve
+            float jumpVelocity = controller.jumpStrengthModifier * jumpStrengthCurve.Evaluate(inputs.jump.holdDuration) * jumpStrength;
+            // Continue a jump while the button is held, or start one on a fresh press. Check the jump has force before
+            // CanJump, which uses up a jump when starting one.
+            bool continuingJump = movementData.previousState.HasFlag(CharacterState.Jumping) && inputs.jump.value;
+            if ((continuingJump || IsNewJumpPress(inputs)) && jumpVelocity > 0 && CanJump(movementData, controller))
             {
-                // Figure out what our velocity will be this frame of the jump
-                // TODO: As noted before, this should ideally be calculated based on a jump height, but for now, this is based on a velocity curve
-                float jumpVelocity = controller.jumpStrengthModifier * jumpStrengthCurve.Evaluate(inputs.jump.holdDuration) * jumpStrength;
-                if (jumpVelocity <= 0) { return; }
-
                 // Stop downwards momentum that previously applied to the character
                 movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0), movementData.initialInertia.z);
-                // Add vertical velocity using the jump velocity calculated above
+                // Add vertical velocity using the jump velocity calculated above. (Horizontal momentum is carried into the
+                // air by the movement controller when the character leaves the ground.)
                 movementData.velocityChange = new Vector3(movementData.velocityChange.x, jumpVelocity - movementData.initialVelocity.y, movementData.velocityChange.z);
-                // Add horizontal velocity if the character was moving before the jump so that the air steering curve does not kill preexisting horizontal momentum
-                movementData.velocityChange += (movementData.cameraLookFlat * inputs.movementVector * walkSpeed * movementData.deltaTime);
 
                 // Affect the character's state for animation implementation at a later date
                 movementData.state = movementData.state | CharacterState.Jumping;

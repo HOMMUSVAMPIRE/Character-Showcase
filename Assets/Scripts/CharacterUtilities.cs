@@ -36,6 +36,26 @@ namespace Character
     }
 
     /// <summary>
+    /// A character's dash state, which persists between frames. Lives on the MovementController (one per character),
+    /// since movement modes are shared assets.
+    /// </summary>
+    public class DashState
+    {
+        // Seconds left in the current dash (0 when not dashing)
+        public float timeRemaining;
+        // Seconds until another dash may start
+        public float cooldownRemaining;
+        // Air dashes used since last touching the ground
+        public int airDashesUsed;
+        // The direction of the current dash
+        public Vector3 direction;
+        // Whether the current press of the dash button has already started a dash, so holding it doesn't repeat
+        public bool pressConsumed;
+
+        public bool IsDashing => timeRemaining > 0f;
+    }
+
+    /// <summary>
     /// Stores data on a button to be used by the input manager
     /// </summary>
     public class InputButton

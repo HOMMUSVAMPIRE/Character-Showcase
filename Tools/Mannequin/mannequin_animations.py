@@ -1,5 +1,5 @@
 """
-Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Rise and Fall.
+Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Rise, Fall and Dash.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -173,6 +173,19 @@ def fall(p):
     return pose
 
 
+def dash(p):
+    """A low, forward-pitched slide in the dash direction, with the legs trailing behind and the arms swept back."""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=30.0, spine_lean=35.0, chest_lean=15.0, head_lean=5.0)
+    legs(pose, "Left", thigh=45.0 + 4.0 * w, knee=30.0, foot=50.0)
+    legs(pose, "Right", thigh=60.0 - 4.0 * w, knee=45.0, foot=55.0)
+    arms(pose, "Left", lower=75.0, swing=60.0 + 3.0 * w, elbow=10.0)
+    arms(pose, "Right", lower=75.0, swing=60.0 - 3.0 * w, elbow=10.0)
+    pose.hips_offset = Vector((0.0, 0.0, -0.3))  # Drop low into the slide.
+    return pose
+
+
 # name -> (pose function, duration in seconds). Durations are chosen so stride length matches the speeds the
 # Animator blend tree uses (Walk at ~1.6 m/s, Run at ~10 m/s).
 CLIPS = {
@@ -181,6 +194,7 @@ CLIPS = {
     "Run": (run, 0.45),
     "Rise": (rise, 1.0),
     "Fall": (fall, 0.6),
+    "Dash": (dash, 0.4),
 }
 
 SAMPLES_PER_SECOND = 30  # Keys per second of animation; FBX export bakes the in-between frames.

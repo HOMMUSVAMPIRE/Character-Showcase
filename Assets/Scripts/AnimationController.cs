@@ -25,9 +25,11 @@ namespace Character
         public const string SpeedParameter = "Speed";
         public const string VerticalSpeedParameter = "VerticalSpeed";
         public const string GroundedParameter = "Grounded";
+        public const string DashingParameter = "Dashing";
         private static readonly int SpeedId = Animator.StringToHash(SpeedParameter);
         private static readonly int VerticalSpeedId = Animator.StringToHash(VerticalSpeedParameter);
         private static readonly int GroundedId = Animator.StringToHash(GroundedParameter);
+        private static readonly int DashingId = Animator.StringToHash(DashingParameter);
 
         [Header("Animation Variables")]
         [SerializeField] [Tooltip("Seconds over which the speed driving the locomotion blend is smoothed, so starting and stopping ease between clips")]
@@ -65,6 +67,7 @@ namespace Character
             animator.SetFloat(SpeedId, horizontalSpeed, speedDampTime, deltaTime);
             animator.SetFloat(VerticalSpeedId, velocity.y);
             animator.SetBool(GroundedId, showGrounded);
+            animator.SetBool(DashingId, movementData.state.HasFlag(CharacterState.Dashing));
         }
 
         /// <summary>

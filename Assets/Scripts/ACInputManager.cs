@@ -58,10 +58,29 @@ namespace Character
             {
                 movementVector = moveVector,
                 jump = jump,
-                dash = inputs.dash ?? new InputButton(),
+                dash = ReadButton("Dash", inputs.dash),
             };
 
             inputs = newInputs;
+        }
+
+        /// <summary>
+        /// Reads a button action into an InputButton, tracking presses, releases and hold duration from its previous state.
+        /// A missing action reads as never pressed.
+        /// </summary>
+        private InputButton ReadButton(string actionName, InputButton previous)
+        {
+            previous ??= new InputButton();
+            var action = inputSource.currentActionMap.FindAction(actionName);
+            var button = new InputButton()
+            {
+                value = action != null && action.ReadValue<float>() > 0.1f,
+            };
+            button.justPressed = button.value && !previous.value;
+            button.justReleased = !button.value && previous.value;
+            button.holdDuration = button.value ? (button.justPressed ? 0 : previous.holdDuration + Time.deltaTime) : 0;
+            button.lastHoldDuration = button.justReleased ? previous.holdDuration : previous.lastHoldDuration;
+            return button;
         }
     }
 }

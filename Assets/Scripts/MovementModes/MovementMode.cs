@@ -51,5 +51,24 @@ namespace Character
         }
     }
 
-    // TODO: Add an interface defining dash-related functions
+    /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle dashing related functionality
+    /// </summary>
+    public interface DashMode
+    {
+        public abstract float dashSpeed { get; set; }
+        public abstract float dashDuration { get; set; }
+        public abstract int maxAirDashes { get; set; }
+
+        public abstract bool CanDash(MovementData data, Inputs inputs, MovementController controller);
+
+        public virtual void ProcessMovementDataForDash(ref MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            if (CanDash(movementData, inputs, controller))
+            {
+                movementData.velocityOverride = movementData.initialRotation * Vector3.forward * dashSpeed;
+                movementData.state = movementData.state | CharacterState.Dashing;
+            }
+        }
+    }
 }

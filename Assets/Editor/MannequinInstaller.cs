@@ -24,6 +24,7 @@ namespace CharacterShowcase.EditorTools
         private const string SpeedParameter = AnimationController.SpeedParameter;
         private const string VerticalSpeedParameter = AnimationController.VerticalSpeedParameter;
         private const string GroundedParameter = AnimationController.GroundedParameter;
+        private const string DashingParameter = AnimationController.DashingParameter;
 
         // Blend tree thresholds in m/s. The clips' stride lengths are authored for these speeds
         // (see Tools/Mannequin/mannequin_animations.py), so the feet don't skate at those speeds.
@@ -211,12 +212,13 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Builds the controller from scratch each time so it always matches this code:
-        /// Locomotion (Idle / Walk / Run by Speed) and Airborne (Fall / Rise by VerticalSpeed), switched by Grounded.
+        /// Locomotion (Idle / Walk / Run by Speed) and Airborne (Fall / Rise by VerticalSpeed), switched by Grounded,
+        /// plus Dash, entered from any state while Dashing.
         /// </summary>
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Walk", "Run", "Rise", "Fall" };
+            string[] required = { "Idle", "Walk", "Run", "Rise", "Fall", "Dash" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -236,6 +238,7 @@ namespace CharacterShowcase.EditorTools
                 type = AnimatorControllerParameterType.Bool,
                 defaultBool = true,
             });
+            controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
 
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
 
@@ -259,6 +262,28 @@ namespace CharacterShowcase.EditorTools
             land.hasExitTime = false;
             land.duration = 0.08f;
             land.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+
+            // Dash: entered from anywhere almost instantly so it feels immediate, and left for whichever of
+            // Locomotion / Airborne matches the character once the dash ends.
+            AnimatorState dash = stateMachine.AddState("Dash");
+            dash.motion = clips["Dash"];
+            AnimatorStateTransition startDash = stateMachine.AddAnyStateTransition(dash);
+            startDash.hasExitTime = false;
+            startDash.duration = 0.04f;
+            startDash.canTransitionToSelf = false;
+            startDash.AddCondition(AnimatorConditionMode.If, 0f, DashingParameter);
+
+            AnimatorStateTransition dashToGround = dash.AddTransition(locomotion);
+            dashToGround.hasExitTime = false;
+            dashToGround.duration = 0.12f;
+            dashToGround.AddCondition(AnimatorConditionMode.IfNot, 0f, DashingParameter);
+            dashToGround.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+
+            AnimatorStateTransition dashToAir = dash.AddTransition(airborne);
+            dashToAir.hasExitTime = false;
+            dashToAir.duration = 0.12f;
+            dashToAir.AddCondition(AnimatorConditionMode.IfNot, 0f, DashingParameter);
+            dashToAir.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
 
             // OnAnimatorIK (and so CharacterIK) only runs on layers with IK Pass enabled. Layers are returned by
             // copy, so modify the array and assign it back.
