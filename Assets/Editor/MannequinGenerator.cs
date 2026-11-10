@@ -125,7 +125,7 @@ namespace CharacterShowcase.EditorTools
         /// The mannequin is the Character prefab's own model, which the tests spawn. Scenes choose their own model with
         /// the Character Model window, as an override on their instance of the prefab.
         /// </summary>
-        private static bool UseOnCharacterPrefab(CharacterModelDefinition definition)
+        private static bool UseOnCharacterPrefab(DirectCharacterModelSource definition)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
@@ -138,7 +138,7 @@ namespace CharacterShowcase.EditorTools
                     return false;
                 }
                 var serialized = new SerializedObject(animationController);
-                serialized.FindProperty("modelDefinition").objectReferenceValue = definition;
+                serialized.FindProperty("modelSource").objectReferenceValue = definition;
                 serialized.FindProperty("modelParent").objectReferenceValue = modelParent;
                 serialized.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);

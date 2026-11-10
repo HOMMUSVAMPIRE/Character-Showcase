@@ -163,7 +163,7 @@ namespace CharacterShowcase.Tests
         private static IEnumerable<string> PreparedModels()
         {
 #if UNITY_EDITOR
-            return UnityEditor.AssetDatabase.FindAssets($"t:{nameof(CharacterModelDefinition)}", new[] { "Assets/Models/CharacterModels" })
+            return UnityEditor.AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { "Assets/Models/CharacterModels" })
                 .Select(UnityEditor.AssetDatabase.GUIDToAssetPath)
                 .OrderBy(path => path, System.StringComparer.Ordinal)
                 .ToArray();
@@ -176,17 +176,19 @@ namespace CharacterShowcase.Tests
         private IEnumerator SpawnWithModel(string definitionPath)
         {
 #if UNITY_EDITOR
-            var definition = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterModelDefinition>(definitionPath);
+            var definition = UnityEditor.AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(definitionPath);
 #else
-            CharacterModelDefinition definition = null;
+            DirectCharacterModelSource definition = null;
 #endif
             Assert.That(definition, Is.Not.Null, $"Test setup: no model definition at '{definitionPath}'.");
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             animation = rig.Animation;
             yield return rig.WaitForModel();
-            yield return animation.LoadModel(definition);
-            Assert.That(animation.ModelDefinition, Is.SameAs(definition));
+            bool loaded = false;
+            yield return CharacterTestRig.WaitFor(animation.LoadModelAsync(definition), l => loaded = l);
+            Assert.That(loaded, Is.True, "The model should load.");
+            Assert.That(animation.ModelSource, Is.SameAs(definition));
             Assert.That(animation.Animator, Is.Not.Null, "The model should have an Animator.");
             Assert.That(animation.Animator.runtimeAnimatorController, Is.Not.Null, "The model's Animator should have a controller.");
         }

@@ -1,18 +1,18 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 namespace Character
 {
     /// <summary>
-    /// The character's link between movement and visuals. It loads the character's model at runtime from a
-    /// CharacterModelDefinition, turns each frame's movement into a CharacterAnimationState, and passes that state and
+    /// The character's link between movement and visuals. It gets the character's model at runtime from a
+    /// CharacterModelSource, turns each frame's movement into a CharacterAnimationState, and passes that state and
     /// the movement events to the model's animation translator.
     ///
-    /// Nothing here depends on a particular model, Animator Controller or animation system: those all come from the
-    /// model definition, so a model can be replaced (or swapped at runtime) without touching the character. The
-    /// character moves normally while its model is still loading.
+    /// Nothing here depends on a particular model, how it's stored, its Animator Controller or animation system: those
+    /// all come from the model source, so a model can be replaced (or swapped at runtime) without touching the
+    /// character. The character moves normally while its model is still loading.
     /// </summary>
     [DisallowMultipleComponent]
     public class AnimationController : MonoBehaviour, ICharacterAnimationStateSource
@@ -23,11 +23,11 @@ namespace Character
         private MovementController movementController;
 
         [Header("Model")]
-        [SerializeField] [Tooltip("The model to load for this character, and how to animate it")]
-        private CharacterModelDefinition modelDefinition;
+        [SerializeField] [Tooltip("Where this character's model comes from, and how to animate it")]
+        private CharacterModelSource modelSource;
         [SerializeField] [Tooltip("The child transform the model is created under. It is turned smoothly to face the character's direction.")]
         private Transform modelParent;
-        [SerializeField] [Tooltip("Load the model when the character starts. Turn off to load it from code with LoadModel instead.")]
+        [SerializeField] [Tooltip("Load the model when the character starts. Turn off to load it from code with LoadModelAsync instead.")]
         private bool loadModelOnStart = true;
 
         [Header("Animation State")]
@@ -48,21 +48,23 @@ namespace Character
         private bool hasLastFacing;
 
         private ICharacterAnimationDriver driver;
-        private Coroutine loadRoutine;
-        private ModelLoadRequest pendingLoad;
-        private readonly List<CharacterModelDefinition.PreviewMesh> previewMeshes = new();
+        private CharacterModel model;
+        // The source the current model came from, which releases it.
+        private CharacterModelSource modelOwner;
+        private CancellationTokenSource pendingLoad;
+        private readonly List<CharacterModelSource.PreviewMesh> previewMeshes = new();
 
         /// <summary>The character's animation state as of the latest frame.</summary>
         public CharacterAnimationState AnimationState { get; private set; }
 
-        /// <summary>The definition of the current (or loading) model.</summary>
-        public CharacterModelDefinition ModelDefinition => modelDefinition;
+        /// <summary>The source of the current (or loading) model.</summary>
+        public CharacterModelSource ModelSource => modelSource;
         /// <summary>The loaded model instance, or null while there is none (not loaded yet, or still loading).</summary>
-        public GameObject Model { get; private set; }
+        public GameObject Model => model != null && model.Root != null ? model.Root : null;
         /// <summary>The loaded model's Animator. May be null.</summary>
-        public Animator Animator { get; private set; }
+        public Animator Animator => Model != null ? model.Animator : null;
         /// <summary>IK for the loaded model's hands, feet, elbows and knees, blended over its animations. May be null.</summary>
-        public CharacterIK IK { get; private set; }
+        public CharacterIK IK => Model != null ? model.IK : null;
         public bool IsModelReady => Model != null;
         public bool IsLoadingModel => pendingLoad != null;
 
@@ -90,78 +92,99 @@ namespace Character
 
         private void Start()
         {
-            if (loadModelOnStart && modelDefinition != null && Model == null && !IsLoadingModel) { LoadModel(modelDefinition); }
+            if (loadModelOnStart && modelSource != null && Model == null && !IsLoadingModel) { _ = LoadModelAsync(modelSource); }
         }
 
-        private void OnDestroy() => CancelLoad();
-
-        /// <summary>
-        /// Replaces the character's model with the given one, loading it asynchronously. The current model stays until
-        /// the new one is ready, so the character is never left invisible mid-swap. Returns the loading coroutine, which
-        /// can be yielded on to wait for it.
-        /// </summary>
-        public Coroutine LoadModel(CharacterModelDefinition definition)
+        private void OnDestroy()
         {
             CancelLoad();
-            modelDefinition = definition;
-            if (definition == null)
+            ReleaseModel();
+        }
+
+        /// <summary>
+        /// Replaces the character's model with one from the given source, which creates it asynchronously. The current
+        /// model stays until the new one is ready, so the character is never left invisible mid-swap. Returns whether
+        /// the new model was loaded: false if it failed, or if another model was asked for (or the character destroyed)
+        /// before it finished. Given null, removes the model.
+        /// </summary>
+        public async Awaitable<bool> LoadModelAsync(CharacterModelSource source)
+        {
+            CancelLoad();
+            modelSource = source;
+            if (source == null)
             {
                 UnloadModel();
-                return null;
+                return false;
             }
-            loadRoutine = StartCoroutine(LoadModelRoutine(definition));
-            return loadRoutine;
+
+            // Cancelled if another model is asked for, or the character is destroyed, before this one is ready.
+            var cancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            pendingLoad = cancellation;
+            CharacterModel created;
+            try
+            {
+                created = await source.CreateModelAsync(new CharacterModelContext(gameObject, modelParent), cancellation.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception, this);
+                return false;
+            }
+            finally
+            {
+                if (pendingLoad == cancellation) { pendingLoad = null; }
+            }
+
+            bool wanted = !cancellation.IsCancellationRequested && this != null;
+            // A cancelled source may still be running its cancellation callbacks, so only an uncancelled one is disposed
+            // here; a cancelled one is left for the garbage collector.
+            if (!cancellation.IsCancellationRequested) { cancellation.Dispose(); }
+            if (created == null || created.Root == null)
+            {
+                if (wanted) { Debug.LogWarning($"[{nameof(AnimationController)}] '{source.name}' didn't create a model.", this); }
+                return false;
+            }
+            if (!wanted)
+            {
+                // The source finished without noticing it was cancelled; the character no longer wants this model.
+                source.ReleaseModel(created);
+                return false;
+            }
+
+            ReleaseModel();
+            model = created;
+            modelOwner = source;
+            driver = created.Translator != null ? created.Translator.CreateDriver(created.Root, created.Animator) : null;
+            lastRotation = modelParent.rotation;
+            ModelLoaded?.Invoke(created.Root);
+            return true;
         }
 
-        /// <summary>Destroys the current model, leaving the character without one.</summary>
+        /// <summary>Removes the current model, leaving the character without one.</summary>
         public void UnloadModel()
         {
-            if (Model != null) { Destroy(Model); }
-            Model = null;
-            Animator = null;
-            IK = null;
+            CancelLoad();
+            ReleaseModel();
+        }
+
+        private void ReleaseModel()
+        {
+            if (model != null && modelOwner != null) { modelOwner.ReleaseModel(model); }
+            else if (Model != null) { Destroy(Model); }
+            model = null;
+            modelOwner = null;
             driver = null;
-        }
-
-        private IEnumerator LoadModelRoutine(CharacterModelDefinition definition)
-        {
-            var request = new ModelLoadRequest(modelParent);
-            pendingLoad = request;
-
-            yield return definition.LoadModel(request);
-            GameObject model = request.Result;
-            if (model == null)
-            {
-                if (!request.IsCancelled) { Debug.LogWarning($"[{nameof(AnimationController)}] Model '{definition.name}' failed to load.", this); }
-                ClearLoad(request);
-                yield break;
-            }
-            yield return definition.SetupModel(model, modelParent);
-            if (request.IsCancelled) { yield break; }
-            ClearLoad(request);
-
-            UnloadModel();
-            Model = model;
-            Animator = model.GetComponentInChildren<Animator>();
-            IK = Animator != null ? Animator.GetComponent<CharacterIK>() : null;
-            driver = definition.Translator != null ? definition.Translator.CreateDriver(model, Animator) : null;
-            lastRotation = modelParent.rotation;
-            ModelLoaded?.Invoke(model);
-        }
-
-        private void ClearLoad(ModelLoadRequest request)
-        {
-            if (pendingLoad != request) { return; }
-            pendingLoad = null;
-            loadRoutine = null;
         }
 
         private void CancelLoad()
         {
-            if (loadRoutine != null) { StopCoroutine(loadRoutine); }
-            pendingLoad?.Cancel();
+            CancellationTokenSource cancellation = pendingLoad;
             pendingLoad = null;
-            loadRoutine = null;
+            cancellation?.Cancel();
         }
 
         /// <summary>
@@ -244,11 +267,11 @@ namespace Character
         /// <summary>Shows the model in the editor, where it isn't loaded, so the character can still be seen and placed.</summary>
         private void OnDrawGizmos()
         {
-            if (modelDefinition == null || IsModelReady) { return; }
+            if (modelSource == null || IsModelReady) { return; }
             Transform parent = modelParent != null ? modelParent : transform;
-            modelDefinition.GetPreviewMeshes(previewMeshes);
+            modelSource.GetPreviewMeshes(previewMeshes);
             Gizmos.color = new Color(0.75f, 0.78f, 0.85f, 1f);
-            foreach (CharacterModelDefinition.PreviewMesh preview in previewMeshes)
+            foreach (CharacterModelSource.PreviewMesh preview in previewMeshes)
             {
                 Gizmos.matrix = parent.localToWorldMatrix * preview.matrix;
                 Gizmos.DrawMesh(preview.mesh);

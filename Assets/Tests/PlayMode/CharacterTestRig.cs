@@ -72,6 +72,23 @@ namespace CharacterShowcase.Tests
             }
         }
 
+        /// <summary>
+        /// Waits (in real frames) for an Awaitable to finish, so coroutine tests can wait on async methods, and passes
+        /// on its result.
+        /// </summary>
+        public static IEnumerator WaitFor<T>(Awaitable<T> awaitable, Action<T> result = null, float timeoutSeconds = 10f)
+        {
+            Awaitable<T>.Awaiter awaiter = awaitable.GetAwaiter();
+            float giveUp = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!awaiter.IsCompleted)
+            {
+                if (Time.realtimeSinceStartup > giveUp) { throw new TimeoutException("The awaited operation didn't finish."); }
+                yield return null;
+            }
+            T value = awaiter.GetResult();
+            result?.Invoke(value);
+        }
+
         public GameObject Box(string name, Vector3 center, Vector3 size, Quaternion? rotation = null)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);

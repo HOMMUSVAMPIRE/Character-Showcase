@@ -54,6 +54,9 @@ describes what the project does; this file describes how to change it safely.
   `Character`, `Level` or `CharacterShowcase` namespaces or assemblies. The camera follows a plain Transform. If a
   camera feature needs character information, expose a generic hook on the camera side (an interface, an event, a
   settable value) and connect it from character code.
+- **Models come from a `CharacterModelSource`.** The character asks its source for a model with `CreateModelAsync` and
+  gives it back with `ReleaseModel`; it never instantiates or destroys a model itself, so sources can load models
+  however they like (directly, Addressables, asset bundles). New ways of getting a model are new subclasses.
 - **Movement and animation are separate.** Movement code produces `MovementData` and raises `MovementEvents`.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
@@ -120,7 +123,7 @@ These are produced by tools. Edit the generator instead and regenerate:
 | The model override on the character in `Assets/Scenes/SampleScene.unity` | `CharacterModelWindow` (Tools > Character Showcase > Choose Character Model…) |
 
 The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
-the model definitions. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
+the model sources. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
 in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
 still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
 

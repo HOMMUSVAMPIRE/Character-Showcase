@@ -118,7 +118,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: 8983899932423906658}
   movementController: {fileID: 0}
-  modelDefinition: {fileID: 11400000, guid: fd051d156126e401fae044d417c1cb53, type: 2}
+  modelSource: {fileID: 11400000, guid: fd051d156126e401fae044d417c1cb53, type: 2}
   modelParent: {fileID: 5701748026665167100}
   loadModelOnStart: 1
   airborneDelay: 0.12

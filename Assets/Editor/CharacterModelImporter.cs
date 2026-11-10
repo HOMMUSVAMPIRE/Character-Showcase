@@ -16,7 +16,7 @@ namespace CharacterShowcase.EditorTools
     ///   every animation with their arms raised
     /// - saves a model prefab next to it ("[name] Model.prefab"): the model with an Animator using the shared Animator
     ///   Controller, CharacterIK and FootPlacementIK
-    /// - saves a Character Model Definition next to it ("[name].asset") naming the prefab and the shared translator,
+    /// - saves a DirectCharacterModelSource next to it ("[name].asset") naming the prefab and the shared translator,
     ///   which the Character Model window (or an AnimationController) can then use
     /// Each subfolder can hold one model, or several (variants of one model with different materials, say); each model
     /// file becomes its own choice. Safe to run repeatedly: IK settings and edits to the definitions are kept.
@@ -39,7 +39,7 @@ namespace CharacterShowcase.EditorTools
         {
             public string modelPath;
             public string name;
-            public CharacterModelDefinition definition;
+            public DirectCharacterModelSource definition;
             // Why the model couldn't be prepared, or null if it was
             public string problem;
             public float height;
@@ -183,10 +183,10 @@ namespace CharacterShowcase.EditorTools
             result.height = MeasureHeight(modelPrefab);
 
             string definitionPath = DefinitionPathFor(modelPath, result.name);
-            var definition = AssetDatabase.LoadAssetAtPath<CharacterModelDefinition>(definitionPath);
+            var definition = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(definitionPath);
             if (definition == null)
             {
-                definition = ScriptableObject.CreateInstance<CharacterModelDefinition>();
+                definition = ScriptableObject.CreateInstance<DirectCharacterModelSource>();
                 AssetDatabase.CreateAsset(definition, definitionPath);
                 if (result.height > 0f && (result.height < MinHeight || result.height > MaxHeight))
                 {
@@ -206,7 +206,7 @@ namespace CharacterShowcase.EditorTools
         /// Why the definition can't be used as the character's model, or null if it can: it must name a model prefab with
         /// a valid Humanoid avatar, an Animator Controller and a translator, as Prepare sets it up.
         /// </summary>
-        public static string Validate(CharacterModelDefinition definition)
+        public static string Validate(DirectCharacterModelSource definition)
         {
             if (definition == null) { return "There is no definition."; }
             if (definition.ModelPrefab == null) { return "It names no model prefab."; }
@@ -222,7 +222,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>The Animator Controller the definition's model plays: the definition's override, or its prefab's.</summary>
-        public static RuntimeAnimatorController ControllerOf(CharacterModelDefinition definition)
+        public static RuntimeAnimatorController ControllerOf(DirectCharacterModelSource definition)
         {
             if (definition == null) { return null; }
             if (definition.AnimatorController != null) { return definition.AnimatorController; }

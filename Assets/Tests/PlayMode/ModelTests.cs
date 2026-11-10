@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -8,10 +9,10 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of how the character's model is kept separate from the character: it's loaded at runtime from a
-    /// CharacterModelDefinition, can be swapped for a different one (even one without an Animator), loading is
-    /// cleaned up if the character goes away first, and translators turn animation state and events into Animator
-    /// parameters.
+    /// Tests of how the character's model is kept separate from the character: it's created at runtime by a
+    /// CharacterModelSource, can be swapped for a different one (even one without an Animator), loading is cleaned up
+    /// if the character goes away first, sources release the models they made, and translators turn animation state
+    /// and events into Animator parameters.
     /// </summary>
     public class ModelTests
     {
@@ -36,16 +37,16 @@ namespace CharacterShowcase.Tests
             return obj;
         }
 
-        /// <summary>A definition whose model is a plain cube: no Animator, no humanoid rig.</summary>
-        private CharacterModelDefinition CubeDefinition()
+        /// <summary>A source whose model is a plain cube: no Animator, no humanoid rig.</summary>
+        private DirectCharacterModelSource CubeSource()
         {
             GameObject template = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
             template.name = "Cube Model";
             Object.Destroy(template.GetComponent<Collider>());
             template.SetActive(false); // Only a template to copy; copies are activated below.
-            var definition = Track(ScriptableObject.CreateInstance<CharacterModelDefinition>());
-            definition.ModelPrefab = template;
-            return definition;
+            var source = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            source.ModelPrefab = template;
+            return source;
         }
 
         [UnityTest]
@@ -56,7 +57,7 @@ namespace CharacterShowcase.Tests
             AnimationController animation = rig.Animation;
             int loadedEvents = 0;
             animation.ModelLoaded += _ => loadedEvents++;
-            Assert.That(animation.ModelDefinition, Is.Not.Null, "The Character prefab should name a model definition.");
+            Assert.That(animation.ModelSource, Is.Not.Null, "The Character prefab should name a model source.");
 
             yield return rig.WaitForModel();
 
@@ -82,15 +83,18 @@ namespace CharacterShowcase.Tests
             yield return rig.WaitForModel();
             GameObject mannequin = animation.Model;
 
-            CharacterModelDefinition cube = CubeDefinition();
-            yield return animation.LoadModel(cube);
+            DirectCharacterModelSource cube = CubeSource();
+            bool loaded = false;
+            yield return CharacterTestRig.WaitFor(animation.LoadModelAsync(cube), l => loaded = l);
             yield return null; // Destroy takes effect at the end of the frame.
+
+            Assert.That(loaded, Is.True);
 
             Assert.That(mannequin == null, Is.True, "The old model should be destroyed.");
             Assert.That(animation.Model, Is.Not.Null);
             Assert.That(animation.Model.name, Does.StartWith("Cube Model"));
             Assert.That(animation.Model.transform.IsChildOf(rig.Character.transform), Is.True);
-            Assert.That(animation.ModelDefinition, Is.SameAs(cube));
+            Assert.That(animation.ModelSource, Is.SameAs(cube));
             Assert.That(animation.Animator, Is.Null);
             Assert.That(animation.IK, Is.Null);
 
@@ -105,11 +109,11 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator DestroyingTheCharacterWhileItsModelLoads_LeavesNoModelBehind()
         {
-            CharacterModelDefinition cube = CubeDefinition();
+            DirectCharacterModelSource cube = CubeSource();
             for (int i = 0; i < 5; i++)
             {
                 rig.SpawnCharacter(new Vector3(i * 3f, 0f, 0f));
-                rig.Animation.LoadModel(cube);
+                _ = rig.Animation.LoadModelAsync(cube);
                 Object.Destroy(rig.Character);
                 yield return null;
             }
@@ -121,47 +125,91 @@ namespace CharacterShowcase.Tests
             }
         }
 
-        /// <summary>Stands in for a loader with something to clean up (such as an Addressables handle): it takes a while,
-        /// and records whether its cancellation cleanup ran.</summary>
-        private class SlowLoadingDefinition : CharacterModelDefinition
+        /// <summary>
+        /// Stands in for a source that loads from somewhere else (Addressables, an asset bundle): it takes a while,
+        /// records whether its cancellation cleanup ran, and releases its models itself.
+        /// </summary>
+        private class SlowSource : CharacterModelSource
         {
             public bool cleanedUp;
-            public override IEnumerator LoadModel(ModelLoadRequest request)
+            public int released;
+
+            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
             {
-                request.OnCancel(() => cleanedUp = true);
-                for (int i = 0; i < 30; i++) { yield return null; }
-                request.SetResult(new GameObject("Slow Model"));
+                try
+                {
+                    for (int i = 0; i < 30; i++) { await Awaitable.NextFrameAsync(cancellationToken); }
+                }
+                catch (System.OperationCanceledException)
+                {
+                    cleanedUp = true; // Where a real source would release what it had loaded so far.
+                    throw;
+                }
+                var model = new GameObject("Slow Model");
+                await SetUpModelAsync(model, context, cancellationToken);
+                return new CharacterModel(model, Translator);
+            }
+
+            public override void ReleaseModel(CharacterModel model)
+            {
+                released++;
+                base.ReleaseModel(model);
             }
         }
 
         [UnityTest]
         public IEnumerator DestroyingTheCharacterWhileItsModelLoads_CancelsTheLoad()
         {
-            var slow = Track(ScriptableObject.CreateInstance<SlowLoadingDefinition>());
+            var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
-            rig.Animation.LoadModel(slow);
+            _ = rig.Animation.LoadModelAsync(slow);
             yield return null;
             Assert.That(rig.Animation.IsLoadingModel, Is.True, "Test setup: the model should still be loading.");
 
             Object.Destroy(rig.Character);
             yield return null;
-            Assert.That(slow.cleanedUp, Is.True, "The loader's cleanup should run when its character is destroyed.");
+            Assert.That(slow.cleanedUp, Is.True, "The source's cleanup should run when its character is destroyed.");
+            for (int i = 0; i < 40; i++) { yield return null; }
+            Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
         }
 
         [UnityTest]
         public IEnumerator LoadingAnotherModelMidLoad_CancelsTheFirst()
         {
-            var slow = Track(ScriptableObject.CreateInstance<SlowLoadingDefinition>());
+            var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
-            rig.Animation.LoadModel(slow);
+            bool slowLoaded = true;
+            IEnumerator first = CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow), l => slowLoaded = l);
             yield return null;
 
-            yield return rig.Animation.LoadModel(CubeDefinition());
+            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(CubeSource()));
+            yield return first;
 
             Assert.That(slow.cleanedUp, Is.True, "Replacing a model mid-load should cancel the first load.");
+            Assert.That(slowLoaded, Is.False, "The first load should report that it didn't load.");
             Assert.That(rig.Animation.Model.name, Does.StartWith("Cube Model"));
             for (int i = 0; i < 40; i++) { yield return null; }
             Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
+        }
+
+        [UnityTest]
+        public IEnumerator SourcesReleaseTheModelsTheyMade_WhenReplacedOrTheCharacterGoes()
+        {
+            var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
+            rig.SpawnCharacter(Vector3.zero);
+            bool loaded = false;
+            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow), l => loaded = l);
+            Assert.That(loaded, Is.True);
+            Assert.That(rig.Animation.Model.name, Is.EqualTo("Slow Model"));
+            Assert.That(rig.Animation.Model.transform.IsChildOf(rig.Character.transform), Is.True, "SetUpModelAsync should place it on the character.");
+
+            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(CubeSource()));
+            Assert.That(slow.released, Is.EqualTo(1), "The replaced model should go back to the source that made it.");
+
+            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow));
+            Object.Destroy(rig.Character);
+            yield return null;
+            Assert.That(slow.released, Is.EqualTo(2), "A destroyed character's model should go back to its source too.");
         }
 
         [UnityTest]
@@ -172,14 +220,14 @@ namespace CharacterShowcase.Tests
             yield return rig.WaitForModel();
             yield return null; // Let the skinned mesh update its bounds.
 
-            var previews = new List<CharacterModelDefinition.PreviewMesh>();
-            rig.Animation.ModelDefinition.GetPreviewMeshes(previews);
+            var previews = new List<CharacterModelSource.PreviewMesh>();
+            rig.Animation.ModelSource.GetPreviewMeshes(previews);
             Assert.That(previews, Is.Not.Empty);
 
             // The preview should sit on the character's feet and be about as tall as the loaded model.
             Transform parent = rig.Animation.Model.transform.parent;
             float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
-            foreach (CharacterModelDefinition.PreviewMesh preview in previews)
+            foreach (CharacterModelSource.PreviewMesh preview in previews)
             {
                 Bounds bounds = preview.mesh.bounds;
                 for (int corner = 0; corner < 8; corner++)

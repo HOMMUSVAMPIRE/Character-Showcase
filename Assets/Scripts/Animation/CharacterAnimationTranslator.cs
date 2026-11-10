@@ -4,7 +4,7 @@ namespace Character
 {
     /// <summary>
     /// Translates a character's animation state and movement events into a particular model's animations: for example
-    /// Animator parameters and triggers, or a different animation system entirely. Each CharacterModelDefinition names
+    /// Animator parameters and triggers, or a different animation system entirely. Each CharacterModelSource names
     /// the translator that suits its model, so swapping a model swaps how it's animated too.
     ///
     /// Translators are shared assets, so the per-character work is done by the driver each one creates for a model.

@@ -4503,20 +4503,12 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1999695637673396473, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: modelDefinition
+      propertyPath: modelSource
       value: 
       objectReference: {fileID: 11400000, guid: 1ad8eef98f9964c21a8cfcd51448b577, type: 2}
     - target: {fileID: 2098279046411243804, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
       propertyPath: m_Name
       value: Character
-      objectReference: {fileID: 0}
-    - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: doMove
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: gravity.y
-      value: -30
       objectReference: {fileID: 0}
     - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
       propertyPath: m_Enabled

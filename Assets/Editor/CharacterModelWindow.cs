@@ -23,7 +23,7 @@ namespace CharacterShowcase.EditorTools
 
         private sealed class Entry
         {
-            public CharacterModelDefinition definition;
+            public DirectCharacterModelSource definition;
             public string name;
             public string problem;
             public float height;
@@ -32,7 +32,7 @@ namespace CharacterShowcase.EditorTools
         private readonly List<Entry> ready = new();
         private readonly List<Entry> notReady = new();
         private readonly List<string> unprepared = new();
-        private CharacterModelDefinition inUse;
+        private CharacterModelSource inUse;
         // Heights by model prefab: measuring means instantiating the model, so it isn't redone every time the window refreshes.
         private readonly Dictionary<GameObject, float> heights = new();
         private Vector2 scroll;
@@ -62,7 +62,7 @@ namespace CharacterShowcase.EditorTools
             ready.Clear();
             notReady.Clear();
             unprepared.Clear();
-            foreach (CharacterModelDefinition definition in FindDefinitions())
+            foreach (DirectCharacterModelSource definition in FindDefinitions())
             {
                 var entry = new Entry
                 {
@@ -88,7 +88,7 @@ namespace CharacterShowcase.EditorTools
             foreach (string modelPath in CharacterModelImporter.FindModelFiles())
             {
                 string definitionPath = CharacterModelImporter.DefinitionPathFor(modelPath, CharacterModelImporter.DisplayName(modelPath));
-                if (AssetDatabase.LoadAssetAtPath<CharacterModelDefinition>(definitionPath) == null) { unprepared.Add(modelPath); }
+                if (AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(definitionPath) == null) { unprepared.Add(modelPath); }
             }
             inUse = CurrentModel();
             Repaint();
@@ -163,14 +163,14 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>The definitions in the models folder that are ready to use (see CharacterModelImporter.Validate).</summary>
-        public static IEnumerable<CharacterModelDefinition> FindReadyDefinitions() =>
+        public static IEnumerable<DirectCharacterModelSource> FindReadyDefinitions() =>
             FindDefinitions().Where(d => CharacterModelImporter.Validate(d) == null);
 
-        private static IEnumerable<CharacterModelDefinition> FindDefinitions() =>
-            AssetDatabase.FindAssets($"t:{nameof(CharacterModelDefinition)}", new[] { CharacterModelImporter.ModelsFolder })
+        private static IEnumerable<DirectCharacterModelSource> FindDefinitions() =>
+            AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { CharacterModelImporter.ModelsFolder })
                 .Select(AssetDatabase.GUIDToAssetPath)
                 .OrderBy(path => path, System.StringComparer.Ordinal)
-                .Select(AssetDatabase.LoadAssetAtPath<CharacterModelDefinition>)
+                .Select(AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>)
                 .Where(d => d != null);
 
         /// <summary>
@@ -178,7 +178,7 @@ namespace CharacterShowcase.EditorTools
         /// (with undo) for you to save; otherwise the scene is opened alongside, changed, saved and closed again, leaving
         /// whatever is open alone.
         /// </summary>
-        public static bool UseInScene(CharacterModelDefinition definition)
+        public static bool UseInScene(DirectCharacterModelSource definition)
         {
             string problem = CharacterModelImporter.Validate(definition);
             if (problem != null)
@@ -201,9 +201,13 @@ namespace CharacterShowcase.EditorTools
                 foreach (AnimationController character in characters)
                 {
                     var serialized = new SerializedObject(character);
-                    serialized.FindProperty("modelDefinition").objectReferenceValue = definition;
+                    serialized.FindProperty("modelSource").objectReferenceValue = definition;
                     if (wasOpen) { serialized.ApplyModifiedProperties(); } else { serialized.ApplyModifiedPropertiesWithoutUndo(); }
                 }
+                // Drop overrides left for fields that no longer exist (such as a renamed one), so they don't pile up.
+                GameObject[] instances = characters.Select(c => PrefabUtility.GetOutermostPrefabInstanceRoot(c.gameObject))
+                    .Where(root => root != null).Distinct().ToArray();
+                if (instances.Length > 0) { PrefabUtility.RemoveUnusedOverrides(instances, wasOpen ? InteractionMode.UserAction : InteractionMode.AutomatedAction); }
                 EditorSceneManager.MarkSceneDirty(scene);
                 if (!wasOpen) { EditorSceneManager.SaveScene(scene); }
                 Debug.Log($"[CharacterModelWindow] The character in '{ScenePath}' now uses '{definition.name}'" +
@@ -222,7 +226,7 @@ namespace CharacterShowcase.EditorTools
             string[] args = System.Environment.GetCommandLineArgs();
             int index = System.Array.IndexOf(args, "-model");
             string wanted = index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
-            CharacterModelDefinition definition = FindReadyDefinitions()
+            DirectCharacterModelSource definition = FindReadyDefinitions()
                 .FirstOrDefault(d => AssetDatabase.GetAssetPath(d) == wanted || d.name == wanted);
             if (definition == null)
             {
@@ -241,25 +245,25 @@ namespace CharacterShowcase.EditorTools
         /// The model the sample scene's character uses. Read from the scene if it's open; otherwise from the scene file
         /// (an override on the Character prefab instance), so checking doesn't open the scene. Falls back to the prefab's own.
         /// </summary>
-        private static CharacterModelDefinition CurrentModel()
+        private static CharacterModelSource CurrentModel()
         {
             Scene scene = SceneManager.GetSceneByPath(ScenePath);
             if (scene.isLoaded)
             {
                 AnimationController character = AnimationControllersIn(scene).FirstOrDefault();
-                return character != null ? character.ModelDefinition : null;
+                return character != null ? character.ModelSource : null;
             }
             if (File.Exists(ScenePath))
             {
                 Match match = Regex.Match(File.ReadAllText(ScenePath),
-                    @"propertyPath: modelDefinition\s+value:[^\n]*\n\s+objectReference: \{fileID: \d+, guid: ([0-9a-f]{32})");
+                    @"propertyPath: (?:modelSource|modelDefinition)\s+value:[^\n]*\n\s+objectReference: \{fileID: \d+, guid: ([0-9a-f]{32})");
                 if (match.Success)
                 {
-                    return AssetDatabase.LoadAssetAtPath<CharacterModelDefinition>(AssetDatabase.GUIDToAssetPath(match.Groups[1].Value));
+                    return AssetDatabase.LoadAssetAtPath<CharacterModelSource>(AssetDatabase.GUIDToAssetPath(match.Groups[1].Value));
                 }
             }
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
-            return prefab != null && prefab.TryGetComponent(out AnimationController controller) ? controller.ModelDefinition : null;
+            return prefab != null && prefab.TryGetComponent(out AnimationController controller) ? controller.ModelSource : null;
         }
     }
 }
