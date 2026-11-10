@@ -5,10 +5,6 @@ This project is still a work in progress. I will be adding to it in my free time
 
 Once the project meets my standards for completion, I may release it as a Unity Asset Store package for others to use in their games.
 
-You can find my portfolio at [adalynnskidmore@myportfolio.com](https://adalynnskidmore.myportfolio.com/)
-
-Please direct all questions, requests, and concerns to adalynnskidmore1@gmail.com
-
 ## How to open this Project
 1. Clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 2. Download UnityHub from https://unity.com/download
