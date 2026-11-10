@@ -13,13 +13,17 @@
 
 name: Tests
 
+# Documentation-only changes (Markdown files and docs/) don't trigger a run.
 on:
   push:
     branches: [main]
+    paths-ignore: ["**.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
 
-# Only the newest run per branch or pull request matters; cancel superseded ones.
+# Only the newest run per branch or pull request matters; a new push cancels the run in progress on the same ref.
+# Batch code changes into fewer pushes rather than pushing every commit.
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
@@ -34,10 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - uses: actions/checkout@v5
+      # The runner image already has Python 3, which is all the hygiene check needs.
       - name: Check .meta files, GUIDs, assembly boundaries and reflected test fields
         run: python3 Tools/CI/check_project_hygiene.py
 
@@ -54,13 +56,13 @@ jobs:
           tool-cache: false
           large-packages: false
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: false # the project doesn't use Git LFS
 
       # The Library folder is Unity's import cache. Restoring it turns a long first import into a short one.
       - name: Restore Unity Library cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: Library
           key: Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/packages-lock.json') }}-${{ hashFiles('Assets/**') }}
@@ -86,7 +88,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playmode-test-results
           path: ${{ steps.tests.outputs.artifactsPath || 'test-results' }}

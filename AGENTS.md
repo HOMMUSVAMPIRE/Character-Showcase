@@ -10,7 +10,7 @@ describes what the project does; this file describes how to change it safely.
   a pipeline for using other rigged humanoid models (`Assets/Models/CharacterModels`).
 - **Unity version: 6000.6.7f1.** `ProjectSettings/ProjectVersion.txt` is authoritative. Never change it, and never
   edit `Packages/manifest.json` or `Packages/packages-lock.json` unless the task explicitly asks for a package change.
-- About 5,500 lines of C#, in three assemblies plus tests:
+- About 4,400 lines of runtime C# (plus about 2,400 lines of tests and editor tools), in three assemblies plus tests:
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
@@ -30,6 +30,8 @@ describes what the project does; this file describes how to change it safely.
 2. **Play mode tests** need the Unity Editor. If you don't have it, push your branch or open a pull request: the
    `Tests` GitHub Actions workflow runs the hygiene check and the full PlayMode suite, and reports failures as a check
    with per-test annotations. The test results XML is uploaded as an artifact.
+   A run takes several minutes, and a new push to the same branch cancels the run in progress, so batch code changes
+   into fewer pushes. Changes that only touch Markdown files or `docs/` don't trigger a run.
    With Unity installed locally, close the editor and run:
    ```
    <path to Unity 6000.6.7f1> -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults.xml
@@ -126,8 +128,9 @@ still needed. All three tools have `-executeMethod` entry points (see README), s
 
 - **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton reading the `Player` action
   map) → `Inputs` / `InputButton` (in `CharacterUtilities.cs`) → `MovementController.ProcessMovementInputs`. The
-  action map already defines `Sprint`, `Crouch`, `Attack` and `Interact`, which nothing reads yet. Use
-  `ACInputManager.ReadButton` for new buttons. Camera input is read separately by `CameraSystem/CameraInputReader`.
+  action map already defines `Sprint`, `Crouch`, `Attack` and `Interact`, which nothing reads yet. New
+  buttons are read inside `ACInputManager` with its private `ReadButton` helper, the way `Dash` is. Camera input
+  is read separately by `CameraSystem/CameraInputReader`.
 - **Sprint** is stubbed: `runSpeed` exists on `WalkRunMode` / `BasicMovementMode` but isn't used.
 - **Known couplings that block NPCs:** `MovementController.cameraTransform` uses `Camera.main`, and
   `ACCharacterController` reads `ACInputManager.instance`. `ACCharacterController.Setup` and `UpdateCaches` are empty
@@ -154,5 +157,4 @@ Match the existing code:
   why.
 - Never commit `Library/`, `Temp/`, `Logs/`, `UserSettings/`, `Builds/` or `TestResults.xml` (the `.gitignore`
   covers most of these).
-- The other branches (`Skeleton`, `bugfix/code-review-pass`, `feature/advanced-camera`, `feature/humanoid-model`)
-  are historical. Base work on `main`.
+- Base work on `main`.

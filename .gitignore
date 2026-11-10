@@ -103,3 +103,6 @@ __pycache__/
 
 # Test runner output
 TestResults*.xml
+
+# macOS Finder metadata
+.DS_Store
