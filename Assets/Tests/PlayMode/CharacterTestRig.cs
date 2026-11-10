@@ -58,6 +58,20 @@ namespace CharacterShowcase.Tests
             Body = Character.GetComponent<Rigidbody>();
         }
 
+        /// <summary>The character's AnimationController, which loads its model at runtime.</summary>
+        public AnimationController Animation => Character.GetComponent<AnimationController>();
+
+        /// <summary>Waits (in real frames, not physics steps) for the character's model to finish loading.</summary>
+        public IEnumerator WaitForModel(float timeoutSeconds = 10f)
+        {
+            float giveUp = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!Animation.IsModelReady)
+            {
+                if (Time.realtimeSinceStartup > giveUp) { throw new TimeoutException("The character's model didn't load."); }
+                yield return null;
+            }
+        }
+
         public GameObject Box(string name, Vector3 center, Vector3 size, Quaternion? rotation = null)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);

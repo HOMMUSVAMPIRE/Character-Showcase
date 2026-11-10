@@ -23,6 +23,12 @@ namespace Character
         [Tooltip("The scriptable object that drives this character's movement")]
         public MovementMode movementHandler;
 
+        /// <summary>
+        /// Raised after each physics step, once for each event that happened during it (one flag at a time), with that
+        /// step's movement data. Animation, effects and sound hook in here rather than watching the movement state.
+        /// </summary>
+        public event System.Action<MovementEvents, MovementData> MovementEventRaised;
+
         // The previous and current movement data information for this character
         [HideInInspector] public MovementData lastFrameMovementData = null;
         [HideInInspector] public MovementData currentMovementData = null;
@@ -209,6 +215,35 @@ namespace Character
             CompleteMovement(data);
 
             RememberGround(data);
+
+            if (hasLastFrameMovement) { DetectEvents(data); }
+            RaiseEvents(data);
+        }
+
+        /// <summary>
+        /// Adds the events every movement mode shares, found by comparing this step to the last: landing, leaving the
+        /// ground, and newly touching a ceiling or wall. (Movement modes report jumps and dashes themselves.)
+        /// </summary>
+        private static void DetectEvents(MovementData data)
+        {
+            bool wasGrounded = data.previousState.HasFlag(CharacterState.Grounded);
+            bool isGrounded = data.state.HasFlag(CharacterState.Grounded);
+            if (!wasGrounded && isGrounded) { data.events |= MovementEvents.Landed; }
+            if (wasGrounded && !isGrounded) { data.events |= MovementEvents.LeftGround; }
+
+            CollisionFlags newContacts = data.collisions & ~data.previousCollisions;
+            if ((newContacts & CollisionFlags.Above) != 0) { data.events |= MovementEvents.HitCeiling; }
+            if ((newContacts & CollisionFlags.Sides) != 0) { data.events |= MovementEvents.HitWall; }
+        }
+
+        private void RaiseEvents(MovementData data)
+        {
+            if (data.events == MovementEvents.None || MovementEventRaised == null) { return; }
+            for (int bit = 1; bit <= (int)data.events; bit <<= 1)
+            {
+                var single = (MovementEvents)bit;
+                if ((data.events & single) != 0) { MovementEventRaised(single, data); }
+            }
         }
 
         /// <summary>

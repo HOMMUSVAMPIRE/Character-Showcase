@@ -25,6 +25,31 @@ namespace Character
     }
 
     /// <summary>
+    /// Things that can happen to a character during a physics step, for animation, effects and sound to react to.
+    /// Movement modes report the ones they cause (jumps and dashes); the MovementController detects the rest.
+    /// </summary>
+    [System.Flags]
+    public enum MovementEvents
+    {
+        None = 0,
+        // A jump from the ground, or just after walking off it (coyote time)
+        Jumped = 1,
+        // A jump in mid-air (a double jump)
+        AirJumped = 2,
+        // Touched down after being in the air
+        Landed = 4,
+        // Left the ground, by jumping or walking off an edge
+        LeftGround = 8,
+        DashStarted = 16,
+        // A dash finished, or was cancelled into a jump
+        DashEnded = 32,
+        // Started touching a ceiling
+        HitCeiling = 64,
+        // Started touching a wall
+        HitWall = 128,
+    }
+
+    /// <summary>
     /// A collection of inputs that are required for movement and character actions
     /// </summary>
     [System.Serializable]
@@ -153,6 +178,9 @@ namespace Character
         // steep slope, Sides = walls), and last frame's
         public CollisionFlags collisions;
         public CollisionFlags previousCollisions;
+
+        // What happened to the character this frame. Raised by the MovementController once the frame's movement is done
+        public MovementEvents events;
 
         // Calculates the final state of the character based on the starting data and the intended motion data
         public void ComputeResults()

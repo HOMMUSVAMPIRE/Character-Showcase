@@ -38,8 +38,9 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            animation = rig.Character.GetComponent<AnimationController>();
-            animator = rig.Character.GetComponentInChildren<Animator>();
+            animation = rig.Animation;
+            yield return rig.WaitForModel();
+            animator = animation.Animator;
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle(), FeedAnimator);
             Assert.That(InState("Locomotion"), Is.True, "Test setup: should start in Locomotion.");
 

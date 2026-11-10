@@ -9,22 +9,30 @@ namespace CharacterShowcase.EditorTools
 {
     /// <summary>
     /// Configures the generated mannequin model as a Humanoid with looping in-place clips, builds its Animator
-    /// Controller, and swaps the model in for the placeholder capsule on the Character prefab.
-    /// Safe to run repeatedly (e.g. after regenerating the model with Tools/Mannequin).
+    /// Controller, and sets it up as the Character prefab's model:
+    /// - a model prefab: the mannequin with its Animator, CharacterIK and FootPlacementIK configured
+    /// - an Animator Parameter Translator that drives the controller's parameters
+    /// - a Character Model Definition naming the two, which the Character prefab's AnimationController loads at runtime
+    /// The model isn't baked into the Character prefab, so it can be replaced by pointing the prefab at another
+    /// definition. Safe to run repeatedly (e.g. after regenerating the model with Tools/Mannequin): IK settings and any
+    /// edits to the translator and definition are kept.
     /// </summary>
     public static class MannequinInstaller
     {
         private const string ModelPath = "Assets/Models/Mannequin/Mannequin.fbx";
+        private const string ModelPrefabPath = "Assets/Models/Mannequin/Mannequin Model.prefab";
+        private const string DefinitionPath = "Assets/Models/Mannequin/Mannequin.asset";
+        private const string TranslatorPath = "Assets/Animation/Mannequin Animator Translator.asset";
         private const string PrefabPath = "Assets/Prefabs/Character.prefab";
         private const string ModelParentName = "ModelParent";
         private const string PlaceholderName = "Model";
         private const string ControllerPath = "Assets/Animation/Mannequin.controller";
 
-        // Animator parameter names come from the runtime component that drives them, so the two can't drift apart.
-        private const string SpeedParameter = AnimationController.SpeedParameter;
-        private const string VerticalSpeedParameter = AnimationController.VerticalSpeedParameter;
-        private const string GroundedParameter = AnimationController.GroundedParameter;
-        private const string DashingParameter = AnimationController.DashingParameter;
+        // The controller is built with the parameter names the translator uses by default.
+        private const string SpeedParameter = AnimatorParameterTranslator.DefaultSpeedParameter;
+        private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
+        private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
+        private const string DashingParameter = AnimatorParameterTranslator.DefaultDashingParameter;
 
         // Blend tree thresholds in m/s. The clips' stride lengths are authored for these speeds
         // (see Tools/Mannequin/mannequin_animations.py), so the feet don't skate at those speeds.
@@ -45,39 +53,72 @@ namespace CharacterShowcase.EditorTools
             try
             {
                 Transform modelParent = root.transform.Find(ModelParentName);
-                if (modelParent == null)
+                var animationController = root.GetComponent<AnimationController>();
+                if (modelParent == null || animationController == null)
                 {
-                    Debug.LogError($"[MannequinInstaller] '{PrefabPath}' has no '{ModelParentName}' child; nothing was changed.");
+                    Debug.LogError($"[MannequinInstaller] '{PrefabPath}' needs an AnimationController and a '{ModelParentName}' child; nothing was changed.");
                     return;
                 }
 
-                string previousIKSettings = null;
-                string previousFootPlacementSettings = null;
+                // IK settings to keep: from the model prefab if there is one, else from a model baked into the Character
+                // prefab by an earlier version of this installer.
+                var existingModelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPrefabPath);
+                string ikSettings = SettingsOf<CharacterIK>(existingModelPrefab);
+                string footPlacementSettings = SettingsOf<FootPlacementIK>(existingModelPrefab);
 
-                // Remove the placeholder capsule and any previous install, so re-running replaces rather than stacks.
+                // Remove the placeholder capsule and any baked-in model: the model is now loaded at runtime.
                 foreach (Transform child in modelParent.Cast<Transform>().ToList())
                 {
                     bool isPlaceholder = child.name == PlaceholderName && child.GetComponent<SkinnedMeshRenderer>() == null
                                          && !PrefabUtility.IsAnyPrefabInstanceRoot(child.gameObject);
-                    bool isPreviousInstall = PrefabUtility.GetCorrespondingObjectFromSource(child.gameObject) == modelAsset;
-                    if (isPreviousInstall && child.TryGetComponent(out CharacterIK oldIK))
+                    bool isBakedModel = PrefabUtility.GetCorrespondingObjectFromSource(child.gameObject) == modelAsset;
+                    if (isBakedModel)
                     {
-                        // Carry IK settings over to the new instance. (Targets parented under the old model are lost.)
-                        previousIKSettings = EditorJsonUtility.ToJson(oldIK);
+                        ikSettings ??= SettingsOf<CharacterIK>(child.gameObject);
+                        footPlacementSettings ??= SettingsOf<FootPlacementIK>(child.gameObject);
                     }
-                    if (isPreviousInstall && child.TryGetComponent(out FootPlacementIK oldFootPlacement))
-                    {
-                        previousFootPlacementSettings = EditorJsonUtility.ToJson(oldFootPlacement);
-                    }
-                    if (isPlaceholder || isPreviousInstall) { Object.DestroyImmediate(child.gameObject); }
+                    if (isPlaceholder || isBakedModel) { Object.DestroyImmediate(child.gameObject); }
                 }
 
-                var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset, modelParent);
+                GameObject modelPrefab = SaveModelPrefab(modelAsset, avatar, controller, ikSettings, footPlacementSettings);
+                var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
+                var definition = LoadOrCreate<CharacterModelDefinition>(DefinitionPath);
+                definition.ModelPrefab = modelPrefab;
+                if (definition.Translator == null) { definition.Translator = translator; }
+                EditorUtility.SetDirty(definition);
+                AssetDatabase.SaveAssets();
+
+                var serialized = new SerializedObject(animationController);
+                serialized.FindProperty("modelDefinition").objectReferenceValue = definition;
+                serialized.FindProperty("modelParent").objectReferenceValue = modelParent;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+
+                var skinned = modelPrefab.GetComponentInChildren<SkinnedMeshRenderer>();
+                Debug.Log($"[MannequinInstaller] Installed the mannequin as '{DefinitionPath}' (model '{ModelPrefabPath}', " +
+                          $"translator '{AssetDatabase.GetAssetPath(definition.Translator)}') on '{PrefabPath}': humanoid avatar valid, " +
+                          $"{skinned?.bones.Length ?? 0} bones, height {skinned?.sharedMesh.bounds.size.y ?? 0f:0.00} m, " +
+                          $"controller '{ControllerPath}' with clips {string.Join(", ", LoadClips().Keys)}.");
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        /// <summary>
+        /// Saves the mannequin as a prefab (a variant of the model file, so it follows regenerations of the model) with
+        /// its Animator, CharacterIK and FootPlacementIK configured, keeping previous IK settings if given.
+        /// </summary>
+        private static GameObject SaveModelPrefab(GameObject modelAsset, Avatar avatar, AnimatorController controller,
+            string ikSettings, string footPlacementSettings)
+        {
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
+            try
+            {
                 model.name = "Mannequin";
-                model.transform.localPosition = Vector3.zero; // The model's origin is at its feet, like the character's.
-                model.transform.localRotation = Quaternion.identity;
+                model.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity); // Its origin is at its feet.
                 model.transform.localScale = Vector3.one;
-                SetLayerRecursively(model, modelParent.gameObject.layer);
 
                 Animator animator = model.GetComponent<Animator>();
                 if (animator == null) { animator = model.AddComponent<Animator>(); }
@@ -90,32 +131,31 @@ namespace CharacterShowcase.EditorTools
                 // IK layered over the animations. Lives on the Animator's GameObject, as OnAnimatorIK requires.
                 // (Not `??`: it bypasses Unity's null check, so a "missing" component could be returned instead of added.)
                 if (!model.TryGetComponent(out CharacterIK ik)) { ik = model.AddComponent<CharacterIK>(); }
-                if (previousIKSettings != null) { EditorJsonUtility.FromJsonOverwrite(previousIKSettings, ik); }
+                if (ikSettings != null) { EditorJsonUtility.FromJsonOverwrite(ikSettings, ik); }
 
                 // Automatic foot placement on uneven ground, fed through CharacterIK's procedural channel.
                 if (!model.TryGetComponent(out FootPlacementIK footPlacement)) { footPlacement = model.AddComponent<FootPlacementIK>(); }
-                if (previousFootPlacementSettings != null) { EditorJsonUtility.FromJsonOverwrite(previousFootPlacementSettings, footPlacement); }
+                if (footPlacementSettings != null) { EditorJsonUtility.FromJsonOverwrite(footPlacementSettings, footPlacement); }
 
-                var animationController = root.GetComponent<AnimationController>();
-                if (animationController != null)
-                {
-                    var serialized = new SerializedObject(animationController);
-                    serialized.FindProperty("animator").objectReferenceValue = animator;
-                    serialized.FindProperty("ik").objectReferenceValue = ik;
-                    serialized.ApplyModifiedPropertiesWithoutUndo();
-                }
-
-                PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-
-                var skinned = model.GetComponentInChildren<SkinnedMeshRenderer>();
-                Debug.Log($"[MannequinInstaller] Installed mannequin on '{PrefabPath}': humanoid avatar valid, " +
-                          $"{skinned?.bones.Length ?? 0} bones, height {skinned?.sharedMesh.bounds.size.y ?? 0f:0.00} m, " +
-                          $"controller '{ControllerPath}' with clips {string.Join(", ", LoadClips().Keys)}.");
+                return PrefabUtility.SaveAsPrefabAsset(model, ModelPrefabPath);
             }
             finally
             {
-                PrefabUtility.UnloadPrefabContents(root);
+                Object.DestroyImmediate(model);
             }
+        }
+
+        private static string SettingsOf<T>(GameObject gameObject) where T : Component =>
+            gameObject != null && gameObject.TryGetComponent(out T component) ? EditorJsonUtility.ToJson(component) : null;
+
+        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset != null) { return asset; }
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+            asset = ScriptableObject.CreateInstance<T>();
+            AssetDatabase.CreateAsset(asset, path);
+            return asset;
         }
 
         private static bool ConfigureImporter(out Avatar avatar)
@@ -309,12 +349,6 @@ namespace CharacterShowcase.EditorTools
             foreach (var (motion, threshold) in children) { tree.AddChild(motion, threshold); }
             AssetDatabase.AddObjectToAsset(tree, controller);
             return tree;
-        }
-
-        private static void SetLayerRecursively(GameObject go, int layer)
-        {
-            go.layer = layer;
-            foreach (Transform child in go.transform) { SetLayerRecursively(child.gameObject, layer); }
         }
     }
 }

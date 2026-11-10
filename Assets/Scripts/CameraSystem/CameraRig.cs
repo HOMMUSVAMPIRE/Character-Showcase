@@ -581,6 +581,7 @@ namespace CameraSystem
             {
                 mode = thirdPerson.hideWhenClose;
             }
+            visibility.RefreshIfChanged();
             visibility.Apply(mode);
         }
 

@@ -197,6 +197,7 @@ namespace Character
                 dash.cooldownRemaining = dashCooldown;
                 dash.pressConsumed = true;
                 if (!movementData.initialGrounded) { dash.airDashesUsed++; }
+                movementData.events |= MovementEvents.DashStarted;
             }
 
             if (!dash.IsDashing) { return; }
@@ -209,6 +210,7 @@ namespace Character
             if (jumpPressedDuringDash && hasJump)
             {
                 dash.timeRemaining = 0f;
+                movementData.events |= MovementEvents.DashEnded;
                 Vector3 momentum = dash.direction * (dashSpeed * dashJumpSpeedRetention);
                 movementData.initialInertia = new Vector3(momentum.x, 0f, momentum.z);
                 movementData.directMovementVector = Vector3.zero; // Momentum only, so walking doesn't stack on top of it.
@@ -221,7 +223,11 @@ namespace Character
             dash.timeRemaining = Mathf.Max(0f, dash.timeRemaining - deltaTime);
 
             // On the final frame of the dash, hand over to momentum rather than stopping dead
-            if (!dash.IsDashing) { speed = dashSpeed * dashEndSpeedRetention; }
+            if (!dash.IsDashing)
+            {
+                speed = dashSpeed * dashEndSpeedRetention;
+                movementData.events |= MovementEvents.DashEnded;
+            }
 
             movementData.velocityOverride = dash.direction * speed;
             movementData.directMovementVector = Vector3.zero;
@@ -322,10 +328,16 @@ namespace Character
             // press if a jump is left. Check the jump has force first, since starting one uses up a jump.
             bool continuingJump = movementData.previousState.HasFlag(CharacterState.Jumping) && inputs.jump.value
                 && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
+            // A jump from the ground or within coyote time, rather than in mid-air (checked before the jump is used)
+            bool fromGround = movementData.initialGrounded || (movementData.timeSinceGrounded <= coyoteTime && !controller.HasJumpedSinceGrounded);
             bool startingJump = !continuingJump && jumpVelocity > 0 && IsNewJumpPress(inputs, controller) && controller.TryUseJump();
             if ((continuingJump && jumpVelocity > 0) || startingJump)
             {
-                if (startingJump) { controller.jumpPressConsumed = true; }
+                if (startingJump)
+                {
+                    controller.jumpPressConsumed = true;
+                    movementData.events |= fromGround ? MovementEvents.Jumped : MovementEvents.AirJumped;
+                }
 
                 // Stop downwards momentum that previously applied to the character
                 movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0), movementData.initialInertia.z);

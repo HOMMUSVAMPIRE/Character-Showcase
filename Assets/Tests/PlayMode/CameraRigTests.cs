@@ -274,6 +274,26 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator FirstPerson_AlsoHidesRenderersAddedToTheTargetLater()
+        {
+            rig.FirstPerson.hideTarget = TargetHideMode.Hide;
+            rig.SetMode(CameraMode.FirstPerson);
+            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+
+            // Like a character model that finishes loading after the camera started following the character.
+            var model = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
+            Object.Destroy(model.GetComponent<Collider>());
+            model.transform.SetParent(target, false);
+            var renderer = model.GetComponent<Renderer>();
+            yield return Frames(2);
+            Assert.That(renderer.forceRenderingOff, Is.True, "A renderer added to the target later should be hidden too.");
+
+            rig.SetMode(CameraMode.ThirdPerson);
+            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+            Assert.That(renderer.forceRenderingOff, Is.False, "It should be shown again in third person.");
+        }
+
+        [UnityTest]
         public IEnumerator SpeedFov_WidensWhileTargetMovesFast_AndSettlesWhenItStops()
         {
             rig.SpeedFov.enabled = true;

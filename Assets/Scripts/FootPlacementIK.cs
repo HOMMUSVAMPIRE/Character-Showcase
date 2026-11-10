@@ -66,11 +66,10 @@ namespace Character
             public bool hit;
         }
 
-        private static readonly int GroundedId = Animator.StringToHash(AnimationController.GroundedParameter);
-        private static readonly int DashingId = Animator.StringToHash(AnimationController.DashingParameter);
-
         private CharacterIK ik;
-        private bool hasGroundedParameter, hasDashingParameter;
+        // Where the character's grounded and dashing state comes from (the character's AnimationController, found in
+        // the model's parents). Without one, the feet are always placed.
+        private ICharacterAnimationStateSource stateSource;
         private FootState left, right;
         private float pelvisOffset, pelvisVelocity;
         private float activeWeight;
@@ -99,26 +98,18 @@ namespace Character
             left.offset = left.offsetVelocity = right.offset = right.offsetVelocity = 0f;
         }
 
-        private void Start()
-        {
-            Animator animator = GetComponent<Animator>();
-            foreach (AnimatorControllerParameter parameter in animator.parameters)
-            {
-                if (parameter.type != AnimatorControllerParameterType.Bool) { continue; }
-                hasGroundedParameter |= parameter.nameHash == GroundedId;
-                hasDashingParameter |= parameter.nameHash == DashingId;
-            }
-        }
+        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
 
         private void Solve(Animator animator)
         {
             float dt = Time.deltaTime;
 
-            // Only place feet while on the ground. The Animator's Grounded parameter already includes a short grace
+            // Only place feet while on the ground. The animation state's grounded flag already includes a short grace
             // period, so small step-offs don't switch placement off.
-            bool grounded = !hasGroundedParameter || animator.GetBool(GroundedId);
+            CharacterAnimationState state = stateSource?.AnimationState ?? new CharacterAnimationState { grounded = true };
+            bool grounded = state.grounded;
             // Not while dashing either: the dash pose trails the legs behind, which planting the feet would undo.
-            bool dashing = hasDashingParameter && animator.GetBool(DashingId);
+            bool dashing = state.dashing;
             float goal = grounded && !dashing ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
             if (activeWeight <= 0f)
