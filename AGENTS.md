@@ -6,7 +6,8 @@ describes what the project does; this file describes how to change it safely.
 ## The project at a glance
 
 - A Unity character controller showcase: movement, collision, moving ground, dash, a standalone camera rig, a
-  generated humanoid mannequin with animations and IK.
+  generated humanoid mannequin with animations and IK, and
+  a pipeline for using other rigged humanoid models (`Assets/Models/CharacterModels`).
 - **Unity version: 6000.6.7f1.** `ProjectSettings/ProjectVersion.txt` is authoritative. Never change it, and never
   edit `Packages/manifest.json` or `Packages/packages-lock.json` unless the task explicitly asks for a package change.
 - About 5,500 lines of C#, in three assemblies plus tests:
@@ -110,15 +111,16 @@ These are produced by tools. Edit the generator instead and regenerate:
 
 | Generated | Generator |
 | --- | --- |
-| `Assets/Models/Mannequin/Mannequin.fbx` (mesh, rig, animation clips) | `Tools/Mannequin/generate_mannequin.py` and `mannequin_animations.py`, run in Blender (command in README) |
-| `Assets/Animation/Mannequin.controller` | `MannequinInstaller` (Tools > Character Showcase > Install Mannequin Model) |
-| `Assets/Models/Mannequin/Mannequin Model.prefab` | `MannequinInstaller` |
-| The model setup on `Assets/Prefabs/Character.prefab` | `MannequinInstaller` |
+| `Assets/Models/CharacterModels/Mannequin/Mannequin.fbx` (mesh, rig, animation clips) | `Tools/Mannequin/generate_mannequin.py` and `mannequin_animations.py`, run in Blender by `MannequinGenerator` (Tools > Character Showcase > Generate Mannequin) |
+| `Assets/Animation/Mannequin.controller` | `MannequinGenerator` |
+| The model setup on `Assets/Prefabs/Character.prefab` (always the mannequin) | `MannequinGenerator` |
+| `[name] Model.prefab`, `[name].asset` and the avatar/T-pose import settings of every model in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Tools > Character Showcase > Prepare Character Models) |
+| The model override on the character in `Assets/Scenes/SampleScene.unity` | `CharacterModelWindow` (Tools > Character Showcase > Choose Character Model…) |
 
-`MannequinInstaller` keeps IK settings and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
-`Assets/Models/Mannequin/Mannequin.asset`. New Animator parameters or states belong in `MannequinInstaller.cs`; new
-animation clips belong in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state
-that regeneration is still needed.
+The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
+the model definitions. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
+in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
+still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
 
 ## Useful facts for common tasks
 

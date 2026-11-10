@@ -231,7 +231,7 @@ namespace Character
                 warnedAboutIKPass = true;
                 Debug.LogWarning($"[CharacterIK] IK weights are set on '{name}' but OnAnimatorIK is not being called. " +
                                  "Enable 'IK Pass' on the Animator Controller's layer (Tools > Character Showcase > " +
-                                 "Install Mannequin Model does this for the mannequin).", this);
+                                 "Generate Mannequin does this for the shared controller).", this);
             }
         }
 
