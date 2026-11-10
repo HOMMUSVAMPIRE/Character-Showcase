@@ -29,6 +29,15 @@ If you intend to get a full understanding of the project, start with ACCharacter
 ## Dash
 Press F (keyboard) or right trigger (gamepad) to dash: a short burst in the movement direction relative to the camera, or straight ahead without input. A dash moves in a straight line, ignoring gravity and steering, and hands over to momentum when it ends instead of stopping dead. It has a cooldown, a short input buffer (pressing just before the cooldown ends still dashes), one dash per button press, and a limited number of air dashes that reset on landing. Jumping during a dash cancels it straight into the jump, keeping part of the dash's speed. Dashing during a jump cancels the jump's upward momentum, and the jump doesn't resume afterwards. The character plays a dash animation: it slides low in the dash direction with its legs trailing behind. All of it is tunable in the Dashing section of the BasicMovementMode asset, including a speed curve over the dash and how much speed is kept afterwards.
 
+## Collision
+MovementController resolves the character's movement against the world itself, with capsule sweeps rather than the physics solver. Each physics step it:
+- pushes the character out of anything that moved into them since the last step, so moving walls and platforms push the character instead of passing through
+- slides along walls and walkable slopes, and steps up stairs and low ledges
+- slides the character off surfaces too steep to stand on, including ledge edges caught by the capsule's rounded bottom
+- snaps to the ground when walking down slopes and stairs
+
+Momentum that a collision blocks is lost: bumping a ceiling ends the jump, and momentum into a wall doesn't build up and fling the character once they move clear of it. Each step's MovementData records which sides were blocked (`collisions`, as Unity's CollisionFlags), and the next step can read them (`previousCollisions`).
+
 ## Moving Ground
 The character rides along with whatever it stands on. Each physics step, before moving, the character is carried by however far its ground moved, and turned with it if it spins. It then moves relative to the ground as normal. Leaving moving ground, by jumping or walking off, keeps the ground's velocity, so the character doesn't stop dead in mid-air. These options can be toggled on the MovementController.
 
@@ -83,6 +92,7 @@ Play mode tests in Assets/Tests/PlayMode spawn the real Character prefab with re
 - dashing: distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, and air dash limits
 - jump and dash cancelling each other, and the dash animation playing
 - keeping speed when walking off edges, walking smoothly down stairs, air steering that doesn't stack on carried momentum, and the jump input buffer
+- collisions: falling away from a ceiling the character jumps into, losing momentum into a wall, sliding off steep slopes, and being pushed by moving walls
 - the camera rig, which follows a plain Transform, independent of the character code:
   - third and first person placement, and mode blending and events
   - pitch limits and zoom limits
@@ -102,11 +112,6 @@ Run them from Window > General > Test Runner > PlayMode > Run All, or from the c
 The character scripts are in the CharacterShowcase assembly (Assets/Scripts), and editor tools are in CharacterShowcase.Editor (Assets/Editor), so the tests can reference them.
 
 ## Future Changes:
-### High Priority Changes
-- Prevent sliding on inclines (Bug exists because of current collision handling and prevention)
-- Enable stairs traversal
-- Fix collision bugs
-
 ### Medium Priority Changes
 - Add animation interface
 - Tune performance

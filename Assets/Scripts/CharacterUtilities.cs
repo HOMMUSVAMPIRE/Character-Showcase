@@ -149,6 +149,11 @@ namespace Character
         // Whether the character will be on the ground at the end of the frame
         public bool finalGrounded;
 
+        // Which sides of the character collision blocked this frame's movement (Above = ceiling, Below = floor or a
+        // steep slope, Sides = walls), and last frame's
+        public CollisionFlags collisions;
+        public CollisionFlags previousCollisions;
+
         // Calculates the final state of the character based on the starting data and the intended motion data
         public void ComputeResults()
         {
@@ -182,8 +187,17 @@ namespace Character
         // Forces the final movement vector to be a specific value - used to account for collisions
         public void ForceMovementVector(Vector3 moveVector)
         {
-            directMovementVector += moveVector - (finalMovementVector);
-            _finalInertia = _finalVelocity;
+            directMovementVector += moveVector - finalMovementVector;
+        }
+
+        // Forces the final movement vector and the momentum the character carries into the next frame. Collisions use
+        // this to remove the momentum they blocked, so it doesn't build up against a ceiling or wall and fling the
+        // character once they move clear of it.
+        public void ForceMovementVector(Vector3 moveVector, Vector3 inertia)
+        {
+            if (velocityOverride.HasValue) { velocityOverride = inertia; }
+            else { velocityChange += inertia - finalInertia; }
+            ForceMovementVector(moveVector);
         }
     }
 }

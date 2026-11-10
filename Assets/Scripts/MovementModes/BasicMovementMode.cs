@@ -88,13 +88,15 @@ namespace Character
         }
 
         /// <summary>
-        /// Whether the jump button press is fresh enough to start a new jump (holding the button only continues one)
+        /// Whether the jump button press is fresh enough to start a new jump, and hasn't started one already (holding
+        /// the button only continues a jump)
         /// </summary>
         /// <param name="inputs"></param>
+        /// <param name="controller"></param>
         /// <returns></returns>
-        private bool IsNewJumpPress(Inputs inputs)
+        private bool IsNewJumpPress(Inputs inputs, MovementController controller)
         {
-            return inputs.jump != null && inputs.jump.value && inputs.jump.holdDuration <= jumpInputBuffer;
+            return inputs.jump != null && inputs.jump.value && inputs.jump.holdDuration <= jumpInputBuffer && !controller.jumpPressConsumed;
         }
 
         /// <summary>
@@ -106,9 +108,16 @@ namespace Character
         /// <param name="controller"></param>
         public override void ProcessMovementData(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
+            // A released jump button frees the next press to start a jump (checked here, before the dash, which can
+            // skip jump processing while it lasts)
+            if (inputs.jump == null || !inputs.jump.value) { controller.jumpPressConsumed = false; }
+
             // How much gravity do we apply
             // TODO: this could be it's own function, but for now, this suffices
-            float g = gravityStrength * (movementData.initialGrounded ? 0.5f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded));
+            // The coyote gravity curve only applies after walking off the ground. After a jump, gravity is at full
+            // strength, so a jump ended early (a short tap, or bumping a ceiling) doesn't float at its peak.
+            float airGravity = controller.HasJumpedSinceGrounded ? 1f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded);
+            float g = gravityStrength * (movementData.initialGrounded ? 0.5f : airGravity);
             // Apply gravity to the character
             movementData.velocityChange += Vector3.down * g * movementData.deltaTime;
 
@@ -137,7 +146,9 @@ namespace Character
             // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
             if (maxFallSpeed > 0f && movementData.finalVelocity.y < -maxFallSpeed)
             {
-                movementData.ForceMovementVector(new Vector3(movementData.finalMovementVector.x, maxFallSpeed * movementData.deltaTime * -1f, movementData.finalMovementVector.z));
+                Vector3 inertia = movementData.finalInertia;
+                movementData.ForceMovementVector(new Vector3(movementData.finalMovementVector.x, maxFallSpeed * movementData.deltaTime * -1f, movementData.finalMovementVector.z),
+                    new Vector3(inertia.x, Mathf.Max(inertia.y, -maxFallSpeed), inertia.z));
             }
         }
 
@@ -193,7 +204,7 @@ namespace Character
             // Jumping cancels the dash into the jump, keeping some of the dash's speed; the jump then runs as normal this
             // frame. Only a press made after the dash began counts, so a jump held from before it doesn't cancel it.
             float dashElapsed = dashDuration - dash.timeRemaining;
-            bool jumpPressedDuringDash = IsNewJumpPress(inputs) && inputs.jump.holdDuration < dashElapsed;
+            bool jumpPressedDuringDash = IsNewJumpPress(inputs, controller) && inputs.jump.holdDuration < dashElapsed;
             bool hasJump = movementData.initialGrounded || controller.jumpsRemaining > 0;
             if (jumpPressedDuringDash && hasJump)
             {
@@ -307,11 +318,15 @@ namespace Character
             // Figure out what our velocity would be this frame of a jump
             // TODO: As noted before, this should ideally be calculated based on a jump height, but for now, this is based on a velocity curve
             float jumpVelocity = controller.jumpStrengthModifier * jumpStrengthCurve.Evaluate(inputs.jump.holdDuration) * jumpStrength;
-            // Continue a jump while the button is held, or start one on a fresh press. Check the jump has force before
-            // CanJump, which uses up a jump when starting one.
-            bool continuingJump = movementData.previousState.HasFlag(CharacterState.Jumping) && inputs.jump.value;
-            if ((continuingJump || IsNewJumpPress(inputs)) && jumpVelocity > 0 && CanJump(movementData, controller))
+            // Continue a jump while the button is held, until the character bumps their head, or start one on a fresh
+            // press if a jump is left. Check the jump has force first, since starting one uses up a jump.
+            bool continuingJump = movementData.previousState.HasFlag(CharacterState.Jumping) && inputs.jump.value
+                && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
+            bool startingJump = !continuingJump && jumpVelocity > 0 && IsNewJumpPress(inputs, controller) && controller.TryUseJump();
+            if ((continuingJump && jumpVelocity > 0) || startingJump)
             {
+                if (startingJump) { controller.jumpPressConsumed = true; }
+
                 // Stop downwards momentum that previously applied to the character
                 movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0), movementData.initialInertia.z);
                 // Add vertical velocity using the jump velocity calculated above. (Horizontal momentum is carried into the

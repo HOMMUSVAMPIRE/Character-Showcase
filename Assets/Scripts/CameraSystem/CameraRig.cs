@@ -658,14 +658,18 @@ namespace CameraSystem
             return Sweep(from, delta / length, length, out float hit) ? Mathf.Clamp01(hit / length) : 1f;
         }
 
+        // Reused for every collision sweep, so sweeping doesn't allocate a new array each time.
+        private readonly RaycastHit[] sweepHits = new RaycastHit[32];
+
         /// <summary>Sphere-casts the collision probe, ignoring the target's own colliders. Returns the safe travel distance.</summary>
         private bool Sweep(Vector3 origin, Vector3 direction, float maxDistance, out float safeDistance)
         {
             safeDistance = maxDistance;
-            RaycastHit[] hits = Physics.SphereCastAll(origin, collision.probeRadius, direction, maxDistance, collision.layers, collision.triggerInteraction);
+            int count = Physics.SphereCastNonAlloc(origin, collision.probeRadius, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
             bool found = false;
-            foreach (var hit in hits)
+            for (int i = 0; i < count; i++)
             {
+                RaycastHit hit = sweepHits[i];
                 if (target != null && hit.transform.IsChildOf(target)) { continue; }
                 // A distance of 0 means the probe started inside geometry: treat as fully blocked.
                 float d = hit.distance;
