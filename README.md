@@ -12,7 +12,7 @@ Please direct all questions, requests, and concerns to adalynnskidmore1@gmail.co
 ## How to open this Project
 1. Clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 2. Download UnityHub from https://unity.com/download
-3. Download and install Unity version 6000.0.50f1 via UnityHub or from https://unity.com/releases/editor/archive
+3. Download and install Unity version 6000.6.7f1 via UnityHub or from https://unity.com/releases/editor/archive
 4. Open UnityHub
 5. Navigate to Add => Add project from disk
 6. Select the location of the cloned repo from step 1
