@@ -73,6 +73,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
+            if (rig.Mode<JumpMode>().maxJumps < 2) { Assert.Ignore("The character can't jump in mid-air."); }
 
             // Hold the first jump briefly, so the character is still in the air for the second press.
             yield return Run(0.5f, i => i < 5 ? CharacterTestRig.Jump(i) : i == 12 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
@@ -89,7 +90,7 @@ namespace CharacterShowcase.Tests
             rig.Floor(-3f);
             yield return SettleAndRecord(new Vector3(0f, 0.05f, -1f));
 
-            yield return Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return Run(rig.SecondsToWalk(1f, 1f), _ => CharacterTestRig.Move(Vector3.forward));
 
             Assert.That(Count(MovementEvents.LeftGround), Is.EqualTo(1));
             Assert.That(Count(MovementEvents.Jumped), Is.Zero);
@@ -101,7 +102,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
-            int dashSteps = CharacterTestRig.StepsFor(rig.MovementSetting<float>("dashDuration"));
+            int dashSteps = CharacterTestRig.StepsFor(rig.Mode<DashMode>().dashDuration);
 
             yield return Run(0.5f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle());
 
@@ -129,12 +130,15 @@ namespace CharacterShowcase.Tests
         public IEnumerator BumpingACeilingOrWall_RaisesEachOnceOnContact()
         {
             rig.Floor();
-            rig.Box("Ceiling", new Vector3(0f, 3.3f, 0f), new Vector3(10f, 1f, 10f)); // Underside 0.8 m above the head.
-            rig.Box("Wall", new Vector3(0f, 1.5f, 2.5f), new Vector3(10f, 3f, 1f));
+            // The ceiling half a step height above the head (the jump clears a step), the wall 2 m ahead.
+            CapsuleCollider capsule = CharacterTestRig.PrefabCapsule();
+            float ceiling = capsule.height + 0.5f * CharacterTestRig.PrefabStepHeight(), face = capsule.radius + 2f;
+            rig.Box("Ceiling", new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(10f, 1f, 10f));
+            rig.Box("Wall", new Vector3(0f, ceiling / 2f, face + 0.5f), new Vector3(10f, ceiling, 1f));
             yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
 
             yield return Run(0.6f, i => CharacterTestRig.Jump(i));
-            yield return Run(1f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return Run(rig.SecondsToWalk(2f), _ => CharacterTestRig.Move(Vector3.forward));
 
             Assert.That(Count(MovementEvents.HitCeiling), Is.EqualTo(1));
             Assert.That(Count(MovementEvents.HitWall), Is.EqualTo(1), "Pressing into the wall shouldn't raise it again every step.");

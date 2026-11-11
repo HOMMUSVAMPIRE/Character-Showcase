@@ -4,7 +4,7 @@ namespace Character
 {
     /// <summary>
     /// Translates a character's animation state and movement events into a particular model's animations: for example
-    /// Animator parameters and triggers, or a different animation system entirely. Each CharacterModelDefinition names
+    /// Animator parameters and triggers, or a different animation system entirely. Each CharacterModelSource names
     /// the translator that suits its model, so swapping a model swaps how it's animated too.
     ///
     /// Translators are shared assets, so the per-character work is done by the driver each one creates for a model.
@@ -28,5 +28,19 @@ namespace Character
 
         /// <summary>Called for each movement event (one flag at a time), with the state at the moment it happened.</summary>
         void HandleMovementEvent(MovementEvents movementEvent, in CharacterAnimationState state);
+
+        /// <summary>
+        /// Called just before this driver's model is replaced by another, while it's still animating as it was:
+        /// remember whatever the new model's driver needs to carry on from here (see ContinueFrom). By default, nothing.
+        /// </summary>
+        void Retire() { }
+
+        /// <summary>
+        /// Called once on the driver of a model that has just replaced another, after it's shown and before its first
+        /// UpdateAnimation, with the old model's (retired) driver: carry on from where the old model was (the state it
+        /// was in, how far through it, its parameters), so a model swapped mid-move doesn't start over. By default,
+        /// nothing: the new model starts as it was made.
+        /// </summary>
+        void ContinueFrom(ICharacterAnimationDriver previous) { }
     }
 }

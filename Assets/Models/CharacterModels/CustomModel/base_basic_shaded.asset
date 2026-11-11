@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d226557b69ed24ae887d293b111c1c51, type: 3}
+  m_Name: base_basic_shaded
+  m_EditorClassIdentifier: CharacterShowcase::Character.CharacterModelDefinition
+  translator: {fileID: 11400000, guid: 39166854aeb7948389eaf8c2c237275a, type: 2}
+  animatorController: {fileID: 0}
+  avatar: {fileID: 0}
+  height: 0
+  fitHeight: 1.8
+  positionOffset: {x: 0, y: 0, z: 0}
+  rotationOffset: {x: 0, y: 0, z: 0}
+  scale: 1
+  measureGroundOnLoad: 0
+  groundOffset: 0.00108
+  animatedGroundOffset: -0.00811
+  facingCorrection: 0
+  addIK: 1
+  addFootPlacement: 1
+  matchCharacterLayer: 1
+  alwaysAnimate: 1
+  modelPrefab: {fileID: 2008021487495206053, guid: 2ba85142ab3c34ca3bb43f16e6886512, type: 3}

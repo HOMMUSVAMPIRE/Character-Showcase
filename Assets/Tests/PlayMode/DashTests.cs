@@ -25,11 +25,11 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float DashSpeed => rig.MovementSetting<float>("dashSpeed");
-        private float DashDuration => rig.MovementSetting<float>("dashDuration");
+        private float DashSpeed => rig.Mode<DashMode>().dashSpeed;
+        private float DashDuration => rig.Mode<DashMode>().dashDuration;
         private float DashCooldown => rig.MovementSetting<float>("dashCooldown");
         private float DashInputBuffer => rig.MovementSetting<float>("dashInputBuffer");
-        private float WalkSpeed => rig.MovementSetting<float>("walkSpeed");
+        private float WalkSpeed => rig.Mode<WalkRunMode>().walkSpeed;
         private int DashSteps => CharacterTestRig.StepsFor(DashDuration);
 
         private IEnumerator Settle()
@@ -162,7 +162,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 15f, 0f));
-            int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
+            int maxAirDashes = rig.Mode<DashMode>().maxAirDashes;
             int cooldownSteps = CharacterTestRig.StepsFor(DashCooldown) + 1;
 
             // Try to dash more times than allowed before landing, each press after the cooldown.

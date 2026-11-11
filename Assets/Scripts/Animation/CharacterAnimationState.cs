@@ -30,6 +30,29 @@ namespace Character
         public bool moving;
         public bool jumping;
         public bool dashing;
+        /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>
+        public Vector3 scale;
+        /// <summary>
+        /// What the character's speeds are multiplied by at its size (see MovementController.SpeedScale; 1 as authored).
+        /// Speeds divided by it are as the character would move at its authored size.
+        /// </summary>
+        public float speedScale;
+
+        /// <summary>
+        /// How much longer than as authored the model's strides are in the direction it's moving: its scale along that
+        /// direction (relative to its facing). A model stretched to twice the depth takes strides twice as long forward.
+        /// </summary>
+        public float StrideScale
+        {
+            get
+            {
+                Vector3 s = scale == Vector3.zero ? Vector3.one : scale;
+                Vector2 direction = new Vector2(localVelocity.x, localVelocity.z);
+                if (direction.sqrMagnitude < 1e-6f) { return s.z; } // Standing still: strides would be forward.
+                direction.Normalize();
+                return new Vector2(s.x * direction.x, s.z * direction.y).magnitude;
+            }
+        }
     }
 
     /// <summary>

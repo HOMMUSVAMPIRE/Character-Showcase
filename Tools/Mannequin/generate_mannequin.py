@@ -5,9 +5,10 @@ The body is built with Blender's Skin modifier around a stick skeleton, then smo
 using Unity's standard humanoid bone names (so Unity's Humanoid avatar maps it automatically), and skinned with
 automatic (heat) weights. Animation clips come from mannequin_animations.py. The model is built in a T-pose, facing -Y in Blender (which is +Z, Unity's forward).
 
-Usage (Blender 4.x, from the repo root):
+Usually run from Unity with Tools > Character Showcase > Generate Mannequin, which then sets up its animations.
+By hand (Blender 4.x, from the repo root):
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
-        -P Tools/Mannequin/generate_mannequin.py -- Assets/Models/Mannequin/Mannequin.fbx [--preview <dir>]
+        -P Tools/Mannequin/generate_mannequin.py -- Assets/Models/CharacterModels/Mannequin/Mannequin.fbx [--preview <dir>]
 
 All measurements are in meters. Total height is ~1.8 m, matching the 2 m character capsule.
 """

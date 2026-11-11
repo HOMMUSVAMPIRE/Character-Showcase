@@ -66,9 +66,71 @@ namespace Character
         [Tooltip("Distance below the feet the character will probe to stick to descending slopes. Keep small — anything larger than the gap between stair treads feels like teleporting instead of falling when walking off a ledge.")]
         private float groundSnapDistance = 0.1f;
 
+        [Header("Size")]
+        [SerializeField]
+        [Tooltip("How the character's movement changes with its size (see ACCharacterController.SetScale). Proportional: " +
+                 "speeds, accelerations and gravity scale with height and timings stay the same, so a character of any " +
+                 "size moves exactly like a scaled copy of itself: a jump lasts as long and goes as high for its size, " +
+                 "and it crosses its own height in the same time. Natural: speeds scale with the square root of height " +
+                 "and timings with it, while gravity stays the same, as for real animals: smaller characters look " +
+                 "quicker for their size, and jumps take longer the bigger they are. Unchanged: speeds stay as tuned.")]
+        private MovementSizeScaling sizeScaling = MovementSizeScaling.Proportional;
+
+        /// <summary>The character's size, as set by ACCharacterController.SetScale (1, 1, 1 is as authored).</summary>
+        public Vector3 Scale { get; private set; } = Vector3.one;
+        /// <summary>The character's height relative to as authored: distances like step height scale with it.</summary>
+        public float HeightScale => Scale.y;
+        /// <summary>How the character's movement changes with its size.</summary>
+        public MovementSizeScaling SizeScaling { get => sizeScaling; set => sizeScaling = value; }
+        /// <summary>What speeds (and jump launch speed) are multiplied by at the character's size. See sizeScaling.</summary>
+        public float SpeedScale => sizeScaling switch
+        {
+            MovementSizeScaling.Proportional => HeightScale,
+            MovementSizeScaling.Natural => Mathf.Sqrt(HeightScale),
+            _ => 1f,
+        };
+        /// <summary>What durations of size-dependent motion (such as a dash) are multiplied by at the character's size.</summary>
+        public float DurationScale => sizeScaling == MovementSizeScaling.Natural ? Mathf.Sqrt(HeightScale) : 1f;
+        /// <summary>
+        /// What accelerations (gravity, air steering) are multiplied by at the character's size: speed per duration, so
+        /// speeds build up and fall away over the same share of a jump or a stride at any size.
+        /// </summary>
+        public float AccelerationScale => SpeedScale / DurationScale;
+
+        /// <summary>
+        /// The character's smallest dimension relative to as authored: the lesser of its height and its collider's
+        /// radius. Small clearances (the skin width) scale with it, so they stay as thin, for the character's size, on
+        /// every side.
+        /// </summary>
+        private float ClearanceScale => hasBaseCapsule && baseRadius > 0f && capsule != null
+            ? Mathf.Min(HeightScale, capsule.radius / baseRadius) : HeightScale;
+
+        /// <summary>The gap kept between the character and surfaces, at its size.</summary>
+        private float SkinWidth => skinWidth * ClearanceScale;
+
+        // The capsule as authored, which the character's size scales.
+        private float baseRadius, baseHeight;
+        private Vector3 baseCenter;
+        private bool hasBaseCapsule;
+
         // How far below the feet the floor can be while still counting as grounded. The ground snap always closes
         // this gap, so the character never hovers inside it.
-        private const float GroundedTolerance = 0.1f;
+        private const float BaseGroundedTolerance = 0.1f;
+        // Scaled with height: at a tenth of the size, a fixed 0.1 m would be the character's whole height.
+        private float GroundedTolerance => BaseGroundedTolerance * HeightScale;
+
+        // How far from straight below the character's feet a step's edge may be when it lands on the step (see TryStepUp).
+        private const float StepLandingAngle = 40f;
+
+        /// <summary>The radius of the capsule used for collision sweeps (the capsule's, less the skin width).</summary>
+        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (capsule != null ? capsule.radius : 0.5f) - SkinWidth);
+
+        /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
+        private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
+            : (capsule != null ? capsule.radius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
+
+        /// <summary>The tallest step the character climbs at its size.</summary>
+        private float StepHeight => maxStepHeight * HeightScale;
 
         // Passes made to push the character out of geometry that moved into them, for when several things overlap.
         private const int MaxDepenetrationPasses = 4;
@@ -79,6 +141,99 @@ namespace Character
         private void Awake()
         {
             if (capsule == null) { capsule = GetComponent<CapsuleCollider>(); }
+            RememberBaseCapsule();
+        }
+
+        private void RememberBaseCapsule()
+        {
+            if (hasBaseCapsule || capsule == null) { return; }
+            baseRadius = capsule.radius;
+            baseHeight = capsule.height;
+            baseCenter = capsule.center;
+            hasBaseCapsule = true;
+        }
+
+        /// <summary>
+        /// Resizes the character's collision to the given size: the capsule's height (and center) scale with y, and its
+        /// radius with the larger of x and z, since a capsule is round however the character is stretched. Collision
+        /// sweeps, ground checks and depenetration all use the capsule, so they follow. (The radius is also capped at half
+        /// the height; see ScaledRadius.) Doesn't check for room: see
+        /// CanFit. Called by ACCharacterController.SetScale.
+        /// </summary>
+        public void ApplyScale(Vector3 scale)
+        {
+            Scale = scale;
+            RememberBaseCapsule();
+            if (capsule == null) { return; }
+            capsule.radius = ScaledRadius(scale);
+            capsule.height = baseHeight * scale.y;
+            capsule.center = Vector3.Scale(baseCenter, scale);
+        }
+
+        /// <summary>
+        /// The capsule's radius at a size: the larger of the width and depth scales, since a capsule is round however the
+        /// character is stretched, but no more than half its height, so a wide, flat character's collider doesn't
+        /// become a sphere taller than the character.
+        /// </summary>
+        private float ScaledRadius(Vector3 scale) => ScaledRadius(scale, baseRadius, baseHeight);
+
+        private static float ScaledRadius(Vector3 scale, float radius, float height) =>
+            Mathf.Min(radius * Mathf.Max(scale.x, scale.z), height * scale.y * 0.5f);
+
+        /// <summary>The capsule's radius and height at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
+        /// <summary>The tallest step or ledge the character steps up by itself at its authored size (see StepHeight for its current size).</summary>
+        public float MaxStepHeight => maxStepHeight;
+        /// <summary>The steepest slope, in degrees, the character treats as walkable ground.</summary>
+        public float MaxSlopeAngle => maxSlopeAngle;
+        public float BaseRadius { get { RememberBaseCapsule(); return baseRadius; } }
+        public float BaseHeight { get { RememberBaseCapsule(); return baseHeight; } }
+
+        /// <summary>
+        /// Changes the capsule's size at the character's authored size (its scale then multiplies it), standing on the
+        /// character's feet: the bottom stays where it is, and its center rises to half the height. Used to fit the
+        /// collider to the character's model (see CharacterModelHost). Like growing, it waits for room: if the bigger
+        /// capsule wouldn't fit where the character stands, nothing changes and this returns false.
+        /// </summary>
+        public bool SetBaseCapsule(float radius, float height)
+        {
+            RememberBaseCapsule();
+            if (capsule == null || radius <= 0f || height <= 0f) { return false; }
+            radius = Mathf.Min(radius, height * 0.5f);
+            var center = new Vector3(baseCenter.x, height * 0.5f, baseCenter.z);
+            bool grows = height > baseHeight + 1e-5f || radius > baseRadius + 1e-5f;
+            if (grows && !CanFit(Scale, radius, height, center)) { return false; }
+            baseRadius = radius;
+            baseHeight = height;
+            baseCenter = center;
+            ApplyScale(Scale);
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the character would fit where it stands at the given size, without overlapping the world (more than
+        /// the skin width, so the floor it stands on doesn't count).
+        /// </summary>
+        public bool CanFit(Vector3 scale)
+        {
+            RememberBaseCapsule();
+            return CanFit(scale, baseRadius, baseHeight, baseCenter);
+        }
+
+        /// <summary>The same, for a capsule of another authored size.</summary>
+        private bool CanFit(Vector3 scale, float authoredRadius, float authoredHeight, Vector3 authoredCenter)
+        {
+            if (capsule == null) { return true; }
+            Vector3 feet = rb != null ? rb.position : transform.position;
+            float radiusAtScale = ScaledRadius(scale, authoredRadius, authoredHeight);
+            float skinAtScale = skinWidth * (authoredRadius > 0f ? Mathf.Min(scale.y, radiusAtScale / authoredRadius) : scale.y);
+            GetSweepCapsule(feet, radiusAtScale, authoredHeight * scale.y, Vector3.Scale(authoredCenter, scale), skinAtScale,
+                out Vector3 top, out Vector3 bottom, out float radius);
+            int count = Physics.OverlapCapsuleNonAlloc(top, bottom, radius, overlaps, movementLayerMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                if (!overlaps[i].transform.IsChildOf(transform)) { return false; }
+            }
+            return true;
         }
 
         [Tooltip("The transform on which the character is currently standing")]
@@ -355,10 +510,10 @@ namespace Character
         {
             groundTransform = null;
 
-            float r = groundCheckRadius > 0f ? groundCheckRadius : (capsule != null ? Mathf.Max(0.05f, capsule.radius - 0.05f) : 0.45f);
+            float r = GroundCheckRadius;
             // Start with the bottom of the sphere just above the feet so we can detect ground slightly below them,
-            // and reject things above them.
-            const float startLift = 0.02f;
+            // and reject things above them. (2 cm at the authored size, scaled with it.)
+            float startLift = 0.02f * ClearanceScale;
             Vector3 start = position + Vector3.up * (r + startLift);
             // Sweep the sphere's bottom from startLift above the feet to GroundedTolerance below them. Distance is
             // measured from the sphere's bottom, so the radius must NOT be added here — doing so made the character
@@ -434,13 +589,16 @@ namespace Character
             if (data.initialGrounded && vert <= 0f)
             {
                 float horizDist = new Vector2(horizResolved.x, horizResolved.z).magnitude;
-                float maxSlopeDrop = Mathf.Min(groundSnapDistance, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
-                float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + skinWidth;
-                if (horizDist > 1e-4f) { maxDrop = Mathf.Max(maxDrop, maxStepHeight + skinWidth); }
-                if (CapsuleSweep(pos, Vector3.down, maxDrop + skinWidth, out var snapHit)
+                float maxSlopeDrop = Mathf.Min(groundSnapDistance * HeightScale, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
+                float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + SkinWidth;
+                if (horizDist > 1e-4f * HeightScale) { maxDrop = Mathf.Max(maxDrop, StepHeight + SkinWidth); }
+                if (CapsuleSweep(pos, Vector3.down, maxDrop + SkinWidth, out var snapHit)
                     && Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
                 {
-                    float drop = Mathf.Max(0f, snapHit.distance - skinWidth);
+                    // Negative when the ground is closer than the skin width (rolling over a step's edge can close the
+                    // gap): then this lifts the character back to it, as nothing else would. Depenetration ignores
+                    // overlaps shallower than the skin, so without this the character stays sunk into the ground.
+                    float drop = snapHit.distance - SkinWidth;
                     if (drop <= maxDrop)
                     {
                         totalResolved += Vector3.down * drop;
@@ -469,12 +627,12 @@ namespace Character
             if (mag < 1e-6f) { return Vector3.zero; }
             Vector3 dir = horizMove / mag;
 
-            if (!CapsuleSweep(feetPos, dir, mag + skinWidth, out var hit))
+            if (!CapsuleSweep(feetPos, dir, mag + SkinWidth, out var hit))
             {
                 return horizMove;
             }
 
-            float travel = Mathf.Max(0f, hit.distance - skinWidth);
+            float travel = Mathf.Max(0f, hit.distance - SkinWidth);
             Vector3 traveled = dir * travel;
             Vector3 remaining = horizMove - traveled;
 
@@ -506,11 +664,11 @@ namespace Character
             if (slideMag < 1e-6f) { return traveled; }
 
             // Make sure the slide direction isn't itself blocked (a corner).
-            if (CapsuleSweep(feetPos + traveled, slide / slideMag, slideMag + skinWidth, out var slideHit))
+            if (CapsuleSweep(feetPos + traveled, slide / slideMag, slideMag + SkinWidth, out var slideHit))
             {
                 Vector3 cornerNormal = new Vector3(slideHit.normal.x, 0f, slideHit.normal.z);
                 if (cornerNormal.sqrMagnitude > 1e-6f) { RemoveInertiaInto(ref inertia, cornerNormal.normalized); }
-                float slideTravel = Mathf.Max(0f, slideHit.distance - skinWidth);
+                float slideTravel = Mathf.Max(0f, slideHit.distance - SkinWidth);
                 return traveled + (slide / slideMag) * slideTravel;
             }
             return traveled + slide;
@@ -523,14 +681,15 @@ namespace Character
         private Vector3 TryStepUp(Vector3 feetPos, Vector3 dir, float distance)
         {
             // 1) Make sure there's headroom to lift up.
-            if (CapsuleSweep(feetPos, Vector3.up, maxStepHeight + skinWidth, out _)) { return Vector3.zero; }
-            Vector3 raised = feetPos + Vector3.up * maxStepHeight;
+            float stepHeight = StepHeight;
+            if (CapsuleSweep(feetPos, Vector3.up, stepHeight + SkinWidth, out _)) { return Vector3.zero; }
+            Vector3 raised = feetPos + Vector3.up * stepHeight;
 
             // 2) Sweep forward from the raised position.
-            if (CapsuleSweep(raised, dir, distance + skinWidth, out var fwdHit))
+            if (CapsuleSweep(raised, dir, distance + SkinWidth, out var fwdHit))
             {
-                float travel = Mathf.Max(0f, fwdHit.distance - skinWidth);
-                if (travel < 1e-4f) { return Vector3.zero; }
+                float travel = Mathf.Max(0f, fwdHit.distance - SkinWidth);
+                if (travel < 1e-4f * HeightScale) { return Vector3.zero; }
                 raised += dir * travel;
             }
             else
@@ -539,13 +698,33 @@ namespace Character
             }
 
             // 3) Drop back down and make sure we land on walkable ground.
-            if (!CapsuleSweep(raised, Vector3.down, maxStepHeight + skinWidth, out var downHit)) { return Vector3.zero; }
+            if (!CapsuleSweep(raised, Vector3.down, stepHeight + SkinWidth, out var downHit)) { return Vector3.zero; }
+
+            // 4) Make sure we land on the step, not perched on its edge. Moving only this step's distance forward, the
+            // capsule's rounded bottom often comes down on the step's edge, well ahead of its axis. The ground check
+            // (a slightly smaller sphere) then sees that edge as too steep to stand on, and the character slides back
+            // off it, so steps a large fraction of the capsule's radius tall were never climbed. Instead, go on far
+            // enough that the edge is within StepLandingAngle of straight below, for both spheres. Measured from the
+            // contact point, not the hit normal, which for an edge can be either face's.
+            float landingReach = Mathf.Min(SweepRadius, GroundCheckRadius) * Mathf.Sin(StepLandingAngle * Mathf.Deg2Rad);
+            float ahead = Vector3.Dot(downHit.point - raised, dir);
+            if (ahead > landingReach)
+            {
+                float extra = ahead - landingReach;
+                if (CapsuleSweep(raised, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
+                raised += dir * extra;
+                if (!CapsuleSweep(raised, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
+            }
             if (Vector3.Angle(downHit.normal, Vector3.up) > maxSlopeAngle) { return Vector3.zero; }
 
-            float drop = Mathf.Max(0f, downHit.distance - skinWidth);
+            float drop = Mathf.Max(0f, downHit.distance - SkinWidth);
             Vector3 landed = raised - Vector3.up * drop;
             // Only accept if we actually ended up above the starting foot height (otherwise this isn't a step up).
-            if (landed.y <= feetPos.y + 1e-4f) { return Vector3.zero; }
+            if (landed.y <= feetPos.y + 1e-4f * HeightScale) { return Vector3.zero; }
+            // Nor if the step is taller than the step height. Judged by where the capsule touched down (the step's top,
+            // or its edge, which is as high), not where its feet end up: perched part way up a taller step's edge, the
+            // feet can be under the step height, and from there the character would ride up over the edge.
+            if (downHit.point.y - feetPos.y > stepHeight + 1e-3f * HeightScale) { return Vector3.zero; }
             return landed - feetPos;
         }
 
@@ -559,8 +738,8 @@ namespace Character
             if (Mathf.Abs(verticalDelta) < 1e-6f) { return Vector3.zero; }
             Vector3 dir = verticalDelta > 0f ? Vector3.up : Vector3.down;
             float mag = Mathf.Abs(verticalDelta);
-            if (!CapsuleSweep(feetPos, dir, mag + skinWidth, out var hit)) { return dir * mag; }
-            float travel = Mathf.Max(0f, hit.distance - skinWidth);
+            if (!CapsuleSweep(feetPos, dir, mag + SkinWidth, out var hit)) { return dir * mag; }
+            float travel = Mathf.Max(0f, hit.distance - SkinWidth);
             Vector3 traveled = dir * travel;
 
             collisions |= verticalDelta > 0f ? CollisionFlags.Above : CollisionFlags.Below;
@@ -584,9 +763,9 @@ namespace Character
                 if (slideMag > 1e-6f)
                 {
                     Vector3 slideDir = slide / slideMag;
-                    if (CapsuleSweep(feetPos + traveled, slideDir, slideMag + skinWidth, out var slideHit))
+                    if (CapsuleSweep(feetPos + traveled, slideDir, slideMag + SkinWidth, out var slideHit))
                     {
-                        slide = slideDir * Mathf.Max(0f, slideHit.distance - skinWidth);
+                        slide = slideDir * Mathf.Max(0f, slideHit.distance - SkinWidth);
                     }
                     traveled += slide;
                 }
@@ -652,11 +831,18 @@ namespace Character
         /// </summary>
         private void GetSweepCapsule(Vector3 feetPos, out Vector3 top, out Vector3 bottom, out float radius)
         {
-            radius = (capsule != null ? capsule.radius : 0.5f) - skinWidth;
-            if (radius <= 0f) { radius = 0.01f; }
-            float height = capsule != null ? Mathf.Max(capsule.height, capsule.radius * 2f) : 2f;
-            Vector3 localCenter = capsule != null ? capsule.center : new Vector3(0f, 1f, 0f);
-            float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skinWidth);
+            if (capsule != null) { GetSweepCapsule(feetPos, capsule.radius, capsule.height, capsule.center, SkinWidth, out top, out bottom, out radius); }
+            else { GetSweepCapsule(feetPos, 0.5f, 2f, new Vector3(0f, 1f, 0f), SkinWidth, out top, out bottom, out radius); }
+        }
+
+        /// <summary>The same, for a capsule of the given size and skin width (one the character might be resized to).</summary>
+        private static void GetSweepCapsule(Vector3 feetPos, float capsuleRadius, float capsuleHeight, Vector3 localCenter,
+            float skin, out Vector3 top, out Vector3 bottom, out float radius)
+        {
+            radius = capsuleRadius - skin;
+            if (radius <= 0f) { radius = capsuleRadius * 0.5f; }
+            float height = Mathf.Max(capsuleHeight, capsuleRadius * 2f);
+            float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skin);
             Vector3 center = feetPos + localCenter;
             bottom = center - Vector3.up * halfSegment;
             top = center + Vector3.up * halfSegment;

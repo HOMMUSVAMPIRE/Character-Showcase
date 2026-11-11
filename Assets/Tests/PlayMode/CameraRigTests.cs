@@ -120,6 +120,26 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator FirstPerson_FollowsTheEyeAnchor_InsteadOfTheFixedEyeHeight()
+        {
+            var anchor = Track(new GameObject("Eye Anchor")).transform;
+            anchor.SetParent(target, false);
+            anchor.localPosition = new Vector3(0f, 1.25f, 0f);
+            rig.FirstPerson.eyeAnchor = anchor;
+            rig.SetMode(CameraMode.FirstPerson);
+            yield return new WaitForSeconds(rig.Modes.transitionDuration * 1.5f);
+
+            Vector3 eyes = target.position + Vector3.up * 1.25f + Quaternion.Euler(0f, rig.Yaw, 0f) * Vector3.forward * rig.FirstPerson.eyeForwardOffset;
+            Assert.That(rig.EyeHeight, Is.EqualTo(1.25f).Within(1e-4f));
+            Assert.That(Vector3.Distance(cam.transform.position, eyes), Is.LessThan(0.01f), "The eyes should be at the anchor's height.");
+
+            // A taller target (a bigger model, say) raises the anchor, and the view with it.
+            anchor.localPosition = new Vector3(0f, 1.6f, 0f);
+            yield return Frames(30);
+            Assert.That(cam.transform.position.y, Is.EqualTo(target.position.y + 1.6f).Within(0.01f));
+        }
+
+        [UnityTest]
         public IEnumerator SetMode_RefusesDisabledModes()
         {
             rig.Modes.allowFirstPerson = false;
@@ -157,18 +177,43 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Distance, Is.EqualTo(rig.Zoom.minDistance));
         }
 
-        [UnityTest]
-        public IEnumerator Collision_PullsCameraInFrontOfWall()
-        {
-            // A wall 2 m behind the target, between it and the camera's default position 3.5 m back.
-            Box("Wall", new Vector3(0f, 2f, -2.25f), new Vector3(10f, 4f, 0.5f));
-            yield return Frames(3);
+        private static readonly float[] CollisionSizes = { 1f, 0.1f, 10f };
 
-            float wallFace = -2f;
-            Assert.That(cam.transform.position.z, Is.GreaterThan(wallFace + rig.Collision.probeRadius * 0.9f),
-                "Camera should stay in front of the wall.");
-            Assert.That(cam.transform.position.z, Is.LessThan(wallFace + rig.Collision.probeRadius + 0.1f),
-                "Camera should only pull in as far as needed.");
+        /// <summary>
+        /// A wall between the target and the camera pulls the camera in front of it, only as far as needed; one just
+        /// behind the camera, clear of it, doesn't move it. At any size, as the probe scales with the target: at a tenth
+        /// of the size, the wall clear of the camera is still within reach of a full-size probe.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Collision_PullsTheCameraInFrontOfAWall_AndIgnoresOnesClearOfIt([ValueSource(nameof(CollisionSizes))] float size)
+        {
+            if (size != 1f) { SizeTarget(size); }
+            rig.SetTarget(target);
+            yield return Frames(3);
+            Vector3 clear = cam.transform.position;
+            Vector3 back = rig.LookRotation * Vector3.back;
+            back = new Vector3(back.x, 0f, back.z).normalized;
+            float behind = Vector3.Dot(clear - target.position, back), probe = rig.Collision.probeRadius * size;
+
+            // Clear of it: just past the camera, further than the probe (scaled) reaches, but nearer than a full-size one.
+            float gap = size < 1f ? rig.Collision.probeRadius * Mathf.Sqrt(size) : 2f * probe;
+            GameObject clearWall = Box("Wall Behind", target.position + back * (behind + gap + 0.05f * size) + Vector3.up * 2f * size,
+                new Vector3(10f * size, 4f * size, 0.1f * size) + Vector3.zero);
+            clearWall.transform.rotation = Quaternion.LookRotation(back);
+            Physics.SyncTransforms();
+            yield return Frames(3);
+            Assert.That(Vector3.Distance(cam.transform.position, clear), Is.LessThan(1e-3f * size), "The camera shouldn't be pulled in by a wall clear of it.");
+            Object.DestroyImmediate(clearWall);
+
+            // Between them: half way back.
+            float face = 0.5f * behind;
+            GameObject wall = Box("Wall", target.position + back * (face + 0.25f * size) + Vector3.up * 2f * size, new Vector3(10f * size, 4f * size, 0.5f * size));
+            wall.transform.rotation = Quaternion.LookRotation(back);
+            Physics.SyncTransforms();
+            yield return Frames(3);
+            float camera = Vector3.Dot(cam.transform.position - target.position, back);
+            Assert.That(camera, Is.LessThan(face - probe * 0.9f), "Camera should stay in front of the wall.");
+            Assert.That(camera, Is.GreaterThan(face - probe - 0.1f * size), "Camera should only pull in as far as needed.");
         }
 
         [UnityTest]
@@ -293,46 +338,101 @@ namespace CharacterShowcase.Tests
             Assert.That(renderer.forceRenderingOff, Is.False, "It should be shown again in third person.");
         }
 
-        [UnityTest]
-        public IEnumerator SpeedFov_WidensWhileTargetMovesFast_AndSettlesWhenItStops()
+        /// <summary>Moves the target in step with physics, as a character would, then returns the field of view.</summary>
+        private IEnumerator MoveTargetAndMeasureFov(float speed, System.Action<float> result)
         {
-            rig.SpeedFov.enabled = true;
-            yield return Frames(3);
-            float baseFov = cam.fieldOfView;
-
-            // Move the target in step with physics, as a character would, at the speed of full effect.
-            float speed = rig.SpeedFov.maxSpeed;
             for (float t = 0f; t < 1.5f; t += Time.fixedDeltaTime)
             {
                 yield return new WaitForFixedUpdate();
                 target.position += Vector3.forward * speed * Time.fixedDeltaTime;
             }
             yield return null;
-            float movingFov = cam.fieldOfView;
-
-            yield return new WaitForSeconds(2f);
-
-            Assert.That(movingFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f), "FOV should widen by the extra FOV at full speed.");
-            Assert.That(cam.fieldOfView, Is.EqualTo(baseFov).Within(0.1f), "FOV should settle back once the target stops.");
+            result(cam.fieldOfView);
         }
 
+        private static readonly float[] SpeedSizes = { 1f, 0.25f, 4f };
+
+        /// <summary>
+        /// The field of view widens while the target moves fast, by the extra FOV at the speed of full effect, and
+        /// settles back once it stops. Speed is judged in proportion to the target's size: a quarter-size target looks as
+        /// fast at a quarter of the speed, and one four times the size needs four times the speed (moving at only twice
+        /// the full-effect speed, it looks half as fast).
+        /// </summary>
         [UnityTest]
-        public IEnumerator Landing_DipsTheCamera_ThenRecovers()
+        public IEnumerator SpeedFov_WidensWithSpeedForTheTargetsSize_AndSettlesWhenItStops([ValueSource(nameof(SpeedSizes))] float size)
         {
-            rig.Shake.enabled = false;            // Isolate the dip from landing shake.
-            rig.ThirdPerson.verticalDamping = 0f; // And from the follow lag, which would otherwise offset it.
-            target.position = new Vector3(0f, 20f, 0f);
-            rig.SetTarget(target);
+            rig.SpeedFov.enabled = true;
+            if (size != 1f) { SizeTarget(size); }
+            yield return Frames(3);
+            float baseFov = cam.fieldOfView;
+
+            float fullFov = 0f;
+            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed * size, f => fullFov = f);
+            Assert.That(fullFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f), "At the full-effect speed for its size, the FOV should widen by the extra FOV.");
+            yield return new WaitForSeconds(2f);
+            Assert.That(cam.fieldOfView, Is.EqualTo(baseFov).Within(0.1f), "FOV should settle back once the target stops.");
+
+            if (size > 1f)
+            {
+                float halfFov = 0f;
+                yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed * size / 2f, f => halfFov = f);
+                float expected = Mathf.InverseLerp(rig.SpeedFov.minSpeed, rig.SpeedFov.maxSpeed, rig.SpeedFov.maxSpeed / 2f) * rig.SpeedFov.extraFov;
+                Assert.That(halfFov, Is.EqualTo(baseFov + expected).Within(0.5f), "At half the full-effect speed for its size, it should look half as fast.");
+            }
+        }
+
+        /// <summary>Gives the target a size reference scaled to the given size, as the character's model parent is.</summary>
+        private Transform SizeTarget(float size)
+        {
+            var sizeReference = Track(new GameObject("Size Reference")).transform;
+            sizeReference.SetParent(target, false);
+            sizeReference.localScale = Vector3.one * size;
+            rig.TargetSizeReference = sizeReference;
+            return sizeReference;
+        }
+
+        private static readonly float[] OtherSizes = { 0.1f, 2f, 10f, 100f };
+
+        /// <summary>
+        /// The camera frames a target of any size as it does one of normal size, scaled with it: its pivot, shoulder
+        /// offset, distance and near clip plane all in proportion (and the far clip plane further for a bigger one).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheCameraFramesATarget_TheSameWayAtAnySize([ValueSource(nameof(OtherSizes))] float size)
+        {
+            yield return Frames(3);
+            Vector3 offset = cam.transform.position - target.position;
+            float near = cam.nearClipPlane, far = cam.farClipPlane;
+
+            SizeTarget(size);
+            rig.SetTarget(target); // Snaps, so this checks where it settles rather than how it eases there.
             yield return Frames(3);
 
-            // Fall at a steady 12 m/s, then stop dead as if hitting the ground.
+            Assert.That(Vector3.Distance(cam.transform.position - target.position, offset * size), Is.LessThan(1e-3f * size),
+                "The camera should sit where it does for a target of normal size, scaled with the target.");
+            Assert.That(Quaternion.Angle(cam.transform.rotation, rig.LookRotation), Is.LessThan(0.1f));
+            Assert.That(cam.nearClipPlane, Is.EqualTo(near * size).Within(near * size * 1e-3f), "The near clip plane should scale with the target.");
+            Assert.That(cam.farClipPlane, Is.EqualTo(far * Mathf.Max(1f, size)).Within(far * 1e-3f),
+                "The far clip plane should scale up for a bigger target, and stay for a smaller one.");
+        }
+
+        /// <summary>
+        /// Drops the target at a steady speed for its size (12 m/s at normal size) and stops it dead, as if it hit the
+        /// ground, and gives back how far the camera dipped, relative to the target's size.
+        /// </summary>
+        private IEnumerator MeasureLandingDip(float size, System.Action<float> result)
+        {
+            rig.Shake.enabled = false;
+            rig.ThirdPerson.verticalDamping = 0f;
+            target.position = new Vector3(0f, 20f * size, 0f);
+            rig.SetTarget(target);
+            yield return Frames(3);
             for (int i = 0; i < 30; i++)
             {
                 yield return new WaitForFixedUpdate();
-                target.position += Vector3.down * 12f * Time.fixedDeltaTime;
+                target.position += Vector3.down * 12f * size * Time.fixedDeltaTime;
             }
-            Vector3 rest = ExpectedThirdPersonPosition(rig.Zoom.defaultDistance);
-            float lowest = float.PositiveInfinity;
+            float rest, lowest = float.PositiveInfinity;
             for (int i = 0; i < 40; i++)
             {
                 yield return new WaitForFixedUpdate();
@@ -340,9 +440,26 @@ namespace CharacterShowcase.Tests
                 lowest = Mathf.Min(lowest, cam.transform.position.y);
             }
             yield return new WaitForSeconds(1f);
+            rest = cam.transform.position.y;
+            result((rest - lowest) / size);
+        }
 
-            Assert.That(rest.y - lowest, Is.GreaterThan(0.05f), "Camera should dip on landing.");
-            Assert.That(cam.transform.position.y, Is.EqualTo(rest.y).Within(0.01f), "Camera should spring back up after landing.");
+        /// <summary>
+        /// Landing dips the camera, then it springs back to where it sits at rest; landing as fast for its size, a target
+        /// of any size dips it as far for its size.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Landing_DipsTheCamera_InProportionToTheTarget_ThenRecovers([ValueSource(nameof(OtherSizes))] float size)
+        {
+            float normalDip = 0f, dip = 0f;
+            yield return MeasureLandingDip(1f, d => normalDip = d);
+            Assert.That(cam.transform.position.y, Is.EqualTo(ExpectedThirdPersonPosition(rig.Zoom.defaultDistance).y).Within(0.01f),
+                "Camera should spring back up after landing.");
+            SizeTarget(size);
+            yield return MeasureLandingDip(size, d => dip = d);
+            Assert.That(normalDip, Is.GreaterThan(0.05f), "Test setup: the camera should dip at normal size.");
+            Assert.That(dip, Is.EqualTo(normalDip).Within(normalDip * 0.05f),
+                "Landing as fast for its size, a target of any size should dip the camera as far for its size.");
         }
 
         [UnityTest]

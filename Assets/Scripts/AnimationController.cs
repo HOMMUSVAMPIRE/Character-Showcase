@@ -1,18 +1,16 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Character
 {
     /// <summary>
-    /// The character's link between movement and visuals. It loads the character's model at runtime from a
-    /// CharacterModelDefinition, turns each frame's movement into a CharacterAnimationState, and passes that state and
-    /// the movement events to the model's animation translator.
+    /// The character's link between movement and animation. It turns each frame's movement into a
+    /// CharacterAnimationState, passes that state and the movement events to the model's animation translator, and
+    /// turns the model smoothly to face the character's direction.
     ///
-    /// Nothing here depends on a particular model, Animator Controller or animation system: those all come from the
-    /// model definition, so a model can be replaced (or swapped at runtime) without touching the character. The
-    /// character moves normally while its model is still loading.
+    /// Nothing here depends on a particular model, how it's stored, its Animator Controller or animation system: the
+    /// model comes from the CharacterModelHost, and how it's animated from the translator its source names, so a model
+    /// can be replaced (or swapped at runtime) without touching the character.
     /// </summary>
     [DisallowMultipleComponent]
     public class AnimationController : MonoBehaviour, ICharacterAnimationStateSource
@@ -21,14 +19,8 @@ namespace Character
         private ACCharacterController characterController;
         [SerializeField] [Tooltip("The character's movement, whose events this passes on. Found automatically if left empty.")]
         private MovementController movementController;
-
-        [Header("Model")]
-        [SerializeField] [Tooltip("The model to load for this character, and how to animate it")]
-        private CharacterModelDefinition modelDefinition;
-        [SerializeField] [Tooltip("The child transform the model is created under. It is turned smoothly to face the character's direction.")]
-        private Transform modelParent;
-        [SerializeField] [Tooltip("Load the model when the character starts. Turn off to load it from code with LoadModel instead.")]
-        private bool loadModelOnStart = true;
+        [SerializeField] [Tooltip("The character's model, which this animates. Found automatically if left empty.")]
+        private CharacterModelHost modelHost;
 
         [Header("Animation State")]
         [SerializeField] [Tooltip("Seconds the character must be off the ground before animating as airborne (unless they jumped), so stepping off small ledges or bumps doesn't flash the falling pose")]
@@ -48,26 +40,14 @@ namespace Character
         private bool hasLastFacing;
 
         private ICharacterAnimationDriver driver;
-        private Coroutine loadRoutine;
-        private ModelLoadRequest pendingLoad;
-        private readonly List<CharacterModelDefinition.PreviewMesh> previewMeshes = new();
+        // The driver of a model being replaced, which the new model's driver carries on from.
+        private ICharacterAnimationDriver retiredDriver;
 
         /// <summary>The character's animation state as of the latest frame.</summary>
         public CharacterAnimationState AnimationState { get; private set; }
+        /// <summary>The character's model, which this animates.</summary>
+        public CharacterModelHost ModelHost => modelHost;
 
-        /// <summary>The definition of the current (or loading) model.</summary>
-        public CharacterModelDefinition ModelDefinition => modelDefinition;
-        /// <summary>The loaded model instance, or null while there is none (not loaded yet, or still loading).</summary>
-        public GameObject Model { get; private set; }
-        /// <summary>The loaded model's Animator. May be null.</summary>
-        public Animator Animator { get; private set; }
-        /// <summary>IK for the loaded model's hands, feet, elbows and knees, blended over its animations. May be null.</summary>
-        public CharacterIK IK { get; private set; }
-        public bool IsModelReady => Model != null;
-        public bool IsLoadingModel => pendingLoad != null;
-
-        /// <summary>Raised when a model has been loaded and set up, with the new model.</summary>
-        public event Action<GameObject> ModelLoaded;
         /// <summary>Raised for each movement event (one flag at a time), with the animation state when it happened. For
         /// effects, sound and anything else that reacts to the character's actions.</summary>
         public event Action<MovementEvents, CharacterAnimationState> MovementEventReceived;
@@ -75,94 +55,47 @@ namespace Character
         private void Awake()
         {
             if (movementController == null) { movementController = GetComponent<MovementController>(); }
-            if (modelParent == null) { modelParent = transform; }
+            if (modelHost == null) { modelHost = GetComponent<CharacterModelHost>(); }
         }
 
         private void OnEnable()
         {
             if (movementController != null) { movementController.MovementEventRaised += HandleMovementEvent; }
+            if (modelHost != null)
+            {
+                modelHost.ModelLoaded += HandleModelLoaded;
+                modelHost.ModelUnloaded += HandleModelUnloaded;
+                modelHost.ModelReplacing += HandleModelReplacing;
+                if (modelHost.CurrentModel != null) { HandleModelLoaded(modelHost.CurrentModel); }
+            }
         }
 
         private void OnDisable()
         {
             if (movementController != null) { movementController.MovementEventRaised -= HandleMovementEvent; }
-        }
-
-        private void Start()
-        {
-            if (loadModelOnStart && modelDefinition != null && Model == null && !IsLoadingModel) { LoadModel(modelDefinition); }
-        }
-
-        private void OnDestroy() => CancelLoad();
-
-        /// <summary>
-        /// Replaces the character's model with the given one, loading it asynchronously. The current model stays until
-        /// the new one is ready, so the character is never left invisible mid-swap. Returns the loading coroutine, which
-        /// can be yielded on to wait for it.
-        /// </summary>
-        public Coroutine LoadModel(CharacterModelDefinition definition)
-        {
-            CancelLoad();
-            modelDefinition = definition;
-            if (definition == null)
+            if (modelHost != null)
             {
-                UnloadModel();
-                return null;
+                modelHost.ModelLoaded -= HandleModelLoaded;
+                modelHost.ModelUnloaded -= HandleModelUnloaded;
+                modelHost.ModelReplacing -= HandleModelReplacing;
             }
-            loadRoutine = StartCoroutine(LoadModelRoutine(definition));
-            return loadRoutine;
         }
 
-        /// <summary>Destroys the current model, leaving the character without one.</summary>
-        public void UnloadModel()
+        private void HandleModelLoaded(CharacterModel model)
         {
-            if (Model != null) { Destroy(Model); }
-            Model = null;
-            Animator = null;
-            IK = null;
-            driver = null;
+            driver = model.Translator != null ? model.Translator.CreateDriver(model.Root, model.Animator) : null;
+            if (driver != null && retiredDriver != null) { driver.ContinueFrom(retiredDriver); }
+            retiredDriver = null;
+            if (modelHost.ModelParent != null) { lastRotation = modelHost.ModelParent.rotation; }
         }
 
-        private IEnumerator LoadModelRoutine(CharacterModelDefinition definition)
+        private void HandleModelReplacing(CharacterModel model)
         {
-            var request = new ModelLoadRequest(modelParent);
-            pendingLoad = request;
-
-            yield return definition.LoadModel(request);
-            GameObject model = request.Result;
-            if (model == null)
-            {
-                if (!request.IsCancelled) { Debug.LogWarning($"[{nameof(AnimationController)}] Model '{definition.name}' failed to load.", this); }
-                ClearLoad(request);
-                yield break;
-            }
-            yield return definition.SetupModel(model, modelParent);
-            if (request.IsCancelled) { yield break; }
-            ClearLoad(request);
-
-            UnloadModel();
-            Model = model;
-            Animator = model.GetComponentInChildren<Animator>();
-            IK = Animator != null ? Animator.GetComponent<CharacterIK>() : null;
-            driver = definition.Translator != null ? definition.Translator.CreateDriver(model, Animator) : null;
-            lastRotation = modelParent.rotation;
-            ModelLoaded?.Invoke(model);
+            driver?.Retire();
+            retiredDriver = driver;
         }
 
-        private void ClearLoad(ModelLoadRequest request)
-        {
-            if (pendingLoad != request) { return; }
-            pendingLoad = null;
-            loadRoutine = null;
-        }
-
-        private void CancelLoad()
-        {
-            if (loadRoutine != null) { StopCoroutine(loadRoutine); }
-            pendingLoad?.Cancel();
-            pendingLoad = null;
-            loadRoutine = null;
-        }
+        private void HandleModelUnloaded(CharacterModel model) => driver = null;
 
         /// <summary>
         /// Works out the character's animation state from their latest movement and passes it to the model's animation.
@@ -203,6 +136,7 @@ namespace Character
             }
 
             float horizontalSpeed = new Vector2(velocity.x, velocity.z).magnitude;
+            float speedScale = movementController != null ? movementController.SpeedScale : 1f;
             return new CharacterAnimationState
             {
                 velocity = velocity,
@@ -214,9 +148,12 @@ namespace Character
                 grounded = touchingGround || (!jumping && airTime < airborneDelay),
                 touchingGround = touchingGround,
                 timeInAir = airTime,
-                moving = horizontalSpeed > movingSpeedThreshold,
+                moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
                 dashing = movementData.state.HasFlag(CharacterState.Dashing),
+                scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
+                    ? modelHost.ModelParent.localScale : Vector3.one,
+                speedScale = speedScale,
             };
         }
 
@@ -232,6 +169,7 @@ namespace Character
         public void SmoothRotateVisuals(float deltaTime, Quaternion groundRotation)
         {
             // Turning the character's own transform would turn the whole character, not just its visuals.
+            Transform modelParent = modelHost != null ? modelHost.ModelParent : null;
             if (modelParent == null || modelParent == transform) { return; }
 
             lastRotation = groundRotation * lastRotation;
@@ -239,21 +177,6 @@ namespace Character
             float t = 1f - Mathf.Exp(-rotationFixSpeed * deltaTime);
             modelParent.rotation = Quaternion.Slerp(lastRotation, transform.rotation, t);
             lastRotation = modelParent.rotation;
-        }
-
-        /// <summary>Shows the model in the editor, where it isn't loaded, so the character can still be seen and placed.</summary>
-        private void OnDrawGizmos()
-        {
-            if (modelDefinition == null || IsModelReady) { return; }
-            Transform parent = modelParent != null ? modelParent : transform;
-            modelDefinition.GetPreviewMeshes(previewMeshes);
-            Gizmos.color = new Color(0.75f, 0.78f, 0.85f, 1f);
-            foreach (CharacterModelDefinition.PreviewMesh preview in previewMeshes)
-            {
-                Gizmos.matrix = parent.localToWorldMatrix * preview.matrix;
-                Gizmos.DrawMesh(preview.mesh);
-            }
-            Gizmos.matrix = Matrix4x4.identity;
         }
     }
 }

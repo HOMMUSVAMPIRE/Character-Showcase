@@ -6,7 +6,8 @@ describes what the project does; this file describes how to change it safely.
 ## The project at a glance
 
 - A Unity character controller showcase: movement, collision, moving ground, dash, a standalone camera rig, a
-  generated humanoid mannequin with animations and IK.
+  generated humanoid mannequin with animations and IK, and
+  a pipeline for using other rigged humanoid models (`Assets/Models/CharacterModels`).
 - **Unity version: 6000.6.7f1.** `ProjectSettings/ProjectVersion.txt` is authoritative. Never change it, and never
   edit `Packages/manifest.json` or `Packages/packages-lock.json` unless the task explicitly asks for a package change.
 - About 4,400 lines of runtime C# (plus about 2,400 lines of tests and editor tools), in three assemblies plus tests:
@@ -15,7 +16,7 @@ describes what the project does; this file describes how to change it safely.
 | --- | --- | --- | --- |
 | `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`) | `Character`, `Level` | Unity.InputSystem |
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
-| `CharacterShowcase.Editor` | `Assets/Editor` | `CharacterShowcase.EditorTools` | CharacterShowcase |
+| `CharacterShowcase.Editor` | `Assets/Editor` | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
 | `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
 
 ## How to verify your work
@@ -53,6 +54,9 @@ describes what the project does; this file describes how to change it safely.
   `Character`, `Level` or `CharacterShowcase` namespaces or assemblies. The camera follows a plain Transform. If a
   camera feature needs character information, expose a generic hook on the camera side (an interface, an event, a
   settable value) and connect it from character code.
+- **Models come from a `CharacterModelSource`.** The character's `CharacterModelHost` asks its source for a model with
+  `CreateModelAsync` and gives it back with `ReleaseModel`; it never instantiates or destroys a model itself, so sources can load models
+  however they like (directly, Addressables, asset bundles). New ways of getting a model are new subclasses.
 - **Movement and animation are separate.** Movement code produces `MovementData` and raises `MovementEvents`.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
@@ -61,6 +65,11 @@ describes what the project does; this file describes how to change it safely.
   implemented by `BasicMovementMode`, with tunables as serialized fields on the asset.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
+- **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never
+  the character's root transform. Everything size-dependent follows from that: `MovementController.ApplyScale` resizes
+  the capsule (collision code reads the capsule's own size, not transform scale), movement multiplies speeds by
+  `SpeedScale` and distances by `HeightScale`, and the animation state carries `scale`. New size-dependent distances or
+  speeds should scale the same way; new code must not scale the root.
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
   Transform holds a smoothed render pose that lags the simulation. Movement code reads `Rigidbody.position` /
   `rotation` (see `GetGroundPose`). Moving platforms are kinematic Rigidbodies moved in `FixedUpdate`.
@@ -112,15 +121,16 @@ These are produced by tools. Edit the generator instead and regenerate:
 
 | Generated | Generator |
 | --- | --- |
-| `Assets/Models/Mannequin/Mannequin.fbx` (mesh, rig, animation clips) | `Tools/Mannequin/generate_mannequin.py` and `mannequin_animations.py`, run in Blender (command in README) |
-| `Assets/Animation/Mannequin.controller` | `MannequinInstaller` (Tools > Character Showcase > Install Mannequin Model) |
-| `Assets/Models/Mannequin/Mannequin Model.prefab` | `MannequinInstaller` |
-| The model setup on `Assets/Prefabs/Character.prefab` | `MannequinInstaller` |
+| `Assets/Models/CharacterModels/Mannequin/Mannequin.fbx` (mesh, rig, animation clips) | `Tools/Mannequin/generate_mannequin.py` and `mannequin_animations.py`, run in Blender by `MannequinGenerator` (Tools > Character Showcase > Generate Mannequin) |
+| `Assets/Animation/Mannequin.controller` | `MannequinGenerator` |
+| The model setup on `Assets/Prefabs/Character.prefab` (always the mannequin) | `MannequinGenerator` |
+| `[name] Model.prefab`, `[name].asset` and the avatar/T-pose import settings of every model in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Tools > Character Showcase > Prepare Character Models) |
+| The model override on the character in `Assets/Scenes/SampleScene.unity` | `CharacterModelWindow` (Tools > Character Showcase > Choose Character Model…) |
 
-`MannequinInstaller` keeps IK settings and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
-`Assets/Models/Mannequin/Mannequin.asset`. New Animator parameters or states belong in `MannequinInstaller.cs`; new
-animation clips belong in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state
-that regeneration is still needed.
+The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
+the model sources. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
+in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
+still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
 
 ## Useful facts for common tasks
 

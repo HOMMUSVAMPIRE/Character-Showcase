@@ -35,9 +35,12 @@ namespace CameraSystem
         public float LandingSpeedThisFrame { get; private set; }
         /// <summary>
         /// Rough guess at whether the target is on the ground: not moving vertically by more than walking up or
-        /// down a moderate slope would explain.
+        /// down a moderate slope would explain (allowing 0.75 m/s more for a target of normal size, scaled with its size).
         /// </summary>
-        public bool ProbablyGrounded => Mathf.Abs(Velocity.y) < 0.75f + HorizontalSpeed * 0.5f;
+        public bool ProbablyGrounded => Mathf.Abs(Velocity.y) < 0.75f * sizeScale + HorizontalSpeed * 0.5f;
+
+        // The target's size relative to normal (see CameraRig.SizeScale), which the distances and speeds here scale with.
+        private float sizeScale = 1f;
 
         public void Reset(Transform target)
         {
@@ -53,9 +56,13 @@ namespace CameraSystem
             LandingSpeedThisFrame = 0f;
         }
 
-        /// <summary>Call once per frame from LateUpdate.</summary>
-        public void Update(Transform target, CameraFollowSettings settings, LandingSettings landing)
+        /// <summary>
+        /// Call once per frame from LateUpdate. sizeScale is the target's size relative to normal: the teleport distance
+        /// and the landing speed threshold scale with it, as the target's own movement does.
+        /// </summary>
+        public void Update(Transform target, CameraFollowSettings settings, LandingSettings landing, float sizeScale = 1f)
         {
+            this.sizeScale = Mathf.Max(sizeScale, 1e-4f);
             TeleportedThisFrame = false;
             LandingSpeedThisFrame = 0f;
             if (target == null) { return; }
@@ -69,7 +76,8 @@ namespace CameraSystem
                 currentSample = body != null ? body.position : target.position;
                 currentSampleTime = Time.fixedTime;
 
-                if ((currentSample - previousSample).sqrMagnitude > settings.teleportDistance * settings.teleportDistance)
+                float teleportDistance = settings.teleportDistance * this.sizeScale;
+                if ((currentSample - previousSample).sqrMagnitude > teleportDistance * teleportDistance)
                 {
                     previousSample = currentSample;
                     Velocity = Vector3.zero;
@@ -81,7 +89,7 @@ namespace CameraSystem
                     Velocity = (currentSample - previousSample) / stepTime;
 
                     // Landing: was falling fast, and vertical speed has suddenly mostly stopped.
-                    if (previousVerticalSpeed < -landing.minImpactSpeed && Velocity.y > previousVerticalSpeed * 0.35f)
+                    if (previousVerticalSpeed < -landing.minImpactSpeed * this.sizeScale && Velocity.y > previousVerticalSpeed * 0.35f)
                     {
                         LandingSpeedThisFrame = -previousVerticalSpeed;
                     }

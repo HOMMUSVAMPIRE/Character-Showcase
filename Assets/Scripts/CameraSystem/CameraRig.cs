@@ -23,6 +23,11 @@ namespace CameraSystem
 
         [Tooltip("The transform to follow. Its origin should be at the feet.")]
         [SerializeField] private Transform target;
+        [Tooltip("Optional: a transform whose scale is the target's size (a character's model parent, say). The third " +
+                 "person pivot height, shoulder offset and distance, and the head bob, scale with it, so the camera frames " +
+                 "a resized target as it did before. Its height (y) scales heights and distances, its width (x) the " +
+                 "shoulder offset.")]
+        [SerializeField] private Transform targetSizeReference;
 
         [SerializeField] private CameraInputSettings input = new();
         [SerializeField] private CameraModeSettings modes = new();
@@ -59,6 +64,8 @@ namespace CameraSystem
         public RecenterSettings Recenter => recenter;
 
         private Camera cam;
+        // The camera's far clip plane as set up, for a target of normal size.
+        private float baseFarClipPlane = 1000f;
         private readonly CameraInputReader reader = new();
         private readonly CameraTargetTracker tracker = new();
         private readonly CameraTargetVisibility visibility = new();
@@ -108,6 +115,41 @@ namespace CameraSystem
         #region Public API
 
         public Transform Target => target;
+        public Transform TargetSizeReference { get => targetSizeReference; set => targetSizeReference = value; }
+
+        /// <summary>
+        /// The target's horizontal speed as it would be at its normal size: divided by its height. How fast something
+        /// looks depends on its size (crossing its own height in a second looks the same at any size), and this matches
+        /// how the character's movement scales (Proportional, in its MovementController), so a target at its own top
+        /// speed gets the same speed effects at any size.
+        /// </summary>
+        public float RelativeSpeed => tracker.HorizontalSpeed / SizeScale;
+
+        /// <summary>
+        /// The target's height relative to its normal size (see TargetSize). Every distance and speed the camera uses
+        /// (follow lag, landing dip, collision, clip planes, shake) is multiplied by it, so the camera frames and follows
+        /// a target of any size the same way.
+        /// </summary>
+        public float SizeScale => Mathf.Max(TargetSize.y, 1e-4f);
+
+        /// <summary>The target's size (1, 1, 1 without a size reference). See targetSizeReference.</summary>
+        public Vector3 TargetSize
+        {
+            get
+            {
+                if (targetSizeReference == null) { return Vector3.one; }
+                Vector3 size = targetSizeReference.lossyScale;
+                return new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
+            }
+        }
+
+        /// <summary>
+        /// Height of the eyes above the target's origin: from the eye anchor if there is one (measured from the target's
+        /// own position, which the anchor moves with), otherwise the first-person Eye Height setting.
+        /// </summary>
+        public float EyeHeight => firstPerson.eyeAnchor != null && target != null
+            ? Vector3.Dot(firstPerson.eyeAnchor.position - target.position, Vector3.up)
+            : firstPerson.eyeHeight;
         /// <summary>The view mode currently in effect (a CameraZone may override the requested one).</summary>
         public CameraMode Mode => activeMode;
         /// <summary>The view mode last requested via input or SetMode, ignoring zone overrides.</summary>
@@ -173,7 +215,7 @@ namespace CameraSystem
             followVerticalVelocity = 0f;
             distance = targetDistance;
             distanceVelocity = 0f;
-            collisionDistance = targetDistance;
+            collisionDistance = targetDistance * SizeScale; // In world units, like the distance it's pulled in to.
             collisionVelocity = 0f;
             shoulderSide = rightShoulder ? 1f : -1f;
             shoulderVelocity = 0f;
@@ -188,6 +230,7 @@ namespace CameraSystem
         private void Awake()
         {
             cam = GetComponent<Camera>();
+            if (cam != null) { baseFarClipPlane = cam.farClipPlane; }
         }
 
         private void OnEnable()
@@ -247,7 +290,7 @@ namespace CameraSystem
 
             if (target == null) { return; }
 
-            tracker.Update(target, follow, landing);
+            tracker.Update(target, follow, landing, SizeScale);
             if (tracker.TeleportedThisFrame) { Snap(); }
 
             activeZone = CameraZone.Find(tracker.Position);
@@ -275,18 +318,18 @@ namespace CameraSystem
             Vector3 up = Vector3.up;
 
             Vector3 firstPersonPosition = followPosition
-                + up * (firstPerson.eyeHeight + landingOffset)
-                + yawRotation * Vector3.forward * firstPerson.eyeForwardOffset
+                + up * (EyeHeight + landingOffset)
+                + yawRotation * Vector3.forward * (firstPerson.eyeForwardOffset * TargetSize.z)
                 + bob;
 
-            Vector3 pivot = followPosition + up * (thirdPerson.pivotHeight + landingOffset) + bob;
+            Vector3 pivot = followPosition + up * (thirdPerson.pivotHeight * TargetSize.y + landingOffset) + bob;
             Vector3 thirdPersonPosition = ComputeThirdPersonPosition(pivot, lookRotation, yawRotation, dt);
 
             Vector3 position = Vector3.LerpUnclamped(firstPersonPosition, thirdPersonPosition, tpBlend);
             Quaternion rotation = lookRotation;
 
             shaker.Evaluate(shake, dt, out Vector3 shakeOffset, out Quaternion shakeRotation);
-            position += rotation * shakeOffset;
+            position += rotation * (shakeOffset * SizeScale);
             rotation *= shakeRotation;
 
             transform.SetPositionAndRotation(position, rotation);
@@ -479,12 +522,13 @@ namespace CameraSystem
             current = horizontalDamping > 0f
                 ? Vector2.SmoothDamp(current, goalH, ref followHorizontalVelocity, horizontalDamping, Mathf.Infinity, dt)
                 : goalH;
-            current = goalH + Vector2.ClampMagnitude(current - goalH, follow.maxHorizontalLag);
+            current = goalH + Vector2.ClampMagnitude(current - goalH, follow.maxHorizontalLag * SizeScale);
 
             float y = verticalDamping > 0f
                 ? Mathf.SmoothDamp(followPosition.y, goal.y, ref followVerticalVelocity, verticalDamping, Mathf.Infinity, dt)
                 : goal.y;
-            y = Mathf.Clamp(y, goal.y - follow.maxVerticalLag, goal.y + follow.maxVerticalLag);
+            float verticalLag = follow.maxVerticalLag * SizeScale;
+            y = Mathf.Clamp(y, goal.y - verticalLag, goal.y + verticalLag);
 
             followPosition = new Vector3(current.x, y, current.y);
         }
@@ -497,10 +541,12 @@ namespace CameraSystem
                 return;
             }
 
-            float impact = tracker.LandingSpeedThisFrame - landing.minImpactSpeed;
+            // Judged as for a target of normal size (speeds divided by its size), and the dip scaled back up to its size.
+            float size = SizeScale;
+            float impact = tracker.LandingSpeedThisFrame / size - landing.minImpactSpeed;
             if (tracker.LandingSpeedThisFrame > 0f && impact > 0f)
             {
-                float dip = Mathf.Min(impact * landing.dipPerSpeed, landing.maxDip);
+                float dip = Mathf.Min(impact * landing.dipPerSpeed, landing.maxDip) * size;
                 // For a roughly critically damped spring kicked with velocity v, the peak displacement is about
                 // v / (omega * e), so choose v to make the peak match the requested dip.
                 landingVelocity -= dip * Mathf.Sqrt(landing.springStiffness) * (float)Math.E;
@@ -518,7 +564,7 @@ namespace CameraSystem
                 landingOffset += landingVelocity * step;
                 remaining -= step;
             }
-            landingOffset = Mathf.Max(landingOffset, -landing.maxDip * 1.5f);
+            landingOffset = Mathf.Max(landingOffset, -landing.maxDip * 1.5f * size);
         }
 
         private Vector3 UpdateHeadBob(float tpBlend, float dt)
@@ -531,13 +577,15 @@ namespace CameraSystem
             }
 
             float speed = tracker.HorizontalSpeed;
-            bool walking = tracker.ProbablyGrounded && speed > 0.1f;
-            float goalWeight = walking ? Mathf.Clamp01(speed / headBob.fullAmplitudeSpeed) : 0f;
+            bool walking = tracker.ProbablyGrounded && RelativeSpeed > 0.1f;
+            float goalWeight = walking ? Mathf.Clamp01(RelativeSpeed / headBob.fullAmplitudeSpeed) : 0f;
             bobWeight = headBob.fadeTime > 0f
                 ? Mathf.SmoothDamp(bobWeight, goalWeight, ref bobWeightVelocity, headBob.fadeTime, Mathf.Infinity, dt)
                 : goalWeight;
 
-            if (walking) { bobPhase += speed * headBob.cyclesPerMeter * dt * Mathf.PI * 2f; }
+            // A bigger target takes longer strides, so it bobs fewer times per meter, and further.
+            Vector3 size = TargetSize;
+            if (walking) { bobPhase += speed * headBob.cyclesPerMeter / size.y * dt * Mathf.PI * 2f; }
             bobPhase = Mathf.Repeat(bobPhase, Mathf.PI * 2f);
 
             // One side-to-side sway per cycle, and one up/down bounce per footstep (two per cycle).
@@ -545,7 +593,7 @@ namespace CameraSystem
                 Mathf.Sin(bobPhase) * headBob.amplitude.x,
                 Mathf.Cos(bobPhase * 2f) * headBob.amplitude.y,
                 0f);
-            return Quaternion.Euler(0f, yaw, 0f) * local * (bobWeight * scale);
+            return Quaternion.Euler(0f, yaw, 0f) * Vector3.Scale(local, size) * (bobWeight * scale);
         }
 
         private void UpdateLens(float tpBlend, float dt)
@@ -555,7 +603,7 @@ namespace CameraSystem
             fov = Mathf.Lerp(fov, aim.fieldOfView, aimBlend);
 
             float speedGoal = speedFov.enabled
-                ? Mathf.InverseLerp(speedFov.minSpeed, speedFov.maxSpeed, tracker.HorizontalSpeed) * speedFov.extraFov
+                ? Mathf.InverseLerp(speedFov.minSpeed, speedFov.maxSpeed, RelativeSpeed) * speedFov.extraFov
                 : 0f;
             speedFovAmount = speedFov.smoothTime > 0f
                 ? Mathf.SmoothDamp(speedFovAmount, speedGoal, ref speedFovVelocity, speedFov.smoothTime, Mathf.Infinity, dt)
@@ -566,7 +614,10 @@ namespace CameraSystem
             fov += zoneFov;
 
             cam.fieldOfView = Mathf.Clamp(fov, 1f, 179f);
-            cam.nearClipPlane = Mathf.Lerp(firstPerson.nearClipPlane, thirdPerson.nearClipPlane, tpBlend);
+            // Clip planes follow the target's size: near, so a small target's close-up camera doesn't cut into it, and
+            // far for a bigger one, so it sees as far for its size. (Not nearer for a small one: the world stays in view.)
+            cam.nearClipPlane = Mathf.Lerp(firstPerson.nearClipPlane, thirdPerson.nearClipPlane, tpBlend) * SizeScale;
+            cam.farClipPlane = baseFarClipPlane * Mathf.Max(1f, SizeScale);
         }
 
         private void UpdateTargetVisibility(float tpBlend, Vector3 cameraPosition, Vector3 pivot)
@@ -577,7 +628,7 @@ namespace CameraSystem
                 mode = firstPerson.hideTarget;
             }
             else if (thirdPerson.hideWhenClose != TargetHideMode.None
-                     && (cameraPosition - pivot).sqrMagnitude < thirdPerson.hideDistance * thirdPerson.hideDistance)
+                     && (cameraPosition - pivot).sqrMagnitude < Square(thirdPerson.hideDistance * SizeScale))
             {
                 mode = thirdPerson.hideWhenClose;
             }
@@ -592,9 +643,10 @@ namespace CameraSystem
         private Vector3 ComputeThirdPersonPosition(Vector3 pivot, Quaternion lookRotation, Quaternion yawRotation, float dt)
         {
             float aimBlend = AimBlend;
-            float shoulderX = thirdPerson.shoulderOffset.x * Mathf.Lerp(1f, aim.shoulderMultiplier, aimBlend);
+            Vector3 size = TargetSize;
+            float shoulderX = thirdPerson.shoulderOffset.x * size.x * Mathf.Lerp(1f, aim.shoulderMultiplier, aimBlend);
             Vector3 right = yawRotation * Vector3.right;
-            Vector3 lift = Vector3.up * thirdPerson.shoulderOffset.y;
+            Vector3 lift = Vector3.up * (thirdPerson.shoulderOffset.y * size.y);
 
             // Pick the side, auto-swapping temporarily if the preferred shoulder is pressed against a wall.
             float preferredSide = rightShoulder ? 1f : -1f;
@@ -628,12 +680,13 @@ namespace CameraSystem
             debugShoulder = shoulder;
 
             // Pull the camera in front of anything between the shoulder point and the desired camera position.
-            float desiredDistance = distance * Mathf.Lerp(1f, aim.distanceMultiplier, aimBlend);
+            // Zoom works in the target's size, so a bigger target is framed the same way from further away.
+            float desiredDistance = distance * size.y * Mathf.Lerp(1f, aim.distanceMultiplier, aimBlend);
             Vector3 back = lookRotation * Vector3.back;
             float allowed = desiredDistance;
             if (collision.enabled && Sweep(shoulder, back, desiredDistance, out float hitDistance))
             {
-                allowed = Mathf.Max(collision.minDistance, hitDistance);
+                allowed = Mathf.Max(collision.minDistance * size.y, hitDistance);
             }
 
             if (allowed < collisionDistance || collision.returnSmoothTime <= 0f)
@@ -648,6 +701,8 @@ namespace CameraSystem
 
             return shoulder + back * collisionDistance;
         }
+
+        private static float Square(float value) => value * value;
 
         /// <summary>Fraction (0-1) of the way from 'from' to 'to' the collision probe can travel.</summary>
         private float SweepFraction(Vector3 from, Vector3 to)
@@ -666,7 +721,7 @@ namespace CameraSystem
         private bool Sweep(Vector3 origin, Vector3 direction, float maxDistance, out float safeDistance)
         {
             safeDistance = maxDistance;
-            int count = Physics.SphereCastNonAlloc(origin, collision.probeRadius, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
+            int count = Physics.SphereCastNonAlloc(origin, collision.probeRadius * SizeScale, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
             bool found = false;
             for (int i = 0; i < count; i++)
             {
@@ -718,7 +773,7 @@ namespace CameraSystem
             Gizmos.DrawWireSphere(debugShoulder, 0.06f);
             Gizmos.color = autoSwapped ? new Color(1f, 0.5f, 0f) : Color.green;
             Gizmos.DrawLine(debugShoulder, debugCamera);
-            Gizmos.DrawWireSphere(debugCamera, collision.probeRadius);
+            Gizmos.DrawWireSphere(debugCamera, collision.probeRadius * SizeScale);
         }
 
         [ContextMenu("Test Shake (0.6 trauma)")]
