@@ -6,7 +6,27 @@ namespace Character
     /// A home for any static utility functions related to character operation here
     /// </summary>
     public static class CharacterUtilities
-    { 
+    {
+        /// <summary>
+        /// Where the animation puts an IK goal, in world space. Call only while the Animator's IK API is usable (from
+        /// OnAnimatorIK). Unity's humanoid IK reports foot goals as if the model were scaled evenly by its width (x)
+        /// scale, so for a model stretched along one axis (taller, say) a foot goal's height is off by the difference: a
+        /// model stretched to twice its height has its foot goals reported at half their height above its origin. (Hand
+        /// goals are reported where they are.) SetIKPosition takes true world positions, so a foot goal placed from a
+        /// reported one (a foot planted relative to it, or a goal aimed at it to let a knee hint apply) would be lifted
+        /// or sunk. This puts the height right.
+        /// </summary>
+        public static Vector3 AnimatedIKGoalPosition(Animator animator, AvatarIKGoal goal)
+        {
+            Vector3 position = animator.GetIKPosition(goal);
+            if (goal != AvatarIKGoal.LeftFoot && goal != AvatarIKGoal.RightFoot) { return position; }
+            Transform root = animator.transform;
+            Vector3 scale = root.lossyScale;
+            if (Mathf.Abs(scale.x) < 1e-6f || Mathf.Abs(scale.y - scale.x) <= 1e-5f * Mathf.Abs(scale.x)) { return position; }
+            Vector3 local = Quaternion.Inverse(root.rotation) * (position - root.position);
+            local.y *= scale.y / scale.x;
+            return root.position + root.rotation * local;
+        }
     }
     
     /// <summary>

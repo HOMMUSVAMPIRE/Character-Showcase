@@ -42,6 +42,16 @@ namespace Character
         [SerializeField] [Tooltip("Warn when a model is taller than the character's collider, or shorter than this fraction of it")]
         [Range(0f, 1f)] private float minimumHeightFraction = 0.6f;
 
+        [Header("Collider")]
+        [SerializeField] [Tooltip("Resize the character's collider to each model as it's swapped in. Off: the collider stays as " +
+                                  "authored (models that don't fit it are warned about). Height: as tall as the model, its width " +
+                                  "in proportion as authored. Height And Width: as tall as the model, and as wide as its " +
+                                  "shoulders (times Collider Width Margin). Growing waits for room, as resizing does.")]
+        private ColliderFit colliderFit = ColliderFit.Off;
+        [SerializeField] [Tooltip("With Collider Fit set to Height And Width: the collider's width as a multiple of the model's " +
+                                  "shoulder width (between its upper arm joints), leaving room for the arms")]
+        [Min(0.1f)] private float colliderWidthMargin = 1.4f;
+
         private CharacterModel model;
         // The source the current model came from, which releases it.
         private CharacterModelSource modelOwner;
@@ -69,9 +79,19 @@ namespace Character
         /// <summary>The model's height in meters at the character's current size, or 0 while there's no model.</summary>
         public float ModelHeightMeters => baseModelHeight * ScaleY;
 
+        /// <summary>How the character's collider is fitted to its model. See colliderFit. Applies to models loaded after it's set.</summary>
+        public ColliderFit ColliderFitting { get => colliderFit; set => colliderFit = value; }
+        public float ColliderWidthMargin { get => colliderWidthMargin; set => colliderWidthMargin = Mathf.Max(0.1f, value); }
+        /// <summary>Whether a collider fitted to the model is still waiting for room to grow.</summary>
+        public bool IsFittingCollider => pendingColliderFit;
+
         // Eye height and model height with the model parent unscaled; the character's size (the model parent's scale,
-        // see ACCharacterController.SetScale) multiplies them.
-        private float baseEyeHeight, baseModelHeight;
+        // see ACCharacterController.SetScale) multiplies them. Shoulder width likewise, or 0 if the model has none.
+        private float baseEyeHeight, baseModelHeight, baseShoulderWidth;
+        // The collider size the current model wants (at the character's authored size), until there's room for it.
+        private bool pendingColliderFit;
+        private float fitRadius, fitHeight;
+        private MovementController movement;
         private float ScaleY => modelParent != null && modelParent != transform ? modelParent.localScale.y : 1f;
 
         /// <summary>Raised when a model has been swapped in, with the new model.</summary>
@@ -82,6 +102,7 @@ namespace Character
         private void Awake()
         {
             if (modelParent == null) { modelParent = transform; }
+            movement = GetComponent<MovementController>();
             baseEyeHeight = defaultEyeHeight;
             PlaceEyePoint();
             ShowPlaceholder(true);
@@ -90,6 +111,12 @@ namespace Character
         private void Start()
         {
             if (loadModelOnStart && modelSource != null && !IsModelReady && !IsLoadingModel) { _ = LoadModelAsync(modelSource); }
+        }
+
+        private void FixedUpdate()
+        {
+            // A fitted collider that didn't have room to grow tries again each physics step.
+            if (pendingColliderFit) { TryFitCollider(); }
         }
 
         private void OnDestroy()
@@ -194,6 +221,7 @@ namespace Character
 
         private void ReleaseModel()
         {
+            pendingColliderFit = false; // The fit was for the model going away.
             CharacterModel old = model;
             CharacterModelSource owner = modelOwner;
             model = null;
@@ -239,7 +267,13 @@ namespace Character
             float size = Mathf.Max(ScaleY, 1e-4f);
             baseModelHeight = CharacterModelSource.MeasureHeight(created.Root) / size;
             baseEyeHeight = FindEyeHeight(created) / size;
+            baseShoulderWidth = FindShoulderWidth(created);
             PlaceEyePoint();
+            if (colliderFit != ColliderFit.Off && baseModelHeight > 0f)
+            {
+                PlanColliderFit();
+                return; // Fitted, so it can't fail to fit.
+            }
 
             if (ModelHeightMeters <= 0f || !TryGetComponent(out CapsuleCollider capsule)) { return; }
             float colliderHeight = capsule.height * transform.lossyScale.y;
@@ -277,6 +311,39 @@ namespace Character
         }
 
         /// <summary>
+        /// The distance between the model's upper arm joints, across the character, with the model parent unscaled: how
+        /// broad its shoulders are. 0 if it isn't a humanoid.
+        /// </summary>
+        private float FindShoulderWidth(CharacterModel created)
+        {
+            Animator animator = created.Animator;
+            if (animator == null || !animator.isHuman) { return 0f; }
+            Transform left = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm), right = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            if (left == null || right == null) { return 0f; }
+            // In the model parent's space, which takes out its scale (the character's size) and its turn.
+            Vector3 across = modelParent.InverseTransformPoint(left.position) - modelParent.InverseTransformPoint(right.position);
+            return new Vector2(across.x, across.z).magnitude;
+        }
+
+        /// <summary>Works out the collider the model wants (see colliderFit), and fits it if there's room.</summary>
+        private void PlanColliderFit()
+        {
+            if (movement == null) { return; }
+            fitHeight = baseModelHeight;
+            fitRadius = colliderFit == ColliderFit.HeightAndWidth && baseShoulderWidth > 0f
+                ? 0.5f * baseShoulderWidth * colliderWidthMargin
+                : movement.BaseRadius * fitHeight / Mathf.Max(movement.BaseHeight, 1e-4f);
+            pendingColliderFit = true;
+            TryFitCollider();
+        }
+
+        private void TryFitCollider()
+        {
+            if (movement == null) { pendingColliderFit = false; return; }
+            if (movement.SetBaseCapsule(fitRadius, fitHeight)) { pendingColliderFit = false; }
+        }
+
+        /// <summary>
         /// Updates what depends on the character's size (the eye point) after its model parent has been scaled. Called by
         /// ACCharacterController.SetScale.
         /// </summary>
@@ -301,5 +368,16 @@ namespace Character
             }
             Gizmos.matrix = Matrix4x4.identity;
         }
+    }
+
+    /// <summary>How a CharacterModelHost fits the character's collider to its model.</summary>
+    public enum ColliderFit
+    {
+        /// <summary>The collider stays as authored.</summary>
+        Off,
+        /// <summary>As tall as the model, its width in proportion to its height as authored.</summary>
+        Height,
+        /// <summary>As tall as the model, and as wide as its shoulders, with a margin for its arms.</summary>
+        HeightAndWidth,
     }
 }

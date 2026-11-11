@@ -19,6 +19,24 @@ namespace Character
 
         public GameObject ModelPrefab { get => modelPrefab; set => modelPrefab = value; }
 
+        // The prefab's unscaled height, measured once (previews are drawn every frame), and the prefab it's for.
+        [NonSerialized] private float ownHeight;
+        [NonSerialized] private GameObject measuredPrefab;
+
+        /// <summary>The model prefab's height unscaled, relative to its root (see CharacterModelSource.MeasureHeight).</summary>
+        public float OwnHeight()
+        {
+            if (modelPrefab == null) { return 0f; }
+            if (measuredPrefab != modelPrefab)
+            {
+                ownHeight = MeasureHeight(modelPrefab, modelPrefab.transform);
+                measuredPrefab = modelPrefab;
+            }
+            return ownHeight;
+        }
+
+        private void OnValidate() => measuredPrefab = null; // The prefab may have changed.
+
         public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
         {
             if (modelPrefab == null)
@@ -53,7 +71,8 @@ namespace Character
             results.Clear();
             if (modelPrefab == null) { return; }
 
-            Matrix4x4 placement = Placement;
+            // Measured relative to the prefab's root, as its meshes are placed below, and as SetUpModel measures it.
+            Matrix4x4 placement = PlacementFor(Height == ModelHeight.FitToHeight ? OwnHeight() : 0f);
             Matrix4x4 fromWorld = modelPrefab.transform.worldToLocalMatrix;
             foreach (SkinnedMeshRenderer skinned in modelPrefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {

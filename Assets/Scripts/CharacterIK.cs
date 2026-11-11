@@ -287,7 +287,9 @@ namespace Character
 
             // Compose the result layer by layer: the animation, then procedural IK (e.g. foot placement) blended over
             // it, then manually set goals blended over that, so a scripted target always wins over automatic ones.
-            Vector3 animatedPosition = animator.GetIKPosition(goal);
+            // Where the animation has the goal: corrected for models stretched along one axis, which Unity reports wrongly
+            // (see CharacterUtilities.AnimatedIKGoalPosition). A goal applied at partial weight is placed from it.
+            Vector3 animatedPosition = CharacterUtilities.AnimatedIKGoalPosition(animator, goal);
             Quaternion animatedRotation = animator.GetIKRotation(goal);
             Vector3 desiredPosition = Vector3.Lerp(
                 Vector3.Lerp(animatedPosition, s.proceduralPosition, proceduralPositionWeight),

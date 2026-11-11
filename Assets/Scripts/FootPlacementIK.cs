@@ -36,6 +36,11 @@ namespace Character
                  "stands. Set by the model's source from its Ground Offset (see CharacterModelSource), so the feet are " +
                  "placed by their soles, wherever the model's origin is.")]
         [SerializeField] private float floorOffset;
+        [Tooltip("The same, with the feet where the animation puts them rather than at their IK goals (which is where the " +
+                 "feet are while this is off or fading in). Set by the model's source from its Animated Ground Offset. " +
+                 "The body is raised (or lowered) by the difference while placement is partly or fully off, so the soles " +
+                 "rest on the floor either way.")]
+        [SerializeField] private float animatedFloorOffset;
 
         [Header("Feet")]
         [Tooltip("Animated foot lift (meters above the floor, for a model of average size) below which a foot counts as fully planted, so it tilts to the ground. Scaled with the model's size.")]
@@ -84,6 +89,8 @@ namespace Character
         public float PelvisOffset => pelvisOffset;
         /// <summary>Height of the floor (where the soles rest standing) above the model's origin, in the model's units.</summary>
         public float FloorOffset { get => floorOffset; set => floorOffset = value; }
+        /// <summary>Height of the soles above the model's origin as the animation poses them, in the model's units.</summary>
+        public float AnimatedFloorOffset { get => animatedFloorOffset; set => animatedFloorOffset = value; }
 
         private void Awake()
         {
@@ -119,6 +126,14 @@ namespace Character
             bool dashing = state.dashing;
             float goal = grounded && !dashing ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
+
+            // The model is placed for its soles where this holds the feet (at their IK goals). Where the animation has
+            // them instead, the soles are a little higher or lower; while placement is off, or blended partly over the
+            // animation, the body and the foot goals are moved by that share of the difference, so the soles still rest
+            // on the floor. (Blended at weight w, a foot is w of the way from the animated foot, moved with the body, to
+            // its goal: moving both by (1 - w) of the difference puts it on the floor.)
+            float animationLift = (1f - activeWeight) * (floorOffset - animatedFloorOffset) * VerticalScale;
+            if (animationLift != 0f) { animator.bodyPosition += Vector3.up * animationLift; }
             if (activeWeight <= 0f)
             {
                 pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
@@ -144,6 +159,8 @@ namespace Character
                 animator.bodyPosition += Vector3.up * (pelvisOffset * activeWeight);
             }
 
+            leftTarget += Vector3.up * animationLift;
+            rightTarget += Vector3.up * animationLift;
             ik.SetProceduralGoal(IKLimb.LeftFoot, leftTarget, leftRotation, activeWeight, leftRotationWeight * activeWeight);
             ik.SetProceduralGoal(IKLimb.RightFoot, rightTarget, rightRotation, activeWeight, rightRotationWeight * activeWeight);
         }
@@ -151,7 +168,7 @@ namespace Character
         private Vector3 PlaceFoot(Animator animator, AvatarIKGoal goal, float soleHeight, float floorHeight, ref FootState foot,
             float dt, out Quaternion rotation, out float rotationWeight)
         {
-            Vector3 animated = AnimatedGoalPosition(animator, goal);
+            Vector3 animated = CharacterUtilities.AnimatedIKGoalPosition(animator, goal);
             Quaternion animatedRotation = animator.GetIKRotation(goal);
             // How high the animation lifts this foot off its (assumed flat) floor. The sole's height under the goal is
             // given for the model unscaled.
@@ -200,24 +217,6 @@ namespace Character
 
         /// <summary>The model's vertical scale in the world.</summary>
         private float VerticalScale => transform.lossyScale.y;
-
-        /// <summary>
-        /// Where the animation puts an IK goal, in world space. Unity's humanoid IK reports goal positions as if the model
-        /// were scaled evenly by its width (x) scale, so for a model stretched along one axis (taller, say) a goal's
-        /// height is off by the difference: half again as tall puts every goal reported lower than it is. SetIKPosition
-        /// takes true world positions, so placing a foot at its reported goal would lift or sink it. This puts the
-        /// height right, measured from the model's origin.
-        /// </summary>
-        private static Vector3 AnimatedGoalPosition(Animator animator, AvatarIKGoal goal)
-        {
-            Vector3 position = animator.GetIKPosition(goal);
-            Transform root = animator.transform;
-            Vector3 scale = root.lossyScale;
-            if (Mathf.Abs(scale.x) < 1e-6f || Mathf.Abs(scale.y - scale.x) <= 1e-5f * Mathf.Abs(scale.x)) { return position; }
-            Vector3 local = Quaternion.Inverse(root.rotation) * (position - root.position);
-            local.y *= scale.y / scale.x;
-            return root.position + root.rotation * local;
-        }
 
         private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)
         {

@@ -155,6 +155,7 @@ MonoBehaviour:
   maxSlopeAngle: 50
   ignoreCollidersUnder: {fileID: 0}
   floorOffset: 0
+  animatedFloorOffset: 0
   plantedHeight: 0.04
   liftedHeight: 0.18
   alignToGround: 1

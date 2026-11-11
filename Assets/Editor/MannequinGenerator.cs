@@ -128,7 +128,7 @@ namespace CharacterShowcase.EditorTools
             AssetDatabase.SaveAssets();
 
             if (!UseOnCharacterPrefab(mannequin.definition)) { return false; }
-            CharacterModelImporter.MarkPrepared(ModelPath);
+            CharacterModelImporter.MarkPrepared(ModelPath, controller);
             Debug.Log($"[MannequinGenerator] Generated the mannequin ('{ModelPath}', definition " +
                       $"'{AssetDatabase.GetAssetPath(mannequin.definition)}', {mannequin.height:0.00} m tall) and the shared animations: controller '{ControllerPath}' with clips " +
                       $"{string.Join(", ", LoadClips().Keys)}, translator '{TranslatorPath}'. It's the Character prefab's model.");

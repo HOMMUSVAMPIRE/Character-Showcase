@@ -7,8 +7,9 @@ namespace CharacterShowcase.EditorTools
     /// Prepares character models as soon as they're added to (or changed in) Assets/Models/CharacterModels, so nobody
     /// has to remember to run Prepare Character Models:
     /// - a model imported for the first time is set up as a Humanoid straight away, so its first import is the right one
-    /// - once the editor is idle after models there are imported, moved or deleted, PrepareChanged prepares whichever
-    ///   are new or changed, and reports sources whose models are gone
+    /// - once the editor is idle after models there are imported, moved or deleted, or animation they play (an Animator
+    ///   Controller, a clip, or a model source) changes, PrepareChanged prepares whichever are new or changed, so their
+    ///   ground offsets are measured again, and reports sources whose models are gone
     /// The mannequin is the exception: its animation clips and the controller built from them come from Generate
     /// Mannequin, which is run again (from the file as it is) when the mannequin's file changes.
     /// </summary>
@@ -32,13 +33,20 @@ namespace CharacterShowcase.EditorTools
             // Imports caused by the tools themselves are already being dealt with.
             if (CharacterModelImporter.IsBusy || scheduled) { return; }
             bool relevant = imported.Concat(moved).Any(path => InModelsFolder(path) && AssetImporter.GetAtPath(path) is ModelImporter)
-                            || deleted.Concat(movedFrom).Any(InModelsFolder);
+                            || deleted.Concat(movedFrom).Any(InModelsFolder)
+                            // What the models' ground offsets are measured with: their controllers, the clips those play,
+                            // and their sources (which can name another controller).
+                            || imported.Any(AffectsPreparedAnimation);
             if (!relevant) { return; }
 
             // Not now: assets can't safely be changed while imports are being processed. Once the editor is idle.
             scheduled = true;
             EditorApplication.delayCall += PrepareWhenIdle;
         }
+
+        private static bool AffectsPreparedAnimation(string path) =>
+            path.EndsWith(".controller") || path.EndsWith(".overrideController") || path.EndsWith(".anim")
+            || (InModelsFolder(path) && path.EndsWith(".asset"));
 
         private static void PrepareWhenIdle()
         {

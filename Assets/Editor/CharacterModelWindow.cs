@@ -74,9 +74,9 @@ namespace CharacterShowcase.EditorTools
                 {
                     if (!heights.TryGetValue(definition.ModelPrefab, out float height))
                     {
-                        height = heights[definition.ModelPrefab] = CharacterModelImporter.MeasureHeight(definition.ModelPrefab);
+                        height = heights[definition.ModelPrefab] = CharacterModelSource.MeasureHeight(definition.ModelPrefab, definition.ModelPrefab.transform);
                     }
-                    entry.height = height * definition.Scale;
+                    entry.height = definition.StandingHeightFor(height); // Scale or Fit To Height, as the source sizes it.
                     ready.Add(entry);
                 }
                 else

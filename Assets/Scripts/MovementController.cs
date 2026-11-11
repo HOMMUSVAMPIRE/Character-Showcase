@@ -175,7 +175,35 @@ namespace Character
         /// character is stretched, but no more than half its height, so a wide, flat character's collider doesn't
         /// become a sphere taller than the character.
         /// </summary>
-        private float ScaledRadius(Vector3 scale) => Mathf.Min(baseRadius * Mathf.Max(scale.x, scale.z), baseHeight * scale.y * 0.5f);
+        private float ScaledRadius(Vector3 scale) => ScaledRadius(scale, baseRadius, baseHeight);
+
+        private static float ScaledRadius(Vector3 scale, float radius, float height) =>
+            Mathf.Min(radius * Mathf.Max(scale.x, scale.z), height * scale.y * 0.5f);
+
+        /// <summary>The capsule's radius and height at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
+        public float BaseRadius { get { RememberBaseCapsule(); return baseRadius; } }
+        public float BaseHeight { get { RememberBaseCapsule(); return baseHeight; } }
+
+        /// <summary>
+        /// Changes the capsule's size at the character's authored size (its scale then multiplies it), standing on the
+        /// character's feet: the bottom stays where it is, and its center rises to half the height. Used to fit the
+        /// collider to the character's model (see CharacterModelHost). Like growing, it waits for room: if the bigger
+        /// capsule wouldn't fit where the character stands, nothing changes and this returns false.
+        /// </summary>
+        public bool SetBaseCapsule(float radius, float height)
+        {
+            RememberBaseCapsule();
+            if (capsule == null || radius <= 0f || height <= 0f) { return false; }
+            radius = Mathf.Min(radius, height * 0.5f);
+            var center = new Vector3(baseCenter.x, height * 0.5f, baseCenter.z);
+            bool grows = height > baseHeight + 1e-5f || radius > baseRadius + 1e-5f;
+            if (grows && !CanFit(Scale, radius, height, center)) { return false; }
+            baseRadius = radius;
+            baseHeight = height;
+            baseCenter = center;
+            ApplyScale(Scale);
+            return true;
+        }
 
         /// <summary>
         /// Whether the character would fit where it stands at the given size, without overlapping the world (more than
@@ -184,11 +212,17 @@ namespace Character
         public bool CanFit(Vector3 scale)
         {
             RememberBaseCapsule();
+            return CanFit(scale, baseRadius, baseHeight, baseCenter);
+        }
+
+        /// <summary>The same, for a capsule of another authored size.</summary>
+        private bool CanFit(Vector3 scale, float authoredRadius, float authoredHeight, Vector3 authoredCenter)
+        {
             if (capsule == null) { return true; }
             Vector3 feet = rb != null ? rb.position : transform.position;
-            float radiusAtScale = ScaledRadius(scale);
-            float skinAtScale = skinWidth * (baseRadius > 0f ? Mathf.Min(scale.y, radiusAtScale / baseRadius) : scale.y);
-            GetSweepCapsule(feet, radiusAtScale, baseHeight * scale.y, Vector3.Scale(baseCenter, scale), skinAtScale,
+            float radiusAtScale = ScaledRadius(scale, authoredRadius, authoredHeight);
+            float skinAtScale = skinWidth * (authoredRadius > 0f ? Mathf.Min(scale.y, radiusAtScale / authoredRadius) : scale.y);
+            GetSweepCapsule(feet, radiusAtScale, authoredHeight * scale.y, Vector3.Scale(authoredCenter, scale), skinAtScale,
                 out Vector3 top, out Vector3 bottom, out float radius);
             int count = Physics.OverlapCapsuleNonAlloc(top, bottom, radius, overlaps, movementLayerMask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)

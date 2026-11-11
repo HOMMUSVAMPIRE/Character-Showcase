@@ -20,7 +20,10 @@ MonoBehaviour:
   positionOffset: {x: 0, y: 0, z: 0}
   rotationOffset: {x: 0, y: 0, z: 0}
   scale: 1
+  measureGroundOnLoad: 0
   groundOffset: 0.00108
+  animatedGroundOffset: -0.00811
+  facingCorrection: 0
   addIK: 1
   addFootPlacement: 1
   matchCharacterLayer: 1

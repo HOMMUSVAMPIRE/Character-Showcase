@@ -4503,7 +4503,7 @@ PrefabInstance:
     - target: {fileID: 456934232584960403, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
       propertyPath: modelSource
       value: 
-      objectReference: {fileID: 11400000, guid: 1ad8eef98f9964c21a8cfcd51448b577, type: 2}
+      objectReference: {fileID: 11400000, guid: fd38dd1a9c9144bee95cb959f74e88b4, type: 2}
     - target: {fileID: 1999695637673396473, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
       propertyPath: m_Enabled
       value: 1

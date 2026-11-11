@@ -268,10 +268,151 @@ namespace CharacterShowcase.Tests
         public IEnumerator EveryModel_StandsOnTheGround_AtAnySize([ValueSource(nameof(PreparedModels))] string definitionPath,
             [ValueSource(nameof(GroundingScales))] Vector3 scale)
         {
+            (float lowest, float highest) soles = default;
+            yield return MeasureStandingSoles(definitionPath, scale, 1f, s => soles = s);
+            Assert.That(rig.Grounded, Is.True);
+            // Within 2 mm for a model of normal size (the idle clip moves the feet a little), scaled with its height.
+            float tolerance = 0.002f * scale.y;
+            Assert.That(soles.lowest, Is.GreaterThan(-tolerance), $"The soles sink {-soles.lowest * 1000f:0.0} mm into the floor.");
+            Assert.That(soles.highest, Is.LessThan(tolerance), $"The soles float {soles.highest * 1000f:0.0} mm above the floor.");
+        }
+
+        /// <summary>
+        /// With foot placement off or fading (as in the air, dashing, or just after landing), the soles still rest on
+        /// the floor. The model is placed for its soles where foot placement holds them; where its animation has them
+        /// instead they can be a centimetre higher or lower (on a model of other proportions than the clips'), which
+        /// foot placement makes up for in proportion to how far off it is. Off, they're as close as fully on. Part way
+        /// (only while fading, for an eighth of a second), Unity's IK blends the leg's joint rotations, which shortens
+        /// the leg a little: the feet dip a few millimetres even where foot placement has nothing to change.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryModel_StandsOnTheGround_WithFootPlacementOffOrFading([ValueSource(nameof(PreparedModels))] string definitionPath,
+            [Values(0f, 0.5f)] float footPlacementWeight)
+        {
+            (float lowest, float highest) soles = default;
+            yield return MeasureStandingSoles(definitionPath, Vector3.one, footPlacementWeight, s => soles = s);
+            float sink = footPlacementWeight > 0f ? 0.005f : 0.002f;
+            Assert.That(soles.lowest, Is.GreaterThan(-sink), $"The soles sink {-soles.lowest * 1000f:0.0} mm into the floor.");
+            Assert.That(soles.highest, Is.LessThan(0.002f), $"The soles float {soles.highest * 1000f:0.0} mm above the floor.");
+        }
+
+        /// <summary>
+        /// A source that hasn't been measured (made by hand or in code, rather than by Prepare Character Models)
+        /// measures its model as it loads, and stands it on the ground just the same.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AnUnmeasuredSource_MeasuresItsModelOnLoad_AndStandsItOnTheGround([ValueSource(nameof(PreparedModels))] string definitionPath)
+        {
+#if UNITY_EDITOR
+            var prepared = UnityEditor.AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(definitionPath);
+#else
+            DirectCharacterModelSource prepared = null;
+#endif
+            var unmeasured = ScriptableObject.CreateInstance<DirectCharacterModelSource>();
+            unmeasured.ModelPrefab = prepared.ModelPrefab;
+            unmeasured.Translator = prepared.Translator;
+            Assert.That(unmeasured.MeasureGroundOnLoad, Is.True, "A new source should measure on load.");
+            Assert.That(unmeasured.GroundOffset, Is.Zero);
+            try
+            {
+                rig.Floor();
+                rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+                animation = rig.Animation;
+                yield return rig.WaitForModel();
+                yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(unmeasured));
+                TakeOverAnimator();
+                var feet = animator.GetComponent<FootPlacementIK>();
+                Assert.That(feet.FloorOffset, Is.EqualTo(prepared.GroundOffset).Within(1e-4f), "Measured on load, as Prepare Character Models measures it.");
+                Assert.That(feet.AnimatedFloorOffset, Is.EqualTo(prepared.AnimatedGroundOffset).Within(1e-4f));
+                float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
+                yield return rig.Run(1f, _ => CharacterTestRig.Idle(), step =>
+                {
+                    StepAnimator(step);
+                    if (step < CharacterTestRig.StepsFor(0.5f)) { return; }
+                    float sole = LowestPointOfModel();
+                    lowest = Mathf.Min(lowest, sole);
+                    highest = Mathf.Max(highest, sole);
+                });
+                Assert.That(lowest, Is.GreaterThan(-0.002f));
+                Assert.That(highest, Is.LessThan(0.002f));
+            }
+            finally
+            {
+                Object.Destroy(unmeasured);
+            }
+        }
+
+        private static readonly Vector3[] StretchedScales = { new(1f, 0.5f, 1f), new(1f, 2f, 1f), new(2f, 1f, 0.5f) };
+
+        /// <summary>
+        /// With foot placement only partly on (as while it fades in on landing), a stretched model stands as the same
+        /// model does unstretched, for its height. Foot placement plants each foot relative to where the animation has
+        /// it, which Unity reports wrongly for stretched models (see CharacterUtilities.AnimatedIKGoalPosition).
+        /// (Compared with the unstretched model rather than the floor: half way between foot placement's pose and the
+        /// animation's own, a retargeted model's soles can be several millimetres off the floor at any size, as the
+        /// two poses differ a little.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StretchedModels_StandAsTheyDoUnstretched_WithFootPlacementPartlyOn([ValueSource(nameof(PreparedModels))] string definitionPath,
+            [ValueSource(nameof(StretchedScales))] Vector3 scale)
+        {
+            (float lowest, float highest) normal = default, stretched = default;
+            yield return MeasureStandingSoles(definitionPath, Vector3.one, 0.5f, s => normal = s);
+            rig.Dispose();
+            yield return null;
+            rig = new CharacterTestRig();
+            yield return MeasureStandingSoles(definitionPath, scale, 0.5f, s => stretched = s);
+            Assert.That(rig.Grounded, Is.True);
+            float lowest = stretched.lowest / scale.y, highest = stretched.highest / scale.y;
+            TestContext.WriteLine($"For its height: soles between {lowest * 1000f:0.00} and {highest * 1000f:0.00} mm, against " +
+                                  $"{normal.lowest * 1000f:0.00} and {normal.highest * 1000f:0.00} mm unstretched.");
+            Assert.That(lowest, Is.EqualTo(normal.lowest).Within(0.001f), "Its lowest point should be where it is unstretched, for its height.");
+            Assert.That(highest, Is.EqualTo(normal.highest).Within(0.001f), "Its highest point should be where it is unstretched, for its height.");
+        }
+
+        /// <summary>
+        /// A knee hint set on its own bends the knee and leaves the foot where the animation has it, on a model stretched
+        /// to twice its height too. Unity only applies a hint while its limb's goal is active, so CharacterIK turns the
+        /// goal on, aimed at where the animation has the foot, which Unity reports at half its height on such a model
+        /// (see CharacterUtilities.AnimatedIKGoalPosition): uncorrected, the foot is pulled up off the floor.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AKneeHintOnItsOwn_LeavesTheFootWhereTheAnimationHasIt_OnAStretchedModel()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(Vector3.zero);
+            animation = rig.Animation;
+            yield return rig.WaitForModel();
+            yield return new WaitForFixedUpdate();
+            rig.Controller.SetScale(new Vector3(1f, 2f, 1f), immediately: true);
+            TakeOverAnimator();
+            animator.GetComponent<FootPlacementIK>().enabled = false; // Only the hint.
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
+            Transform foot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform knee = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
+            Vector3 before = foot.position;
+
+            var ik = animator.GetComponent<CharacterIK>();
+            ik.SetHint(IKLimb.LeftFoot, knee.position + rig.Character.transform.forward * 0.2f, 1f);
+            ik.SnapWeights();
+            yield return rig.Run(0.2f, _ => CharacterTestRig.Idle(), StepAnimator);
+            float moved = Vector3.Distance(foot.position, before);
+            TestContext.WriteLine($"The foot moved {moved * 1000f:0.0} mm.");
+            Assert.That(moved, Is.LessThan(0.01f), "The foot should stay where the animation has it.");
+        }
+
+        /// <summary>
+        /// Stands the model idle on a floor at the given scale, with foot placement at the given weight, and gives back
+        /// how far its soles were from the floor once settled, at their lowest and highest.
+        /// </summary>
+        private IEnumerator MeasureStandingSoles(string definitionPath, Vector3 scale, float footPlacementWeight,
+            System.Action<(float lowest, float highest)> result)
+        {
             yield return SpawnWithModel(definitionPath);
             yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
             Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
             TakeOverAnimator();
+            animator.GetComponent<FootPlacementIK>().weight = footPlacementWeight;
             float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), step =>
             {
@@ -281,12 +422,8 @@ namespace CharacterShowcase.Tests
                 lowest = Mathf.Min(lowest, sole);
                 highest = Mathf.Max(highest, sole);
             });
-            Assert.That(rig.Grounded, Is.True);
-            // Within 2 mm for a model of normal size (the idle clip moves the feet a little), scaled with its height.
-            float tolerance = 0.002f * scale.y;
-            TestContext.WriteLine($"Soles between {lowest * 1000f:0.00} and {highest * 1000f:0.00} mm from the floor.");
-            Assert.That(lowest, Is.GreaterThan(-tolerance), $"The soles sink {-lowest * 1000f:0.0} mm into the floor.");
-            Assert.That(highest, Is.LessThan(tolerance), $"The soles float {highest * 1000f:0.0} mm above the floor.");
+            TestContext.WriteLine($"At {scale}: soles between {lowest * 1000f:0.00} and {highest * 1000f:0.00} mm from the floor.");
+            result((lowest, highest));
         }
 
         /// <summary>

@@ -36,10 +36,23 @@ namespace Character
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
         [Tooltip("Uniform scale applied to the model")]
         [Min(0.001f)] [SerializeField] private float scale = 1f;
+        [Tooltip("Measure where the model's soles are each time it's loaded, rather than using Ground Offset and Animated " +
+                 "Ground Offset. On for sources made by hand or in code, whose models haven't been measured; Prepare " +
+                 "Character Models measures its models' and turns this off.")]
+        [SerializeField] private bool measureGroundOnLoad = true;
         [Tooltip("How far above its origin the model's soles are as it stands, in the model's own units (before Scale and " +
-                 "Fit To Height): the model is lowered by this, so its feet rest on the ground. Negative if its feet sink " +
-                 "below its origin. Prepare Character Models measures it from the model standing idle.")]
+                 "Fit To Height), with its feet where foot placement holds them (or, for a model without foot placement, " +
+                 "where its animation puts them): the model is lowered by this, so its feet rest on the ground. Negative " +
+                 "if its feet sink below its origin. Prepare Character Models measures it from the model standing idle.")]
         [SerializeField] private float groundOffset;
+        [Tooltip("The same, with the feet where its animation puts them. A model of other proportions than the clips' own " +
+                 "has its feet a little higher or lower there than at the IK goals foot placement uses: foot placement " +
+                 "makes up the difference while it's off or fading (in the air, dashing).")]
+        [SerializeField] private float animatedGroundOffset;
+        [Tooltip("Degrees the model is turned about the up axis so it faces the character's forward (+Z), before Rotation " +
+                 "Offset: for a model made facing another way, which its animation keeps. Prepare Character Models " +
+                 "measures it, to the nearest quarter turn (as do sources measuring on load).")]
+        [SerializeField] private float facingCorrection;
 
         [Header("Setup")]
         [Tooltip("Add CharacterIK to humanoid models that don't have it, so their hands and feet can be posed with IK")]
@@ -58,6 +71,9 @@ namespace Character
         public Vector3 RotationOffset { get => rotationOffset; set => rotationOffset = value; }
         public float Scale { get => scale; set => scale = Mathf.Max(0.001f, value); }
         public float GroundOffset { get => groundOffset; set => groundOffset = value; }
+        public float AnimatedGroundOffset { get => animatedGroundOffset; set => animatedGroundOffset = value; }
+        public bool MeasureGroundOnLoad { get => measureGroundOnLoad; set => measureGroundOnLoad = value; }
+        public float FacingCorrection { get => facingCorrection; set => facingCorrection = value; }
         public ModelHeight Height { get => height; set => height = value; }
         public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
@@ -99,21 +115,11 @@ namespace Character
         {
             Transform modelTransform = model.transform;
             if (modelTransform.parent != context.Parent) { modelTransform.SetParent(context.Parent, false); }
-            modelTransform.SetLocalPositionAndRotation(positionOffset, Quaternion.Euler(rotationOffset));
-            modelTransform.localScale = Vector3.one * scale;
-            if (height == ModelHeight.FitToHeight)
-            {
-                float modelHeight = MeasureHeight(model);
-                if (modelHeight > 0f) { modelTransform.localScale *= fitHeight / modelHeight; }
-            }
-            // Feet on the ground: lowered by the ground offset at the model's size. Being inside the character's model
-            // parent, the offset is scaled with the character, so the feet stay on the ground at any size, however
-            // stretched.
-            modelTransform.localPosition = positionOffset + Vector3.down * (groundOffset * modelTransform.localScale.y);
             if (matchCharacterLayer) { SetLayerRecursively(model, context.Character.layer); }
 
             // The model may be inactive (see CreateModelAsync), so include inactive objects in every search.
             Animator modelAnimator = model.GetComponentInChildren<Animator>(true);
+            FootPlacementIK feet = null;
             if (modelAnimator != null)
             {
                 if (animatorController != null) { modelAnimator.runtimeAnimatorController = animatorController; }
@@ -128,10 +134,38 @@ namespace Character
                     GameObject animated = modelAnimator.gameObject;
                     if (addIK && !animated.TryGetComponent(out CharacterIK _)) { animated.AddComponent<CharacterIK>(); }
                     if (addFootPlacement && !animated.TryGetComponent(out FootPlacementIK _)) { animated.AddComponent<FootPlacementIK>(); }
-                    // Foot placement plants the feet by their soles, which the ground offset says the height of.
-                    if (animated.TryGetComponent(out FootPlacementIK feet)) { feet.FloorOffset = groundOffset; }
+                    animated.TryGetComponent(out feet);
                 }
             }
+
+            // Where the soles are: as stored (measured by Prepare Character Models), or measured now, set up as it is.
+            float soles = groundOffset, animatedSoles = animatedGroundOffset, facing = facingCorrection;
+            if (measureGroundOnLoad && modelAnimator != null
+                && StandingPose.TryMeasure(model, modelAnimator.runtimeAnimatorController, null, out StandingPose standing))
+            {
+                bool placesFeet = feet != null && feet.enabled && feet.weight > 0f;
+                soles = placesFeet ? standing.PlacedSoleHeight : standing.SoleHeight;
+                animatedSoles = standing.SoleHeight;
+                facing = standing.FacingCorrection;
+            }
+            // Foot placement plants the feet by their soles, and makes up for the animation's own sole height when off.
+            if (feet != null)
+            {
+                feet.FloorOffset = soles;
+                feet.AnimatedFloorOffset = animatedSoles;
+            }
+
+            modelTransform.SetLocalPositionAndRotation(positionOffset, ModelRotation(facing));
+            // Measured unscaled, relative to the parent, so the character's own size (the model parent's scale) doesn't
+            // count: a model fitted to 1.8 m on a character twice the size is 3.6 m tall, like any other model would be.
+            modelTransform.localScale = Vector3.one;
+            float ownHeight = height == ModelHeight.FitToHeight ? MeasureHeight(model, context.Parent) : 0f;
+            float modelScale = ModelScaleFor(ownHeight);
+            modelTransform.localScale = Vector3.one * modelScale;
+            // Feet on the ground: lowered by the sole height at the model's size. Being inside the character's model
+            // parent, the offset is scaled with the character, so the feet stay on the ground at any size, however
+            // stretched.
+            modelTransform.localPosition = positionOffset + Vector3.down * (soles * modelScale);
             return Completed();
         }
 
@@ -162,16 +196,23 @@ namespace Character
         /// from the meshes themselves, in their bind pose, so a freshly created model (not yet animated) gives its rest
         /// height. Skinned meshes' renderer bounds aren't used, as they're padded.
         /// </summary>
-        public static float MeasureHeight(GameObject model)
+        public static float MeasureHeight(GameObject model) => MeasureHeight(model, null);
+
+        /// <summary>
+        /// The same, measured in the given transform's space (its units, along its up axis) rather than the world's, so
+        /// that transform's scale, and its parents', don't count. Null measures in world space.
+        /// </summary>
+        public static float MeasureHeight(GameObject model, Transform space)
         {
             float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
+            Matrix4x4 fromWorld = space != null ? space.worldToLocalMatrix : Matrix4x4.identity;
             foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
             {
                 Mesh mesh = renderer is SkinnedMeshRenderer skinned ? skinned.sharedMesh
                     : renderer.TryGetComponent(out MeshFilter filter) ? filter.sharedMesh : null;
                 if (mesh == null) { continue; }
                 Bounds local = mesh.bounds;
-                Matrix4x4 toWorld = renderer.transform.localToWorldMatrix;
+                Matrix4x4 toWorld = fromWorld * renderer.transform.localToWorldMatrix;
                 for (int corner = 0; corner < 8; corner++)
                 {
                     Vector3 point = local.center + Vector3.Scale(local.extents,
@@ -184,9 +225,26 @@ namespace Character
             return top > bottom ? top - bottom : 0f;
         }
 
-        /// <summary>The model's placement relative to the character's model parent.</summary>
-        protected Matrix4x4 Placement => Matrix4x4.TRS(positionOffset + Vector3.down * (groundOffset * scale),
-            Quaternion.Euler(rotationOffset), Vector3.one * scale);
+        /// <summary>
+        /// The uniform scale the model is given, for a model this tall unscaled (in meters, from its meshes in their
+        /// bind pose; only needed with Fit To Height): Scale, or whatever brings it to Fit Height.
+        /// </summary>
+        public float ModelScaleFor(float ownHeight) =>
+            height == ModelHeight.FitToHeight && ownHeight > 0f ? fitHeight / ownHeight : scale;
+
+        /// <summary>How tall a model this tall unscaled stands once this source has sized it (at the character's authored size).</summary>
+        public float StandingHeightFor(float ownHeight) => ownHeight * ModelScaleFor(ownHeight);
+
+        /// <summary>The model's placement relative to the character's model parent, for a model this tall unscaled.</summary>
+        protected Matrix4x4 PlacementFor(float ownHeight)
+        {
+            float modelScale = ModelScaleFor(ownHeight);
+            return Matrix4x4.TRS(positionOffset + Vector3.down * (groundOffset * modelScale), ModelRotation(facingCorrection),
+                Vector3.one * modelScale);
+        }
+
+        /// <summary>The model's rotation relative to the character: turned to face forward, then by Rotation Offset.</summary>
+        private Quaternion ModelRotation(float facing) => Quaternion.Euler(rotationOffset) * Quaternion.Euler(0f, facing, 0f);
 
         private static void SetLayerRecursively(GameObject gameObject, int layer)
         {

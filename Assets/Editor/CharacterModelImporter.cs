@@ -6,8 +6,6 @@ using Character;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using UnityEngine.Animations;
-using UnityEngine.Playables;
 
 namespace CharacterShowcase.EditorTools
 {
@@ -119,29 +117,39 @@ namespace CharacterShowcase.EditorTools
         {
             if (!LoadSharedAssets(out AnimatorController controller, out AnimatorParameterTranslator translator)) { return null; }
             var results = new List<Result>();
-            Dictionary<string, string> prepared = LoadPreparedHashes();
+            Dictionary<string, PreparedRecord> prepared = LoadPreparedRecords();
             int modelCount = 0;
             using (Busy())
             {
                 try
                 {
                     string[] paths = FindModelFiles().ToArray();
-                    for (int i = 0; i < paths.Length; i++)
+                    var byPath = new Dictionary<string, Result>();
+                    // Preparing one model can change what another was prepared against (re-preparing the mannequin
+                    // reimports its clips, which every model's ground offset was measured with), so models found up to
+                    // date are checked again after any model is prepared, until a pass prepares nothing more.
+                    for (int pass = 0; pass < 2; pass++)
                     {
-                        string hash = ContentHash(paths[i]);
-                        if (onlyChanged && IsUpToDate(paths[i], hash, prepared, controller))
+                        bool preparedAny = false;
+                        for (int i = 0; i < paths.Length; i++)
                         {
-                            results.Add(new Result { modelPath = paths[i], name = DisplayName(paths[i]), upToDate = true });
-                            continue;
+                            if (byPath.TryGetValue(paths[i], out Result done) && !done.upToDate) { continue; }
+                            if (onlyChanged && IsUpToDate(paths[i], prepared, controller))
+                            {
+                                byPath[paths[i]] = new Result { modelPath = paths[i], name = DisplayName(paths[i]), upToDate = true };
+                                continue;
+                            }
+                            if (!Application.isBatchMode)
+                            {
+                                EditorUtility.DisplayProgressBar("Prepare Character Models", paths[i], (float)i / paths.Length);
+                            }
+                            byPath[paths[i]] = Prepare(paths[i], controller, translator);
+                            preparedAny = true;
                         }
-                        if (!Application.isBatchMode)
-                        {
-                            EditorUtility.DisplayProgressBar("Prepare Character Models", paths[i], (float)i / paths.Length);
-                        }
-                        Result result = Prepare(paths[i], controller, translator);
-                        results.Add(result);
-                        if (result.Succeeded) { prepared[paths[i]] = hash; } else { prepared.Remove(paths[i]); }
+                        if (!onlyChanged || !preparedAny) { break; }
+                        AssetDatabase.SaveAssets();
                     }
+                    results.AddRange(paths.Select(path => byPath[path]));
                 }
                 finally
                 {
@@ -151,21 +159,27 @@ namespace CharacterShowcase.EditorTools
 
                 // Check every prepared model once all of them are saved, the same way the Character Model window does,
                 // in case preparing a later model affected an earlier one.
-                foreach (Result result in results.Where(r => r.Succeeded && !r.upToDate))
+                // Recorded only now, once everything is saved and imported: what a model was prepared against (its
+                // controller and clips) is only settled once every model, the mannequin included, is.
+                foreach (Result result in results.Where(r => !r.upToDate))
                 {
-                    string problem = Validate(result.definition);
+                    string problem = result.Succeeded ? Validate(result.definition) : result.problem;
                     if (problem == null && ControllerOf(result.definition) != controller) { problem = $"It doesn't use the shared Animator Controller '{ControllerPath}'."; }
                     if (problem != null)
                     {
                         result.problem = problem;
                         prepared.Remove(result.modelPath);
                     }
+                    else
+                    {
+                        prepared[result.modelPath] = RecordFor(result.modelPath, ControllerOf(result.definition));
+                    }
                 }
                 modelCount = results.Count;
                 results.AddRange(FindOrphans(results));
             }
             prepared.Keys.Where(path => !File.Exists(path)).ToList().ForEach(path => prepared.Remove(path));
-            SavePreparedHashes(prepared);
+            SavePreparedRecords(prepared);
 
             bool anythingHappened = results.Any(r => !r.upToDate);
             if (onlyChanged && !anythingHappened) { return results; }
@@ -200,61 +214,95 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// Whether a model needs no preparing: its prepared assets are where they belong and ready to use, and its file
-        /// hasn't changed since it was last prepared on this machine (or was never prepared here, as after cloning the
-        /// project, where the prepared assets come with it).
+        /// Whether a model needs no preparing: its prepared assets are where they belong and ready to use, and neither its
+        /// file nor the animation its ground offset was measured with (its controller and the clips it plays) has
+        /// changed since it was last prepared on this machine. A model never prepared here (as after cloning the
+        /// project, where the prepared assets come with it) counts as up to date.
         /// </summary>
-        private static bool IsUpToDate(string modelPath, string hash, Dictionary<string, string> prepared, AnimatorController controller)
+        private static bool IsUpToDate(string modelPath, Dictionary<string, PreparedRecord> prepared, AnimatorController controller)
         {
             var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(DefinitionPathFor(modelPath, DisplayName(modelPath)));
             if (source == null || Validate(source) != null || ControllerOf(source) != controller) { return false; }
             var prefabSource = PrefabUtility.GetCorrespondingObjectFromOriginalSource(source.ModelPrefab);
             if (prefabSource == null || AssetDatabase.GetAssetPath(prefabSource) != modelPath) { return false; }
-            return !prepared.TryGetValue(modelPath, out string recorded) || recorded == hash;
+            return !prepared.TryGetValue(modelPath, out PreparedRecord recorded) || recorded.Equals(RecordFor(modelPath, ControllerOf(source)));
         }
 
         // Bump to re-prepare every model once, when what preparing does changes.
-        private const string PreparationVersion = "3";
-        // Per machine, like the rest of Library: which model files were prepared, and their contents at the time.
+        private const string PreparationVersion = "6";
+        // Per machine, like the rest of Library: which model files were prepared, their contents at the time, and the
+        // animation they were prepared against.
         private const string PreparedHashesPath = "Library/CharacterShowcase/PreparedModels.txt";
 
-        /// <summary>A hash of the model file's contents and of the version of this preparation.</summary>
-        private static string ContentHash(string modelPath)
+        /// <summary>What a model was prepared from: its file (and this preparation's version), and its animation.</summary>
+        public readonly struct PreparedRecord : System.IEquatable<PreparedRecord>
+        {
+            public PreparedRecord(string file, string animation)
+            {
+                File = file;
+                Animation = animation;
+            }
+
+            /// <summary>A hash of the model file's contents and the version of this preparation.</summary>
+            public string File { get; }
+            /// <summary>
+            /// A hash of the Animator Controller the model plays and everything it depends on (its clips, and the files
+            /// they come from), which its ground offset is measured with.
+            /// </summary>
+            public string Animation { get; }
+
+            public bool Equals(PreparedRecord other) => File == other.File && Animation == other.Animation;
+            public override bool Equals(object obj) => obj is PreparedRecord other && Equals(other);
+            public override int GetHashCode() => System.HashCode.Combine(File, Animation);
+        }
+
+        /// <summary>What preparing the model now would be preparing it from: see PreparedRecord.</summary>
+        public static PreparedRecord RecordFor(string modelPath, RuntimeAnimatorController controller)
         {
             var hash = new Hash128();
             hash.Append(File.ReadAllBytes(modelPath));
             hash.Append(PreparationVersion);
-            return hash.ToString();
+            string controllerPath = controller != null ? AssetDatabase.GetAssetPath(controller) : null;
+            string animation = string.IsNullOrEmpty(controllerPath) ? "none" : AssetDatabase.GetAssetDependencyHash(controllerPath).ToString();
+            return new PreparedRecord(hash.ToString(), animation);
         }
 
-        /// <summary>Whether the model file has changed since it was last prepared on this machine (false if it never was).</summary>
+        /// <summary>
+        /// Whether the model file has changed since it was last prepared on this machine (false if it never was). Only
+        /// the file: the mannequin is regenerated when this says so, which rebuilds its controller, so changes to the
+        /// controller made by hand mustn't count.
+        /// </summary>
         public static bool HasChangedSincePrepared(string modelPath) =>
-            LoadPreparedHashes().TryGetValue(modelPath, out string recorded) && recorded != ContentHash(modelPath);
+            LoadPreparedRecords().TryGetValue(modelPath, out PreparedRecord recorded) && recorded.File != RecordFor(modelPath, null).File;
 
         /// <summary>Records a model as prepared as it is now, for tools that prepare a model themselves (Generate Mannequin).</summary>
-        public static void MarkPrepared(string modelPath)
+        public static void MarkPrepared(string modelPath, RuntimeAnimatorController controller)
         {
-            Dictionary<string, string> prepared = LoadPreparedHashes();
-            prepared[modelPath] = ContentHash(modelPath);
-            SavePreparedHashes(prepared);
+            Dictionary<string, PreparedRecord> prepared = LoadPreparedRecords();
+            prepared[modelPath] = RecordFor(modelPath, controller);
+            SavePreparedRecords(prepared);
         }
 
-        private static Dictionary<string, string> LoadPreparedHashes()
+        // One line per model: "file hash<tab>animation hash<tab>path". (Lines from before the animation was recorded
+        // have no animation hash, so those models are prepared again once.)
+        private static Dictionary<string, PreparedRecord> LoadPreparedRecords()
         {
-            var hashes = new Dictionary<string, string>();
-            if (!File.Exists(PreparedHashesPath)) { return hashes; }
+            var records = new Dictionary<string, PreparedRecord>();
+            if (!File.Exists(PreparedHashesPath)) { return records; }
             foreach (string line in File.ReadAllLines(PreparedHashesPath))
             {
-                int tab = line.IndexOf('\t');
-                if (tab > 0) { hashes[line[(tab + 1)..]] = line[..tab]; }
+                string[] parts = line.Split('\t');
+                if (parts.Length == 3) { records[parts[2]] = new PreparedRecord(parts[0], parts[1]); }
+                else if (parts.Length == 2) { records[parts[1]] = new PreparedRecord(parts[0], ""); }
             }
-            return hashes;
+            return records;
         }
 
-        private static void SavePreparedHashes(Dictionary<string, string> hashes)
+        private static void SavePreparedRecords(Dictionary<string, PreparedRecord> records)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(PreparedHashesPath));
-            File.WriteAllLines(PreparedHashesPath, hashes.OrderBy(h => h.Key, System.StringComparer.Ordinal).Select(h => $"{h.Value}\t{h.Key}"));
+            File.WriteAllLines(PreparedHashesPath, records.OrderBy(r => r.Key, System.StringComparer.Ordinal)
+                .Select(r => $"{r.Value.File}\t{r.Value.Animation}\t{r.Key}"));
         }
 
         /// <summary>
@@ -391,9 +439,23 @@ namespace CharacterShowcase.EditorTools
             // Measured on the prefab as saved, loaded afresh: the one in hand can still show the avatar as it was before
             // this run changed it.
             GameObject savedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            if (TryMeasureGroundOffset(savedPrefab, ControllerOf(definition), definition.Avatar, out float groundOffset))
+            if (TryMeasureStanding(savedPrefab, ControllerOf(definition), definition.Avatar, out float groundOffset, out float animatedGroundOffset,
+                    out StandingPose standing))
             {
                 definition.GroundOffset = groundOffset;
+                definition.AnimatedGroundOffset = animatedGroundOffset;
+                definition.FacingCorrection = standing.FacingCorrection;
+                definition.MeasureGroundOnLoad = false; // Measured: no need to measure each time it loads.
+                if (standing.FacingCorrection != 0f)
+                {
+                    result.notes.Add($"It was made facing {-standing.FacingCorrection:0} degrees from forward (+Z), so its source turns it to face forward.");
+                }
+                float leftOver = Mathf.Abs(Mathf.DeltaAngle(standing.Facing + standing.FacingCorrection, 0f));
+                if (leftOver > 20f)
+                {
+                    result.notes.Add($"It stands turned {leftOver:0} degrees from forward, even turned by quarter turns: set its source's " +
+                                     "Rotation Offset to face it forward.");
+                }
             }
             else
             {
@@ -402,8 +464,8 @@ namespace CharacterShowcase.EditorTools
             string skew = RotatedAboveSkeleton(modelPrefab, definition.Avatar);
             if (skew != null)
             {
-                result.notes.Add($"{skew} Stretching the character on one axis will distort it: export it without that " +
-                                 "rotation or scale.");
+                result.notes.Add($"{skew} It's unevenly scaled too, so the rotation couldn't be taken out: stretching the character " +
+                                 "on one axis will distort it. Export it without that rotation, or apply its scale.");
             }
             EditorUtility.SetDirty(definition);
             result.definition = definition;
@@ -548,9 +610,11 @@ namespace CharacterShowcase.EditorTools
                 {
                     if (!transforms.TryGetValue(skeleton[i].name, out Transform t) || t == instance.transform) { continue; }
                     if (Quaternion.Angle(skeleton[i].rotation, t.localRotation) > 0.01f
-                        || Vector3.Distance(skeleton[i].position, t.localPosition) > 1e-4f) { changed = true; }
+                        || Vector3.Distance(skeleton[i].position, t.localPosition) > 1e-4f
+                        || Vector3.Distance(skeleton[i].scale, t.localScale) > 1e-4f * Mathf.Max(1f, t.localScale.magnitude)) { changed = true; }
                     skeleton[i].rotation = t.localRotation;
                     skeleton[i].position = t.localPosition;
+                    skeleton[i].scale = t.localScale; // Straightening can swap a node's scale axes.
                 }
                 bool mappingWasSaved = importer.humanDescription.human != null && importer.humanDescription.human.Length > 0;
                 if (!changed && mappingWasSaved) { return false; }
@@ -598,21 +662,61 @@ namespace CharacterShowcase.EditorTools
         /// along one axis only (taller, say) the rotation turns the stretch onto another axis: the body is distorted and
         /// lifted off the ground, its hips stretched by the scale twice over. Unrotated, as in models without such a
         /// node, the stretch applies as it should. Every bone's world pose is unchanged, so animation looks the same.
+        ///
+        /// A node scaled unevenly keeps its scale on the same axes in the world: its rotation is taken out only if it's
+        /// a whole number of quarter turns about each axis (as an axis conversion is), which only swaps the scale's
+        /// axes. Any other rotation of an unevenly scaled node can't be taken out without shearing what's under it, so
+        /// the node is left as it is. (An uneven scale on its own is fine: it stretches the model along axes the
+        /// character's own stretches line up with.) Returns whether every node above the hips is now unrotated.
         /// </summary>
-        private static void StraightenAboveSkeleton(Transform root, Transform hips)
+        public static bool StraightenAboveSkeleton(Transform root, Transform hips)
         {
-            if (hips == null) { return; }
+            if (hips == null) { return true; }
             var above = new List<Transform>();
             for (Transform node = hips.parent; node != null && node != root; node = node.parent) { above.Add(node); }
             above.Reverse(); // From the top down, so straightening one doesn't move the ones below it.
+            bool allStraight = true;
             foreach (Transform node in above)
             {
-                if (Quaternion.Angle(node.localRotation, Quaternion.identity) < 1e-3f) { continue; }
-                var children = new List<(Transform child, Vector3 position, Quaternion rotation)>();
-                foreach (Transform child in node) { children.Add((child, child.position, child.rotation)); }
+                Quaternion rotation = node.localRotation;
+                if (Quaternion.Angle(rotation, Quaternion.identity) < 1e-3f) { continue; }
+                Vector3 scale = node.localScale;
+                bool even = Mathf.Abs(scale.x - scale.y) <= 1e-5f * Mathf.Abs(scale.y) && Mathf.Abs(scale.z - scale.y) <= 1e-5f * Mathf.Abs(scale.y);
+                Matrix4x4 turn = Matrix4x4.Rotate(rotation);
+                if (!even && !IsQuarterTurns(turn))
+                {
+                    allStraight = false;
+                    continue;
+                }
+                // Before, a child sits at node rotation x node scale x its own pose; after, at the node's new scale x its
+                // new pose. With the scale's axes swapped as the rotation swaps them (the rotation applied to the scale,
+                // sign dropped), the child's new pose is just the rotation applied to its old one.
+                node.localScale = new Vector3(
+                    Mathf.Abs(turn.m00) * scale.x + Mathf.Abs(turn.m01) * scale.y + Mathf.Abs(turn.m02) * scale.z,
+                    Mathf.Abs(turn.m10) * scale.x + Mathf.Abs(turn.m11) * scale.y + Mathf.Abs(turn.m12) * scale.z,
+                    Mathf.Abs(turn.m20) * scale.x + Mathf.Abs(turn.m21) * scale.y + Mathf.Abs(turn.m22) * scale.z);
+                if (even) { node.localScale = scale; } // Exactly as it was, without rounding.
                 node.localRotation = Quaternion.identity;
-                foreach ((Transform child, Vector3 position, Quaternion rotation) in children) { child.SetPositionAndRotation(position, rotation); }
+                foreach (Transform child in node)
+                {
+                    child.SetLocalPositionAndRotation(rotation * child.localPosition, rotation * child.localRotation);
+                }
             }
+            return allStraight;
+        }
+
+        /// <summary>Whether a rotation is a whole number of quarter turns: it only swaps axes (and their signs).</summary>
+        private static bool IsQuarterTurns(Matrix4x4 turn)
+        {
+            for (int row = 0; row < 3; row++)
+            {
+                for (int column = 0; column < 3; column++)
+                {
+                    float value = Mathf.Abs(turn[row, column]);
+                    if (value > 1e-4f && value < 1f - 1e-4f) { return false; }
+                }
+            }
+            return true;
         }
 
         /// <summary>Turns the bone so its child lies in the given direction from it.</summary>
@@ -671,9 +775,10 @@ namespace CharacterShowcase.EditorTools
             gameObject != null && gameObject.TryGetComponent(out T component) ? EditorJsonUtility.ToJson(component) : null;
 
         /// <summary>
-        /// Describes the nodes between the model's root and its hips that its avatar poses rotated or unevenly scaled,
-        /// which distort the model when the character is stretched along one axis, or null if there are none.
-        /// Preparing straightens rotated ones (see StraightenAboveSkeleton), so this reports what that couldn't fix.
+        /// Describes the nodes between the model's root and its hips that its avatar poses rotated, which distort the
+        /// model when the character is stretched along one axis, or null if there are none. Preparing straightens them
+        /// (see StraightenAboveSkeleton), so this reports what that couldn't: a node both unevenly scaled and turned by
+        /// other than quarter turns. (Uneven scale on its own doesn't distort the model, so it isn't reported.)
         /// </summary>
         public static string RotatedAboveSkeleton(GameObject modelPrefab, Avatar avatarOverride)
         {
@@ -690,88 +795,49 @@ namespace CharacterShowcase.EditorTools
             {
                 SkeletonBone pose = description.skeleton.FirstOrDefault(bone => bone.name == node.name);
                 if (pose.name == null) { continue; }
-                Vector3 scale = pose.scale;
-                bool rotated = Quaternion.Angle(pose.rotation, Quaternion.identity) > 0.5f;
-                bool uneven = Mathf.Abs(scale.x - scale.y) > 1e-3f * Mathf.Abs(scale.y) || Mathf.Abs(scale.z - scale.y) > 1e-3f * Mathf.Abs(scale.y);
-                if (rotated) { problems.Add($"'{node.name}' is rotated"); }
-                if (uneven) { problems.Add($"'{node.name}' is unevenly scaled"); }
+                if (Quaternion.Angle(pose.rotation, Quaternion.identity) > 0.5f) { problems.Add($"'{node.name}' is rotated"); }
             }
             return problems.Count == 0 ? null : string.Join(", ", problems) + ", above its skeleton.";
         }
 
         /// <summary>
-        /// How far above its origin the model's soles are as it stands idle, in its own units: its lowest vertex in the
-        /// pose its Animator Controller starts in, standing still (the default state's clip, or for a blend tree, its
-        /// clip for the lowest value, as standing still is), with its feet where foot placement holds them. Used as its source's Ground Offset, so models whose feet sit
-        /// a little above or below their origin (or whose animation, retargeted onto them, does) still stand on the
-        /// ground. False if the model can't be posed or has no meshes.
+        /// How far above its origin the model's soles are as it stands idle, in its own units: its lowest point in its
+        /// standing clip (the default state's clip, or for a blend tree, its clip for the lowest value, as standing
+        /// still is), with its feet where foot placement holds them if it has foot placement, else where the animation
+        /// puts them, and the latter on its own. Every mesh counts, skinned or carried by a bone. Used as its source's
+        /// Ground Offset and Animated Ground Offset, so models whose feet sit a little above or below their origin (or
+        /// whose animation, retargeted onto them, does) still stand on the ground. Measured by StandingPose, as sources
+        /// without stored offsets are when they load. False if the model can't be posed or has no meshes.
         /// </summary>
-        public static bool TryMeasureGroundOffset(GameObject modelPrefab, RuntimeAnimatorController controller, Avatar avatarOverride, out float offset)
+        public static bool TryMeasureGroundOffsets(GameObject modelPrefab, RuntimeAnimatorController controller, Avatar avatarOverride,
+            out float groundOffset, out float animatedGroundOffset) =>
+            TryMeasureStanding(modelPrefab, controller, avatarOverride, out groundOffset, out animatedGroundOffset, out _);
+
+        /// <summary>The same, and the way the model faces as it stands (see StandingPose.Facing).</summary>
+        public static bool TryMeasureStanding(GameObject modelPrefab, RuntimeAnimatorController controller, Avatar avatarOverride,
+            out float groundOffset, out float animatedGroundOffset, out StandingPose pose)
         {
-            offset = 0f;
-            AnimationClip standing = StandingClip(controller, out bool footIK);
-            if (modelPrefab == null || standing == null) { return false; }
-            var instance = Object.Instantiate(modelPrefab);
-            instance.hideFlags = HideFlags.HideAndDontSave;
-            PlayableGraph graph = default;
-            var baked = new Mesh();
-            try
-            {
-                instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-                instance.transform.localScale = Vector3.one;
-                Animator animator = instance.GetComponentInChildren<Animator>(true);
-                if (animator == null) { return false; }
-                if (avatarOverride != null) { animator.avatar = avatarOverride; }
-                animator.applyRootMotion = false;
-
-                // Posed by hand, in edit mode, at the clip's first frame.
-                graph = PlayableGraph.Create("Measure Ground Offset");
-                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
-                var output = AnimationPlayableOutput.Create(graph, "Pose", animator);
-                AnimationClipPlayable pose = AnimationClipPlayable.Create(graph, standing);
-                // With the feet where the character will stand them: FootPlacementIK holds them at their IK goals while
-                // on the ground, which are where the clip has them (not quite where a model of other proportions than
-                // the clip's own has them otherwise: up to a centimetre off). Without it, as the controller's state
-                // plays them.
-                bool placesFeet = instance.GetComponentsInChildren<FootPlacementIK>(true).Any(feet => feet.enabled && feet.weight > 0f);
-                pose.SetApplyFootIK(footIK || placesFeet);
-                output.SetSourcePlayable(pose);
-                graph.Evaluate(0f);
-
-                float lowest = float.PositiveInfinity;
-                foreach (SkinnedMeshRenderer skinned in instance.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-                {
-                    if (skinned.sharedMesh == null) { continue; }
-                    // Baked without the renderer's scale taken out, so the vertices are in world units relative to its
-                    // position and rotation.
-                    skinned.BakeMesh(baked, false);
-                    Matrix4x4 toWorld = Matrix4x4.TRS(skinned.transform.position, skinned.transform.rotation, Vector3.one);
-                    foreach (Vector3 vertex in baked.vertices) { lowest = Mathf.Min(lowest, toWorld.MultiplyPoint3x4(vertex).y); }
-                }
-                if (!float.IsFinite(lowest)) { return false; }
-                // Rounded, so measuring again doesn't dirty the source over floating point noise.
-                offset = Mathf.Round(lowest * 1e5f) / 1e5f;
-                return true;
-            }
-            finally
-            {
-                if (graph.IsValid()) { graph.Destroy(); }
-                Object.DestroyImmediate(baked);
-                Object.DestroyImmediate(instance);
-            }
+            groundOffset = animatedGroundOffset = 0f;
+            pose = default;
+            AnimationClip standing = StandingClip(controller);
+            if (modelPrefab == null || standing == null
+                || !StandingPose.TryMeasure(modelPrefab, controller, avatarOverride, out pose, standing)) { return false; }
+            bool placesFeet = modelPrefab.GetComponentsInChildren<FootPlacementIK>(true).Any(feet => feet.enabled && feet.weight > 0f);
+            groundOffset = placesFeet ? pose.PlacedSoleHeight : pose.SoleHeight;
+            animatedGroundOffset = pose.SoleHeight;
+            return true;
         }
 
-        /// <summary>
-        /// The clip the controller plays standing still (see TryMeasureGroundOffset), and whether its state applies foot
-        /// IK. Null if there's none.
-        /// </summary>
-        private static AnimationClip StandingClip(RuntimeAnimatorController controller, out bool footIK)
+        /// <summary>The model's Ground Offset, as TryMeasureGroundOffsets measures it.</summary>
+        public static bool TryMeasureGroundOffset(GameObject modelPrefab, RuntimeAnimatorController controller, Avatar avatarOverride, out float offset) =>
+            TryMeasureGroundOffsets(modelPrefab, controller, avatarOverride, out offset, out _);
+
+        /// <summary>The clip the controller plays standing still (see TryMeasureGroundOffsets). Null if there's none.</summary>
+        private static AnimationClip StandingClip(RuntimeAnimatorController controller)
         {
-            footIK = false;
             if (controller is not AnimatorController editable || editable.layers.Length == 0) { return null; }
             AnimatorState state = editable.layers[0].stateMachine.defaultState;
             if (state == null) { return null; }
-            footIK = state.iKOnFeet;
             Motion motion = state.motion;
             while (motion is BlendTree tree && tree.children.Length > 0)
             {
