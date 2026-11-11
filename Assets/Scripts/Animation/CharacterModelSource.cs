@@ -25,6 +25,11 @@ namespace Character
         [SerializeField] private Avatar avatar;
 
         [Header("Placement")]
+        [Tooltip("Keep the model at its own size (times Scale), or scale it to Fit Height. Either way, the character warns " +
+                 "if the model is too tall or too short for its collider.")]
+        [SerializeField] private ModelHeight height = ModelHeight.KeepModelSize;
+        [Tooltip("With Height set to Fit To Height, the model is scaled to stand this tall, in meters")]
+        [Min(0.01f)] [SerializeField] private float fitHeight = 1.8f;
         [Tooltip("Offset of the model from the character's feet, in the character's space")]
         [SerializeField] private Vector3 positionOffset = Vector3.zero;
         [Tooltip("Rotation of the model relative to the character, in degrees")]
@@ -48,11 +53,17 @@ namespace Character
         public Vector3 PositionOffset { get => positionOffset; set => positionOffset = value; }
         public Vector3 RotationOffset { get => rotationOffset; set => rotationOffset = value; }
         public float Scale { get => scale; set => scale = Mathf.Max(0.001f, value); }
+        public ModelHeight Height { get => height; set => height = value; }
+        public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
         /// <summary>
         /// Creates the model under the context's parent and sets it up for the character (usually by calling
-        /// SetUpModel), then hands it back. It may take as many frames as it needs; the character moves normally
+        /// SetUpModelAsync), then hands it back. It may take as many frames as it needs; the character moves normally
         /// meanwhile, and keeps its current model until this one is ready.
+        ///
+        /// The context's parent is inactive, so the model is created hidden, and its components don't start, until the
+        /// character swaps it in: the old model and the new one are never both seen. Create the model under it (or move
+        /// it there) rather than anywhere visible.
         ///
         /// If the token is cancelled (the character was destroyed or given another model first), stop, clean up
         /// anything created or loaded so far (destroy instances, release handles), and throw OperationCanceledException,
@@ -67,7 +78,10 @@ namespace Character
         /// </summary>
         public virtual void ReleaseModel(CharacterModel model)
         {
-            if (model != null && model.Root != null) { Destroy(model.Root); }
+            if (model == null || model.Root == null) { return; }
+            // Destroy takes effect at the end of the frame; hide it now, so it's gone the moment its replacement appears.
+            model.Root.SetActive(false);
+            Destroy(model.Root);
         }
 
         /// <summary>
@@ -82,9 +96,15 @@ namespace Character
             if (modelTransform.parent != context.Parent) { modelTransform.SetParent(context.Parent, false); }
             modelTransform.SetLocalPositionAndRotation(positionOffset, Quaternion.Euler(rotationOffset));
             modelTransform.localScale = Vector3.one * scale;
+            if (height == ModelHeight.FitToHeight)
+            {
+                float modelHeight = MeasureHeight(model);
+                if (modelHeight > 0f) { modelTransform.localScale *= fitHeight / modelHeight; }
+            }
             if (matchCharacterLayer) { SetLayerRecursively(model, context.Character.layer); }
 
-            Animator modelAnimator = model.GetComponentInChildren<Animator>();
+            // The model may be inactive (see CreateModelAsync), so include inactive objects in every search.
+            Animator modelAnimator = model.GetComponentInChildren<Animator>(true);
             if (modelAnimator != null)
             {
                 if (animatorController != null) { modelAnimator.runtimeAnimatorController = animatorController; }
@@ -126,6 +146,33 @@ namespace Character
         /// </summary>
         public virtual void GetPreviewMeshes(List<PreviewMesh> results) => results.Clear();
 
+        /// <summary>
+        /// How tall a model is in meters, as it stands now: from the lowest to the highest point of its meshes. Measured
+        /// from the meshes themselves, in their bind pose, so a freshly created model (not yet animated) gives its rest
+        /// height. Skinned meshes' renderer bounds aren't used, as they're padded.
+        /// </summary>
+        public static float MeasureHeight(GameObject model)
+        {
+            float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
+            foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
+            {
+                Mesh mesh = renderer is SkinnedMeshRenderer skinned ? skinned.sharedMesh
+                    : renderer.TryGetComponent(out MeshFilter filter) ? filter.sharedMesh : null;
+                if (mesh == null) { continue; }
+                Bounds local = mesh.bounds;
+                Matrix4x4 toWorld = renderer.transform.localToWorldMatrix;
+                for (int corner = 0; corner < 8; corner++)
+                {
+                    Vector3 point = local.center + Vector3.Scale(local.extents,
+                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
+                    float y = toWorld.MultiplyPoint3x4(point).y;
+                    bottom = Mathf.Min(bottom, y);
+                    top = Mathf.Max(top, y);
+                }
+            }
+            return top > bottom ? top - bottom : 0f;
+        }
+
         /// <summary>The model's placement relative to the character's model parent.</summary>
         protected Matrix4x4 Placement => Matrix4x4.TRS(positionOffset, Quaternion.Euler(rotationOffset), Vector3.one * scale);
 
@@ -134,6 +181,15 @@ namespace Character
             gameObject.layer = layer;
             foreach (Transform child in gameObject.transform) { SetLayerRecursively(child.gameObject, layer); }
         }
+    }
+
+    /// <summary>How a CharacterModelSource sizes its model.</summary>
+    public enum ModelHeight
+    {
+        /// <summary>The model's own size, times the source's Scale.</summary>
+        KeepModelSize,
+        /// <summary>Scaled to stand the source's Fit Height tall, whatever size the model is.</summary>
+        FitToHeight,
     }
 
     /// <summary>What a CharacterModelSource is creating a model for.</summary>
@@ -147,7 +203,10 @@ namespace Character
 
         /// <summary>The character the model is for.</summary>
         public GameObject Character { get; }
-        /// <summary>The transform the model belongs under, which turns to face the character's direction.</summary>
+        /// <summary>
+        /// The transform to create the model under: inactive, beneath the character's model parent, so the model is set
+        /// up out of sight and appears only when the character swaps it in.
+        /// </summary>
         public Transform Parent { get; }
     }
 
@@ -158,7 +217,8 @@ namespace Character
         {
             Root = root;
             Translator = translator;
-            Animator = root != null ? root.GetComponentInChildren<Animator>() : null;
+            // The model is usually still inactive when this is made, so inactive objects are included.
+            Animator = root != null ? root.GetComponentInChildren<Animator>(true) : null;
             IK = Animator != null ? Animator.GetComponent<CharacterIK>() : null;
         }
 

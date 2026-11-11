@@ -349,6 +349,9 @@ CLIPS = {
 # sparser would let it slide between them.
 SAMPLES_PER_SECOND = FPS
 
+# The take holding the rest pose; "!" sorts before any letter, so it's always exported first. See build_actions.
+BIND_POSE_TAKE = "!BindPose"
+
 
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -381,6 +384,26 @@ def build_actions(rig):
 
     bpy.context.scene.render.fps = FPS
     rig.animation_data_create()
+
+    # Blender's FBX export makes the first exported action the file's "current take", and Unity takes the model's
+    # default pose from it, which becomes the Humanoid avatar's reference pose. Exported in name order, that was
+    # Dash, so every clip was stored relative to the dash's forward lean and other models played them leaning back.
+    # A one-frame take holding the rest pose, named to sort first, makes the default pose the rest pose. It isn't
+    # imported as a clip (see MannequinGenerator).
+    bind_pose = bpy.data.actions.new(BIND_POSE_TAKE)
+    bind_pose.use_fake_user = True
+    rig.animation_data.action = bind_pose
+    for pb in rig.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = Quaternion()
+        pb.location = (0.0, 0.0, 0.0)
+        for frame in (1, 2):
+            pb.keyframe_insert("rotation_quaternion", frame=frame, group=pb.name)
+            pb.keyframe_insert("location", frame=frame, group=pb.name)
+    bind_pose.frame_range = (1, 2)
+    if sorted(a.name for a in bpy.data.actions)[0] != BIND_POSE_TAKE:
+        raise RuntimeError(f"'{BIND_POSE_TAKE}' must be the first action by name, so it's the FBX's current take.")
+
     names = []
     for name, (fn, duration) in CLIPS.items():
         action = bpy.data.actions.new(name)

@@ -44,7 +44,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             animation = rig.Animation;
             yield return rig.WaitForModel();
-            animator = animation.Animator;
+            animator = rig.Models.Animator;
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle(), FeedAnimator);
             Assert.That(InState("Locomotion"), Is.True, "Test setup: should start in Locomotion.");
 
@@ -72,7 +72,7 @@ namespace CharacterShowcase.Tests
         private void TakeOverAnimator()
         {
             rig.Body.interpolation = RigidbodyInterpolation.None;
-            animator = animation.Animator;
+            animator = rig.Models.Animator;
             animator.enabled = false;
         }
 
@@ -112,7 +112,10 @@ namespace CharacterShowcase.Tests
                 Assert.That(Bone(foot, 0), Is.Not.Null, "Test setup: the model needs foot bones.");
                 Assert.That(Bone(foot, 1), Is.Not.Null, "Test setup: the model needs toe bones.");
             }
-            Inputs walk = CharacterTestRig.Move(Vector3.forward * (WalkClipSpeed / rig.MovementSetting<float>("walkSpeed")));
+            // Walk at the speed the Walk clip is made for, for the character's size: a model scaled to twice the depth
+            // takes strides twice as long, so the Walk clip plays unblended at twice the speed.
+            float walkSpeed = WalkClipSpeed * rig.Controller.Scale.z;
+            Inputs walk = CharacterTestRig.Move(Vector3.forward * (walkSpeed / (rig.MovementSetting<float>("walkSpeed") * rig.Movement.SpeedScale)));
 
             // Reach walking speed and let the speed blend settle before measuring.
             yield return rig.Run(1f, _ => walk, StepAnimator);
@@ -153,10 +156,40 @@ namespace CharacterShowcase.Tests
             }
             Assert.That(flatSteps, Is.GreaterThan(4 * MinimumFlatSteps), "Test setup: the feet should land flat several times.");
             Assert.That(rig.Grounded, Is.True);
-            Assert.That(speed, Is.EqualTo(WalkClipSpeed).Within(0.1f), "Test setup: the character should walk at the Walk clip's speed.");
+            Assert.That(speed, Is.EqualTo(walkSpeed).Within(0.1f * rig.Controller.Scale.z), "Test setup: the character should walk at the Walk clip's speed for its size.");
             float slide = moved / (flatSteps * Time.fixedDeltaTime) / speed;
             TestContext.WriteLine($"Walking at {speed:0.000} m/s, feet flat for {flatSteps} steps, sliding at {slide:P1} of that.");
             result(slide);
+        }
+
+        [UnityTest]
+        public IEnumerator Walking_KeepsThePlantedFeetInPlace_AtOtherSizes([Values(0.25f, 0.5f, 2f)] float size)
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            animation = rig.Animation;
+            yield return rig.WaitForModel();
+            yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
+            rig.Controller.SetScale(Vector3.one * size, immediately: true);
+
+            float slide = 0f;
+            yield return MeasureFootSlide(s => slide = s);
+            Assert.That(slide, Is.LessThan(AllowedFootSlide), $"At {size}x, the planted feet slide at {slide:P0} of the character's speed.");
+        }
+
+        [UnityTest]
+        public IEnumerator Walking_KeepsThePlantedFeetInPlace_WhenStretched()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            animation = rig.Animation;
+            yield return rig.WaitForModel();
+            yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
+            rig.Controller.SetScale(new Vector3(1f, 1.5f, 1.5f), immediately: true);
+
+            float slide = 0f;
+            yield return MeasureFootSlide(s => slide = s);
+            Assert.That(slide, Is.LessThan(AllowedFootSlide), $"Stretched, the planted feet slide at {slide:P0} of the character's speed.");
         }
 
         /// <summary>Every model Prepare Character Models has set up, by definition path.</summary>
@@ -186,11 +219,11 @@ namespace CharacterShowcase.Tests
             animation = rig.Animation;
             yield return rig.WaitForModel();
             bool loaded = false;
-            yield return CharacterTestRig.WaitFor(animation.LoadModelAsync(definition), l => loaded = l);
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(definition), l => loaded = l);
             Assert.That(loaded, Is.True, "The model should load.");
-            Assert.That(animation.ModelSource, Is.SameAs(definition));
-            Assert.That(animation.Animator, Is.Not.Null, "The model should have an Animator.");
-            Assert.That(animation.Animator.runtimeAnimatorController, Is.Not.Null, "The model's Animator should have a controller.");
+            Assert.That(rig.Models.ModelSource, Is.SameAs(definition));
+            Assert.That(rig.Models.Animator, Is.Not.Null, "The model should have an Animator.");
+            Assert.That(rig.Models.Animator.runtimeAnimatorController, Is.Not.Null, "The model's Animator should have a controller.");
         }
 
         [UnityTest]

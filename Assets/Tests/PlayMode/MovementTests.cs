@@ -355,6 +355,36 @@ namespace CharacterShowcase.Tests
             Assert.That(highestAfterLanding, Is.LessThan(0.05f), "Holding jump should not start a new jump on landing.");
         }
 
+        /// <summary>
+        /// Any step up to the step height is climbed, at walking pace as well as running. Steps that are a large fraction
+        /// of the capsule's radius used to leave it perched on the step's edge, which the ground check saw as too steep,
+        /// so it slid back off: nothing over about 0.25 m was climbed, though the step height is 0.35 m.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClimbsAnyStepUpToTheStepHeight([Values(0.25f, 0.3f, 0.34f)] float height, [Values(0.3f, 1f)] float pace)
+        {
+            rig.Floor();
+            rig.Box("Step", new Vector3(0f, height / 2f, 22f), new Vector3(10f, height, 40f)); // From z = 2.
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(3f, _ => CharacterTestRig.Move(Vector3.forward * pace));
+
+            Assert.That(rig.Position.z, Is.GreaterThan(3f), "The character should have got onto the step.");
+            Assert.That(rig.Position.y, Is.EqualTo(height).Within(0.01f), "It should be standing on the step.");
+            Assert.That(rig.Grounded, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator DoesNotClimbStepsTallerThanTheStepHeight()
+        {
+            rig.Floor();
+            rig.Box("Step", new Vector3(0f, 0.2f, 22f), new Vector3(10f, 0.4f, 40f));
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(2f, _ => CharacterTestRig.Move(Vector3.forward));
+
+            Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.01f));
+            Assert.That(rig.Position.z, Is.LessThan(2f), "A step taller than the step height should stop the character.");
+        }
+
         [UnityTest]
         public IEnumerator ClimbsStairs()
         {

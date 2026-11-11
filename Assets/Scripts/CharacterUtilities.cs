@@ -49,6 +49,15 @@ namespace Character
         HitWall = 128,
     }
 
+    /// <summary>How a character's speeds change with its size. See MovementController.</summary>
+    public enum MovementSizeScaling
+    {
+        /// <summary>Speeds and jump launch speed scale with the square root of height, as for real animals.</summary>
+        Natural,
+        /// <summary>Speeds stay as tuned at any size.</summary>
+        Unchanged,
+    }
+
     /// <summary>
     /// A collection of inputs that are required for movement and character actions
     /// </summary>

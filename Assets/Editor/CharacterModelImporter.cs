@@ -17,9 +17,11 @@ namespace CharacterShowcase.EditorTools
     /// - saves a model prefab next to it ("[name] Model.prefab"): the model with an Animator using the shared Animator
     ///   Controller, CharacterIK and FootPlacementIK
     /// - saves a DirectCharacterModelSource next to it ("[name].asset") naming the prefab and the shared translator,
-    ///   which the Character Model window (or an AnimationController) can then use
+    ///   which the Character Model window (or a CharacterModelHost) can then use
     /// Each subfolder can hold one model, or several (variants of one model with different materials, say); each model
-    /// file becomes its own choice. Safe to run repeatedly: IK settings and edits to the definitions are kept.
+    /// file becomes its own choice, named after the file. Safe to run repeatedly: IK settings and edits to the sources
+    /// are kept, assets made under older names are moved to the current ones, and sources left over from models that
+    /// are gone are reported. CharacterModelPostprocessor runs PrepareChanged by itself when models are imported.
     /// </summary>
     public static class CharacterModelImporter
     {
@@ -43,11 +45,19 @@ namespace CharacterShowcase.EditorTools
             // Why the model couldn't be prepared, or null if it was
             public string problem;
             public float height;
+            // Already prepared, and unchanged since, so it was left alone
+            public bool upToDate;
+            // Things worth knowing that aren't problems, such as assets moved to the model's current names
+            public readonly List<string> notes = new();
             public bool Succeeded => problem == null;
 
-            public override string ToString() => Succeeded
-                ? $"'{name}' ({modelPath}): ready, {height:0.00} m tall, definition '{AssetDatabase.GetAssetPath(definition)}'"
-                : $"'{name}' ({modelPath}): not prepared. {problem}";
+            public override string ToString()
+            {
+                string text = !Succeeded ? $"'{name}' ({modelPath}): not prepared. {problem}"
+                    : upToDate ? $"'{name}' ({modelPath}): up to date"
+                    : $"'{name}' ({modelPath}): ready, {height:0.00} m tall, source '{AssetDatabase.GetAssetPath(definition)}'";
+                return notes.Count == 0 ? text : $"{text} ({string.Join(" ", notes)})";
+            }
         }
 
         [MenuItem("Tools/Character Showcase/Prepare Character Models", priority = 2)]
@@ -61,42 +71,220 @@ namespace CharacterShowcase.EditorTools
             EditorUtility.DisplayDialog("Prepare Character Models", summary, "OK");
         }
 
-        /// <summary>Prepares every model file in the models folder. Returns null if the shared animation assets are missing.</summary>
-        public static List<Result> PrepareAll()
+        /// <summary>
+        /// True while a tool is preparing models or generating the mannequin. The imports they cause are their own doing,
+        /// so CharacterModelPostprocessor ignores them rather than preparing the same models again.
+        /// </summary>
+        public static bool IsBusy => busy > 0;
+        private static int busy;
+
+        /// <summary>Marks a tool as working on models until the returned object is disposed. See IsBusy.</summary>
+        public static System.IDisposable Busy()
+        {
+            busy++;
+            return new BusyScope();
+        }
+
+        private sealed class BusyScope : System.IDisposable
+        {
+            private bool disposed;
+            public void Dispose()
+            {
+                if (disposed) { return; }
+                disposed = true;
+                busy--;
+            }
+        }
+
+        /// <summary>
+        /// Prepares every model file in the models folder, whether or not it has changed, and reports assets left over
+        /// from models that are gone. Returns null if the shared animation assets are missing.
+        /// </summary>
+        public static List<Result> PrepareAll() => Prepare(onlyChanged: false);
+
+        /// <summary>
+        /// Prepares the models in the models folder that are new or have changed since they were last prepared, or whose
+        /// prepared assets are missing or broken, and reports assets left over from models that are gone. Run
+        /// automatically by CharacterModelPostprocessor when models are imported. Returns null if the shared animation
+        /// assets are missing.
+        /// </summary>
+        public static List<Result> PrepareChanged() => Prepare(onlyChanged: true);
+
+        private static List<Result> Prepare(bool onlyChanged)
         {
             if (!LoadSharedAssets(out AnimatorController controller, out AnimatorParameterTranslator translator)) { return null; }
             var results = new List<Result>();
-            try
+            Dictionary<string, string> prepared = LoadPreparedHashes();
+            int modelCount = 0;
+            using (Busy())
             {
-                string[] paths = FindModelFiles().ToArray();
-                for (int i = 0; i < paths.Length; i++)
+                try
                 {
-                    if (!Application.isBatchMode)
+                    string[] paths = FindModelFiles().ToArray();
+                    for (int i = 0; i < paths.Length; i++)
                     {
-                        EditorUtility.DisplayProgressBar("Prepare Character Models", paths[i], (float)i / paths.Length);
+                        string hash = ContentHash(paths[i]);
+                        if (onlyChanged && IsUpToDate(paths[i], hash, prepared, controller))
+                        {
+                            results.Add(new Result { modelPath = paths[i], name = DisplayName(paths[i]), upToDate = true });
+                            continue;
+                        }
+                        if (!Application.isBatchMode)
+                        {
+                            EditorUtility.DisplayProgressBar("Prepare Character Models", paths[i], (float)i / paths.Length);
+                        }
+                        Result result = Prepare(paths[i], controller, translator);
+                        results.Add(result);
+                        if (result.Succeeded) { prepared[paths[i]] = hash; } else { prepared.Remove(paths[i]); }
                     }
-                    results.Add(Prepare(paths[i], controller, translator));
                 }
-            }
-            finally
-            {
-                if (!Application.isBatchMode) { EditorUtility.ClearProgressBar(); }
-            }
-            AssetDatabase.SaveAssets();
+                finally
+                {
+                    if (!Application.isBatchMode) { EditorUtility.ClearProgressBar(); }
+                }
+                AssetDatabase.SaveAssets();
 
-            // Check every prepared model once all of them are saved, the same way the Character Model window does, in
-            // case preparing a later model affected an earlier one.
-            foreach (Result result in results.Where(r => r.Succeeded))
-            {
-                string problem = Validate(result.definition);
-                if (problem == null && ControllerOf(result.definition) != controller) { problem = $"It doesn't use the shared Animator Controller '{ControllerPath}'."; }
-                if (problem != null) { result.problem = problem; }
+                // Check every prepared model once all of them are saved, the same way the Character Model window does,
+                // in case preparing a later model affected an earlier one.
+                foreach (Result result in results.Where(r => r.Succeeded && !r.upToDate))
+                {
+                    string problem = Validate(result.definition);
+                    if (problem == null && ControllerOf(result.definition) != controller) { problem = $"It doesn't use the shared Animator Controller '{ControllerPath}'."; }
+                    if (problem != null)
+                    {
+                        result.problem = problem;
+                        prepared.Remove(result.modelPath);
+                    }
+                }
+                modelCount = results.Count;
+                results.AddRange(FindOrphans(results));
             }
+            prepared.Keys.Where(path => !File.Exists(path)).ToList().ForEach(path => prepared.Remove(path));
+            SavePreparedHashes(prepared);
 
-            var log = new StringBuilder($"[CharacterModelImporter] Prepared {results.Count(r => r.Succeeded)} of {results.Count} models in {ModelsFolder}:");
-            foreach (Result result in results) { log.Append("\n  - ").Append(result); }
+            bool anythingHappened = results.Any(r => !r.upToDate);
+            if (onlyChanged && !anythingHappened) { return results; }
+            var log = new StringBuilder($"[CharacterModelImporter] Prepared {results.Count(r => r.Succeeded && !r.upToDate)} " +
+                                        $"of {modelCount} models in {ModelsFolder}:");
+            foreach (Result result in results.Where(r => !onlyChanged || !r.upToDate)) { log.Append("\n  - ").Append(result); }
             if (results.All(r => r.Succeeded)) { Debug.Log(log); } else { Debug.LogWarning(log); }
             return results;
+        }
+
+        /// <summary>
+        /// Model sources in the models folder that no model file accounts for: their model was deleted, or renamed
+        /// outside Unity (which loses the link). They're reported, not deleted, since scenes may still use them.
+        /// </summary>
+        private static IEnumerable<Result> FindOrphans(List<Result> results)
+        {
+            var accountedFor = new HashSet<string>(results.Select(r => DefinitionPathFor(r.modelPath, r.name)));
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { ModelsFolder }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (accountedFor.Contains(path)) { continue; }
+                var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(path);
+                yield return new Result
+                {
+                    modelPath = path,
+                    name = source != null ? source.name : Path.GetFileNameWithoutExtension(path),
+                    definition = source,
+                    problem = "No model file in the folder uses this source any more. Delete it (and its model prefab) once " +
+                              "nothing refers to it, or put its model back.",
+                };
+            }
+        }
+
+        /// <summary>
+        /// Whether a model needs no preparing: its prepared assets are where they belong and ready to use, and its file
+        /// hasn't changed since it was last prepared on this machine (or was never prepared here, as after cloning the
+        /// project, where the prepared assets come with it).
+        /// </summary>
+        private static bool IsUpToDate(string modelPath, string hash, Dictionary<string, string> prepared, AnimatorController controller)
+        {
+            var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(DefinitionPathFor(modelPath, DisplayName(modelPath)));
+            if (source == null || Validate(source) != null || ControllerOf(source) != controller) { return false; }
+            var prefabSource = PrefabUtility.GetCorrespondingObjectFromOriginalSource(source.ModelPrefab);
+            if (prefabSource == null || AssetDatabase.GetAssetPath(prefabSource) != modelPath) { return false; }
+            return !prepared.TryGetValue(modelPath, out string recorded) || recorded == hash;
+        }
+
+        // Bump to re-prepare every model once, when what preparing does changes.
+        private const string PreparationVersion = "2";
+        // Per machine, like the rest of Library: which model files were prepared, and their contents at the time.
+        private const string PreparedHashesPath = "Library/CharacterShowcase/PreparedModels.txt";
+
+        /// <summary>A hash of the model file's contents and of the version of this preparation.</summary>
+        private static string ContentHash(string modelPath)
+        {
+            var hash = new Hash128();
+            hash.Append(File.ReadAllBytes(modelPath));
+            hash.Append(PreparationVersion);
+            return hash.ToString();
+        }
+
+        /// <summary>Whether the model file has changed since it was last prepared on this machine (false if it never was).</summary>
+        public static bool HasChangedSincePrepared(string modelPath) =>
+            LoadPreparedHashes().TryGetValue(modelPath, out string recorded) && recorded != ContentHash(modelPath);
+
+        /// <summary>Records a model as prepared as it is now, for tools that prepare a model themselves (Generate Mannequin).</summary>
+        public static void MarkPrepared(string modelPath)
+        {
+            Dictionary<string, string> prepared = LoadPreparedHashes();
+            prepared[modelPath] = ContentHash(modelPath);
+            SavePreparedHashes(prepared);
+        }
+
+        private static Dictionary<string, string> LoadPreparedHashes()
+        {
+            var hashes = new Dictionary<string, string>();
+            if (!File.Exists(PreparedHashesPath)) { return hashes; }
+            foreach (string line in File.ReadAllLines(PreparedHashesPath))
+            {
+                int tab = line.IndexOf('\t');
+                if (tab > 0) { hashes[line[(tab + 1)..]] = line[..tab]; }
+            }
+            return hashes;
+        }
+
+        private static void SavePreparedHashes(Dictionary<string, string> hashes)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(PreparedHashesPath));
+            File.WriteAllLines(PreparedHashesPath, hashes.OrderBy(h => h.Key, System.StringComparer.Ordinal).Select(h => $"{h.Value}\t{h.Key}"));
+        }
+
+        /// <summary>
+        /// Moves a model prefab and source made for this model under other names to the names it should have, keeping
+        /// their GUIDs so everything that refers to them still does. A prefab counts as made for the model if it's a
+        /// variant of the model file; a source, if it names such a prefab.
+        /// </summary>
+        private static void AdoptExistingAssets(string modelPath, GameObject modelAsset, string prefabPath, string sourcePath, Result result)
+        {
+            string[] searchIn = { ModelsFolder };
+
+            GameObject existingPrefab = AssetDatabase.FindAssets("t:Prefab", searchIn)
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Where(path => path != prefabPath)
+                .Select(AssetDatabase.LoadAssetAtPath<GameObject>)
+                .FirstOrDefault(prefab => prefab != null && PrefabUtility.GetCorrespondingObjectFromOriginalSource(prefab) == modelAsset);
+            if (existingPrefab != null && AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) == null)
+            {
+                MoveAsset(AssetDatabase.GetAssetPath(existingPrefab), prefabPath, result);
+            }
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null || AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(sourcePath) != null) { return; }
+            DirectCharacterModelSource existingSource = AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", searchIn)
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .Select(AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>)
+                .FirstOrDefault(source => source != null && source.ModelPrefab == prefab);
+            if (existingSource != null) { MoveAsset(AssetDatabase.GetAssetPath(existingSource), sourcePath, result); }
+        }
+
+        private static void MoveAsset(string from, string to, Result result)
+        {
+            string error = AssetDatabase.MoveAsset(from, to);
+            if (string.IsNullOrEmpty(error)) { result.notes.Add($"Moved '{from}' to '{to}'."); }
+            else { Debug.LogWarning($"[CharacterModelImporter] Couldn't move '{from}' to '{to}': {error}"); }
         }
 
         public static bool LoadSharedAssets(out AnimatorController controller, out AnimatorParameterTranslator translator)
@@ -118,16 +306,11 @@ namespace CharacterShowcase.EditorTools
                 .OrderBy(path => path, System.StringComparer.Ordinal);
 
         /// <summary>
-        /// The name a model goes by: its file name, or "Folder (file)" when its folder holds several models, so variants
-        /// of one model stay told apart.
+        /// The name a model goes by, which its prefab and source are named after: its file name. It depends on nothing
+        /// else (not on what else is in its folder), so adding or removing other models never renames a model's assets
+        /// and leaves references to the old ones behind.
         /// </summary>
-        public static string DisplayName(string modelPath)
-        {
-            string folder = Path.GetDirectoryName(modelPath)?.Replace('\\', '/');
-            string file = Path.GetFileNameWithoutExtension(modelPath);
-            int modelsInFolder = FindModelFiles().Count(p => Path.GetDirectoryName(p)?.Replace('\\', '/') == folder);
-            return modelsInFolder > 1 ? $"{Path.GetFileName(folder)} ({file})" : file;
-        }
+        public static string DisplayName(string modelPath) => Path.GetFileNameWithoutExtension(modelPath);
 
         public static string ModelPrefabPathFor(string modelPath, string name) =>
             $"{Path.GetDirectoryName(modelPath)?.Replace('\\', '/')}/{name} Model.prefab";
@@ -166,6 +349,10 @@ namespace CharacterShowcase.EditorTools
             }
 
             string prefabPath = ModelPrefabPathFor(modelPath, result.name);
+            string definitionPath = DefinitionPathFor(modelPath, result.name);
+            // Assets made for this model under another name (an older naming scheme, or before the file was renamed) are
+            // moved to its current names rather than replaced, so whatever refers to them keeps working.
+            AdoptExistingAssets(modelPath, modelAsset, prefabPath, definitionPath, result);
             GameObject modelPrefab = SaveModelPrefab(modelAsset, avatar, controller, prefabPath);
             // Read the prefab back as it was saved, and save it once more if its Animator didn't keep the avatar or the
             // controller, so a model is never reported ready without them.
@@ -182,7 +369,6 @@ namespace CharacterShowcase.EditorTools
             }
             result.height = MeasureHeight(modelPrefab);
 
-            string definitionPath = DefinitionPathFor(modelPath, result.name);
             var definition = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(definitionPath);
             if (definition == null)
             {
@@ -438,36 +624,6 @@ namespace CharacterShowcase.EditorTools
             gameObject != null && gameObject.TryGetComponent(out T component) ? EditorJsonUtility.ToJson(component) : null;
 
         /// <summary>The model's height in meters, from its meshes in their bind pose.</summary>
-        public static float MeasureHeight(GameObject modelPrefab)
-        {
-            var instance = (GameObject)PrefabUtility.InstantiatePrefab(modelPrefab);
-            try
-            {
-                float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
-                foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>(true))
-                {
-                    // A skinned mesh's renderer bounds are padded, so measure the mesh itself. Its vertices are in the
-                    // bind pose, relative to the renderer's transform, which is how the model sits in the file.
-                    Mesh mesh = renderer is SkinnedMeshRenderer skinned ? skinned.sharedMesh
-                        : renderer.TryGetComponent(out MeshFilter filter) ? filter.sharedMesh : null;
-                    if (mesh == null) { continue; }
-                    Bounds local = mesh.bounds;
-                    Matrix4x4 toWorld = renderer.transform.localToWorldMatrix;
-                    for (int corner = 0; corner < 8; corner++)
-                    {
-                        Vector3 point = local.center + Vector3.Scale(local.extents,
-                            new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
-                        float y = toWorld.MultiplyPoint3x4(point).y;
-                        bottom = Mathf.Min(bottom, y);
-                        top = Mathf.Max(top, y);
-                    }
-                }
-                return top > bottom ? top - bottom : 0f;
-            }
-            finally
-            {
-                Object.DestroyImmediate(instance);
-            }
-        }
+        public static float MeasureHeight(GameObject modelPrefab) => CharacterModelSource.MeasureHeight(modelPrefab);
     }
 }

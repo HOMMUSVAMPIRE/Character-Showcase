@@ -100,10 +100,15 @@ namespace Character
 
             public void UpdateAnimation(in CharacterAnimationState state, float deltaTime)
             {
-                if (speed != 0) { animator.SetFloat(speed, state.horizontalSpeed, speedDampTime, deltaTime); }
-                if (verticalSpeed != 0) { animator.SetFloat(verticalSpeed, state.verticalSpeed); }
-                if (forwardSpeed != 0) { animator.SetFloat(forwardSpeed, state.localVelocity.z, speedDampTime, deltaTime); }
-                if (sidewaysSpeed != 0) { animator.SetFloat(sidewaysSpeed, state.localVelocity.x, speedDampTime, deltaTime); }
+                // Speeds are given as the authored model would move: a scaled model's strides are scaled too, so playing
+                // the clips for its speed divided by its stride scale keeps its planted feet in place at any size.
+                Vector3 scale = state.scale == Vector3.zero ? Vector3.one : state.scale;
+                if (speed != 0) { animator.SetFloat(speed, state.horizontalSpeed / state.StrideScale, speedDampTime, deltaTime); }
+                // Jump speeds scale with the square root of height (see MovementController.SpeedScale), so this keeps the
+                // rising and falling poses at the same points of a jump at any size.
+                if (verticalSpeed != 0) { animator.SetFloat(verticalSpeed, state.verticalSpeed / Mathf.Sqrt(scale.y)); }
+                if (forwardSpeed != 0) { animator.SetFloat(forwardSpeed, state.localVelocity.z / scale.z, speedDampTime, deltaTime); }
+                if (sidewaysSpeed != 0) { animator.SetFloat(sidewaysSpeed, state.localVelocity.x / scale.x, speedDampTime, deltaTime); }
                 if (turnSpeed != 0) { animator.SetFloat(turnSpeed, state.turnSpeed, speedDampTime, deltaTime); }
                 if (grounded != 0) { animator.SetBool(grounded, state.grounded); }
                 if (jumping != 0) { animator.SetBool(jumping, state.jumping); }

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using Character;
 using NUnit.Framework;
@@ -54,24 +55,25 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
             AnimationController animation = rig.Animation;
             int loadedEvents = 0;
-            animation.ModelLoaded += _ => loadedEvents++;
-            Assert.That(animation.ModelSource, Is.Not.Null, "The Character prefab should name a model source.");
+            models.ModelLoaded += _ => loadedEvents++;
+            Assert.That(models.ModelSource, Is.Not.Null, "The Character prefab should name a model source.");
 
             yield return rig.WaitForModel();
 
-            GameObject model = animation.Model;
+            GameObject model = models.Model;
             Assert.That(loadedEvents, Is.EqualTo(1), "ModelLoaded should be raised once.");
             Assert.That(model.transform.parent, Is.Not.Null);
             Assert.That(model.transform.IsChildOf(rig.Character.transform), Is.True, "The model should be created on the character.");
             Assert.That(model.layer, Is.EqualTo(rig.Character.layer), "The model should be on the character's layer.");
-            Assert.That(animation.Animator, Is.Not.Null);
-            Assert.That(animation.Animator.runtimeAnimatorController, Is.Not.Null);
-            Assert.That(animation.Animator.isHuman, Is.True);
-            Assert.That(animation.Animator.applyRootMotion, Is.False);
-            Assert.That(animation.IK, Is.Not.Null, "The model should have CharacterIK.");
-            Assert.That(animation.Animator.GetComponent<FootPlacementIK>(), Is.Not.Null, "The model should have foot placement.");
+            Assert.That(models.Animator, Is.Not.Null);
+            Assert.That(models.Animator.runtimeAnimatorController, Is.Not.Null);
+            Assert.That(models.Animator.isHuman, Is.True);
+            Assert.That(models.Animator.applyRootMotion, Is.False);
+            Assert.That(models.IK, Is.Not.Null, "The model should have CharacterIK.");
+            Assert.That(models.Animator.GetComponent<FootPlacementIK>(), Is.Not.Null, "The model should have foot placement.");
         }
 
         [UnityTest]
@@ -79,27 +81,28 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
             AnimationController animation = rig.Animation;
             yield return rig.WaitForModel();
-            GameObject mannequin = animation.Model;
+            GameObject mannequin = models.Model;
 
             DirectCharacterModelSource cube = CubeSource();
             bool loaded = false;
-            yield return CharacterTestRig.WaitFor(animation.LoadModelAsync(cube), l => loaded = l);
+            yield return CharacterTestRig.WaitFor(models.LoadModelAsync(cube), l => loaded = l);
             yield return null; // Destroy takes effect at the end of the frame.
 
             Assert.That(loaded, Is.True);
 
             Assert.That(mannequin == null, Is.True, "The old model should be destroyed.");
-            Assert.That(animation.Model, Is.Not.Null);
-            Assert.That(animation.Model.name, Does.StartWith("Cube Model"));
-            Assert.That(animation.Model.transform.IsChildOf(rig.Character.transform), Is.True);
-            Assert.That(animation.ModelSource, Is.SameAs(cube));
-            Assert.That(animation.Animator, Is.Null);
-            Assert.That(animation.IK, Is.Null);
+            Assert.That(models.Model, Is.Not.Null);
+            Assert.That(models.Model.name, Does.StartWith("Cube Model"));
+            Assert.That(models.Model.transform.IsChildOf(rig.Character.transform), Is.True);
+            Assert.That(models.ModelSource, Is.SameAs(cube));
+            Assert.That(models.Animator, Is.Null);
+            Assert.That(models.IK, Is.Null);
 
             // The character carries on as normal without an Animator.
-            animation.Model.SetActive(true);
+            models.Model.SetActive(true);
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
                 animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime));
             Assert.That(rig.Position.z, Is.GreaterThan(1f), "The character should still move.");
@@ -113,7 +116,7 @@ namespace CharacterShowcase.Tests
             for (int i = 0; i < 5; i++)
             {
                 rig.SpawnCharacter(new Vector3(i * 3f, 0f, 0f));
-                _ = rig.Animation.LoadModelAsync(cube);
+                _ = rig.Models.LoadModelAsync(cube);
                 Object.Destroy(rig.Character);
                 yield return null;
             }
@@ -162,9 +165,9 @@ namespace CharacterShowcase.Tests
         {
             var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
-            _ = rig.Animation.LoadModelAsync(slow);
+            _ = rig.Models.LoadModelAsync(slow);
             yield return null;
-            Assert.That(rig.Animation.IsLoadingModel, Is.True, "Test setup: the model should still be loading.");
+            Assert.That(rig.Models.IsLoadingModel, Is.True, "Test setup: the model should still be loading.");
 
             Object.Destroy(rig.Character);
             yield return null;
@@ -179,15 +182,15 @@ namespace CharacterShowcase.Tests
             var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
             bool slowLoaded = true;
-            IEnumerator first = CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow), l => slowLoaded = l);
+            IEnumerator first = CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(slow), l => slowLoaded = l);
             yield return null;
 
-            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(CubeSource()));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(CubeSource()));
             yield return first;
 
             Assert.That(slow.cleanedUp, Is.True, "Replacing a model mid-load should cancel the first load.");
             Assert.That(slowLoaded, Is.False, "The first load should report that it didn't load.");
-            Assert.That(rig.Animation.Model.name, Does.StartWith("Cube Model"));
+            Assert.That(rig.Models.Model.name, Does.StartWith("Cube Model"));
             for (int i = 0; i < 40; i++) { yield return null; }
             Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
         }
@@ -198,18 +201,140 @@ namespace CharacterShowcase.Tests
             var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
             bool loaded = false;
-            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow), l => loaded = l);
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(slow), l => loaded = l);
             Assert.That(loaded, Is.True);
-            Assert.That(rig.Animation.Model.name, Is.EqualTo("Slow Model"));
-            Assert.That(rig.Animation.Model.transform.IsChildOf(rig.Character.transform), Is.True, "SetUpModelAsync should place it on the character.");
+            Assert.That(rig.Models.Model.name, Is.EqualTo("Slow Model"));
+            Assert.That(rig.Models.Model.transform.IsChildOf(rig.Character.transform), Is.True, "SetUpModelAsync should place it on the character.");
 
-            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(CubeSource()));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(CubeSource()));
             Assert.That(slow.released, Is.EqualTo(1), "The replaced model should go back to the source that made it.");
 
-            yield return CharacterTestRig.WaitFor(rig.Animation.LoadModelAsync(slow));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(slow));
             Object.Destroy(rig.Character);
             yield return null;
             Assert.That(slow.released, Is.EqualTo(2), "A destroyed character's model should go back to its source too.");
+        }
+
+        /// <summary>Creates its model at once, then takes a while to finish setting it up.</summary>
+        private class SlowSetupSource : CharacterModelSource
+        {
+            public GameObject template;
+
+            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
+            {
+                GameObject model = Instantiate(template, context.Parent);
+                model.name = "Slow Setup Model";
+                model.SetActive(true); // As a real model prefab would be; the test's template is kept inactive.
+                Assert.That(model.activeInHierarchy, Is.False, "The context's parent should keep a new model hidden.");
+                await SetUpModelAsync(model, context, cancellationToken);
+                for (int i = 0; i < 10; i++) { await Awaitable.NextFrameAsync(cancellationToken); }
+                return new CharacterModel(model, Translator);
+            }
+        }
+
+        /// <summary>Never manages to create a model.</summary>
+        private class FailingSource : CharacterModelSource
+        {
+            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
+            {
+                await Awaitable.NextFrameAsync(cancellationToken);
+                return null;
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator ANewModel_StaysHiddenUntilItIsSwappedIn_AndTheOldOneGoesAtTheSameTime()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
+            yield return rig.WaitForModel();
+            GameObject mannequin = models.Model;
+
+            var slow = Track(ScriptableObject.CreateInstance<SlowSetupSource>());
+            slow.template = CubeSource().ModelPrefab;
+            bool swapped = false;
+            IEnumerator loading = CharacterTestRig.WaitFor(models.LoadModelAsync(slow), l => swapped = l);
+            yield return null;
+            yield return null;
+
+            GameObject incoming = rig.Character.GetComponentsInChildren<Transform>(true)
+                .Select(t => t.gameObject).FirstOrDefault(o => o.name == "Slow Setup Model");
+            Assert.That(incoming, Is.Not.Null, "Test setup: the new model should have been created.");
+            Assert.That(incoming.activeInHierarchy, Is.False, "A model still being set up shouldn't be seen.");
+            Assert.That(mannequin.activeInHierarchy, Is.True, "The old model should stay until the new one is ready.");
+
+            yield return loading;
+            Assert.That(swapped, Is.True);
+            Assert.That(incoming.activeInHierarchy, Is.True, "The new model should appear once it's swapped in.");
+            Assert.That(mannequin == null || !mannequin.activeInHierarchy, Is.True,
+                "The old model should disappear in the same frame the new one appears.");
+            Assert.That(incoming.transform.parent, Is.SameAs(models.ModelParent));
+        }
+
+        [UnityTest]
+        public IEnumerator ThePlaceholder_ShowsWhileThereIsNoModel()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            GameObject placeholder = rig.Character.GetComponentsInChildren<Transform>(true)
+                .FirstOrDefault(t => t.name == "Model Placeholder")?.gameObject;
+            Assert.That(placeholder, Is.Not.Null, "The Character prefab should have a placeholder.");
+            // Checked straight away: the model can finish loading within a frame or two.
+            Assert.That(placeholder.activeSelf, Is.True, "The placeholder should show until the model is in.");
+
+            yield return rig.WaitForModel();
+            Assert.That(placeholder.activeSelf, Is.False, "The placeholder should hide once the model is in.");
+
+            rig.Models.UnloadModel();
+            Assert.That(placeholder.activeSelf, Is.True, "The placeholder should come back without a model.");
+        }
+
+        [UnityTest]
+        public IEnumerator AModelThatFailsToLoad_IsReplacedByTheFallback()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
+            yield return rig.WaitForModel();
+            DirectCharacterModelSource cube = CubeSource();
+            models.FallbackSource = cube;
+
+            bool loaded = false;
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("didn't create a model"));
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Using the fallback model"));
+            yield return CharacterTestRig.WaitFor(models.LoadModelAsync(Track(ScriptableObject.CreateInstance<FailingSource>())), l => loaded = l);
+
+            Assert.That(loaded, Is.True, "The fallback should load in its place.");
+            Assert.That(models.Model.name, Does.StartWith("Cube Model"));
+        }
+
+        [UnityTest]
+        public IEnumerator FitToHeight_ScalesTheModel_AndTheEyePointFollowsIt()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
+            yield return rig.WaitForModel();
+            float mannequinEyes = models.EyeHeight;
+            Assert.That(mannequinEyes, Is.InRange(1.55f, 1.72f), "The mannequin's eyes are in its visor, a little over 1.6 m up.");
+            Transform eyePoint = rig.Character.transform.Find("Eye Point");
+            Assert.That(eyePoint, Is.Not.Null, "The Character prefab should have an eye point.");
+            Assert.That(eyePoint.localPosition.y, Is.EqualTo(mannequinEyes).Within(1e-4f));
+
+            // The same model fitted to a smaller height: everything about its size should follow.
+            var smaller = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            var mannequin = (DirectCharacterModelSource)models.ModelSource;
+            smaller.ModelPrefab = mannequin.ModelPrefab;
+            smaller.Translator = mannequin.Translator;
+            smaller.Height = ModelHeight.FitToHeight;
+            smaller.FitHeight = 1.2f;
+            yield return CharacterTestRig.WaitFor(models.LoadModelAsync(smaller));
+
+            Assert.That(models.ModelHeightMeters, Is.EqualTo(1.2f).Within(0.01f), "The model should be fitted to 1.2 m.");
+            float expectedEyes = mannequinEyes * 1.2f / CharacterModelSource.MeasureHeight(mannequin.ModelPrefab);
+            Assert.That(models.EyeHeight, Is.EqualTo(expectedEyes).Within(0.02f), "The eyes should scale with the model.");
+            Assert.That(eyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-4f));
         }
 
         [UnityTest]
@@ -221,11 +346,11 @@ namespace CharacterShowcase.Tests
             yield return null; // Let the skinned mesh update its bounds.
 
             var previews = new List<CharacterModelSource.PreviewMesh>();
-            rig.Animation.ModelSource.GetPreviewMeshes(previews);
+            rig.Models.ModelSource.GetPreviewMeshes(previews);
             Assert.That(previews, Is.Not.Empty);
 
             // The preview should sit on the character's feet and be about as tall as the loaded model.
-            Transform parent = rig.Animation.Model.transform.parent;
+            Transform parent = rig.Models.Model.transform.parent;
             float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
             foreach (CharacterModelSource.PreviewMesh preview in previews)
             {
@@ -239,7 +364,7 @@ namespace CharacterShowcase.Tests
                     top = Mathf.Max(top, y);
                 }
             }
-            float modelHeight = rig.Animation.Model.GetComponentInChildren<Renderer>().bounds.size.y;
+            float modelHeight = rig.Models.Model.GetComponentInChildren<Renderer>().bounds.size.y;
             Assert.That(bottom, Is.EqualTo(0f).Within(0.15f), "The preview should stand on the character's feet.");
             Assert.That(top - bottom, Is.EqualTo(modelHeight).Within(0.25f), "The preview should be the model's size.");
             Assert.That(parent, Is.Not.Null);

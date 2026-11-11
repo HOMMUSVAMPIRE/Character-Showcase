@@ -23,6 +23,11 @@ namespace CameraSystem
 
         [Tooltip("The transform to follow. Its origin should be at the feet.")]
         [SerializeField] private Transform target;
+        [Tooltip("Optional: a transform whose scale is the target's size (a character's model parent, say). The third " +
+                 "person pivot height, shoulder offset and distance, and the head bob, scale with it, so the camera frames " +
+                 "a resized target as it did before. Its height (y) scales heights and distances, its width (x) the " +
+                 "shoulder offset.")]
+        [SerializeField] private Transform targetSizeReference;
 
         [SerializeField] private CameraInputSettings input = new();
         [SerializeField] private CameraModeSettings modes = new();
@@ -108,6 +113,34 @@ namespace CameraSystem
         #region Public API
 
         public Transform Target => target;
+        public Transform TargetSizeReference { get => targetSizeReference; set => targetSizeReference = value; }
+
+        /// <summary>
+        /// The target's horizontal speed as it would be at its normal size: divided by the square root of its height. How
+        /// fast something looks depends on its size (a giant covering ground quickly in strides moves faster than a mouse
+        /// that looks frantic), and the square root matches how natural movement scales (see the character's
+        /// MovementController), so a target at its own top speed gets the same speed effects at any size.
+        /// </summary>
+        public float RelativeSpeed => tracker.HorizontalSpeed / Mathf.Sqrt(Mathf.Max(TargetSize.y, 1e-4f));
+
+        /// <summary>The target's size (1, 1, 1 without a size reference). See targetSizeReference.</summary>
+        public Vector3 TargetSize
+        {
+            get
+            {
+                if (targetSizeReference == null) { return Vector3.one; }
+                Vector3 size = targetSizeReference.lossyScale;
+                return new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
+            }
+        }
+
+        /// <summary>
+        /// Height of the eyes above the target's origin: from the eye anchor if there is one (measured from the target's
+        /// own position, which the anchor moves with), otherwise the first-person Eye Height setting.
+        /// </summary>
+        public float EyeHeight => firstPerson.eyeAnchor != null && target != null
+            ? Vector3.Dot(firstPerson.eyeAnchor.position - target.position, Vector3.up)
+            : firstPerson.eyeHeight;
         /// <summary>The view mode currently in effect (a CameraZone may override the requested one).</summary>
         public CameraMode Mode => activeMode;
         /// <summary>The view mode last requested via input or SetMode, ignoring zone overrides.</summary>
@@ -275,11 +308,11 @@ namespace CameraSystem
             Vector3 up = Vector3.up;
 
             Vector3 firstPersonPosition = followPosition
-                + up * (firstPerson.eyeHeight + landingOffset)
+                + up * (EyeHeight + landingOffset)
                 + yawRotation * Vector3.forward * firstPerson.eyeForwardOffset
                 + bob;
 
-            Vector3 pivot = followPosition + up * (thirdPerson.pivotHeight + landingOffset) + bob;
+            Vector3 pivot = followPosition + up * (thirdPerson.pivotHeight * TargetSize.y + landingOffset) + bob;
             Vector3 thirdPersonPosition = ComputeThirdPersonPosition(pivot, lookRotation, yawRotation, dt);
 
             Vector3 position = Vector3.LerpUnclamped(firstPersonPosition, thirdPersonPosition, tpBlend);
@@ -532,12 +565,14 @@ namespace CameraSystem
 
             float speed = tracker.HorizontalSpeed;
             bool walking = tracker.ProbablyGrounded && speed > 0.1f;
-            float goalWeight = walking ? Mathf.Clamp01(speed / headBob.fullAmplitudeSpeed) : 0f;
+            float goalWeight = walking ? Mathf.Clamp01(RelativeSpeed / headBob.fullAmplitudeSpeed) : 0f;
             bobWeight = headBob.fadeTime > 0f
                 ? Mathf.SmoothDamp(bobWeight, goalWeight, ref bobWeightVelocity, headBob.fadeTime, Mathf.Infinity, dt)
                 : goalWeight;
 
-            if (walking) { bobPhase += speed * headBob.cyclesPerMeter * dt * Mathf.PI * 2f; }
+            // A bigger target takes longer strides, so it bobs fewer times per meter, and further.
+            Vector3 size = TargetSize;
+            if (walking) { bobPhase += speed * headBob.cyclesPerMeter / size.y * dt * Mathf.PI * 2f; }
             bobPhase = Mathf.Repeat(bobPhase, Mathf.PI * 2f);
 
             // One side-to-side sway per cycle, and one up/down bounce per footstep (two per cycle).
@@ -545,7 +580,7 @@ namespace CameraSystem
                 Mathf.Sin(bobPhase) * headBob.amplitude.x,
                 Mathf.Cos(bobPhase * 2f) * headBob.amplitude.y,
                 0f);
-            return Quaternion.Euler(0f, yaw, 0f) * local * (bobWeight * scale);
+            return Quaternion.Euler(0f, yaw, 0f) * Vector3.Scale(local, size) * (bobWeight * scale);
         }
 
         private void UpdateLens(float tpBlend, float dt)
@@ -555,7 +590,7 @@ namespace CameraSystem
             fov = Mathf.Lerp(fov, aim.fieldOfView, aimBlend);
 
             float speedGoal = speedFov.enabled
-                ? Mathf.InverseLerp(speedFov.minSpeed, speedFov.maxSpeed, tracker.HorizontalSpeed) * speedFov.extraFov
+                ? Mathf.InverseLerp(speedFov.minSpeed, speedFov.maxSpeed, RelativeSpeed) * speedFov.extraFov
                 : 0f;
             speedFovAmount = speedFov.smoothTime > 0f
                 ? Mathf.SmoothDamp(speedFovAmount, speedGoal, ref speedFovVelocity, speedFov.smoothTime, Mathf.Infinity, dt)
@@ -592,9 +627,10 @@ namespace CameraSystem
         private Vector3 ComputeThirdPersonPosition(Vector3 pivot, Quaternion lookRotation, Quaternion yawRotation, float dt)
         {
             float aimBlend = AimBlend;
-            float shoulderX = thirdPerson.shoulderOffset.x * Mathf.Lerp(1f, aim.shoulderMultiplier, aimBlend);
+            Vector3 size = TargetSize;
+            float shoulderX = thirdPerson.shoulderOffset.x * size.x * Mathf.Lerp(1f, aim.shoulderMultiplier, aimBlend);
             Vector3 right = yawRotation * Vector3.right;
-            Vector3 lift = Vector3.up * thirdPerson.shoulderOffset.y;
+            Vector3 lift = Vector3.up * (thirdPerson.shoulderOffset.y * size.y);
 
             // Pick the side, auto-swapping temporarily if the preferred shoulder is pressed against a wall.
             float preferredSide = rightShoulder ? 1f : -1f;
@@ -628,7 +664,8 @@ namespace CameraSystem
             debugShoulder = shoulder;
 
             // Pull the camera in front of anything between the shoulder point and the desired camera position.
-            float desiredDistance = distance * Mathf.Lerp(1f, aim.distanceMultiplier, aimBlend);
+            // Zoom works in the target's size, so a bigger target is framed the same way from further away.
+            float desiredDistance = distance * size.y * Mathf.Lerp(1f, aim.distanceMultiplier, aimBlend);
             Vector3 back = lookRotation * Vector3.back;
             float allowed = desiredDistance;
             if (collision.enabled && Sweep(shoulder, back, desiredDistance, out float hitDistance))

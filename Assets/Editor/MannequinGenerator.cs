@@ -48,6 +48,8 @@ namespace CharacterShowcase.EditorTools
         // Blend tree thresholds in m/s. The clips' strides are authored for these speeds
         // (see Tools/Mannequin/mannequin_animations.py), so the feet don't skate at those speeds.
         private const float WalkSpeed = 1.6f;
+        // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
+        private const string BindPoseTake = "!BindPose";
         private const float RunSpeed = 10f;
         private const float FallThreshold = -8f;
         private const float RiseThreshold = 6f;
@@ -98,6 +100,17 @@ namespace CharacterShowcase.EditorTools
         /// <summary>Generates the mannequin with Blender (or, given null, reuses the existing file) and sets it all up.</summary>
         public static bool Generate(string blenderPath)
         {
+            using (CharacterModelImporter.Busy()) { return GenerateWhileBusy(blenderPath); }
+        }
+
+        /// <summary>
+        /// Whether the mannequin's file has changed since its clips and controller were last built from it (regenerated
+        /// with Blender by hand, say), so they need building again.
+        /// </summary>
+        public static bool NeedsRebuild() => File.Exists(ModelPath) && CharacterModelImporter.HasChangedSincePrepared(ModelPath);
+
+        private static bool GenerateWhileBusy(string blenderPath)
+        {
             if (blenderPath != null && !RunBlender(blenderPath)) { return false; }
             AssetDatabase.Refresh();
             if (!ConfigureImporter()) { return false; }
@@ -115,6 +128,7 @@ namespace CharacterShowcase.EditorTools
             AssetDatabase.SaveAssets();
 
             if (!UseOnCharacterPrefab(mannequin.definition)) { return false; }
+            CharacterModelImporter.MarkPrepared(ModelPath);
             Debug.Log($"[MannequinGenerator] Generated the mannequin ('{ModelPath}', definition " +
                       $"'{AssetDatabase.GetAssetPath(mannequin.definition)}', {mannequin.height:0.00} m tall) and the shared animations: controller '{ControllerPath}' with clips " +
                       $"{string.Join(", ", LoadClips().Keys)}, translator '{TranslatorPath}'. It's the Character prefab's model.");
@@ -122,10 +136,12 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// The mannequin is the Character prefab's own model, which the tests spawn. Scenes choose their own model with
-        /// the Character Model window, as an override on their instance of the prefab.
+        /// Sets up the Character prefab's model: a CharacterModelHost loading the mannequin (also its fallback, should
+        /// another model fail to load), with a placeholder shown while there's no model and an eye point for the camera.
+        /// The mannequin is the prefab's own model, which the tests spawn; scenes choose their own with the Character
+        /// Model window, as an override on their instance of the prefab.
         /// </summary>
-        private static bool UseOnCharacterPrefab(DirectCharacterModelSource definition)
+        private static bool UseOnCharacterPrefab(DirectCharacterModelSource mannequin)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
@@ -137,10 +153,19 @@ namespace CharacterShowcase.EditorTools
                     Debug.LogError($"[MannequinGenerator] '{PrefabPath}' needs an AnimationController and a '{ModelParentName}' child; it was not changed.");
                     return false;
                 }
-                var serialized = new SerializedObject(animationController);
-                serialized.FindProperty("modelSource").objectReferenceValue = definition;
-                serialized.FindProperty("modelParent").objectReferenceValue = modelParent;
-                serialized.ApplyModifiedPropertiesWithoutUndo();
+                if (!root.TryGetComponent(out CharacterModelHost host)) { host = root.AddComponent<CharacterModelHost>(); }
+
+                var hostSettings = new SerializedObject(host);
+                hostSettings.FindProperty("modelSource").objectReferenceValue = mannequin;
+                hostSettings.FindProperty("fallbackSource").objectReferenceValue = mannequin;
+                hostSettings.FindProperty("modelParent").objectReferenceValue = modelParent;
+                hostSettings.FindProperty("placeholder").objectReferenceValue = FindOrCreatePlaceholder(root.transform, modelParent);
+                hostSettings.FindProperty("eyePoint").objectReferenceValue = FindOrCreateChild(root.transform, EyePointName).transform;
+                hostSettings.ApplyModifiedPropertiesWithoutUndo();
+
+                var animationSettings = new SerializedObject(animationController);
+                animationSettings.FindProperty("modelHost").objectReferenceValue = host;
+                animationSettings.ApplyModifiedPropertiesWithoutUndo();
                 PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
                 return true;
             }
@@ -148,6 +173,46 @@ namespace CharacterShowcase.EditorTools
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        private const string EyePointName = "Eye Point";
+        private const string PlaceholderName = "Model Placeholder";
+
+        private static GameObject FindOrCreateChild(Transform parent, string name)
+        {
+            Transform child = parent.Find(name);
+            if (child != null) { return child.gameObject; }
+            var created = new GameObject(name);
+            created.transform.SetParent(parent, false);
+            return created;
+        }
+
+        /// <summary>
+        /// A plain capsule the size of the character's collider, shown while the character has no model. It lives under
+        /// the model parent, so it's resized with the character (see ACCharacterController.SetScale). Created once; after
+        /// that it's left as it is, so it can be restyled (one made by an earlier version, under the character's root,
+        /// is moved under the model parent).
+        /// </summary>
+        private static GameObject FindOrCreatePlaceholder(Transform root, Transform modelParent)
+        {
+            Transform existing = modelParent.Find(PlaceholderName) ?? root.Find(PlaceholderName);
+            if (existing != null)
+            {
+                if (existing.parent != modelParent) { existing.SetParent(modelParent, true); }
+                return existing.gameObject;
+            }
+            GameObject placeholder = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            placeholder.name = PlaceholderName;
+            Object.DestroyImmediate(placeholder.GetComponent<Collider>()); // The character's own collider does the colliding.
+            placeholder.transform.SetParent(modelParent, false);
+            placeholder.layer = root.gameObject.layer;
+            if (root.TryGetComponent(out CapsuleCollider capsule))
+            {
+                // Unity's capsule mesh is 2 m tall and 1 m wide.
+                placeholder.transform.localPosition = capsule.center;
+                placeholder.transform.localScale = new Vector3(capsule.radius * 2f, capsule.height / 2f, capsule.radius * 2f);
+            }
+            return placeholder;
         }
 
         private static string FindBlender()
@@ -271,7 +336,8 @@ namespace CharacterShowcase.EditorTools
         /// </summary>
         private static ModelImporterClipAnimation[] BuildClipSettings(ModelImporterClipAnimation[] takes)
         {
-            return takes.Select(take =>
+            // The bind pose take only sets the file's default pose (see mannequin_animations.py); it isn't a clip.
+            return takes.Where(take => take.takeName.Split('|').Last() != BindPoseTake).Select(take =>
             {
                 var clip = take;
                 clip.name = take.takeName.Split('|').Last();

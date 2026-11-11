@@ -33,9 +33,9 @@ namespace Character
         [SerializeField] private Transform ignoreCollidersUnder;
 
         [Header("Feet")]
-        [Tooltip("Animated foot lift (meters above the floor) below which a foot counts as fully planted, so it tilts to the ground.")]
+        [Tooltip("Animated foot lift (meters above the floor, for a model of average size) below which a foot counts as fully planted, so it tilts to the ground. Scaled with the model's size.")]
         [Min(0f)] [SerializeField] private float plantedHeight = 0.04f;
-        [Tooltip("Animated foot lift above which a foot counts as fully lifted, so it keeps its animated rotation.")]
+        [Tooltip("Animated foot lift (for a model of average size) above which a foot counts as fully lifted, so it keeps its animated rotation. Scaled with the model's size.")]
         [Min(0f)] [SerializeField] private float liftedHeight = 0.18f;
         [Tooltip("How strongly planted feet tilt to match the ground's slope.")]
         [Range(0f, 1f)] [SerializeField] private float alignToGround = 1f;
@@ -130,7 +130,7 @@ namespace Character
             {
                 // Drop the body by the lower foot's offset so that foot can reach. Never raise it: a foot on higher
                 // ground is reached by bending the knee instead.
-                float pelvisGoal = Mathf.Clamp(Mathf.Min(left.offset, right.offset), -maxPelvisDrop, 0f);
+                float pelvisGoal = Mathf.Clamp(Mathf.Min(left.offset, right.offset), -maxPelvisDrop * WorldScale, 0f);
                 pelvisOffset = pelvisSmoothTime > 0f
                     ? Mathf.SmoothDamp(pelvisOffset, pelvisGoal, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt)
                     : pelvisGoal;
@@ -150,8 +150,11 @@ namespace Character
             float lift = animated.y - soleHeight - floorHeight;
 
             // Search for ground under the foot between the step-up and step-down limits around the floor.
-            Vector3 origin = new Vector3(animated.x, floorHeight + maxStepUp, animated.z);
-            float distance = maxStepUp + maxStepDown;
+            // The model's world scale (the character's size) scales how far a foot reaches, as it does the steps the
+            // character can climb.
+            float stepUp = maxStepUp * WorldScale, stepDown = maxStepDown * WorldScale;
+            Vector3 origin = new Vector3(animated.x, floorHeight + stepUp, animated.z);
+            float distance = stepUp + stepDown;
             foot.rayOrigin = origin;
             foot.rayEnd = origin + Vector3.down * distance;
             foot.hit = FindGround(origin, distance, out RaycastHit hit);
@@ -161,7 +164,7 @@ namespace Character
             if (foot.hit)
             {
                 foot.hitPoint = hit.point;
-                offsetGoal = Mathf.Clamp(hit.point.y - floorHeight, -maxStepDown, maxStepUp);
+                offsetGoal = Mathf.Clamp(hit.point.y - floorHeight, -stepDown, stepUp);
                 normalGoal = hit.normal;
             }
 
@@ -173,12 +176,19 @@ namespace Character
                 : normalGoal;
 
             // Planted feet tilt to the ground; lifted feet keep the animated rotation.
-            float planted = 1f - Mathf.InverseLerp(plantedHeight, Mathf.Max(liftedHeight, plantedHeight + 1e-3f), lift);
+            // Humanoid animation lifts a bigger model's feet proportionally higher, so the thresholds scale with it.
+            // (Animator.humanScale is the model's size relative to an average adult; the mannequin's is about 1.)
+            float size = animator.isHuman && animator.humanScale > 0f ? animator.humanScale * transform.lossyScale.y : 1f;
+            float plantedLift = plantedHeight * size, liftedLift = liftedHeight * size;
+            float planted = 1f - Mathf.InverseLerp(plantedLift, Mathf.Max(liftedLift, plantedLift + 1e-3f), lift);
             rotation = Quaternion.FromToRotation(Vector3.up, foot.normal) * animatedRotation;
             rotationWeight = planted * alignToGround;
 
             return animated + Vector3.up * foot.offset;
         }
+
+        /// <summary>How much the model is scaled vertically in the world (by the character's size).</summary>
+        private float WorldScale => Mathf.Max(transform.lossyScale.y, 1e-4f);
 
         private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)
         {

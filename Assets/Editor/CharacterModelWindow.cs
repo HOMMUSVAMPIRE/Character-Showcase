@@ -192,17 +192,18 @@ namespace CharacterShowcase.EditorTools
             if (!wasOpen) { scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Additive); }
             try
             {
-                AnimationController[] characters = AnimationControllersIn(scene);
+                CharacterModelHost[] characters = CharactersIn(scene);
                 if (characters.Length == 0)
                 {
-                    Debug.LogError($"[CharacterModelWindow] No character (AnimationController) found in '{ScenePath}'; it was not changed.");
+                    Debug.LogError($"[CharacterModelWindow] No character (CharacterModelHost) found in '{ScenePath}'; it was not changed.");
                     return false;
                 }
-                foreach (AnimationController character in characters)
+                foreach (CharacterModelHost character in characters)
                 {
                     var serialized = new SerializedObject(character);
                     serialized.FindProperty("modelSource").objectReferenceValue = definition;
                     if (wasOpen) { serialized.ApplyModifiedProperties(); } else { serialized.ApplyModifiedPropertiesWithoutUndo(); }
+                    ConnectCameras(scene, character, wasOpen);
                 }
                 // Drop overrides left for fields that no longer exist (such as a renamed one), so they don't pile up.
                 GameObject[] instances = characters.Select(c => PrefabUtility.GetOutermostPrefabInstanceRoot(c.gameObject))
@@ -238,8 +239,43 @@ namespace CharacterShowcase.EditorTools
             if (!UseInScene(definition)) { EditorApplication.Exit(1); }
         }
 
-        private static AnimationController[] AnimationControllersIn(Scene scene) =>
-            scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<AnimationController>(true)).ToArray();
+        private static CharacterModelHost[] CharactersIn(Scene scene) =>
+            scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<CharacterModelHost>(true)).ToArray();
+
+        /// <summary>
+        /// Points the first-person eyes of cameras following the character at its eye point, which the character keeps at
+        /// its model's eye height, so the view sits at the eyes of whichever model it has. Cameras with an eye anchor
+        /// already chosen are left alone.
+        /// </summary>
+        private static void ConnectCameras(Scene scene, CharacterModelHost character, bool withUndo)
+        {
+            var hostSettings = new SerializedObject(character);
+            var eyePoint = hostSettings.FindProperty("eyePoint").objectReferenceValue as Transform;
+            var modelParent = hostSettings.FindProperty("modelParent").objectReferenceValue as Transform;
+            foreach (CameraSystem.CameraRig rig in scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<CameraSystem.CameraRig>(true)))
+            {
+                if (rig.Target == null || !rig.Target.IsChildOf(character.transform) && !character.transform.IsChildOf(rig.Target)) { continue; }
+                var settings = new SerializedObject(rig);
+                bool changed = false;
+                // First-person eyes at the character's eye point, which follows its model and size.
+                SerializedProperty anchor = settings.FindProperty("firstPerson.eyeAnchor");
+                if (eyePoint != null && anchor != null && anchor.objectReferenceValue == null)
+                {
+                    anchor.objectReferenceValue = eyePoint;
+                    changed = true;
+                }
+                // Third-person framing scaled with the character's size, which is its model parent's scale.
+                SerializedProperty sizeReference = settings.FindProperty("targetSizeReference");
+                if (modelParent != null && modelParent != character.transform && sizeReference != null && sizeReference.objectReferenceValue == null)
+                {
+                    sizeReference.objectReferenceValue = modelParent;
+                    changed = true;
+                }
+                if (!changed) { continue; }
+                if (withUndo) { settings.ApplyModifiedProperties(); } else { settings.ApplyModifiedPropertiesWithoutUndo(); }
+                Debug.Log($"[CharacterModelWindow] '{rig.name}' now follows '{character.name}'s eye point and size.");
+            }
+        }
 
         /// <summary>
         /// The model the sample scene's character uses. Read from the scene if it's open; otherwise from the scene file
@@ -250,7 +286,7 @@ namespace CharacterShowcase.EditorTools
             Scene scene = SceneManager.GetSceneByPath(ScenePath);
             if (scene.isLoaded)
             {
-                AnimationController character = AnimationControllersIn(scene).FirstOrDefault();
+                CharacterModelHost character = CharactersIn(scene).FirstOrDefault();
                 return character != null ? character.ModelSource : null;
             }
             if (File.Exists(ScenePath))
@@ -263,7 +299,7 @@ namespace CharacterShowcase.EditorTools
                 }
             }
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
-            return prefab != null && prefab.TryGetComponent(out AnimationController controller) ? controller.ModelSource : null;
+            return prefab != null && prefab.TryGetComponent(out CharacterModelHost host) ? host.ModelSource : null;
         }
     }
 }

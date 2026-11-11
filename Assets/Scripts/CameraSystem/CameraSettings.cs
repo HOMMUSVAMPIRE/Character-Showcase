@@ -109,6 +109,9 @@ namespace CameraSystem
     {
         [Tooltip("Height of the eyes above the target's origin.")]
         public float eyeHeight = 1.7f;
+        [Tooltip("Optional: the eyes sit at this transform's height above the target's origin instead of Eye Height, so a " +
+                 "target whose size can change (a swappable character model, say) can keep the view at its eyes.")]
+        public Transform eyeAnchor;
         [Tooltip("Forward offset of the eyes from the target's origin, so the view isn't from the center of the head.")]
         public float eyeForwardOffset = 0.1f;
         [Range(20f, 120f)] public float fieldOfView = 75f;
@@ -219,9 +222,9 @@ namespace CameraSystem
     {
         [Tooltip("Widen the field of view as the target moves faster.")]
         public bool enabled = true;
-        [Tooltip("Horizontal speed at which the effect starts.")]
+        [Tooltip("Horizontal speed at which the effect starts, for a target of normal size (see CameraRig.RelativeSpeed).")]
         [Min(0f)] public float minSpeed = 4f;
-        [Tooltip("Horizontal speed at which the effect reaches full strength.")]
+        [Tooltip("Horizontal speed at which the effect reaches full strength, for a target of normal size.")]
         [Min(0f)] public float maxSpeed = 10f;
         [Tooltip("Degrees of field of view added at full strength.")]
         [Range(0f, 30f)] public float extraFov = 8f;
@@ -237,7 +240,7 @@ namespace CameraSystem
         public Vector2 amplitude = new Vector2(0.03f, 0.045f);
         [Tooltip("Full side-to-side sway cycles (two footsteps) per meter travelled.")]
         [Min(0f)] public float cyclesPerMeter = 0.55f;
-        [Tooltip("Horizontal speed at which the bob reaches full amplitude.")]
+        [Tooltip("Horizontal speed at which the bob reaches full amplitude, for a target of normal size.")]
         [Min(0.01f)] public float fullAmplitudeSpeed = 5f;
         [Tooltip("Seconds to fade the bob in and out.")]
         [Range(0f, 0.5f)] public float fadeTime = 0.15f;

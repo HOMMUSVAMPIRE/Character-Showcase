@@ -16,7 +16,7 @@ describes what the project does; this file describes how to change it safely.
 | --- | --- | --- | --- |
 | `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`) | `Character`, `Level` | Unity.InputSystem |
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
-| `CharacterShowcase.Editor` | `Assets/Editor` | `CharacterShowcase.EditorTools` | CharacterShowcase |
+| `CharacterShowcase.Editor` | `Assets/Editor` | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
 | `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
 
 ## How to verify your work
@@ -54,8 +54,8 @@ describes what the project does; this file describes how to change it safely.
   `Character`, `Level` or `CharacterShowcase` namespaces or assemblies. The camera follows a plain Transform. If a
   camera feature needs character information, expose a generic hook on the camera side (an interface, an event, a
   settable value) and connect it from character code.
-- **Models come from a `CharacterModelSource`.** The character asks its source for a model with `CreateModelAsync` and
-  gives it back with `ReleaseModel`; it never instantiates or destroys a model itself, so sources can load models
+- **Models come from a `CharacterModelSource`.** The character's `CharacterModelHost` asks its source for a model with
+  `CreateModelAsync` and gives it back with `ReleaseModel`; it never instantiates or destroys a model itself, so sources can load models
   however they like (directly, Addressables, asset bundles). New ways of getting a model are new subclasses.
 - **Movement and animation are separate.** Movement code produces `MovementData` and raises `MovementEvents`.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
@@ -65,6 +65,11 @@ describes what the project does; this file describes how to change it safely.
   implemented by `BasicMovementMode`, with tunables as serialized fields on the asset.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
+- **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never
+  the character's root transform. Everything size-dependent follows from that: `MovementController.ApplyScale` resizes
+  the capsule (collision code reads the capsule's own size, not transform scale), movement multiplies speeds by
+  `SpeedScale` and distances by `HeightScale`, and the animation state carries `scale`. New size-dependent distances or
+  speeds should scale the same way; new code must not scale the root.
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
   Transform holds a smoothed render pose that lags the simulation. Movement code reads `Rigidbody.position` /
   `rotation` (see `GetGroundPose`). Moving platforms are kinematic Rigidbodies moved in `FixedUpdate`.

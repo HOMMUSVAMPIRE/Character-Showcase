@@ -2,7 +2,8 @@
     "name": "CharacterShowcase.Editor",
     "rootNamespace": "",
     "references": [
-        "CharacterShowcase"
+        "CharacterShowcase",
+        "CameraSystem"
     ],
     "includePlatforms": [
         "Editor"

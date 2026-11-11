@@ -58,14 +58,18 @@ namespace CharacterShowcase.Tests
             Body = Character.GetComponent<Rigidbody>();
         }
 
-        /// <summary>The character's AnimationController, which loads its model at runtime.</summary>
+        /// <summary>The character's AnimationController, which animates its model.</summary>
         public AnimationController Animation => Character.GetComponent<AnimationController>();
+        /// <summary>The character's ACCharacterController (disabled: the rig steps its movement and scale itself).</summary>
+        public ACCharacterController Controller => Character.GetComponent<ACCharacterController>();
+        /// <summary>The character's CharacterModelHost, which loads its model at runtime.</summary>
+        public CharacterModelHost Models => Character.GetComponent<CharacterModelHost>();
 
         /// <summary>Waits (in real frames, not physics steps) for the character's model to finish loading.</summary>
         public IEnumerator WaitForModel(float timeoutSeconds = 10f)
         {
             float giveUp = Time.realtimeSinceStartup + timeoutSeconds;
-            while (!Animation.IsModelReady)
+            while (!Models.IsModelReady)
             {
                 if (Time.realtimeSinceStartup > giveUp) { throw new TimeoutException("The character's model didn't load."); }
                 yield return null;
@@ -127,6 +131,8 @@ namespace CharacterShowcase.Tests
                 yield return new WaitForFixedUpdate();
                 // The previous step's Rigidbody.Move has now been simulated, so Position reflects it.
                 if (i > 0) { afterStep?.Invoke(i - 1); }
+                // As ACCharacterController does each physics step: any change of size first, then movement.
+                Controller.UpdateScale(Time.fixedDeltaTime);
                 Movement.ProcessMovementInputs(inputsForStep(i));
                 Movement.MovementCleanup();
             }

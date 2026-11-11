@@ -120,6 +120,46 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator ThirdPerson_FramesABiggerTarget_FromFurtherAway()
+        {
+            var sizeReference = Track(new GameObject("Size Reference")).transform;
+            sizeReference.SetParent(target, false);
+            sizeReference.localScale = new Vector3(2f, 2f, 2f);
+            rig.TargetSizeReference = sizeReference;
+            // The camera eases out to a longer distance (collision return smoothing), as it would when a target grows.
+            yield return new WaitForSeconds(2f);
+
+            ThirdPersonSettings tp = rig.ThirdPerson;
+            Quaternion yaw = Quaternion.Euler(0f, rig.Yaw, 0f);
+            Vector3 shoulder = target.position + Vector3.up * (tp.pivotHeight + tp.shoulderOffset.y) * 2f
+                               + yaw * Vector3.right * (tp.shoulderOffset.x * 2f * (tp.startOnRightShoulder ? 1f : -1f));
+            Vector3 expected = shoulder + rig.LookRotation * Vector3.back * (rig.Zoom.defaultDistance * 2f);
+            Assert.That(rig.TargetSize, Is.EqualTo(new Vector3(2f, 2f, 2f)));
+            Assert.That(Vector3.Distance(cam.transform.position, expected), Is.LessThan(0.01f),
+                "Pivot height, shoulder offset and distance should all double for a target twice the size.");
+        }
+
+        [UnityTest]
+        public IEnumerator FirstPerson_FollowsTheEyeAnchor_InsteadOfTheFixedEyeHeight()
+        {
+            var anchor = Track(new GameObject("Eye Anchor")).transform;
+            anchor.SetParent(target, false);
+            anchor.localPosition = new Vector3(0f, 1.25f, 0f);
+            rig.FirstPerson.eyeAnchor = anchor;
+            rig.SetMode(CameraMode.FirstPerson);
+            yield return new WaitForSeconds(rig.Modes.transitionDuration * 1.5f);
+
+            Vector3 eyes = target.position + Vector3.up * 1.25f + Quaternion.Euler(0f, rig.Yaw, 0f) * Vector3.forward * rig.FirstPerson.eyeForwardOffset;
+            Assert.That(rig.EyeHeight, Is.EqualTo(1.25f).Within(1e-4f));
+            Assert.That(Vector3.Distance(cam.transform.position, eyes), Is.LessThan(0.01f), "The eyes should be at the anchor's height.");
+
+            // A taller target (a bigger model, say) raises the anchor, and the view with it.
+            anchor.localPosition = new Vector3(0f, 1.6f, 0f);
+            yield return Frames(30);
+            Assert.That(cam.transform.position.y, Is.EqualTo(target.position.y + 1.6f).Within(0.01f));
+        }
+
+        [UnityTest]
         public IEnumerator SetMode_RefusesDisabledModes()
         {
             rig.Modes.allowFirstPerson = false;
@@ -314,6 +354,45 @@ namespace CharacterShowcase.Tests
 
             Assert.That(movingFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f), "FOV should widen by the extra FOV at full speed.");
             Assert.That(cam.fieldOfView, Is.EqualTo(baseFov).Within(0.1f), "FOV should settle back once the target stops.");
+        }
+
+        /// <summary>Moves the target in step with physics, as a character would, then returns the field of view.</summary>
+        private IEnumerator MoveTargetAndMeasureFov(float speed, System.Action<float> result)
+        {
+            for (float t = 0f; t < 1.5f; t += Time.fixedDeltaTime)
+            {
+                yield return new WaitForFixedUpdate();
+                target.position += Vector3.forward * speed * Time.fixedDeltaTime;
+            }
+            yield return null;
+            result(cam.fieldOfView);
+        }
+
+        [UnityTest]
+        public IEnumerator SpeedFov_JudgesSpeed_RelativeToTheTargetsSize()
+        {
+            rig.SpeedFov.enabled = true;
+            var sizeReference = Track(new GameObject("Size Reference")).transform;
+            sizeReference.SetParent(target, false);
+            rig.TargetSizeReference = sizeReference;
+            yield return Frames(3);
+            float baseFov = cam.fieldOfView;
+
+            // A quarter-size target looks as fast at half the speed (speed is judged by the square root of size)...
+            sizeReference.localScale = Vector3.one * 0.25f;
+            float smallFov = 0f;
+            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed / 2f, f => smallFov = f);
+            Assert.That(smallFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f),
+                "Half the full-effect speed should be full speed for a quarter-size target.");
+
+            // ...while a target four times the size needs twice the speed to look as fast.
+            yield return new WaitForSeconds(2f);
+            sizeReference.localScale = Vector3.one * 4f;
+            float bigFov = 0f;
+            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed, f => bigFov = f);
+            float expected = Mathf.InverseLerp(rig.SpeedFov.minSpeed, rig.SpeedFov.maxSpeed, rig.SpeedFov.maxSpeed / 2f) * rig.SpeedFov.extraFov;
+            Assert.That(bigFov, Is.EqualTo(baseFov + expected).Within(0.5f),
+                "At four times the size, the normal full-effect speed should look half as fast.");
         }
 
         [UnityTest]
