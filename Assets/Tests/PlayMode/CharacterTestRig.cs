@@ -103,9 +103,9 @@ namespace CharacterShowcase.Tests
             return box;
         }
 
-        /// <summary>A large flat floor whose top surface is at the given height.</summary>
-        public GameObject Floor(float topHeight = 0f) =>
-            Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(100f, 1f, 100f));
+        /// <summary>A large flat floor whose top surface is at the given height, 100 m across unless given a width.</summary>
+        public GameObject Floor(float topHeight = 0f, float width = 100f) =>
+            Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));
 
         public MovingPlatform Platform(Vector3 topCenter, Vector3 size, Vector3 travel, float period, Vector3 spin)
         {

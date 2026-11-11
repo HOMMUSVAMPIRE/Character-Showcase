@@ -104,9 +104,10 @@ namespace Character
                 // the clips for its speed divided by its stride scale keeps its planted feet in place at any size.
                 Vector3 scale = state.scale == Vector3.zero ? Vector3.one : state.scale;
                 if (speed != 0) { animator.SetFloat(speed, state.horizontalSpeed / state.StrideScale, speedDampTime, deltaTime); }
-                // Jump speeds scale with the square root of height (see MovementController.SpeedScale), so this keeps the
+                // Jump speeds scale with the character's speeds (see MovementController.SpeedScale), so this keeps the
                 // rising and falling poses at the same points of a jump at any size.
-                if (verticalSpeed != 0) { animator.SetFloat(verticalSpeed, state.verticalSpeed / Mathf.Sqrt(scale.y)); }
+                float speedScale = state.speedScale > 0f ? state.speedScale : 1f;
+                if (verticalSpeed != 0) { animator.SetFloat(verticalSpeed, state.verticalSpeed / speedScale); }
                 if (forwardSpeed != 0) { animator.SetFloat(forwardSpeed, state.localVelocity.z / scale.z, speedDampTime, deltaTime); }
                 if (sidewaysSpeed != 0) { animator.SetFloat(sidewaysSpeed, state.localVelocity.x / scale.x, speedDampTime, deltaTime); }
                 if (turnSpeed != 0) { animator.SetFloat(turnSpeed, state.turnSpeed, speedDampTime, deltaTime); }

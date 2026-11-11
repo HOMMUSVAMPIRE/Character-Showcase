@@ -124,6 +124,7 @@ namespace Character
             }
 
             float horizontalSpeed = new Vector2(velocity.x, velocity.z).magnitude;
+            float speedScale = movementController != null ? movementController.SpeedScale : 1f;
             return new CharacterAnimationState
             {
                 velocity = velocity,
@@ -135,11 +136,12 @@ namespace Character
                 grounded = touchingGround || (!jumping && airTime < airborneDelay),
                 touchingGround = touchingGround,
                 timeInAir = airTime,
-                moving = horizontalSpeed > movingSpeedThreshold,
+                moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
                 dashing = movementData.state.HasFlag(CharacterState.Dashing),
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
                     ? modelHost.ModelParent.localScale : Vector3.one,
+                speedScale = speedScale,
             };
         }
 

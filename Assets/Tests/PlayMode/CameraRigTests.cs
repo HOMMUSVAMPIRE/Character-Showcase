@@ -378,21 +378,21 @@ namespace CharacterShowcase.Tests
             yield return Frames(3);
             float baseFov = cam.fieldOfView;
 
-            // A quarter-size target looks as fast at half the speed (speed is judged by the square root of size)...
+            // A quarter-size target looks as fast at a quarter of the speed (speed is judged in proportion to size)...
             sizeReference.localScale = Vector3.one * 0.25f;
             float smallFov = 0f;
-            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed / 2f, f => smallFov = f);
+            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed / 4f, f => smallFov = f);
             Assert.That(smallFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f),
-                "Half the full-effect speed should be full speed for a quarter-size target.");
+                "A quarter of the full-effect speed should be full speed for a quarter-size target.");
 
-            // ...while a target four times the size needs twice the speed to look as fast.
+            // ...while a target four times the size needs four times the speed to look as fast.
             yield return new WaitForSeconds(2f);
             sizeReference.localScale = Vector3.one * 4f;
             float bigFov = 0f;
-            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed, f => bigFov = f);
+            yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed * 2f, f => bigFov = f);
             float expected = Mathf.InverseLerp(rig.SpeedFov.minSpeed, rig.SpeedFov.maxSpeed, rig.SpeedFov.maxSpeed / 2f) * rig.SpeedFov.extraFov;
             Assert.That(bigFov, Is.EqualTo(baseFov + expected).Within(0.5f),
-                "At four times the size, the normal full-effect speed should look half as fast.");
+                "At four times the size, twice the normal full-effect speed should look half as fast.");
         }
 
         [UnityTest]
@@ -422,6 +422,92 @@ namespace CharacterShowcase.Tests
 
             Assert.That(rest.y - lowest, Is.GreaterThan(0.05f), "Camera should dip on landing.");
             Assert.That(cam.transform.position.y, Is.EqualTo(rest.y).Within(0.01f), "Camera should spring back up after landing.");
+        }
+
+        /// <summary>Gives the target a size reference scaled to the given size, as the character's model parent is.</summary>
+        private Transform SizeTarget(float size)
+        {
+            var sizeReference = Track(new GameObject("Size Reference")).transform;
+            sizeReference.SetParent(target, false);
+            sizeReference.localScale = Vector3.one * size;
+            rig.TargetSizeReference = sizeReference;
+            return sizeReference;
+        }
+
+        private static readonly float[] OtherSizes = { 0.1f, 10f, 100f };
+
+        [UnityTest]
+        public IEnumerator TheCameraFramesATarget_TheSameWayAtAnySize([ValueSource(nameof(OtherSizes))] float size)
+        {
+            yield return Frames(3);
+            Vector3 offset = cam.transform.position - target.position;
+            float near = cam.nearClipPlane, far = cam.farClipPlane;
+
+            SizeTarget(size);
+            rig.SetTarget(target); // Snaps, so this checks where it settles rather than how it eases there.
+            yield return Frames(3);
+
+            Assert.That(Vector3.Distance(cam.transform.position - target.position, offset * size), Is.LessThan(1e-3f * size),
+                "The camera should sit where it does for a target of normal size, scaled with the target.");
+            Assert.That(Quaternion.Angle(cam.transform.rotation, rig.LookRotation), Is.LessThan(0.1f));
+            Assert.That(cam.nearClipPlane, Is.EqualTo(near * size).Within(near * size * 1e-3f), "The near clip plane should scale with the target.");
+            Assert.That(cam.farClipPlane, Is.EqualTo(far * Mathf.Max(1f, size)).Within(far * 1e-3f),
+                "The far clip plane should scale up for a bigger target, and stay for a smaller one.");
+        }
+
+        [UnityTest]
+        public IEnumerator CameraCollision_ScalesWithTheTarget()
+        {
+            // At a tenth of the size, the camera sits a tenth as far back (0.35 m). A wall 0.5 m behind the target is
+            // clear of it, but within reach of a probe the full 0.2 m wide.
+            SizeTarget(0.1f);
+            rig.SetTarget(target);
+            yield return Frames(3);
+            Vector3 clear = cam.transform.position;
+            Vector3 back = rig.LookRotation * Vector3.back;
+            Box("Wall Behind", target.position + new Vector3(back.x, 0f, back.z).normalized * 0.55f + Vector3.up * 0.2f, new Vector3(4f, 4f, 0.1f));
+            yield return Frames(3);
+            Assert.That(Vector3.Distance(cam.transform.position, clear), Is.LessThan(1e-3f), "The camera shouldn't be pulled in by a wall clear of it.");
+        }
+
+        /// <summary>
+        /// Drops the target at a steady speed for its size (12 m/s at normal size) and stops it dead, as if it hit the
+        /// ground, and gives back how far the camera dipped, relative to the target's size.
+        /// </summary>
+        private IEnumerator MeasureLandingDip(float size, System.Action<float> result)
+        {
+            rig.Shake.enabled = false;
+            rig.ThirdPerson.verticalDamping = 0f;
+            target.position = new Vector3(0f, 20f * size, 0f);
+            rig.SetTarget(target);
+            yield return Frames(3);
+            for (int i = 0; i < 30; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                target.position += Vector3.down * 12f * size * Time.fixedDeltaTime;
+            }
+            float rest, lowest = float.PositiveInfinity;
+            for (int i = 0; i < 40; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                yield return null;
+                lowest = Mathf.Min(lowest, cam.transform.position.y);
+            }
+            yield return new WaitForSeconds(1f);
+            rest = cam.transform.position.y;
+            result((rest - lowest) / size);
+        }
+
+        [UnityTest]
+        public IEnumerator LandingDip_IsInProportion_ToTheTargetsSize([ValueSource(nameof(OtherSizes))] float size)
+        {
+            float normalDip = 0f, dip = 0f;
+            yield return MeasureLandingDip(1f, d => normalDip = d);
+            SizeTarget(size);
+            yield return MeasureLandingDip(size, d => dip = d);
+            Assert.That(normalDip, Is.GreaterThan(0.05f), "Test setup: the camera should dip at normal size.");
+            Assert.That(dip, Is.EqualTo(normalDip).Within(normalDip * 0.05f),
+                "Landing as fast for its size, a target of any size should dip the camera as far for its size.");
         }
 
         [UnityTest]

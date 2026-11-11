@@ -6,6 +6,8 @@ using Character;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 
 namespace CharacterShowcase.EditorTools
 {
@@ -14,6 +16,9 @@ namespace CharacterShowcase.EditorTools
     /// - configures it as a Humanoid, so the mannequin's animations retarget onto it
     /// - puts the avatar's reference pose into a T-pose, so models rigged in an A-pose (arms angled down) don't play
     ///   every animation with their arms raised
+    /// - straightens any rotated nodes above the skeleton (Blender's "Armature") in the avatar, and measures how far the
+    ///   model's soles stand from its origin as it stands idle: so its feet rest on the ground at any size, even when
+    ///   the character is stretched on one axis only
     /// - saves a model prefab next to it ("[name] Model.prefab"): the model with an Animator using the shared Animator
     ///   Controller, CharacterIK and FootPlacementIK
     /// - saves a DirectCharacterModelSource next to it ("[name].asset") naming the prefab and the shared translator,
@@ -209,7 +214,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         // Bump to re-prepare every model once, when what preparing does changes.
-        private const string PreparationVersion = "2";
+        private const string PreparationVersion = "3";
         // Per machine, like the rest of Library: which model files were prepared, and their contents at the time.
         private const string PreparedHashesPath = "Library/CharacterShowcase/PreparedModels.txt";
 
@@ -383,6 +388,23 @@ namespace CharacterShowcase.EditorTools
             }
             definition.ModelPrefab = modelPrefab;
             if (definition.Translator == null) { definition.Translator = translator; }
+            // Measured on the prefab as saved, loaded afresh: the one in hand can still show the avatar as it was before
+            // this run changed it.
+            GameObject savedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (TryMeasureGroundOffset(savedPrefab, ControllerOf(definition), definition.Avatar, out float groundOffset))
+            {
+                definition.GroundOffset = groundOffset;
+            }
+            else
+            {
+                result.notes.Add("Couldn't measure how high its feet stand, so its Ground Offset was left as it was.");
+            }
+            string skew = RotatedAboveSkeleton(modelPrefab, definition.Avatar);
+            if (skew != null)
+            {
+                result.notes.Add($"{skew} Stretching the character on one axis will distort it: export it without that " +
+                                 "rotation or scale.");
+            }
             EditorUtility.SetDirty(definition);
             result.definition = definition;
             return result;
@@ -518,6 +540,7 @@ namespace CharacterShowcase.EditorTools
                 Aim(Bone(HumanBodyBones.LeftLowerLeg), Bone(HumanBodyBones.LeftFoot), Vector3.down);
                 Aim(rightLeg, Bone(HumanBodyBones.RightLowerLeg), Vector3.down);
                 Aim(Bone(HumanBodyBones.RightLowerLeg), Bone(HumanBodyBones.RightFoot), Vector3.down);
+                StraightenAboveSkeleton(instance.transform, Bone(HumanBodyBones.Hips));
 
                 bool changed = false;
                 SkeletonBone[] skeleton = description.skeleton;
@@ -565,6 +588,30 @@ namespace CharacterShowcase.EditorTools
             {
                 if (!rest.TryGetValue(bone, out Matrix4x4 world)) { continue; }
                 bone.SetPositionAndRotation(world.GetColumn(3), world.rotation);
+            }
+        }
+
+        /// <summary>
+        /// Takes the rotation out of the nodes between the model's root and its hips, keeping everything under them where
+        /// it is. Blender's FBX export rotates the armature node -90 degrees about X to convert axes. The Animator poses
+        /// those nodes as the avatar stores them and places the body through them, and when the character is stretched
+        /// along one axis only (taller, say) the rotation turns the stretch onto another axis: the body is distorted and
+        /// lifted off the ground, its hips stretched by the scale twice over. Unrotated, as in models without such a
+        /// node, the stretch applies as it should. Every bone's world pose is unchanged, so animation looks the same.
+        /// </summary>
+        private static void StraightenAboveSkeleton(Transform root, Transform hips)
+        {
+            if (hips == null) { return; }
+            var above = new List<Transform>();
+            for (Transform node = hips.parent; node != null && node != root; node = node.parent) { above.Add(node); }
+            above.Reverse(); // From the top down, so straightening one doesn't move the ones below it.
+            foreach (Transform node in above)
+            {
+                if (Quaternion.Angle(node.localRotation, Quaternion.identity) < 1e-3f) { continue; }
+                var children = new List<(Transform child, Vector3 position, Quaternion rotation)>();
+                foreach (Transform child in node) { children.Add((child, child.position, child.rotation)); }
+                node.localRotation = Quaternion.identity;
+                foreach ((Transform child, Vector3 position, Quaternion rotation) in children) { child.SetPositionAndRotation(position, rotation); }
             }
         }
 
@@ -622,6 +669,116 @@ namespace CharacterShowcase.EditorTools
 
         private static string SettingsOf<T>(GameObject gameObject) where T : Component =>
             gameObject != null && gameObject.TryGetComponent(out T component) ? EditorJsonUtility.ToJson(component) : null;
+
+        /// <summary>
+        /// Describes the nodes between the model's root and its hips that its avatar poses rotated or unevenly scaled,
+        /// which distort the model when the character is stretched along one axis, or null if there are none.
+        /// Preparing straightens rotated ones (see StraightenAboveSkeleton), so this reports what that couldn't fix.
+        /// </summary>
+        public static string RotatedAboveSkeleton(GameObject modelPrefab, Avatar avatarOverride)
+        {
+            Animator animator = modelPrefab != null ? modelPrefab.GetComponentInChildren<Animator>(true) : null;
+            Avatar avatar = avatarOverride != null ? avatarOverride : animator != null ? animator.avatar : null;
+            if (avatar == null || !avatar.isHuman) { return null; }
+            HumanDescription description = avatar.humanDescription;
+            string hipsName = description.human.FirstOrDefault(h => h.humanName == HumanTrait.BoneName[(int)HumanBodyBones.Hips]).boneName;
+            Transform hips = string.IsNullOrEmpty(hipsName) ? null
+                : modelPrefab.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == hipsName);
+            if (hips == null) { return null; }
+            var problems = new List<string>();
+            for (Transform node = hips.parent; node != null && node != modelPrefab.transform; node = node.parent)
+            {
+                SkeletonBone pose = description.skeleton.FirstOrDefault(bone => bone.name == node.name);
+                if (pose.name == null) { continue; }
+                Vector3 scale = pose.scale;
+                bool rotated = Quaternion.Angle(pose.rotation, Quaternion.identity) > 0.5f;
+                bool uneven = Mathf.Abs(scale.x - scale.y) > 1e-3f * Mathf.Abs(scale.y) || Mathf.Abs(scale.z - scale.y) > 1e-3f * Mathf.Abs(scale.y);
+                if (rotated) { problems.Add($"'{node.name}' is rotated"); }
+                if (uneven) { problems.Add($"'{node.name}' is unevenly scaled"); }
+            }
+            return problems.Count == 0 ? null : string.Join(", ", problems) + ", above its skeleton.";
+        }
+
+        /// <summary>
+        /// How far above its origin the model's soles are as it stands idle, in its own units: its lowest vertex in the
+        /// pose its Animator Controller starts in, standing still (the default state's clip, or for a blend tree, its
+        /// clip for the lowest value, as standing still is), with its feet where foot placement holds them. Used as its source's Ground Offset, so models whose feet sit
+        /// a little above or below their origin (or whose animation, retargeted onto them, does) still stand on the
+        /// ground. False if the model can't be posed or has no meshes.
+        /// </summary>
+        public static bool TryMeasureGroundOffset(GameObject modelPrefab, RuntimeAnimatorController controller, Avatar avatarOverride, out float offset)
+        {
+            offset = 0f;
+            AnimationClip standing = StandingClip(controller, out bool footIK);
+            if (modelPrefab == null || standing == null) { return false; }
+            var instance = Object.Instantiate(modelPrefab);
+            instance.hideFlags = HideFlags.HideAndDontSave;
+            PlayableGraph graph = default;
+            var baked = new Mesh();
+            try
+            {
+                instance.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                instance.transform.localScale = Vector3.one;
+                Animator animator = instance.GetComponentInChildren<Animator>(true);
+                if (animator == null) { return false; }
+                if (avatarOverride != null) { animator.avatar = avatarOverride; }
+                animator.applyRootMotion = false;
+
+                // Posed by hand, in edit mode, at the clip's first frame.
+                graph = PlayableGraph.Create("Measure Ground Offset");
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var output = AnimationPlayableOutput.Create(graph, "Pose", animator);
+                AnimationClipPlayable pose = AnimationClipPlayable.Create(graph, standing);
+                // With the feet where the character will stand them: FootPlacementIK holds them at their IK goals while
+                // on the ground, which are where the clip has them (not quite where a model of other proportions than
+                // the clip's own has them otherwise: up to a centimetre off). Without it, as the controller's state
+                // plays them.
+                bool placesFeet = instance.GetComponentsInChildren<FootPlacementIK>(true).Any(feet => feet.enabled && feet.weight > 0f);
+                pose.SetApplyFootIK(footIK || placesFeet);
+                output.SetSourcePlayable(pose);
+                graph.Evaluate(0f);
+
+                float lowest = float.PositiveInfinity;
+                foreach (SkinnedMeshRenderer skinned in instance.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+                {
+                    if (skinned.sharedMesh == null) { continue; }
+                    // Baked without the renderer's scale taken out, so the vertices are in world units relative to its
+                    // position and rotation.
+                    skinned.BakeMesh(baked, false);
+                    Matrix4x4 toWorld = Matrix4x4.TRS(skinned.transform.position, skinned.transform.rotation, Vector3.one);
+                    foreach (Vector3 vertex in baked.vertices) { lowest = Mathf.Min(lowest, toWorld.MultiplyPoint3x4(vertex).y); }
+                }
+                if (!float.IsFinite(lowest)) { return false; }
+                // Rounded, so measuring again doesn't dirty the source over floating point noise.
+                offset = Mathf.Round(lowest * 1e5f) / 1e5f;
+                return true;
+            }
+            finally
+            {
+                if (graph.IsValid()) { graph.Destroy(); }
+                Object.DestroyImmediate(baked);
+                Object.DestroyImmediate(instance);
+            }
+        }
+
+        /// <summary>
+        /// The clip the controller plays standing still (see TryMeasureGroundOffset), and whether its state applies foot
+        /// IK. Null if there's none.
+        /// </summary>
+        private static AnimationClip StandingClip(RuntimeAnimatorController controller, out bool footIK)
+        {
+            footIK = false;
+            if (controller is not AnimatorController editable || editable.layers.Length == 0) { return null; }
+            AnimatorState state = editable.layers[0].stateMachine.defaultState;
+            if (state == null) { return null; }
+            footIK = state.iKOnFeet;
+            Motion motion = state.motion;
+            while (motion is BlendTree tree && tree.children.Length > 0)
+            {
+                motion = tree.children.OrderBy(child => child.threshold).First().motion;
+            }
+            return motion as AnimationClip;
+        }
 
         /// <summary>The model's height in meters, from its meshes in their bind pose.</summary>
         public static float MeasureHeight(GameObject modelPrefab) => CharacterModelSource.MeasureHeight(modelPrefab);

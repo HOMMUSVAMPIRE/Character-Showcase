@@ -20,6 +20,7 @@ MonoBehaviour:
   positionOffset: {x: 0, y: 0, z: 0}
   rotationOffset: {x: 0, y: 0, z: 0}
   scale: 1
+  groundOffset: 0.00108
   addIK: 1
   addFootPlacement: 1
   matchCharacterLayer: 1

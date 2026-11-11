@@ -117,6 +117,7 @@ namespace CameraSystem
         [Range(20f, 120f)] public float fieldOfView = 75f;
         [Range(-89f, 0f)] public float minPitch = -85f;
         [Range(0f, 89f)] public float maxPitch = 85f;
+        [Tooltip("Near clip plane for a target of normal size (scaled with its size).")]
         [Min(0.01f)] public float nearClipPlane = 0.05f;
         [Tooltip("How the target's own renderers are handled in first person.")]
         public TargetHideMode hideTarget = TargetHideMode.ShadowsOnly;
@@ -140,6 +141,7 @@ namespace CameraSystem
         [Range(20f, 120f)] public float fieldOfView = 60f;
         [Range(-89f, 0f)] public float minPitch = -60f;
         [Range(0f, 89f)] public float maxPitch = 75f;
+        [Tooltip("Near clip plane for a target of normal size (scaled with its size).")]
         [Min(0.01f)] public float nearClipPlane = 0.1f;
         [Tooltip("Seconds to smooth horizontal follow. 0 = locked to the target.")]
         [Range(0f, 0.5f)] public float horizontalDamping = 0.04f;
@@ -147,7 +149,7 @@ namespace CameraSystem
         [Range(0f, 0.5f)] public float verticalDamping = 0.15f;
         [Tooltip("How the target's renderers are handled when the camera gets very close to it.")]
         public TargetHideMode hideWhenClose = TargetHideMode.Hide;
-        [Tooltip("Camera-to-pivot distance below which the target is hidden.")]
+        [Tooltip("Camera-to-pivot distance below which the target is hidden, for a target of normal size.")]
         [Min(0f)] public float hideDistance = 0.6f;
     }
 
@@ -192,9 +194,9 @@ namespace CameraSystem
         public bool enabled = true;
         [Tooltip("Layers the camera collides with. The target's own colliders are always ignored.")]
         public LayerMask layers = ~0;
-        [Tooltip("Radius of the sphere swept from the pivot to the camera.")]
+        [Tooltip("Radius of the sphere swept from the pivot to the camera, for a target of normal size (scaled with its size, as are the other distances here).")]
         [Min(0.01f)] public float probeRadius = 0.2f;
-        [Tooltip("Closest the camera may be pulled to the pivot.")]
+        [Tooltip("Closest the camera may be pulled to the pivot, for a target of normal size.")]
         [Min(0f)] public float minDistance = 0.25f;
         [Tooltip("Seconds to ease back out once an obstacle is gone. Pulling in is always instant to avoid clipping.")]
         [Range(0f, 1f)] public float returnSmoothTime = 0.25f;
@@ -209,11 +211,11 @@ namespace CameraSystem
                  "target's Rigidbody already interpolates. Note this only smooths the camera: the target itself will " +
                  "still visibly step unless its Rigidbody interpolates, so prefer enabling Rigidbody interpolation.")]
         public bool interpolateTarget = true;
-        [Tooltip("A jump in target position larger than this in a single step is treated as a teleport: smoothing is skipped.")]
+        [Tooltip("A jump in target position larger than this in a single step is treated as a teleport: smoothing is skipped. For a target of normal size; scaled with its size.")]
         [Min(0.1f)] public float teleportDistance = 5f;
-        [Tooltip("Furthest the smoothed follow point may trail the target horizontally, so damping can't leave it far behind at speed.")]
+        [Tooltip("Furthest the smoothed follow point may trail the target horizontally, so damping can't leave it far behind at speed. For a target of normal size; scaled with its size.")]
         [Min(0f)] public float maxHorizontalLag = 0.75f;
-        [Tooltip("Furthest the smoothed follow point may trail the target vertically (e.g. during long falls).")]
+        [Tooltip("Furthest the smoothed follow point may trail the target vertically (e.g. during long falls). For a target of normal size; scaled with its size.")]
         [Min(0f)] public float maxVerticalLag = 0.5f;
     }
 
@@ -254,7 +256,7 @@ namespace CameraSystem
     {
         [Tooltip("Dip the camera when the target lands from a fall.")]
         public bool enabled = true;
-        [Tooltip("Downward speed the target must be falling at for a landing to register.")]
+        [Tooltip("Downward speed the target must be falling at for a landing to register, for a target of normal size (scaled with its size, as is the dip).")]
         [Min(0f)] public float minImpactSpeed = 4f;
         [Tooltip("Meters of dip per m/s of impact speed above the minimum.")]
         [Min(0f)] public float dipPerSpeed = 0.025f;

@@ -32,6 +32,11 @@ namespace Character
         public bool dashing;
         /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>
         public Vector3 scale;
+        /// <summary>
+        /// What the character's speeds are multiplied by at its size (see MovementController.SpeedScale; 1 as authored).
+        /// Speeds divided by it are as the character would move at its authored size.
+        /// </summary>
+        public float speedScale;
 
         /// <summary>
         /// How much longer than as authored the model's strides are in the direction it's moving: its scale along that

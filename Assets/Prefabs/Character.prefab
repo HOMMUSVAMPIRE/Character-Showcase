@@ -103,7 +103,7 @@ MonoBehaviour:
   maxSlopeAngle: 55
   skinWidth: 0.02
   groundSnapDistance: 0.1
-  sizeScaling: 0
+  sizeScaling: 2
   groundTransform: {fileID: 0}
   moveWithGround: 1
   rotateWithGround: 1

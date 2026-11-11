@@ -235,6 +235,60 @@ namespace CharacterShowcase.Tests
             Assert.That(slide, Is.LessThan(AllowedFootSlide), $"The planted feet slide at {slide:P0} of the character's speed.");
         }
 
+        private static readonly Vector3[] GroundingScales =
+        {
+            Vector3.one, Vector3.one * 0.1f, Vector3.one * 10f,
+            new(1f, 0.5f, 1f), new(1f, 2f, 1f), new(2f, 1f, 0.5f),
+        };
+
+        /// <summary>The lowest point of the model's meshes as they're posed now, in world space.</summary>
+        private float LowestPointOfModel()
+        {
+            float lowest = float.PositiveInfinity;
+            var baked = new Mesh();
+            foreach (SkinnedMeshRenderer skinned in rig.Models.Model.GetComponentsInChildren<SkinnedMeshRenderer>())
+            {
+                // Baked without the renderer's scale taken out: world units, relative to its position and rotation.
+                skinned.BakeMesh(baked, false);
+                Matrix4x4 toWorld = Matrix4x4.TRS(skinned.transform.position, skinned.transform.rotation, Vector3.one);
+                foreach (Vector3 vertex in baked.vertices) { lowest = Mathf.Min(lowest, toWorld.MultiplyPoint3x4(vertex).y); }
+            }
+            Object.Destroy(baked);
+            return lowest;
+        }
+
+        /// <summary>
+        /// Standing idle on a floor, every model's soles touch it: neither floating above it nor sunk into it, at any
+        /// size, including stretched along one axis only. (Models whose files have rotated nodes above the skeleton,
+        /// such as Blender's armature, used to be distorted and lifted off the ground when stretched, until Prepare
+        /// Character Models straightened them; and each model's Ground Offset puts its soles, not its origin, on the
+        /// ground.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EveryModel_StandsOnTheGround_AtAnySize([ValueSource(nameof(PreparedModels))] string definitionPath,
+            [ValueSource(nameof(GroundingScales))] Vector3 scale)
+        {
+            yield return SpawnWithModel(definitionPath);
+            yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
+            Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
+            TakeOverAnimator();
+            float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), step =>
+            {
+                StepAnimator(step);
+                if (step < CharacterTestRig.StepsFor(0.5f)) { return; } // Settled first.
+                float sole = LowestPointOfModel();
+                lowest = Mathf.Min(lowest, sole);
+                highest = Mathf.Max(highest, sole);
+            });
+            Assert.That(rig.Grounded, Is.True);
+            // Within 2 mm for a model of normal size (the idle clip moves the feet a little), scaled with its height.
+            float tolerance = 0.002f * scale.y;
+            TestContext.WriteLine($"Soles between {lowest * 1000f:0.00} and {highest * 1000f:0.00} mm from the floor.");
+            Assert.That(lowest, Is.GreaterThan(-tolerance), $"The soles sink {-lowest * 1000f:0.0} mm into the floor.");
+            Assert.That(highest, Is.LessThan(tolerance), $"The soles float {highest * 1000f:0.0} mm above the floor.");
+        }
+
         /// <summary>
         /// Humanoid animation plays relative to each avatar's T-pose, so a model whose avatar took an A-pose as its T-pose
         /// holds its arms that much higher in every clip. Standing idle, the mannequin's upper arms hang about 12 degrees

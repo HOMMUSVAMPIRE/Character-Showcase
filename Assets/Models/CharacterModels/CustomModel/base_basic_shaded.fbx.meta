@@ -514,12 +514,12 @@ ModelImporter:
     - name: Armature
       parentName: base_basic_shaded(Clone)
       position: {x: -0, y: 0, z: 0}
-      rotation: {x: -0.7071068, y: 0, z: -0, w: 0.7071068}
+      rotation: {x: 0, y: 0, z: 0, w: 1}
       scale: {x: 100, y: 100, z: 100}
     - name: Hips
       parentName: Armature
-      position: {x: 0.0000008532404, y: -0.0000061058995, z: 0.010455614}
-      rotation: {x: 0.7071071, y: -4.162712e-11, z: 3.532779e-11, w: 0.70710653}
+      position: {x: 0.0000008532404, y: 0.010455615, z: 0.0000061047076}
+      rotation: {x: 0.00000044703478, y: -4.4542976e-12, z: 5.4415333e-11, w: 1}
       scale: {x: 1, y: 0.9999998, z: 0.9999998}
     - name: Spine
       parentName: Hips

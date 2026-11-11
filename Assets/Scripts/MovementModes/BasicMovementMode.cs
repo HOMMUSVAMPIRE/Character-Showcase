@@ -26,7 +26,7 @@ namespace Character
         [SerializeField] private float jumpInputBuffer = 0.1f;
 
         [Header("Gravity & Falling")]
-        [Tooltip("The base acceleration applied to the character when falling")]
+        [Tooltip("The base acceleration applied to the character when falling, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
         [SerializeField] private float gravityStrength;
         [Tooltip("The maximum falling speed the player can reach. (if 0, do not clamp fall speed)")]
         [SerializeField] private float maxFallSpeed;
@@ -40,9 +40,9 @@ namespace Character
         [SerializeField] private float airSteeringStrength;
         [Tooltip("A curve that determines how quickly after leaving the ground that the player can steer their character in the air")]
         [SerializeField] private AnimationCurve airSteeringStrengthCurve = new();
-        [Tooltip("How quickly (m/s²) air steering changes the character's horizontal velocity, before the strength and curve above")]
+        [Tooltip("How quickly (m/s²) air steering changes the character's horizontal velocity, before the strength and curve above. Scales with the character's size (see the MovementController's Size Scaling).")]
         [SerializeField] private float airAcceleration = 80f;
-        [Tooltip("How quickly (m/s²) the character slows down in the air with no steering input")]
+        [Tooltip("How quickly (m/s²) the character slows down in the air with no steering input. Scales with the character's size.")]
         [SerializeField] private float airDrag = 4f;
 
         [Header("Dashing")]
@@ -117,7 +117,8 @@ namespace Character
             // The coyote gravity curve only applies after walking off the ground. After a jump, gravity is at full
             // strength, so a jump ended early (a short tap, or bumping a ceiling) doesn't float at its peak.
             float airGravity = controller.HasJumpedSinceGrounded ? 1f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded);
-            float g = gravityStrength * (movementData.initialGrounded ? 0.5f : airGravity);
+            // Gravity scales with the character's size as accelerations do (see MovementController.AccelerationScale).
+            float g = gravityStrength * controller.AccelerationScale * (movementData.initialGrounded ? 0.5f : airGravity);
             // Apply gravity to the character
             movementData.velocityChange += Vector3.down * g * movementData.deltaTime;
 
@@ -126,10 +127,11 @@ namespace Character
             {
                 // Note: g is an acceleration used as a speed here, and a jump replaces this velocity rather than the
                 // (clamped) inertia below, so every jump's first frame gets g as extra launch speed: part of the jump's
-                // tuned feel (0.4 m of a 3 m jump). Being a single frame's worth, it can't scale with size the way the
-                // rest of the jump does (speed and duration both), so it's scaled by height directly, which keeps jump
-                // height proportional to the character's size. At the authored size it's unchanged.
-                movementData.initialVelocity = new Vector3(movementData.initialVelocity.x, -g * controller.HeightScale, movementData.initialVelocity.z);
+                // tuned feel (0.4 m of a 3 m jump). As a speed it scales with height, not as g does (see
+                // AccelerationScale), which keeps jump height proportional to the character's size under any size
+                // scaling. At the authored size it's unchanged.
+                float groundedSpeed = g / controller.AccelerationScale * controller.HeightScale;
+                movementData.initialVelocity = new Vector3(movementData.initialVelocity.x, -groundedSpeed, movementData.initialVelocity.z);
                 // Inertia is what actually drives movement. Without this, gravity piles up in inertia.y every grounded
                 // frame (the floor blocks the motion but never resets inertia), so walking off a ledge after standing
                 // for a while launches the character downward far faster than a normal fall. This frame's gravity
@@ -258,7 +260,9 @@ namespace Character
             if (movementData.initialGrounded)
             {
                 // We are grounded, so to limit sliding, kill horizontal momentum over time to simulate friction
-                movementData.initialInertia = Vector3.Lerp(movementData.initialInertia, Vector3.up * movementData.initialInertia.y, groundedDampenHorizontalInertia * movementData.deltaTime);
+                // A rate per second: over the same share of a stride at any size (see MovementController.DurationScale).
+                movementData.initialInertia = Vector3.Lerp(movementData.initialInertia, Vector3.up * movementData.initialInertia.y,
+                    groundedDampenHorizontalInertia * movementData.deltaTime / controller.DurationScale);
             }
             else
             {
@@ -303,12 +307,12 @@ namespace Character
                 steerDirection /= steerDirection.magnitude;
                 float speedAlongInput = Vector2.Dot(velocity, steerDirection);
                 Vector2 target = steerDirection * Mathf.Max(walkSpeed * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
-                velocity = Vector2.MoveTowards(velocity, target, airAcceleration * steeringEffectiveness * movementData.deltaTime);
+                velocity = Vector2.MoveTowards(velocity, target, airAcceleration * controller.AccelerationScale * steeringEffectiveness * movementData.deltaTime);
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(steer, Vector3.up), steeringEffectiveness);
             }
             else if (input <= 0.001f)
             {
-                velocity = Vector2.MoveTowards(velocity, Vector2.zero, airDrag * movementData.deltaTime);
+                velocity = Vector2.MoveTowards(velocity, Vector2.zero, airDrag * controller.AccelerationScale * movementData.deltaTime);
             }
 
             movementData.initialInertia = new Vector3(velocity.x, inertia.y, velocity.y);
@@ -333,8 +337,8 @@ namespace Character
 
             // Figure out what our velocity would be this frame of a jump
             // TODO: As noted before, this should ideally be calculated based on a jump height, but for now, this is based on a velocity curve
-            // Scaled for the character's size: launch speed with SpeedScale (so jump height follows height under Natural
-            // scaling), and how long the button can be held to jump higher with DurationScale.
+            // Scaled for the character's size: launch speed with SpeedScale and how long the button can be held to jump
+            // higher with DurationScale, so with gravity scaled too (AccelerationScale), jump height follows height.
             float jumpVelocity = controller.jumpStrengthModifier * controller.SpeedScale
                 * jumpStrengthCurve.Evaluate(inputs.jump.holdDuration / controller.DurationScale) * jumpStrength;
             // Continue a jump while the button is held, until the character bumps their head, or start one on a fresh

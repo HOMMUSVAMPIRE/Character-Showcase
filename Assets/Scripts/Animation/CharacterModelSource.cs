@@ -36,6 +36,10 @@ namespace Character
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
         [Tooltip("Uniform scale applied to the model")]
         [Min(0.001f)] [SerializeField] private float scale = 1f;
+        [Tooltip("How far above its origin the model's soles are as it stands, in the model's own units (before Scale and " +
+                 "Fit To Height): the model is lowered by this, so its feet rest on the ground. Negative if its feet sink " +
+                 "below its origin. Prepare Character Models measures it from the model standing idle.")]
+        [SerializeField] private float groundOffset;
 
         [Header("Setup")]
         [Tooltip("Add CharacterIK to humanoid models that don't have it, so their hands and feet can be posed with IK")]
@@ -53,6 +57,7 @@ namespace Character
         public Vector3 PositionOffset { get => positionOffset; set => positionOffset = value; }
         public Vector3 RotationOffset { get => rotationOffset; set => rotationOffset = value; }
         public float Scale { get => scale; set => scale = Mathf.Max(0.001f, value); }
+        public float GroundOffset { get => groundOffset; set => groundOffset = value; }
         public ModelHeight Height { get => height; set => height = value; }
         public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
@@ -101,6 +106,10 @@ namespace Character
                 float modelHeight = MeasureHeight(model);
                 if (modelHeight > 0f) { modelTransform.localScale *= fitHeight / modelHeight; }
             }
+            // Feet on the ground: lowered by the ground offset at the model's size. Being inside the character's model
+            // parent, the offset is scaled with the character, so the feet stay on the ground at any size, however
+            // stretched.
+            modelTransform.localPosition = positionOffset + Vector3.down * (groundOffset * modelTransform.localScale.y);
             if (matchCharacterLayer) { SetLayerRecursively(model, context.Character.layer); }
 
             // The model may be inactive (see CreateModelAsync), so include inactive objects in every search.
@@ -119,6 +128,8 @@ namespace Character
                     GameObject animated = modelAnimator.gameObject;
                     if (addIK && !animated.TryGetComponent(out CharacterIK _)) { animated.AddComponent<CharacterIK>(); }
                     if (addFootPlacement && !animated.TryGetComponent(out FootPlacementIK _)) { animated.AddComponent<FootPlacementIK>(); }
+                    // Foot placement plants the feet by their soles, which the ground offset says the height of.
+                    if (animated.TryGetComponent(out FootPlacementIK feet)) { feet.FloorOffset = groundOffset; }
                 }
             }
             return Completed();
@@ -174,7 +185,8 @@ namespace Character
         }
 
         /// <summary>The model's placement relative to the character's model parent.</summary>
-        protected Matrix4x4 Placement => Matrix4x4.TRS(positionOffset, Quaternion.Euler(rotationOffset), Vector3.one * scale);
+        protected Matrix4x4 Placement => Matrix4x4.TRS(positionOffset + Vector3.down * (groundOffset * scale),
+            Quaternion.Euler(rotationOffset), Vector3.one * scale);
 
         private static void SetLayerRecursively(GameObject gameObject, int layer)
         {

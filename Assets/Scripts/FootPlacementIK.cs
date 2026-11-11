@@ -32,6 +32,11 @@ namespace Character
                  "Defaults to the nearest parent with a Rigidbody, which is the character root.")]
         [SerializeField] private Transform ignoreCollidersUnder;
 
+        [Tooltip("Height of the floor above the model's origin, in the model's own units: where its soles rest as it " +
+                 "stands. Set by the model's source from its Ground Offset (see CharacterModelSource), so the feet are " +
+                 "placed by their soles, wherever the model's origin is.")]
+        [SerializeField] private float floorOffset;
+
         [Header("Feet")]
         [Tooltip("Animated foot lift (meters above the floor, for a model of average size) below which a foot counts as fully planted, so it tilts to the ground. Scaled with the model's size.")]
         [Min(0f)] [SerializeField] private float plantedHeight = 0.04f;
@@ -77,6 +82,8 @@ namespace Character
 
         /// <summary>How far the pelvis is currently lowered, in meters (negative = lower).</summary>
         public float PelvisOffset => pelvisOffset;
+        /// <summary>Height of the floor (where the soles rest standing) above the model's origin, in the model's units.</summary>
+        public float FloorOffset { get => floorOffset; set => floorOffset = value; }
 
         private void Awake()
         {
@@ -118,8 +125,8 @@ namespace Character
                 return;
             }
 
-            // The animations are authored for flat ground at the model's origin (its feet).
-            float floorHeight = transform.position.y;
+            // The animations are authored for flat ground under the model's soles: its origin, raised by the floor offset.
+            float floorHeight = transform.position.y + floorOffset * VerticalScale;
 
             Vector3 leftTarget = PlaceFoot(animator, AvatarIKGoal.LeftFoot, animator.leftFeetBottomHeight, floorHeight, ref left, dt,
                 out Quaternion leftRotation, out float leftRotationWeight);
@@ -144,10 +151,11 @@ namespace Character
         private Vector3 PlaceFoot(Animator animator, AvatarIKGoal goal, float soleHeight, float floorHeight, ref FootState foot,
             float dt, out Quaternion rotation, out float rotationWeight)
         {
-            Vector3 animated = animator.GetIKPosition(goal);
+            Vector3 animated = AnimatedGoalPosition(animator, goal);
             Quaternion animatedRotation = animator.GetIKRotation(goal);
-            // How high the animation lifts this foot off its (assumed flat) floor.
-            float lift = animated.y - soleHeight - floorHeight;
+            // How high the animation lifts this foot off its (assumed flat) floor. The sole's height under the goal is
+            // given for the model unscaled.
+            float lift = animated.y - soleHeight * VerticalScale - floorHeight;
 
             // Search for ground under the foot between the step-up and step-down limits around the floor.
             // The model's world scale (the character's size) scales how far a foot reaches, as it does the steps the
@@ -189,6 +197,27 @@ namespace Character
 
         /// <summary>How much the model is scaled vertically in the world (by the character's size).</summary>
         private float WorldScale => Mathf.Max(transform.lossyScale.y, 1e-4f);
+
+        /// <summary>The model's vertical scale in the world.</summary>
+        private float VerticalScale => transform.lossyScale.y;
+
+        /// <summary>
+        /// Where the animation puts an IK goal, in world space. Unity's humanoid IK reports goal positions as if the model
+        /// were scaled evenly by its width (x) scale, so for a model stretched along one axis (taller, say) a goal's
+        /// height is off by the difference: half again as tall puts every goal reported lower than it is. SetIKPosition
+        /// takes true world positions, so placing a foot at its reported goal would lift or sink it. This puts the
+        /// height right, measured from the model's origin.
+        /// </summary>
+        private static Vector3 AnimatedGoalPosition(Animator animator, AvatarIKGoal goal)
+        {
+            Vector3 position = animator.GetIKPosition(goal);
+            Transform root = animator.transform;
+            Vector3 scale = root.lossyScale;
+            if (Mathf.Abs(scale.x) < 1e-6f || Mathf.Abs(scale.y - scale.x) <= 1e-5f * Mathf.Abs(scale.x)) { return position; }
+            Vector3 local = Quaternion.Inverse(root.rotation) * (position - root.position);
+            local.y *= scale.y / scale.x;
+            return root.position + root.rotation * local;
+        }
 
         private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)
         {

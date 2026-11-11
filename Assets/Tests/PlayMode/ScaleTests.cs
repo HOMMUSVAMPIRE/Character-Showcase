@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Character;
 using NUnit.Framework;
@@ -151,17 +152,29 @@ namespace CharacterShowcase.Tests
             new(1f, 1f, 3f), // Long
         };
 
+        /// <summary>Running speed (horizontal) at the end of the last physics step.</summary>
+        private float Speed()
+        {
+            Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
+            return new Vector2(v.x, v.z).magnitude;
+        }
+
         [UnityTest]
-        public IEnumerator Movement_ScalesNaturally_WithHeight()
+        public IEnumerator Movement_ScalesInProportion_WithHeight()
         {
             yield return Spawn();
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward));
+            float speed = Speed();
+            rig.Controller.SetScale(new Vector3(4f, 4f, 4f), immediately: true);
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(Speed(), Is.EqualTo(speed * 4f).Within(speed * 0.01f), "At 4x the height, speed should be 4x.");
+        }
 
-            // Running speed at 1x and at 4x the height.
-            float Speed()
-            {
-                Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
-                return new Vector2(v.x, v.z).magnitude;
-            }
+        [UnityTest]
+        public IEnumerator NaturalSizeScaling_ScalesSpeedWithTheSquareRootOfHeight()
+        {
+            yield return Spawn();
+            rig.Movement.SizeScaling = MovementSizeScaling.Natural;
             yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward));
             float speed = Speed();
             rig.Controller.SetScale(new Vector3(4f, 4f, 4f), immediately: true);
@@ -334,14 +347,15 @@ namespace CharacterShowcase.Tests
             rig.Box("Low Ceiling", new Vector3(0f, 1.7f, 4.5f), new Vector3(10f, 1f, 3f));
             yield return Spawn();
             rig.Controller.SetScale(Vector3.one * size, immediately: true);
-            yield return rig.Run(3f, _ => CharacterTestRig.Move(Vector3.forward * 0.5f));
+            // Its speed is in proportion to its size, so it takes longer to get there the smaller it is (about 12 m).
+            yield return rig.Run(1.2f / size, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.Position.z, Is.GreaterThan(6.5f), "It should walk under the low ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
 
             // Back under the ceiling, it can't grow back to full size until it comes out.
             rig.Box("Back Stop", new Vector3(0f, 1f, 3.5f), new Vector3(10f, 2f, 1f)); // A wall to back into, at z = 4.
             Physics.SyncTransforms();
-            yield return rig.Run(2f, _ => CharacterTestRig.Move(Vector3.back * 0.5f));
+            yield return rig.Run(1.2f / size, _ => CharacterTestRig.Move(Vector3.back));
             Assert.That(rig.Position.z, Is.InRange(4f, 6f), "Test setup: it should be under the ceiling.");
             rig.Controller.SetScale(Vector3.one);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
@@ -372,6 +386,128 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(5f, _ => CharacterTestRig.Move(Vector3.forward * 0.5f));
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(-1f).Within(0.005f), "It should land on the floor below.");
+        }
+
+        // --- The same movement at any size ---
+
+        private static readonly float[] AnySize = { 0.1f, 0.25f, 0.5f, 2f, 10f, 100f };
+
+        /// <summary>Where the character was after one physics step, relative to its start and divided by its size.</summary>
+        private struct CourseStep
+        {
+            public Vector3 position;
+            public bool grounded;
+            public string phase;
+        }
+
+        // The course run's phases, in seconds: settle, walk over the ramps and up the step, jump (held for a while)
+        // carrying on forward, dash, and stand.
+        private const float SettleTime = 0.5f, WalkTime = 2.6f, JumpTime = 1.2f, JumpHoldTime = 0.3f, DashTime = 0.5f, StandTime = 1.5f;
+
+        /// <summary>
+        /// A course along +z, scaled by size (for the 2 m character at full size): flat floor, a 20 degree ramp up 1 m
+        /// onto a platform, a 20 degree ramp back down, then a 0.3 m step onto a long block.
+        /// </summary>
+        private void BuildCourse(float size)
+        {
+            rig.Floor(0f, 400f * size);
+            const float angle = 20f, rise = 1f, thickness = 1f;
+            float run = rise / Mathf.Tan(angle * Mathf.Deg2Rad), length = rise / Mathf.Sin(angle * Mathf.Deg2Rad);
+            void Ramp(string name, float startZ, bool up)
+            {
+                Quaternion tilt = Quaternion.Euler(up ? -angle : angle, 0f, 0f);
+                Vector3 topMiddle = new Vector3(0f, rise / 2f, startZ + run / 2f);
+                Vector3 center = topMiddle - tilt * Vector3.up * (thickness / 2f);
+                rig.Box(name, center * size, new Vector3(10f, thickness, length) * size, tilt);
+            }
+            const float rampStart = 6f, platformLength = 6f;
+            Ramp("Ramp Up", rampStart, up: true);
+            float platformStart = rampStart + run;
+            rig.Box("Platform", new Vector3(0f, rise / 2f, platformStart + platformLength / 2f) * size, new Vector3(10f, rise, platformLength) * size);
+            float downStart = platformStart + platformLength;
+            Ramp("Ramp Down", downStart, up: false);
+            const float stepHeight = 0.3f, blockLength = 80f;
+            float blockStart = downStart + run + 4f;
+            rig.Box("Block", new Vector3(0f, stepHeight / 2f, blockStart + blockLength / 2f) * size, new Vector3(10f, stepHeight, blockLength) * size);
+        }
+
+        /// <summary>Runs the character over the course at the given size, recording every physics step.</summary>
+        private IEnumerator RunCourse(float size, List<CourseStep> steps)
+        {
+            BuildCourse(size);
+            rig.SpawnCharacter(Vector3.zero);
+            Physics.SyncTransforms(); // So the room check sees the course.
+            if (size != 1f) { Assert.That(rig.Controller.SetScale(Vector3.one * size, immediately: true), Is.True); }
+
+            int settle = CharacterTestRig.StepsFor(SettleTime), walk = CharacterTestRig.StepsFor(WalkTime);
+            int jump = CharacterTestRig.StepsFor(JumpTime), jumpHold = CharacterTestRig.StepsFor(JumpHoldTime);
+            int dash = CharacterTestRig.StepsFor(DashTime), stand = CharacterTestRig.StepsFor(StandTime);
+            int total = settle + walk + jump + dash + stand;
+            string PhaseOf(int step) => step < settle ? "settle" : step < settle + walk ? "walk" : step < settle + walk + jump ? "jump"
+                : step < settle + walk + jump + dash ? "dash" : "stand";
+            Inputs InputsFor(int step)
+            {
+                int t = step;
+                if (t < settle) { return CharacterTestRig.Idle(); }
+                if ((t -= settle) < walk) { return CharacterTestRig.Move(Vector3.forward); }
+                if ((t -= walk) < jump) { return t < jumpHold ? CharacterTestRig.Jump(t, Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
+                if ((t -= jump) < dash) { return t == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
+                return CharacterTestRig.Idle();
+            }
+            Vector3 start = rig.Position;
+            yield return rig.Run(total, InputsFor, step => steps.Add(new CourseStep
+            {
+                position = (rig.Position - start) / size,
+                grounded = rig.Grounded,
+                phase = PhaseOf(step),
+            }));
+        }
+
+        /// <summary>
+        /// The character moves exactly like a scaled copy of itself at any size: over a course scaled with it (ramps up
+        /// and down, a step, a jump and a dash), every physics step puts it in the same place for its size as at full
+        /// size, on the ground or in the air at the same moments. So its speed for its size, its jump's airtime and its
+        /// height for its size, and how it handles slopes and steps are all the same.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AtAnySize_TheCharacterMovesLikeAScaledCopyOfItself([ValueSource(nameof(AnySize))] float size)
+        {
+            var normal = new List<CourseStep>();
+            yield return RunCourse(1f, normal);
+            rig.Dispose();
+            yield return null;
+            rig = new CharacterTestRig();
+            var scaled = new List<CourseStep>();
+            yield return RunCourse(size, scaled);
+
+            Assert.That(scaled.Count, Is.EqualTo(normal.Count));
+            float worst = 0f;
+            int worstStep = 0, groundedMismatches = 0;
+            for (int i = 0; i < normal.Count; i++)
+            {
+                float error = Vector3.Distance(scaled[i].position, normal[i].position);
+                if (error > worst) { worst = error; worstStep = i; }
+                if (scaled[i].grounded != normal[i].grounded) { groundedMismatches++; }
+            }
+            TestContext.WriteLine($"At {size}x: furthest from the full-size path {worst * 100f:0.00} cm (for its size) at step " +
+                                  $"{worstStep} ({normal[worstStep].phase}); on the ground at different steps {groundedMismatches} times.");
+
+            // The full-size run is what's being matched, so check it does what the course asks first.
+            Assert.That(normal.Where(st => st.phase == "walk").All(st => st.grounded), Is.True,
+                "Test setup: at full size, the character should stay on the ground walking over the ramps and the step.");
+            Assert.That(normal.Last().position.y, Is.EqualTo(0.3f).Within(0.01f), "Test setup: it should end up on the block.");
+            Assert.That(normal.Count(st => st.phase == "jump" && !st.grounded), Is.GreaterThan(20), "Test setup: it should jump.");
+
+            Assert.That(scaled.Where(st => st.phase == "walk").All(st => st.grounded), Is.True,
+                "It should stay on the ground walking over the ramps and the step, as at full size.");
+            Assert.That(worst, Is.LessThan(0.01f), $"Every step should put it where it is at full size, for its size (step {worstStep}, {normal[worstStep].phase}).");
+            Assert.That(groundedMismatches, Is.Zero, "It should be on the ground or in the air at the same moments as at full size.");
+
+            // Spelled out: the jump lasts as long, and goes as high for its size.
+            int Airtime(List<CourseStep> run) => run.Count(st => st.phase == "jump" && !st.grounded);
+            float Peak(List<CourseStep> run) => run.Where(st => st.phase == "jump").Max(st => st.position.y);
+            Assert.That(Airtime(scaled), Is.EqualTo(Airtime(normal)), "The jump should last as long.");
+            Assert.That(Peak(scaled), Is.EqualTo(Peak(normal)).Within(0.002f), "The jump should go as high, for its size.");
         }
 
 #if UNITY_EDITOR
