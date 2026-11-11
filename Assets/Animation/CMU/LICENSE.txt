@@ -1,0 +1,14 @@
+Free to use/modify/redistribute so long as you don't sell the animations themselves. This does include conversions and modifications. If you redistribute them, you must also make sure it's apparent to anyone that receives them that they follow the same rules and pass them along. If you redistribute them, you probably should credit mocap.cs.cmu.edu.  Though they do say:
+
+    "How can I use this data?"
+
+    "The motion capture data may be copied, modified, or redistributed without permission"
+
+Source: http://mocap.cs.cmu.edu/faqs.php
+
+And the other relevant section:
+
+    "You may include this data in commercially-sold products,
+    but you may not resell this data directly, even in converted form."
+
+Source: http://mocap.cs.cmu.edu/

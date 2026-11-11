@@ -58,7 +58,7 @@ jobs:
 
       - uses: actions/checkout@v5
         with:
-          lfs: false # the project doesn't use Git LFS
+          lfs: true # the motion-capture clips (Assets/Animation/CMU) are stored with Git LFS
 
       # The Library folder is Unity's import cache. Restoring it turns a long first import into a short one.
       - name: Restore Unity Library cache
