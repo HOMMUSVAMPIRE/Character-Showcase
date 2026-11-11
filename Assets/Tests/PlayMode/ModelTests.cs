@@ -470,12 +470,14 @@ namespace CharacterShowcase.Tests
             AnimatorStateInfo was = default;
             float wasSpeed = 0f, wasFeet = 0f, newFeet = -1f;
             int swapFrame = -1;
+            float swapTime = 0f;
             models.ModelReplacing += old =>
             {
                 was = old.Animator.GetCurrentAnimatorStateInfo(0);
                 wasSpeed = old.Animator.GetFloat(speed);
                 wasFeet = old.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
                 swapFrame = Time.frameCount;
+                swapTime = Time.time;
             };
             models.ModelLoaded += created => newFeet = created.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
             _ = models.LoadModelAsync(MannequinCopy());
@@ -493,7 +495,10 @@ namespace CharacterShowcase.Tests
                                   $"Speed {models.Animator.GetFloat(speed):0.00}, feet at {newFeet:0.00}.");
             Assert.That(was.normalizedTime, Is.GreaterThan(0.5f), "Test setup: the old model should have been well into its state.");
             Assert.That(now.fullPathHash, Is.EqualTo(was.fullPathHash), "The new model should be in the state the old one was in.");
-            Assert.That(now.normalizedTime, Is.EqualTo(was.normalizedTime).Within(0.15f), "It should be as far through it.");
+            // As far through, give or take the time that's passed since (now.length is the state's length at the speed
+            // it plays at, which the blend tree raises for running), and a little.
+            float passed = (Time.time - swapTime) / now.length;
+            Assert.That(now.normalizedTime, Is.InRange(was.normalizedTime - 0.05f, was.normalizedTime + passed + 0.05f), "It should be as far through it.");
             Assert.That(models.Animator.GetFloat(speed), Is.EqualTo(wasSpeed).Within(0.1f * wasSpeed), "It should be animated for the speed the old one was.");
             Assert.That(wasFeet, Is.GreaterThan(0.99f), "Test setup: the old model's feet should have been placed.");
             Assert.That(newFeet, Is.EqualTo(wasFeet), "Its feet should be placed as the old one's were, not fading back in.");

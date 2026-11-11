@@ -16,7 +16,10 @@ namespace CharacterShowcase.EditorTools
     /// - runs Tools/Mannequin/generate_mannequin.py in Blender to build the mannequin's mesh, rig and animation clips
     ///   (Blender's location is asked for once and remembered)
     /// - imports it as a Humanoid with looping, in-place clips
-    /// - builds the Animator Controller from those clips, and the Animator Parameter Translator that drives it
+    /// - builds the Animator Controller, and the Animator Parameter Translator that drives it: walking, running, rising and
+    ///   falling from the motion capture in Assets/Animation/CMU (see MotionCaptureLocomotion), and standing and dashing
+    ///   from the mannequin's own clips (a still, even stance, which motion capture never quite is; and the motion
+    ///   capture has no dash)
     /// - prepares the mannequin like any other character model (CharacterModelImporter), and makes it the Character
     ///   prefab's model
     /// Other models play these animations through Humanoid retargeting. Safe to run repeatedly: IK settings and edits to
@@ -45,12 +48,11 @@ namespace CharacterShowcase.EditorTools
         private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
         private const string DashingParameter = AnimatorParameterTranslator.DefaultDashingParameter;
 
-        // Blend tree thresholds in m/s. The clips' strides are authored for these speeds
-        // (see Tools/Mannequin/mannequin_animations.py), so the feet don't skate at those speeds.
-        private const float WalkSpeed = 1.6f;
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
-        private const float RunSpeed = 10f;
+        // The top of the Locomotion blend tree, in m/s: the character's walking speed (BasicMovementMode), far faster
+        // than anyone runs. The run loop plays sped up to reach it, so its planted feet keep up with the ground.
+        public const float TopSpeed = 10f;
         private const float FallThreshold = -8f;
         private const float RiseThreshold = 6f;
 
@@ -387,7 +389,7 @@ namespace CharacterShowcase.EditorTools
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Walk", "Run", "Rise", "Fall", "Dash" };
+            string[] required = { "Idle", "Dash" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -395,6 +397,17 @@ namespace CharacterShowcase.EditorTools
                                "Run Tools > Character Showcase > Generate Mannequin with Blender to regenerate it. Nothing was changed.");
                 return null;
             }
+
+            // Measured on the mannequin, as the clips play on it: its prepared prefab if there is one yet, else the file.
+            var measuringModel = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPrefabPath);
+            if (measuringModel == null) { measuringModel = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath); }
+            MotionCaptureLocomotion.Result mocap = MotionCaptureLocomotion.Prepare(measuringModel);
+            if (!mocap.Succeeded)
+            {
+                Debug.LogError($"[MannequinGenerator] Couldn't cut the animations from the motion capture: {mocap.problem} Nothing was changed.");
+                return null;
+            }
+            foreach (string note in mocap.notes) { Debug.Log($"[MannequinGenerator] {note}"); }
 
             AnimatorController controller = LoadEmptyController();
             controller.AddParameter(SpeedParameter, AnimatorControllerParameterType.Float);
@@ -409,11 +422,20 @@ namespace CharacterShowcase.EditorTools
 
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
 
-            BlendTree locomotionTree = CreateBlendTree(controller, "Locomotion", SpeedParameter,
-                (clips["Idle"], 0f), (clips["Walk"], WalkSpeed), (clips["Run"], RunSpeed));
+            // Each loop at the speed its strides are made for, so the planted feet stay put there; past the run's own
+            // speed, the run loop sped up to match, up to the top speed.
+            var locomotionChildren = new List<(Motion, float, float)>
+            {
+                (clips["Idle"], 0f, 1f), (mocap.walk, mocap.walkSpeed, 1f), (mocap.run, mocap.runSpeed, 1f),
+            };
+            if (mocap.runSpeed < TopSpeed) { locomotionChildren.Add((mocap.run, TopSpeed, TopSpeed / mocap.runSpeed)); }
+            BlendTree locomotionTree = CreateBlendTree(controller, "Locomotion", SpeedParameter, locomotionChildren.ToArray());
             BlendTree airborneTree = CreateBlendTree(controller, "Airborne", VerticalSpeedParameter,
-                (clips["Fall"], FallThreshold), (clips["Rise"], RiseThreshold));
+                (mocap.fall, FallThreshold, 1f), (mocap.rise, RiseThreshold, 1f));
 
+            // No Foot IK on the states: on a model stretched along one axis, Unity's Foot IK puts the feet where it
+            // reports their goals, which is off by the stretch (see CharacterUtilities.AnimatedIKGoalPosition). Foot
+            // placement plants them at the goals, corrected, instead.
             AnimatorState locomotion = stateMachine.AddState("Locomotion");
             locomotion.motion = locomotionTree;
             AnimatorState airborne = stateMachine.AddState("Airborne");
@@ -488,7 +510,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         private static BlendTree CreateBlendTree(AnimatorController controller, string name, string parameter,
-            params (Motion motion, float threshold)[] children)
+            params (Motion motion, float threshold, float timeScale)[] children)
         {
             var tree = new BlendTree
             {
@@ -498,7 +520,11 @@ namespace CharacterShowcase.EditorTools
                 useAutomaticThresholds = false,
                 hideFlags = HideFlags.HideInHierarchy,
             };
-            foreach (var (motion, threshold) in children) { tree.AddChild(motion, threshold); }
+            foreach (var (motion, threshold, _) in children) { tree.AddChild(motion, threshold); }
+            // Playback speeds can only be set on the children array, which is returned by copy.
+            ChildMotion[] motions = tree.children;
+            for (int i = 0; i < motions.Length; i++) { motions[i].timeScale = children[i].timeScale; }
+            tree.children = motions;
             AssetDatabase.AddObjectToAsset(tree, controller);
             return tree;
         }

@@ -22,6 +22,10 @@ redistribute, but not to sell as animations, and anything passed on must carry t
   own avatar, mapped by the CMU skeleton's bone names, starting after the T-pose frame, its height and remaining sway
   baked into the pose, and facing the way the body does.
 
+- **Cut for the character.** "Walk forward (69_01)", "Run or jog (35_17)" and "Jump (16_01)" each have an extra clip, cut
+  by MotionCaptureLocomotion when the mannequin is generated: a looping walk cycle, a looping run cycle, and the jump's
+  rise and fall.
+
 Below, each clip's full CMU description, with the subject's overall description.
 
 ## Carry Push Pull (9)

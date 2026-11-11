@@ -136,7 +136,8 @@ namespace CharacterShowcase.EditorTools
             ModelImporterClipAnimation[] clips = importer.clipAnimations;
             if (clips == null || clips.Length == 0) { clips = importer.defaultClipAnimations; }
             if (clips == null || clips.Length == 0) { return "It has no animation."; }
-            // One take per file; the first is the one.
+            // One take per file. The first clip is the whole of it; any others are parts of it added by other tools
+            // (MotionCaptureLocomotion's loops), and are kept.
             ModelImporterClipAnimation clip = clips[0];
             ModelImporterClipAnimation take = importer.defaultClipAnimations.FirstOrDefault() ?? clip;
             string name = Path.GetFileNameWithoutExtension(path);
@@ -144,14 +145,14 @@ namespace CharacterShowcase.EditorTools
             if (!wanted.Matches(clip))
             {
                 wanted.Apply(clip, take);
-                importer.clipAnimations = new[] { clip };
+                clips[0] = clip;
+                importer.clipAnimations = clips;
                 importer.SaveAndReimport();
             }
 
             Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
             if (avatar == null || !avatar.isValid || !avatar.isHuman) { return "Unity couldn't make a Humanoid avatar from its skeleton."; }
-            AnimationClip imported = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>()
-                .FirstOrDefault(c => !c.name.StartsWith("__preview__"));
+            AnimationClip imported = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().FirstOrDefault(c => c.name == name);
             if (imported == null || !imported.humanMotion) { return "Its animation didn't import as a Humanoid clip."; }
             return null;
         }
@@ -208,6 +209,34 @@ namespace CharacterShowcase.EditorTools
             return true;
         }
 
+        /// <summary>The whole clip a file imports as, named for the file.</summary>
+        public static AnimationClip WholeClip(string path) =>
+            AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().FirstOrDefault(c => c.name == Path.GetFileNameWithoutExtension(path));
+
+        /// <summary>
+        /// Sets a clip's root up as every clip here is: facing from the body, so it faces the character's forward
+        /// whichever way it was captured, and its height and the sway left within each step (its travel is already
+        /// gone) kept in the pose. Its height is based on the feet (as they are at its start, so a jump still rises),
+        /// which puts the clip's floor at the model's: kept as captured, the performer's floor would be a little above
+        /// or below the model's, and Unity's IK reports foot goals relative to it on a stretched model (see
+        /// CharacterUtilities.AnimatedIKGoalPosition), so the feet would be planted that much too high or low.
+        /// </summary>
+        public static void SetRoot(ModelImporterClipAnimation clip)
+        {
+            clip.mirror = false;
+            clip.lockRootRotation = false;
+            clip.keepOriginalOrientation = false;
+            clip.lockRootHeightY = true;
+            clip.keepOriginalPositionY = false;
+            clip.heightFromFeet = true;
+            clip.lockRootPositionXZ = true;
+            clip.keepOriginalPositionXZ = true;
+        }
+
+        public static bool HasRootSetUp(ModelImporterClipAnimation clip) =>
+            !clip.lockRootRotation && !clip.keepOriginalOrientation && clip.lockRootHeightY && !clip.keepOriginalPositionY
+            && clip.heightFromFeet && clip.lockRootPositionXZ && clip.keepOriginalPositionXZ && !clip.mirror;
+
         /// <summary>How each clip is set up: named for its file, from after the T-pose frame, not looped, its root as described above.</summary>
         private readonly struct ClipSettings
         {
@@ -223,9 +252,7 @@ namespace CharacterShowcase.EditorTools
 
             public bool Matches(ModelImporterClipAnimation clip) =>
                 clip.name == name && Mathf.Approximately(clip.firstFrame, firstFrame) && Mathf.Approximately(clip.lastFrame, lastFrame)
-                && !clip.loopTime && !clip.lockRootRotation && !clip.keepOriginalOrientation
-                && clip.lockRootHeightY && clip.keepOriginalPositionY && !clip.heightFromFeet
-                && clip.lockRootPositionXZ && clip.keepOriginalPositionXZ && !clip.mirror;
+                && !clip.loopTime && HasRootSetUp(clip);
 
             public void Apply(ModelImporterClipAnimation clip, ModelImporterClipAnimation take)
             {
@@ -234,16 +261,7 @@ namespace CharacterShowcase.EditorTools
                 clip.firstFrame = firstFrame;
                 clip.lastFrame = lastFrame;
                 clip.loopTime = false;
-                clip.mirror = false;
-                // Facing from the body, so the clip faces the character's forward whichever way it was captured.
-                clip.lockRootRotation = false;
-                clip.keepOriginalOrientation = false;
-                // Height and the sway left within each step (its travel is already gone) stay in the pose.
-                clip.lockRootHeightY = true;
-                clip.keepOriginalPositionY = true;
-                clip.heightFromFeet = false;
-                clip.lockRootPositionXZ = true;
-                clip.keepOriginalPositionXZ = true;
+                SetRoot(clip);
             }
         }
     }

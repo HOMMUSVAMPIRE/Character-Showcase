@@ -198,6 +198,8 @@ MonoBehaviour:
   eyePoint: {fileID: 296573222870192925}
   defaultEyeHeight: 1.65
   minimumHeightFraction: 0.6
+  colliderFit: 0
+  colliderWidthMargin: 1.4
 --- !u!1 &2471405576659864554
 GameObject:
   m_ObjectHideFlags: 0

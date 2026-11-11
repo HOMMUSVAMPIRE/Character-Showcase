@@ -43,12 +43,12 @@ namespace CharacterShowcase.Tests.EditMode
                 Is.SubsetOf(MotionCaptureClipImporter.BoneMap.Select(m => (m.Key, HumanTrait.BoneName[(int)m.Value]))),
                 "Its bones should be mapped by the CMU skeleton's names.");
 
-            ModelImporterClipAnimation clip = importer.clipAnimations.Single();
+            ModelImporterClipAnimation clip = importer.clipAnimations.First();
             ModelImporterClipAnimation take = importer.defaultClipAnimations.First();
             Assert.That(clip.name, Is.EqualTo(Path.GetFileNameWithoutExtension(path)));
             Assert.That(clip.firstFrame, Is.EqualTo(take.firstFrame + 1f), "It should start after the T-pose frame.");
-            AnimationClip imported = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().First(c => !c.name.StartsWith("__preview__"));
-            Assert.That(imported.humanMotion, Is.True);
+            AnimationClip imported = MotionCaptureClipImporter.WholeClip(path);
+            Assert.That(imported != null && imported.humanMotion, Is.True, "It should import as a Humanoid clip, named for its file.");
         }
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace CharacterShowcase.Tests.EditMode
         [TestCaseSource(nameof(OnTheSpotClips))]
         public void ClipsThatMoveAbout_StayOnTheSpot_AndFaceForward_OnTheMannequin(string path)
         {
-            AnimationClip clip = AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().First(c => !c.name.StartsWith("__preview__"));
+            AnimationClip clip = MotionCaptureClipImporter.WholeClip(path);
             GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MannequinPrefab));
             PlayableGraph graph = PlayableGraph.Create("Motion Capture Clip Test");
             try

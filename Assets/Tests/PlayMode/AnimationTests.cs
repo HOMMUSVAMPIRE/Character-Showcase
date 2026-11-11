@@ -82,8 +82,24 @@ namespace CharacterShowcase.Tests
             animator.Update(Time.fixedDeltaTime);
         }
 
-        // The speed the Walk clip is made for (MannequinGenerator's blend tree), so it plays on its own, unblended.
-        private const float WalkClipSpeed = 1.6f;
+        // The speed the walk loop is made for (measured by MotionCaptureLocomotion), so it plays on its own, unblended:
+        // its threshold in the shared controller's Locomotion blend tree.
+        private static float WalkClipSpeed
+        {
+            get
+            {
+#if UNITY_EDITOR
+                var controller = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/Animation/Mannequin.controller");
+                Assert.That(controller, Is.Not.Null, "Test setup: the shared Animator Controller should exist.");
+                UnityEditor.Animations.ChildAnimatorState locomotion = controller.layers[0].stateMachine.states.First(s => s.state.name == "Locomotion");
+                var tree = (UnityEditor.Animations.BlendTree)locomotion.state.motion;
+                return tree.children.First(c => c.motion != null && c.motion.name == "Walk Cycle").threshold;
+#else
+                Assert.Ignore("Reads the controller in the editor.");
+                return 0f;
+#endif
+            }
+        }
         // Height (m) above its lowest within which the ankle and the toe joint count as down. The heel lifts the ankle
         // several centimetres as the foot rolls onto its toes, and the toes lift as it swings.
         private const float FlatFootBand = 0.01f;
@@ -138,7 +154,9 @@ namespace CharacterShowcase.Tests
             for (int foot = 0; foot < 2; foot++)
             {
                 float lowestAnkle = ankles[foot].Min(p => p.y), lowestToe = toes[foot].Min(p => p.y);
-                bool Flat(int i) => ankles[foot][i].y < lowestAnkle + FlatFootBand && toes[foot][i].y < lowestToe + FlatFootBand;
+                // The band scales with the character's height, as its foot lifts do.
+                float band = FlatFootBand * rig.Controller.Scale.y;
+                bool Flat(int i) => ankles[foot][i].y < lowestAnkle + band && toes[foot][i].y < lowestToe + band;
                 // Each run of flat steps is one footfall: measure how far the foot got from where it landed.
                 for (int i = 0; i < ankles[foot].Count; i++)
                 {
@@ -438,9 +456,14 @@ namespace CharacterShowcase.Tests
             // either way (hands hang straight). Turned as the animation has it, so the bone measured keeps its offset
             // from the point Unity places.
             Transform start = animator.GetBoneTransform(foot ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperArm);
-            void Aim(Animator a) => ik.SetGoal(limb,
-                Vector3.Lerp(CharacterUtilities.AnimatedIKGoalPosition(a, goal), start.position, 0.2f) + shift,
-                a.GetIKRotation(goal), 1f, 1f);
+            // Where the goal is each frame without the shift, so the idle's own movement (motion capture is never quite
+            // still) can be taken out of how far the bone moves.
+            Vector3 aimedAt = Vector3.zero;
+            void Aim(Animator a)
+            {
+                aimedAt = Vector3.Lerp(CharacterUtilities.AnimatedIKGoalPosition(a, goal), start.position, 0.2f);
+                ik.SetGoal(limb, aimedAt + shift, a.GetIKRotation(goal), 1f, 1f);
+            }
             ik.SetGoal(limb, bone.position, bone.rotation, 1f, 1f);
             ik.SnapWeights();
             ik.BeforeSolve += Aim;
@@ -448,10 +471,10 @@ namespace CharacterShowcase.Tests
             try
             {
                 yield return rig.Run(0.2f, _ => CharacterTestRig.Idle(), StepAnimator);
-                before = bone.position;
+                before = bone.position - aimedAt;
                 shift = goalShift;
                 yield return rig.Run(0.2f, _ => CharacterTestRig.Idle(), StepAnimator);
-                after = bone.position;
+                after = bone.position - aimedAt;
             }
             finally { ik.BeforeSolve -= Aim; }
 
