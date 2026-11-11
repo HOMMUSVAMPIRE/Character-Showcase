@@ -98,6 +98,12 @@ namespace Character
         public event Action<CharacterModel> ModelLoaded;
         /// <summary>Raised when the model is removed (replaced, unloaded, or the character destroyed), with the old model.</summary>
         public event Action<CharacterModel> ModelUnloaded;
+        /// <summary>
+        /// Raised just before the model is replaced by another (then ModelUnloaded and ModelLoaded follow, in the same
+        /// frame), with the model going away, while it's still animating as it was: for carrying what it was doing over
+        /// to the new one (see ICharacterAnimationDriver.Retire). Not raised when it's unloaded with nothing in its place.
+        /// </summary>
+        public event Action<CharacterModel> ModelReplacing;
 
         private void Awake()
         {
@@ -207,6 +213,14 @@ namespace Character
         /// <summary>Removes the old model and shows the new one in the same frame, so they're never seen together.</summary>
         private void SwapIn(CharacterModel created, CharacterModelSource source)
         {
+            if (CurrentModel != null)
+            {
+                ModelReplacing?.Invoke(model);
+                // Feet already planted stay planted, rather than fading back in on the new model.
+                FootPlacementIK oldFeet = model.Root.GetComponentInChildren<FootPlacementIK>();
+                FootPlacementIK newFeet = created.Root.GetComponentInChildren<FootPlacementIK>(true);
+                if (oldFeet != null && newFeet != null) { newFeet.ContinueFrom(oldFeet); }
+            }
             ReleaseModel();
             model = created;
             modelOwner = source;

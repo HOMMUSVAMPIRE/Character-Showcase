@@ -427,10 +427,162 @@ namespace CharacterShowcase.Tests
             Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f), "It shouldn't be pushed through the floor.");
 
-            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            AnimationController animation = rig.Animation;
+            // The rig moves the character itself; the animation is fed each step, as the character's own update would.
+            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingCollider, Is.False);
             Assert.That(Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
+        }
+
+        /// <summary>A source for the mannequin's model, as the character's own, but a separate asset.</summary>
+        private DirectCharacterModelSource MannequinCopy(GameObject prefab = null)
+        {
+            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
+            var copy = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            copy.ModelPrefab = prefab != null ? prefab : mannequin.ModelPrefab;
+            copy.Translator = mannequin.Translator;
+            copy.GroundOffset = mannequin.GroundOffset;
+            copy.AnimatedGroundOffset = mannequin.AnimatedGroundOffset;
+            copy.MeasureGroundOnLoad = false;
+            return copy;
+        }
+
+        /// <summary>
+        /// A model swapped in while the character runs carries on from where the old one was: in the same state, the
+        /// same way through it, with the same parameters, and its feet as planted; rather than starting over from
+        /// standing, with its feet placement fading back in.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SwappingTheModelMidRun_CarriesOnWhereTheOldOneWas()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.WaitForModel();
+            CharacterModelHost models = rig.Models;
+            int speed = Animator.StringToHash(AnimatorParameterTranslator.DefaultSpeedParameter);
+            AnimationController animation = rig.Animation;
+            // The rig moves the character itself; the animation is fed each step, as the character's own update would.
+            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), Feed);
+
+            AnimatorStateInfo was = default;
+            float wasSpeed = 0f, wasFeet = 0f, newFeet = -1f;
+            int swapFrame = -1;
+            models.ModelReplacing += old =>
+            {
+                was = old.Animator.GetCurrentAnimatorStateInfo(0);
+                wasSpeed = old.Animator.GetFloat(speed);
+                wasFeet = old.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
+                swapFrame = Time.frameCount;
+            };
+            models.ModelLoaded += created => newFeet = created.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
+            _ = models.LoadModelAsync(MannequinCopy());
+            // Running on while the new model loads, until the frame after it's in.
+            for (int i = 0; i < 300 && (swapFrame < 0 || Time.frameCount == swapFrame); i++)
+            {
+                yield return rig.Run(1, _ => CharacterTestRig.Move(Vector3.forward), Feed);
+            }
+            Assert.That(swapFrame, Is.GreaterThan(0), "Test setup: the new model should have loaded.");
+            // A frame or so has passed since the swap, which the tolerance below covers.
+            AnimatorStateInfo now = models.Animator.GetCurrentAnimatorStateInfo(0);
+
+            TestContext.WriteLine($"Before the swap: state {was.fullPathHash}, {was.normalizedTime:0.000} through it, Speed {wasSpeed:0.00}, " +
+                                  $"feet at {wasFeet:0.00}. After: state {now.fullPathHash}, {now.normalizedTime:0.000}, " +
+                                  $"Speed {models.Animator.GetFloat(speed):0.00}, feet at {newFeet:0.00}.");
+            Assert.That(was.normalizedTime, Is.GreaterThan(0.5f), "Test setup: the old model should have been well into its state.");
+            Assert.That(now.fullPathHash, Is.EqualTo(was.fullPathHash), "The new model should be in the state the old one was in.");
+            Assert.That(now.normalizedTime, Is.EqualTo(was.normalizedTime).Within(0.15f), "It should be as far through it.");
+            Assert.That(models.Animator.GetFloat(speed), Is.EqualTo(wasSpeed).Within(0.1f * wasSpeed), "It should be animated for the speed the old one was.");
+            Assert.That(wasFeet, Is.GreaterThan(0.99f), "Test setup: the old model's feet should have been placed.");
+            Assert.That(newFeet, Is.EqualTo(wasFeet), "Its feet should be placed as the old one's were, not fading back in.");
+        }
+
+        /// <summary>
+        /// The handover from one model's Animator to another's, directly: a model swapped in mid-transition (taking off
+        /// into a jump, say) is put back part-way through it, between the same two states.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AModelSwappedInMidTransition_CarriesOnPartWayThroughIt()
+        {
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.WaitForModel();
+            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
+            RuntimeAnimatorController controller = rig.Models.Animator.runtimeAnimatorController;
+            Animator Spawn(string name)
+            {
+                GameObject model = Track(Object.Instantiate(mannequin.ModelPrefab, new Vector3(5f, 0f, 0f), Quaternion.identity));
+                model.name = name;
+                Animator animator = model.GetComponentInChildren<Animator>();
+                animator.runtimeAnimatorController = controller;
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                return animator;
+            }
+            Animator old = Spawn("Old Model"), replacement = Spawn("New Model");
+            yield return null;
+
+            int locomotion = Animator.StringToHash("Base Layer.Locomotion"), airborne = Animator.StringToHash("Base Layer.Airborne");
+            int grounded = Animator.StringToHash(AnimatorParameterTranslator.DefaultGroundedParameter);
+            old.Play(locomotion, 0, 0.3f);
+            old.Update(0f);
+            old.SetBool(grounded, false);
+            old.CrossFadeInFixedTime(airborne, 0.2f, 0);
+            old.Update(0.08f);
+            Assert.That(old.IsInTransition(0), Is.True, "Test setup: the old model should be part-way into the jump.");
+            AnimatorTransitionInfo wasTransition = old.GetAnimatorTransitionInfo(0);
+            AnimatorStateInfo wasNext = old.GetNextAnimatorStateInfo(0);
+
+            ICharacterAnimationDriver oldDriver = mannequin.Translator.CreateDriver(old.gameObject, old);
+            ICharacterAnimationDriver newDriver = mannequin.Translator.CreateDriver(replacement.gameObject, replacement);
+            oldDriver.Retire();
+            newDriver.ContinueFrom(oldDriver);
+            replacement.Update(0f);
+
+            Assert.That(replacement.GetBool(grounded), Is.False, "Parameters should carry over.");
+            Assert.That(replacement.IsInTransition(0), Is.True, "The new model should be in the transition the old one was in.");
+            Assert.That(replacement.GetCurrentAnimatorStateInfo(0).fullPathHash, Is.EqualTo(locomotion));
+            AnimatorStateInfo next = replacement.GetNextAnimatorStateInfo(0);
+            Assert.That(next.fullPathHash, Is.EqualTo(airborne));
+            Assert.That(next.normalizedTime, Is.EqualTo(wasNext.normalizedTime).Within(0.02f));
+            Assert.That(replacement.GetAnimatorTransitionInfo(0).normalizedTime, Is.EqualTo(wasTransition.normalizedTime).Within(0.02f),
+                "It should be as far through the transition.");
+        }
+
+        /// <summary>
+        /// A source measuring on load measures a model once, for every copy of it: the measurement is kept until it's
+        /// forgotten (or the source edited, or its model, controller or avatar changed), as a changed model shows.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MeasuringOnLoad_MeasuresAModelOnce_UntilTheMeasurementIsForgotten()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.WaitForModel();
+            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
+            GameObject template = Track(Object.Instantiate(mannequin.ModelPrefab));
+            template.SetActive(false);
+            DirectCharacterModelSource source = MannequinCopy(template);
+            source.MeasureGroundOnLoad = true;
+            float FloorOffset() => rig.Models.Animator.GetComponent<FootPlacementIK>().FloorOffset;
+
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
+            float first = FloorOffset();
+            Assert.That(first, Is.EqualTo(mannequin.GroundOffset).Within(1e-4f), "Test setup: measured as the mannequin's.");
+
+            // A block under the model's feet: its lowest point, so its soles would be measured there.
+            GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Object.DestroyImmediate(block.GetComponent<Collider>());
+            block.transform.SetParent(template.transform, false);
+            block.transform.localPosition = new Vector3(0f, -0.3f, 0f);
+            block.transform.localScale = Vector3.one * 0.2f;
+
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
+            Assert.That(FloorOffset(), Is.EqualTo(first), "Another copy of the model should use the measurement already made.");
+
+            source.ForgetMeasurement();
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
+            Assert.That(FloorOffset(), Is.EqualTo(-0.4f).Within(0.01f), "Once forgotten, the model should be measured again.");
         }
 
         [UnityTest]

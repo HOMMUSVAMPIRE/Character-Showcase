@@ -319,7 +319,10 @@ namespace Character
             }
             if (s.currentHintWeight <= 0f && s.hintWeight <= 0f) { s.followingHintTarget = false; }
 
-            if (appliedPositionWeight > 0f) { animator.SetIKPosition(goal, goalPosition); }
+            // On a stretched model, Unity places hands and feet off their goals unless they're adjusted for it (see
+            // CharacterUtilities.IKGoalPositionToSet). Unity blends the adjusted goal with the animation as it would the
+            // goal itself, so the blend above still holds.
+            if (appliedPositionWeight > 0f) { animator.SetIKPosition(goal, CharacterUtilities.IKGoalPositionToSet(animator, goal, goalPosition)); }
             if (combinedRotationWeight > 0f) { animator.SetIKRotation(goal, desiredRotation); }
             if (hintWeight > 0f) { animator.SetIKHintPosition(hint, s.lastHintPosition); }
 

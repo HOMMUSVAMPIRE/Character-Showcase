@@ -401,6 +401,71 @@ namespace CharacterShowcase.Tests
             Assert.That(moved, Is.LessThan(0.01f), "The foot should stay where the animation has it.");
         }
 
+        private static readonly Vector3[] GoalScales =
+        {
+            Vector3.one, new(1f, 2f, 1f), new(2f, 1f, 1f), new(1f, 1f, 2f), new(1f, 0.6f, 1f), Vector3.one * 2f, Vector3.one * 0.5f,
+        };
+
+        /// <summary>
+        /// A goal is a world position, however the model is stretched: moving a hand's or foot's goal moves the hand or
+        /// foot as far (see CharacterUtilities.IKGoalPositionToSet, without which a stretched model's feet miss by up to
+        /// 10 cm, and its hands by up to 44). Measured from a goal near the animation's (not from the animated pose: a
+        /// model of other proportions than the clips' own has its hands and feet a little off the goals Unity reports,
+        /// which are the clips'), then moved.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator MovingAGoal_MovesTheHandOrFootAsFar_AtAnyStretch(
+            [ValueSource(nameof(PreparedModels))] string definitionPath, [ValueSource(nameof(GoalScales))] Vector3 scale,
+            [Values(IKLimb.LeftFoot, IKLimb.RightHand)] IKLimb limb)
+        {
+            yield return SpawnWithModel(definitionPath);
+            yield return new WaitForFixedUpdate();
+            Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True, "Test setup: the character should resize.");
+            TakeOverAnimator();
+            animator.GetComponent<FootPlacementIK>().enabled = false; // Only the goal.
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
+
+            bool foot = limb == IKLimb.LeftFoot;
+            AvatarIKGoal goal = foot ? AvatarIKGoal.LeftFoot : AvatarIKGoal.RightHand;
+            Transform bone = animator.GetBoneTransform(foot ? HumanBodyBones.LeftFoot : HumanBodyBones.RightHand);
+            var ik = animator.GetComponent<CharacterIK>();
+            // Forward, up and in toward the body, within reach at any of the sizes (the smallest's leg is under half a
+            // metre).
+            Vector3 inward = rig.Character.transform.right * (foot ? 1f : -1f); // The left foot, or the right hand.
+            Vector3 goalShift = rig.Character.transform.forward * 0.08f + Vector3.up * 0.06f + inward * 0.04f;
+            Vector3 shift = Vector3.zero;
+            // From a fifth of the way from the animation's goal to the limb's start, so the limb is bent, within reach
+            // either way (hands hang straight). Turned as the animation has it, so the bone measured keeps its offset
+            // from the point Unity places.
+            Transform start = animator.GetBoneTransform(foot ? HumanBodyBones.LeftUpperLeg : HumanBodyBones.RightUpperArm);
+            void Aim(Animator a) => ik.SetGoal(limb,
+                Vector3.Lerp(CharacterUtilities.AnimatedIKGoalPosition(a, goal), start.position, 0.2f) + shift,
+                a.GetIKRotation(goal), 1f, 1f);
+            ik.SetGoal(limb, bone.position, bone.rotation, 1f, 1f);
+            ik.SnapWeights();
+            ik.BeforeSolve += Aim;
+            Vector3 before, after;
+            try
+            {
+                yield return rig.Run(0.2f, _ => CharacterTestRig.Idle(), StepAnimator);
+                before = bone.position;
+                shift = goalShift;
+                yield return rig.Run(0.2f, _ => CharacterTestRig.Idle(), StepAnimator);
+                after = bone.position;
+            }
+            finally { ik.BeforeSolve -= Aim; }
+
+            Vector3 moved = after - before;
+            float error = Vector3.Distance(moved, shift);
+            TestContext.WriteLine($"At {scale}, the {limb} moved {moved * 1000f} mm for a goal moved {shift * 1000f} mm: " +
+                                  $"{error * 1000f:0.0} mm off.");
+            // Within a few millimetres, or (a hand on a stretched model, whose start is only roughly where Unity takes
+            // it to be) a centimetre.
+            bool stretched = !Mathf.Approximately(scale.x, scale.y) || !Mathf.Approximately(scale.y, scale.z);
+            float allowed = foot ? 0.003f : stretched ? 0.01f : 0.005f;
+            Assert.That(error, Is.LessThan(allowed), $"The {limb} should move as far as its goal did.");
+        }
+
         /// <summary>
         /// Stands the model idle on a floor at the given scale, with foot placement at the given weight, and gives back
         /// how far its soles were from the floor once settled, at their lowest and highest.

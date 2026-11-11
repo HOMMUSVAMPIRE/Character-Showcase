@@ -91,6 +91,23 @@ namespace Character
         public float FloorOffset { get => floorOffset; set => floorOffset = value; }
         /// <summary>Height of the soles above the model's origin as the animation poses them, in the model's units.</summary>
         public float AnimatedFloorOffset { get => animatedFloorOffset; set => animatedFloorOffset = value; }
+        /// <summary>How far foot placement is faded in (0 to Weight): it fades out in the air and while dashing.</summary>
+        public float ActiveWeight => activeWeight;
+
+        /// <summary>
+        /// Carries on from another model's foot placement, as it was this frame: how far it was faded in, and how far
+        /// it had moved the feet and pelvis. For a model replacing another on the same character, so feet already
+        /// planted stay planted rather than fading back in. Call before this one's first update.
+        /// </summary>
+        public void ContinueFrom(FootPlacementIK other)
+        {
+            if (other == null || other == this) { return; }
+            activeWeight = Mathf.Min(other.activeWeight, weight);
+            pelvisOffset = other.pelvisOffset;
+            pelvisVelocity = other.pelvisVelocity;
+            left = other.left;
+            right = other.right;
+        }
 
         private void Awake()
         {

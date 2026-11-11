@@ -40,6 +40,8 @@ namespace Character
         private bool hasLastFacing;
 
         private ICharacterAnimationDriver driver;
+        // The driver of a model being replaced, which the new model's driver carries on from.
+        private ICharacterAnimationDriver retiredDriver;
 
         /// <summary>The character's animation state as of the latest frame.</summary>
         public CharacterAnimationState AnimationState { get; private set; }
@@ -63,6 +65,7 @@ namespace Character
             {
                 modelHost.ModelLoaded += HandleModelLoaded;
                 modelHost.ModelUnloaded += HandleModelUnloaded;
+                modelHost.ModelReplacing += HandleModelReplacing;
                 if (modelHost.CurrentModel != null) { HandleModelLoaded(modelHost.CurrentModel); }
             }
         }
@@ -74,13 +77,22 @@ namespace Character
             {
                 modelHost.ModelLoaded -= HandleModelLoaded;
                 modelHost.ModelUnloaded -= HandleModelUnloaded;
+                modelHost.ModelReplacing -= HandleModelReplacing;
             }
         }
 
         private void HandleModelLoaded(CharacterModel model)
         {
             driver = model.Translator != null ? model.Translator.CreateDriver(model.Root, model.Animator) : null;
+            if (driver != null && retiredDriver != null) { driver.ContinueFrom(retiredDriver); }
+            retiredDriver = null;
             if (modelHost.ModelParent != null) { lastRotation = modelHost.ModelParent.rotation; }
+        }
+
+        private void HandleModelReplacing(CharacterModel model)
+        {
+            driver?.Retire();
+            retiredDriver = driver;
         }
 
         private void HandleModelUnloaded(CharacterModel model) => driver = null;

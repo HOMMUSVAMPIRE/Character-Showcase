@@ -35,7 +35,14 @@ namespace Character
             return ownHeight;
         }
 
-        private void OnValidate() => measuredPrefab = null; // The prefab may have changed.
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+            measuredPrefab = null; // The prefab may have changed.
+        }
+
+        // Every model is a copy of the prefab, so one measurement on load serves for all.
+        protected override UnityEngine.Object ModelTemplate => modelPrefab;
 
         public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
         {

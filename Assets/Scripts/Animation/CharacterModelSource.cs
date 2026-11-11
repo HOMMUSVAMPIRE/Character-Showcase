@@ -36,9 +36,9 @@ namespace Character
         [SerializeField] private Vector3 rotationOffset = Vector3.zero;
         [Tooltip("Uniform scale applied to the model")]
         [Min(0.001f)] [SerializeField] private float scale = 1f;
-        [Tooltip("Measure where the model's soles are each time it's loaded, rather than using Ground Offset and Animated " +
-                 "Ground Offset. On for sources made by hand or in code, whose models haven't been measured; Prepare " +
-                 "Character Models measures its models' and turns this off.")]
+        [Tooltip("Measure where the model's soles are when it's loaded (once for all copies of the same model), rather " +
+                 "than using Ground Offset and Animated Ground Offset. On for sources made by hand or in code, whose " +
+                 "models haven't been measured; Prepare Character Models measures its models' and turns this off.")]
         [SerializeField] private bool measureGroundOnLoad = true;
         [Tooltip("How far above its origin the model's soles are as it stands, in the model's own units (before Scale and " +
                  "Fit To Height), with its feet where foot placement holds them (or, for a model without foot placement, " +
@@ -140,8 +140,7 @@ namespace Character
 
             // Where the soles are: as stored (measured by Prepare Character Models), or measured now, set up as it is.
             float soles = groundOffset, animatedSoles = animatedGroundOffset, facing = facingCorrection;
-            if (measureGroundOnLoad && modelAnimator != null
-                && StandingPose.TryMeasure(model, modelAnimator.runtimeAnimatorController, null, out StandingPose standing))
+            if (measureGroundOnLoad && modelAnimator != null && TryGetStandingPose(model, modelAnimator, out StandingPose standing))
             {
                 bool placesFeet = feet != null && feet.enabled && feet.weight > 0f;
                 soles = placesFeet ? standing.PlacedSoleHeight : standing.SoleHeight;
@@ -167,6 +166,58 @@ namespace Character
             // stretched.
             modelTransform.localPosition = positionOffset + Vector3.down * (soles * modelScale);
             return Completed();
+        }
+
+        /// <summary>
+        /// The asset every model this source makes is a copy of (its prefab, say), so that measuring one model (see
+        /// Measure Ground On Load) serves for the rest; or null if each may differ, as a character creator's might, so
+        /// each is measured as it loads. Measurements are kept until the asset, Animator Controller or Avatar changes,
+        /// the source is edited, ForgetMeasurement is called, or play mode starts again.
+        /// </summary>
+        protected virtual UnityEngine.Object ModelTemplate => null;
+
+        // The last measurement on load, and what it was measured for.
+        private struct Measurement
+        {
+            public UnityEngine.Object template;
+            public RuntimeAnimatorController controller;
+            public Avatar avatar;
+            public int session;
+            public bool measured;
+            public StandingPose pose;
+        }
+        [System.NonSerialized] private Measurement lastMeasurement;
+        // Counts play mode sessions, so a measurement isn't kept from one to the next (as it would be, with domain
+        // reloading turned off), in case the model was changed in between.
+        private static int session;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void NewSession() => session++;
+
+        /// <summary>Drops the measurement kept on load (see ModelTemplate), so the next model loaded is measured.</summary>
+        public void ForgetMeasurement() => lastMeasurement = default;
+
+        protected virtual void OnValidate() => ForgetMeasurement();
+
+        /// <summary>Measures how the model stands, or reuses the measurement of the last model, if it's a copy of the same.</summary>
+        private bool TryGetStandingPose(GameObject model, Animator modelAnimator, out StandingPose pose)
+        {
+            UnityEngine.Object template = ModelTemplate;
+            RuntimeAnimatorController controller = modelAnimator.runtimeAnimatorController;
+            Avatar modelAvatar = modelAnimator.avatar;
+            Measurement last = lastMeasurement;
+            if (template != null && last.template == template && last.controller == controller && last.avatar == modelAvatar
+                && last.session == session)
+            {
+                pose = last.pose;
+                return last.measured;
+            }
+
+            bool measured = StandingPose.TryMeasure(model, controller, null, out pose);
+            lastMeasurement = template != null
+                ? new Measurement { template = template, controller = controller, avatar = modelAvatar, session = session, measured = measured, pose = pose }
+                : default;
+            return measured;
         }
 
         /// <summary>An Awaitable that's already finished, for overrides with nothing to wait for.</summary>
