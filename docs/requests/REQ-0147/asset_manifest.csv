@@ -1,0 +1,21 @@
+asset_id,category,name,req_ref,description_ref,quality_tier,poly_budget_tris,texture_max,rigged,source_service,review_owner,status,licence_cleared,notes
+CHR-KNIGHT,3D character,Knight,CHR-01,Art thread 14:33,,15000-20000,2048,Yes (Humanoid),,O. Calder / TBD (Q-02),Not started,,Appears in key art
+CHR-SCOUT,3D character,Scout,CHR-01,Art thread 14:34,,15000-20000,2048,Yes (Humanoid),,O. Calder / TBD (Q-02),Not started,,
+CHR-HEAVY,3D character,Heavy,CHR-01; CHR-06,Art thread 14:35 / 14:36,,15000-20000,2048,Yes (Humanoid),,O. Calder / TBD (Q-02),Not started,,Reuse of Knight base disputed (Q-01)
+CON-TURN,2D concept,Character turnarounds (x3),CHR-01,Art thread 15:44,n/a,n/a,n/a,n/a,,O. Calder / TBD (Q-02),Not started,,Owen offered rough sheets by Thu 12 Nov
+PRP-DOOR,3D prop,Door (ring handle),INT-02,Art thread 14:47,,1000-3000,1024,No,,,Not started,,Handle ~1 m. Exact position needed for IK. Frame is level geometry
+PRP-LEVER,3D prop,Floor lever,INT-03,Art thread 14:48,,1000-3000,1024,No,,,Not started,,Two-handed
+PRP-CRATE-S,3D prop,Crate (small),INT-04,Art thread 14:49,,1000-3000,1024,No,,,Not started,,
+PRP-CRATE-L,3D prop,Crate (large reinforced),INT-04,Art thread 14:49,,1000-3000,1024,No,,,Not started,,Heavy only
+PRP-RELIC,3D prop,Relic,INT-05; MKT-05,Art thread 14:50,,1000-3000+,1024,No,,,Not started,,Appears in key art. Size disputed (Owen vs Jess)
+2D-PORT-KNIGHT,2D portrait,Knight portrait,CHR-02,Art thread 15:26,n/a,n/a,TBD,n/a,,,Not started,,Must match 3D model
+2D-PORT-SCOUT,2D portrait,Scout portrait,CHR-02,Art thread 15:26,n/a,n/a,TBD,n/a,,,Not started,,Must match 3D model
+2D-PORT-HEAVY,2D portrait,Heavy portrait,CHR-02,Art thread 15:26,n/a,n/a,TBD,n/a,,,Not started,,Must match 3D model
+2D-PROMPT-KB,2D UI,Prompt glyphs (keyboard),INT-07,Art thread 15:31,n/a,n/a,TBD,n/a,,,Not started,,
+2D-PROMPT-PAD,2D UI,Prompt glyphs (gamepad Xbox/PS style),INT-07,Art thread 15:31,n/a,n/a,TBD,n/a,,,Not started,,Original style; no official button art
+MKT-KEYART,Store image,Key art master,MKT-05,Art thread 15:29,n/a,n/a,TBD,n/a,,,Not started,,Source for card/cover/social crops
+MKT-ICON,Store image,Icon,MKT-01,Art thread 15:28,n/a,n/a,160x160,n/a,,,Not started,,No text
+MKT-CARD,Store image,Card,MKT-02,Art thread 15:29,n/a,n/a,420x280,n/a,,,Not started,,Title + publisher only
+MKT-COVER,Store image,Cover,MKT-03,Art thread 15:29,n/a,n/a,1950x1300,n/a,,,Not started,,Title + publisher + tagline (Q-07)
+MKT-SOCIAL,Store image,Social media,MKT-04,Art thread 15:29,n/a,n/a,1200x630,n/a,,,Not started,,No text
+VID-PROMO,Video,Promo video (~30 s),MKT-06,Art thread 15:40,n/a,n/a,TBD,n/a,,O. Calder (back 23 Nov),Not started,,See Q-06 re: setup video
