@@ -19,15 +19,25 @@ namespace CharacterShowcase.Tests.EditMode
     /// </summary>
     public class PreparedModelTests
     {
-        /// <summary>Every prepared model's source, by path.</summary>
-        private static IEnumerable<string> PreparedSources() =>
-            AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { CharacterModelImporter.ModelsFolder })
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .OrderBy(path => path, System.StringComparer.Ordinal)
-                .ToArray();
+        // The category of checks of the package's own models and animations, which a team using its own can leave out.
+        public const string SampleContent = "SampleContent";
+        private const string NoModels = "(no prepared models)";
+
+        /// <summary>Every prepared model's source, by path, or a placeholder (skipped) if there are none.</summary>
+        private static IEnumerable<string> PreparedSources()
+        {
+            string[] paths = AssetDatabase.IsValidFolder(CharacterModelImporter.ModelsFolder)
+                ? AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { CharacterModelImporter.ModelsFolder })
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .OrderBy(path => path, System.StringComparer.Ordinal)
+                    .ToArray()
+                : System.Array.Empty<string>();
+            return paths.Length > 0 ? paths : new[] { NoModels };
+        }
 
         private static DirectCharacterModelSource Load(string path)
         {
+            if (path == NoModels) { Assert.Ignore($"There are no prepared models in {CharacterModelImporter.ModelsFolder}."); }
             var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(path);
             Assert.That(source, Is.Not.Null, $"Test setup: no model source at '{path}'.");
             return source;
@@ -59,7 +69,7 @@ namespace CharacterShowcase.Tests.EditMode
             }
         }
 
-        [Test]
+        [Test, Category(SampleContent)]
         public void EveryPreparedModel_IsReady_AndPlaysTheSharedAnimation([ValueSource(nameof(PreparedSources))] string path)
         {
             DirectCharacterModelSource source = Load(path);
@@ -68,7 +78,7 @@ namespace CharacterShowcase.Tests.EditMode
                 Is.SameAs(AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath)));
         }
 
-        [Test]
+        [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasNothingRotatedAboveItsSkeleton([ValueSource(nameof(PreparedSources))] string path)
         {
             DirectCharacterModelSource source = Load(path);
@@ -76,7 +86,7 @@ namespace CharacterShowcase.Tests.EditMode
                 "Rotated or unevenly scaled nodes above the skeleton distort the model when the character is stretched.");
         }
 
-        [Test]
+        [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasGroundOffsets_MatchingAFreshMeasurement([ValueSource(nameof(PreparedSources))] string path)
         {
             DirectCharacterModelSource source = Load(path);
@@ -100,7 +110,7 @@ namespace CharacterShowcase.Tests.EditMode
         /// straight up, arms straight out to the sides, legs straight down. Posed as the avatar stores it, the model
         /// should stand that way.
         /// </summary>
-        [Test]
+        [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasATPose_AsItsReferencePose([ValueSource(nameof(PreparedSources))] string path)
         {
             DirectCharacterModelSource source = Load(path);
@@ -232,11 +242,12 @@ namespace CharacterShowcase.Tests.EditMode
         /// A model is due to be prepared again when the animation its ground offset was measured with changes: the
         /// record of what it was prepared against changes with its controller, and stays the same while nothing does.
         /// </summary>
-        [Test]
+        [Test, Category(SampleContent)]
         public void WhatAModelWasPreparedAgainst_ChangesWithItsAnimation()
         {
-            string modelPath = CharacterModelImporter.FindModelFiles().First();
+            string modelPath = CharacterModelImporter.FindModelFiles().FirstOrDefault();
             var shared = AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath);
+            if (modelPath == null || shared == null) { Assert.Ignore("Needs a model file and the package's shared Animator Controller."); }
             Assert.That(CharacterModelImporter.RecordFor(modelPath, shared), Is.EqualTo(CharacterModelImporter.RecordFor(modelPath, shared)),
                 "Nothing changed, so it shouldn't need preparing again.");
 
@@ -268,7 +279,7 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         /// <summary>Previews are sized as the model is when it loads, Fit To Height included.</summary>
-        [Test]
+        [Test, Category(SampleContent)]
         public void Previews_AreSizedLikeTheLoadedModel_FitToHeightIncluded()
         {
             DirectCharacterModelSource prepared = Load(PreparedSources().First());

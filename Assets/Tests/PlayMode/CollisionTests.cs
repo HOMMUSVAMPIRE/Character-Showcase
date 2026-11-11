@@ -31,9 +31,10 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator JumpingIntoLowCeiling_FallsAwayInsteadOfSticking()
         {
-            const float headroom = 0.8f;
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            // Half a step height above the head: the jump clears a step, so it reaches the ceiling.
+            float headroom = 0.5f * rig.StepHeight;
             float ceiling = CapsuleHeight + headroom;
             rig.Box("Ceiling", new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(10f, 1f, 10f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
@@ -61,11 +62,14 @@ namespace CharacterShowcase.Tests
         {
             // No floor: the character stays airborne, where nothing else slows it down.
             rig.SpawnCharacter(new Vector3(0f, 20f, 0f));
-            GameObject wall = rig.Box("Wall", new Vector3(0f, 20f, 3.5f), new Vector3(10f, 100f, 1f)); // Face at z = 3.
+            var dash = rig.Mode<DashMode>();
+            // The wall's face halfway along the dash, so the dash reaches it with speed to spare.
+            float face = CapsuleRadius + 0.5f * dash.dashSpeed * rig.Movement.SpeedScale * dash.dashDuration;
+            GameObject wall = rig.Box("Wall", new Vector3(0f, 20f, face + 0.5f), new Vector3(10f, 100f, 1f));
 
-            int dashSteps = CharacterTestRig.StepsFor(rig.MovementSetting<float>("dashDuration"));
+            int dashSteps = CharacterTestRig.StepsFor(dash.dashDuration);
             yield return rig.Run(dashSteps + 3, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Idle());
-            Assert.That(rig.Position.z, Is.EqualTo(3f - CapsuleRadius).Within(0.05f), "The dash should end against the wall.");
+            Assert.That(rig.Position.z, Is.EqualTo(face - CapsuleRadius).Within(0.05f), "The dash should end against the wall.");
 
             // Take the wall away: momentum the wall blocked shouldn't still be there to carry the character onward.
             wall.SetActive(false);
@@ -81,15 +85,18 @@ namespace CharacterShowcase.Tests
         public IEnumerator LandingOnSteepSlope_SlidesOffIt()
         {
             rig.Floor();
-            // A 65 degree slope, too steep to stand on, facing +Z. Its surface meets the floor at about z = 0.55.
-            rig.Box("Steep Slope", Vector3.zero, new Vector3(6f, 1f, 10f), Quaternion.Euler(65f, 0f, 0f));
             rig.SpawnCharacter(new Vector3(0f, 6f, -1f));
+            // A slope 10 degrees steeper than the steepest the character stands on, facing +Z. Its surface, half the
+            // box's thickness out from its centre, meets the floor at z = 0.5 / sin(angle).
+            float angle = Mathf.Min(rig.MaxSlopeAngle + 10f, 85f);
+            rig.Box("Steep Slope", Vector3.zero, new Vector3(6f, 1f, 10f), Quaternion.Euler(angle, 0f, 0f));
+            float foot = 0.5f / Mathf.Sin(angle * Mathf.Deg2Rad);
 
             yield return rig.Run(3f, _ => CharacterTestRig.Idle());
 
             Assert.That(rig.Grounded, Is.True, "Character should end up on the floor.");
             Assert.That(rig.Position.y, Is.LessThan(0.05f), "Character stayed perched on a slope too steep to stand on.");
-            Assert.That(rig.Position.z, Is.GreaterThan(0.5f), "Character should slide down the slope, away from it.");
+            Assert.That(rig.Position.z, Is.GreaterThan(foot - 0.05f), "Character should slide down the slope, away from it.");
         }
 
         [UnityTest]

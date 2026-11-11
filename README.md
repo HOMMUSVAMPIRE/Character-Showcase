@@ -118,57 +118,54 @@ On a model of other proportions than the clips were made for, Unity reports each
 To try manual targets in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
 
 ## Automated Tests
-Play mode tests in Assets/Tests/PlayMode spawn the real Character prefab with real physics and drive its MovementController with scripted inputs. Together with the camera tests, they cover:
+The tests are written to hold for any team's setup, not just this project's: they read what they need from the character (its capsule, step height, slope limit, walking and dashing speeds, jump count) and from whatever model, animations and camera settings it has, and size their test worlds from those. Play mode tests run on the package's Character prefab unless a CharacterTestSettings asset (Create > Character Showcase > Tests > Character Test Settings) names another: put one anywhere in the project to run the whole suite on your own character. A test of something the character doesn't have (an air jump on a character with one jump, foot placement on a model that isn't a humanoid) is skipped, with the reason, rather than failed. They've been run on a character tuned differently (a smaller capsule, a lower step height and slope limit, half the walking speed, a slower dash and a single jump).
+
+Tests of the package's own content (the mannequin and other prepared models, the motion-capture clips, the shared Animator Controller) are in the SampleContent category, and skipped where that content isn't there. A team using its own models and animations can leave them out: in the Test Runner, or with `-testCategory "!SampleContent"` on the command line.
+
+Play mode tests in Assets/Tests/PlayMode spawn the character with real physics and drive its MovementController with scripted inputs. Together with the camera tests, they cover:
 - settling on the ground without hovering, sinking or drifting
 - falling within gravity's limits, including walking off a ledge after standing still
 - stopping at walls, jumping and landing
-- climbing stairs and standing on a ramp without sliding
+- climbing stairs and standing on a ramp without sliding (each a little over half the character's step height and slope limit)
+- climbing any step up to the step height at walking and running pace, and not climbing taller ones
 - riding sliding, rising and spinning platforms, and keeping a platform's momentum when jumping off
 - coyote time easing gravity in after leaving the ground, and jumps not being refunded by it
 - dashing: distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, and air dash limits
-- jump and dash cancelling each other, and the dash animation playing
+- jump and dash cancelling each other
 - keeping speed when walking off edges, walking smoothly down stairs, air steering that doesn't stack on carried momentum, and the jump input buffer
-- collisions: falling away from a ceiling the character jumps into, losing momentum into a wall, sliding off steep slopes, and being pushed by moving walls
+- collisions: falling away from a ceiling the character jumps into, losing momentum into a wall, sliding off slopes too steep for it, and being pushed by moving walls
 - movement events: each raised once at the right moment, and passed on by the AnimationController
-- climbing any step up to the step height at walking and running pace, and not climbing taller ones
-- moving like a scaled copy of itself at any size from 0.1 to 100: over a course of ramps up and down, a step, a jump and a dash, every physics step puts it in the same place for its size as at full size, on the ground at the same moments, with the same jump airtime and height for its size
-- every model standing with its soles on the floor (within 2 mm, scaled) at 0.1, 1 and 10 times its size and stretched on one axis
-- character size at fractional scales (half and quarter): standing on the floor, stopping at walls, climbing steps in proportion and not taller ones, fitting through gaps too low for full size (and not growing back under them), jumping in proportion, and falling off ledges
+- moving like a scaled copy of itself at any size from 0.1 to 100: over a course laid out for the character (ramps up and down, a step, a jump, a dash, a low ceiling and a step too tall for it), every physics step puts it in the same place for its size as at full size, on the ground at the same moments, with the same jump airtime and height for its size
+- character size: scaling only the model parent and resizing collision and mass to match, size changes taking their time, waiting for room to grow under a low ceiling, non-uniform scales still moving and colliding, natural speed scaling, the model's measurements and placeholder following, and the inspector field
 - refusing negative, zero and non-finite scales, raising tiny ones to the minimum, and reporting a scaled root transform
-- character size: scaling only the model parent and resizing collision and mass to match, size changes taking their time, climbing taller steps and stopping further from walls when bigger, waiting for room to grow under a low ceiling, non-uniform scales still moving and colliding, proportional speed scaling (and natural speed and jump scaling, if chosen), the model's measurements and placeholder following, and the inspector field
-- planted feet staying in place at quarter, half and double size and when stretched
-- model hosting: new models staying hidden until swapped in, the placeholder, falling back when a model fails, fitting a model to a height (in proportion to the character's size), and the eye point following the model's size
-- fitting the collider to the model, by height and by shoulder width, and waiting for room to grow
-- every model standing on the floor with foot placement off or fading, and an unmeasured source measuring its model on load
+- the character's model standing with its soles on the floor (within 2 mm, scaled) at 0.1, 1 and 10 times its size and stretched on one axis, with foot placement on, off or fading; and an unmeasured source measuring its model on load
+- its planted feet sliding no more at other sizes, or stretched, than at its own size
+- IK on stretched models: moving a hand or foot goal moving the hand or foot as far, and a knee hint on its own moving the foot no more than unstretched
 - models made facing another way, or off their origin, facing forward and standing on the spot; and a model with an unevenly scaled armature staying in proportion when stretched
-- stretched models standing as they do unstretched with foot placement partly on, a knee hint on its own leaving a stretched model's foot where the animation has it, and moving a hand or foot goal moving the hand or foot as far, on every model at even and stretched scales
-- every prepared character model: planted feet staying in place while walking, arms hanging down when standing, and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up)
-- the model: loading at runtime and being set up, swapping models (including one without an Animator), a model swapped in mid-run or mid-transition carrying on where the old one was, measuring on load once per model, cancelling loads when the character is destroyed or given another model, the editor preview, and the Animator parameter translator
-- the camera rig, which follows a plain Transform, independent of the character code:
+- model hosting: loading at runtime and being set up, swapping models (including one without an Animator), new models staying hidden until swapped in, the placeholder, falling back when a model fails, cancelling loads when the character is destroyed or given another model, sources releasing their models, a model swapped in mid-run or mid-transition carrying on where the old one was, measuring on load once per model, and the editor preview
+- fitting a model to a height (in proportion to the character's size, the eyes following), fitting the collider to the model by height or shoulder width, and waiting for room to grow
+- the Animator parameter translator
+- the camera rig, which follows a plain Transform, independent of the character code, with expectations taken from its own settings:
   - third and first person placement, and mode blending and events
   - pitch limits and zoom limits
-  - collision with walls, while ignoring the target's own colliders
+  - collision with walls (only as far in as needed, ignoring walls clear of it and the target's own colliders), at 0.1, 1 and 10 times the target's size
   - smooth follow and teleport snapping
   - shake and ShakeAll
   - first person target hiding, including renderers added to the target later
   - first person eyes following an eye anchor
-  - third person framing scaled by a target size reference
-  - speed FOV judging speed relative to the target's size
-  - framing, clip planes, collision and landing dips scaled with the target, at 0.1, 10 and 100 times its size
-  - speed FOV and the landing dip
+  - framing and clip planes scaled with the target, at 0.1, 2, 10 and 100 times its size
+  - speed FOV judging speed relative to the target's size, and settling once it stops
+  - the landing dip, in proportion to the target's size, and recovering
   - CameraZone overrides
+- sample content: every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor, arms hanging down when standing, and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up)
 
-Edit mode tests in Assets/Tests/EditMode check what Prepare Character Models leaves behind, without entering Play mode, so a change to preparing (or a model added without preparing it) fails fast:
-- every model file has a source, which is ready to use and plays the shared Animator Controller
-- every model's avatar reference pose is a T-pose (spine up, arms out, legs down, within 2 degrees) with nothing rotated above its skeleton
-- every model's stored Ground Offset, Animated Ground Offset and Facing Correction match a fresh measurement, and its offset is near its origin
+Edit mode tests in Assets/Tests/EditMode check Prepare Character Models and the motion-capture clips without entering Play mode, so a change to preparing (or a model added without preparing it) fails fast:
+- every model file has a source
 - straightening nodes above the skeleton keeping everything under them where it was, unevenly scaled ones included, and leaving what can't be straightened
 - facing corrections rounding to the nearest quarter turn
 - ground offsets counting meshes carried by bones, not just skinned ones
-- what a model was prepared against changing when its controller changes, and staying the same otherwise
-- previews and listed heights being sized like the loaded model, Fit To Height included
-- every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame
-- played on the mannequin, every clip that moves about on its feet stays on the spot (its hips within 32 cm, 9 cm typically) and faces forward (within 6 degrees)
+- sample content: every prepared model's source is ready to use and plays the shared Animator Controller; its avatar reference pose is a T-pose (spine up, arms out, legs down, within 2 degrees) with nothing rotated above its skeleton; its stored Ground Offset, Animated Ground Offset and Facing Correction match a fresh measurement; what it was prepared against changes when its controller changes; and previews and listed heights are sized like the loaded model
+- sample content: every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame, and played on the mannequin, every clip that moves about on its feet stays on the spot (its hips within 32 cm, 9 cm typically) and faces forward (within 6 degrees); each check lists every clip that fails it
 
 Run them from Window > General > Test Runner (the EditMode and PlayMode tabs), or from the command line with Unity closed:
 

@@ -74,6 +74,10 @@ namespace Character
         public bool IsLoadingModel => pendingLoad != null;
         /// <summary>The transform models go under; turned to face the character's direction by AnimationController.</summary>
         public Transform ModelParent => modelParent;
+        /// <summary>The transform kept at the model's eye height (see eyePoint), or null if there's none.</summary>
+        public Transform EyePoint => eyePoint;
+        /// <summary>The object shown while there's no model, or null if there's none.</summary>
+        public GameObject Placeholder => placeholder;
         /// <summary>The model's eye height above the character's feet, in meters, at the character's current size.</summary>
         public float EyeHeight => baseEyeHeight * ScaleY;
         /// <summary>The model's height in meters at the character's current size, or 0 while there's no model.</summary>

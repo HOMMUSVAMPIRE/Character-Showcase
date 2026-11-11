@@ -4,18 +4,21 @@ using System.Collections.Generic;
 using System.Reflection;
 using Character;
 using Level;
+using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Builds a tiny physics world around the real Character prefab and drives its MovementController directly with
-    /// scripted inputs, one call per physics step, so tests don't depend on input devices or the input manager.
+    /// Builds a tiny physics world around a character prefab and drives its MovementController directly with scripted
+    /// inputs, one call per physics step, so tests don't depend on input devices or the input manager. The prefab is
+    /// the one a CharacterTestSettings asset names, or else the package's own. Tests size their worlds from the
+    /// character (its capsule, step height, slope limit and speeds, below), so they hold for any character's tuning.
     /// </summary>
     public sealed class CharacterTestRig : IDisposable
     {
-        private const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        private const string DefaultCharacterPrefabPath = "Assets/Prefabs/Character.prefab";
 
         private readonly List<Object> created = new();
         private readonly float previousTimeScale;
@@ -43,12 +46,8 @@ namespace CharacterShowcase.Tests
 
         public void SpawnCharacter(Vector3 position)
         {
-#if UNITY_EDITOR
-            var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
-#else
-            GameObject prefab = null;
-#endif
-            if (prefab == null) { throw new InvalidOperationException($"Could not load '{CharacterPrefabPath}'."); }
+            GameObject prefab = CharacterPrefab();
+            if (prefab == null) { throw new InvalidOperationException($"Could not load the character prefab ('{DefaultCharacterPrefabPath}', or a CharacterTestSettings asset's)."); }
 
             Character = Object.Instantiate(prefab, position, Quaternion.identity);
             created.Add(Character);
@@ -56,6 +55,53 @@ namespace CharacterShowcase.Tests
             Character.GetComponent<ACCharacterController>().enabled = false;
             Movement = Character.GetComponent<MovementController>();
             Body = Character.GetComponent<Rigidbody>();
+        }
+
+        /// <summary>The character prefab the tests run on: a CharacterTestSettings asset's, or the package's own.</summary>
+        public static GameObject CharacterPrefab()
+        {
+#if UNITY_EDITOR
+            foreach (string guid in UnityEditor.AssetDatabase.FindAssets($"t:{nameof(CharacterTestSettings)}"))
+            {
+                var settings = UnityEditor.AssetDatabase.LoadAssetAtPath<CharacterTestSettings>(UnityEditor.AssetDatabase.GUIDToAssetPath(guid));
+                if (settings != null && settings.characterPrefab != null) { return settings.characterPrefab; }
+            }
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(DefaultCharacterPrefabPath);
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>The character prefab's capsule (before it's spawned, to build a world around it).</summary>
+        public static CapsuleCollider PrefabCapsule() => CharacterPrefab().GetComponent<CapsuleCollider>();
+        /// <summary>The character prefab's step height at its authored size (before it's spawned).</summary>
+        public static float PrefabStepHeight() => CharacterPrefab().GetComponent<MovementController>().MaxStepHeight;
+
+        // ---- The character's size and tuning, as it is now (at its current size) ----
+
+        public CapsuleCollider Capsule => Character.GetComponent<CapsuleCollider>();
+        /// <summary>The capsule's height in metres.</summary>
+        public float Height => Capsule.height * Character.transform.lossyScale.y;
+        /// <summary>The capsule's radius in metres.</summary>
+        public float Radius => Capsule.radius * Mathf.Max(Character.transform.lossyScale.x, Character.transform.lossyScale.z);
+        /// <summary>The tallest step the character climbs, in metres.</summary>
+        public float StepHeight => Movement.MaxStepHeight * Movement.HeightScale;
+        /// <summary>The steepest walkable slope, in degrees.</summary>
+        public float MaxSlopeAngle => Movement.MaxSlopeAngle;
+        /// <summary>The character's walking speed in m/s at full stick (WalkRunMode), at its size.</summary>
+        public float WalkSpeed => Mode<WalkRunMode>().walkSpeed * Movement.SpeedScale;
+        /// <summary>Seconds to walk the given distance at full stick, plus a margin for speeding up and settling.</summary>
+        public float SecondsToWalk(float metres, float margin = 0.5f) => metres / WalkSpeed + margin;
+
+        /// <summary>
+        /// The character's movement mode as the given interface (WalkRunMode, JumpMode, DashMode). Ignores the test if it
+        /// isn't one: a test of dashing has nothing to test on a character that can't dash.
+        /// </summary>
+        public T Mode<T>() where T : class
+        {
+            if (Movement.movementHandler is T mode) { return mode; }
+            Assert.Ignore($"The character's movement mode ({Movement.movementHandler?.GetType().Name ?? "none"}) isn't a {typeof(T).Name}.");
+            return null;
         }
 
         /// <summary>The character's AnimationController, which animates its model.</summary>
@@ -188,12 +234,19 @@ namespace CharacterShowcase.Tests
         public bool Dashing => Movement.lastFrameMovementData != null
                                && Movement.lastFrameMovementData.state.HasFlag(CharacterState.Dashing);
 
-        /// <summary>Reads a private serialized tuning value from the character's movement mode asset.</summary>
+        /// <summary>
+        /// Reads a tuning value the movement mode interfaces don't have (BasicMovementMode's gravity, coyote time and dash
+        /// cooldown, say) from the character's movement mode by name. Ignores the test if the mode has no such value: it
+        /// tests a behaviour of BasicMovementMode, which another mode may not have.
+        /// </summary>
         public T MovementSetting<T>(string fieldName)
         {
             object handler = Movement.movementHandler;
-            FieldInfo field = handler.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null) { throw new MissingFieldException(handler.GetType().Name, fieldName); }
+            FieldInfo field = handler?.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (field == null || field.FieldType != typeof(T))
+            {
+                Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
+            }
             return (T)field.GetValue(handler);
         }
 

@@ -13,7 +13,7 @@ namespace CharacterShowcase.Tests
     /// <summary>
     /// Tests with models made differently from the prepared ones, to check the character copes with how models come:
     /// made facing another way, away from their origin, or with their armature scaled unevenly. The variants are built
-    /// at runtime from the mannequin: posed in its reference pose, with the node above its skeleton changed, and given an
+    /// at runtime from the character's own model: posed in its reference pose, with the node above its skeleton changed, and given an
     /// avatar built from that, as importing such a file would. Their sources haven't been measured, so they measure
     /// their models as they load.
     /// </summary>
@@ -80,7 +80,14 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(Vector3.zero);
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
-            DirectCharacterModelSource variant = Variant((DirectCharacterModelSource)rig.Models.ModelSource, changeArmature);
+            // Variants of the character's own model, which has to be a humanoid its source references directly.
+            if (rig.Models.ModelSource is not DirectCharacterModelSource own || own.ModelPrefab == null
+                || rig.Models.Animator == null || !rig.Models.Animator.isHuman)
+            {
+                Assert.Ignore("The character's model isn't a humanoid its source references directly.");
+                yield break;
+            }
+            DirectCharacterModelSource variant = Variant(own, changeArmature);
             bool loaded = false;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(variant), l => loaded = l);
             Assert.That(loaded, Is.True);

@@ -84,7 +84,7 @@ namespace CharacterShowcase.Tests
             CharacterModelHost models = rig.Models;
             AnimationController animation = rig.Animation;
             yield return rig.WaitForModel();
-            GameObject mannequin = models.Model;
+            GameObject oldModel = models.Model;
 
             DirectCharacterModelSource cube = CubeSource();
             bool loaded = false;
@@ -93,7 +93,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(loaded, Is.True);
 
-            Assert.That(mannequin == null, Is.True, "The old model should be destroyed.");
+            Assert.That(oldModel == null, Is.True, "The old model should be destroyed.");
             Assert.That(models.Model, Is.Not.Null);
             Assert.That(models.Model.name, Does.StartWith("Cube Model"));
             Assert.That(models.Model.transform.IsChildOf(rig.Character.transform), Is.True);
@@ -107,25 +107,6 @@ namespace CharacterShowcase.Tests
                 animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime));
             Assert.That(rig.Position.z, Is.GreaterThan(1f), "The character should still move.");
             Assert.That(animation.AnimationState.moving, Is.True, "The animation state should still be worked out.");
-        }
-
-        [UnityTest]
-        public IEnumerator DestroyingTheCharacterWhileItsModelLoads_LeavesNoModelBehind()
-        {
-            DirectCharacterModelSource cube = CubeSource();
-            for (int i = 0; i < 5; i++)
-            {
-                rig.SpawnCharacter(new Vector3(i * 3f, 0f, 0f));
-                _ = rig.Models.LoadModelAsync(cube);
-                Object.Destroy(rig.Character);
-                yield return null;
-            }
-            for (int i = 0; i < 10; i++) { yield return null; }
-
-            foreach (GameObject obj in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-            {
-                Assert.That(obj.name.StartsWith("Cube Model(Clone)"), Is.False, "A model finished loading for a character that no longer exists.");
-            }
         }
 
         /// <summary>
@@ -160,9 +141,27 @@ namespace CharacterShowcase.Tests
             }
         }
 
+        /// <summary>
+        /// A character destroyed while its model loads cancels the load (its source's cleanup runs) and leaves no model
+        /// behind, whether the source is slow (stands in for Addressables) or instantiates straight away.
+        /// </summary>
         [UnityTest]
-        public IEnumerator DestroyingTheCharacterWhileItsModelLoads_CancelsTheLoad()
+        public IEnumerator DestroyingTheCharacterWhileItsModelLoads_CancelsTheLoad_AndLeavesNoModelBehind()
         {
+            DirectCharacterModelSource cube = CubeSource();
+            for (int i = 0; i < 5; i++)
+            {
+                rig.SpawnCharacter(new Vector3(i * 3f, 0f, 0f));
+                _ = rig.Models.LoadModelAsync(cube);
+                Object.Destroy(rig.Character);
+                yield return null;
+            }
+            for (int i = 0; i < 10; i++) { yield return null; }
+            foreach (GameObject obj in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include))
+            {
+                Assert.That(obj.name.StartsWith("Cube Model(Clone)"), Is.False, "A model finished loading for a character that no longer exists.");
+            }
+
             var slow = Track(ScriptableObject.CreateInstance<SlowSource>());
             rig.SpawnCharacter(Vector3.zero);
             _ = rig.Models.LoadModelAsync(slow);
@@ -249,7 +248,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             CharacterModelHost models = rig.Models;
             yield return rig.WaitForModel();
-            GameObject mannequin = models.Model;
+            GameObject oldModel = models.Model;
 
             var slow = Track(ScriptableObject.CreateInstance<SlowSetupSource>());
             slow.template = CubeSource().ModelPrefab;
@@ -262,12 +261,12 @@ namespace CharacterShowcase.Tests
                 .Select(t => t.gameObject).FirstOrDefault(o => o.name == "Slow Setup Model");
             Assert.That(incoming, Is.Not.Null, "Test setup: the new model should have been created.");
             Assert.That(incoming.activeInHierarchy, Is.False, "A model still being set up shouldn't be seen.");
-            Assert.That(mannequin.activeInHierarchy, Is.True, "The old model should stay until the new one is ready.");
+            Assert.That(oldModel.activeInHierarchy, Is.True, "The old model should stay until the new one is ready.");
 
             yield return loading;
             Assert.That(swapped, Is.True);
             Assert.That(incoming.activeInHierarchy, Is.True, "The new model should appear once it's swapped in.");
-            Assert.That(mannequin == null || !mannequin.activeInHierarchy, Is.True,
+            Assert.That(oldModel == null || !oldModel.activeInHierarchy, Is.True,
                 "The old model should disappear in the same frame the new one appears.");
             Assert.That(incoming.transform.parent, Is.SameAs(models.ModelParent));
         }
@@ -277,9 +276,8 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            GameObject placeholder = rig.Character.GetComponentsInChildren<Transform>(true)
-                .FirstOrDefault(t => t.name == "Model Placeholder")?.gameObject;
-            Assert.That(placeholder, Is.Not.Null, "The Character prefab should have a placeholder.");
+            GameObject placeholder = rig.Models.Placeholder;
+            if (placeholder == null) { Assert.Ignore("The character has no placeholder."); }
             // Checked straight away: the model can finish loading within a frame or two.
             Assert.That(placeholder.activeSelf, Is.True, "The placeholder should show until the model is in.");
 
@@ -309,103 +307,104 @@ namespace CharacterShowcase.Tests
             Assert.That(models.Model.name, Does.StartWith("Cube Model"));
         }
 
-        [UnityTest]
-        public IEnumerator FitToHeight_ScalesTheModel_AndTheEyePointFollowsIt()
+        /// <summary>
+        /// The character's own model's source, which these tests copy to try its settings out on the same model; skips the
+        /// test if the source doesn't reference its model directly (it loads it from somewhere else, say).
+        /// </summary>
+        private DirectCharacterModelSource OwnSource()
         {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
-            yield return rig.WaitForModel();
-            float mannequinEyes = models.EyeHeight;
-            Assert.That(mannequinEyes, Is.InRange(1.55f, 1.72f), "The mannequin's eyes are in its visor, a little over 1.6 m up.");
-            Transform eyePoint = rig.Character.transform.Find("Eye Point");
-            Assert.That(eyePoint, Is.Not.Null, "The Character prefab should have an eye point.");
-            Assert.That(eyePoint.localPosition.y, Is.EqualTo(mannequinEyes).Within(1e-4f));
-
-            // The same model fitted to a smaller height: everything about its size should follow.
-            var smaller = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
-            var mannequin = (DirectCharacterModelSource)models.ModelSource;
-            smaller.ModelPrefab = mannequin.ModelPrefab;
-            smaller.Translator = mannequin.Translator;
-            smaller.Height = ModelHeight.FitToHeight;
-            smaller.FitHeight = 1.2f;
-            yield return CharacterTestRig.WaitFor(models.LoadModelAsync(smaller));
-
-            Assert.That(models.ModelHeightMeters, Is.EqualTo(1.2f).Within(0.01f), "The model should be fitted to 1.2 m.");
-            float expectedEyes = mannequinEyes * 1.2f / CharacterModelSource.MeasureHeight(mannequin.ModelPrefab);
-            Assert.That(models.EyeHeight, Is.EqualTo(expectedEyes).Within(0.02f), "The eyes should scale with the model.");
-            Assert.That(eyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-4f));
+            if (rig.Models.ModelSource is DirectCharacterModelSource own && own.ModelPrefab != null) { return own; }
+            Assert.Ignore("The character's model source doesn't reference its model directly.");
+            return null;
         }
 
-        /// <summary>A source for the mannequin's model, fitted to the given height.</summary>
-        private DirectCharacterModelSource FittedMannequin(float height)
+        /// <summary>A source for the character's own model, fitted to the given height.</summary>
+        private DirectCharacterModelSource Fitted(float height)
         {
-            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
+            DirectCharacterModelSource own = OwnSource();
             var fitted = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
-            fitted.ModelPrefab = mannequin.ModelPrefab;
-            fitted.Translator = mannequin.Translator;
-            fitted.GroundOffset = mannequin.GroundOffset;
+            fitted.ModelPrefab = own.ModelPrefab;
+            fitted.Translator = own.Translator;
+            fitted.AnimatorController = own.AnimatorController;
+            fitted.Avatar = own.Avatar;
+            fitted.GroundOffset = own.GroundOffset;
+            fitted.AnimatedGroundOffset = own.AnimatedGroundOffset;
+            fitted.MeasureGroundOnLoad = own.MeasureGroundOnLoad;
             fitted.Height = ModelHeight.FitToHeight;
             fitted.FitHeight = height;
             return fitted;
         }
 
+        /// <summary>
+        /// Fit To Height scales the model to the height asked for, for the character as authored, and its eyes (and the
+        /// eye point) follow; on a resized character, the character's size multiplies that, as it does any model's.
+        /// </summary>
         [UnityTest]
-        public IEnumerator FitToHeight_OnAResizedCharacter_IsInProportionToIt()
+        public IEnumerator FitToHeight_ScalesTheModel_InProportionToTheCharacter_AndTheEyesFollow([Values(1f, 2f)] float size)
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            CharacterModelHost models = rig.Models;
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
-            rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
-            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(FittedMannequin(1.2f)));
-            // Fit To Height sizes the model for the character as authored; the character's size multiplies that, as it
-            // does any other model's height.
-            Assert.That(rig.Models.ModelHeightMeters, Is.EqualTo(2.4f).Within(0.02f), "On a character twice the size, a model fitted to 1.2 m should be 2.4 m.");
+            float ownEyes = models.EyeHeight, ownHeight = models.ModelHeightMeters;
+            Assert.That(ownEyes, Is.InRange(0.5f * ownHeight, ownHeight), "The eyes should be in the model's upper half.");
+            if (models.EyePoint != null) { Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(ownEyes).Within(1e-4f)); }
+            if (size != 1f) { rig.Controller.SetScale(Vector3.one * size, immediately: true); }
+
+            // The same model fitted to a smaller height: everything about its size should follow.
+            const float fit = 1.2f;
+            DirectCharacterModelSource fitted = Fitted(fit);
+            yield return CharacterTestRig.WaitFor(models.LoadModelAsync(fitted));
+
+            Assert.That(models.ModelHeightMeters, Is.EqualTo(fit * size).Within(0.01f * size), $"The model should be fitted to {fit} m, times the character's size.");
+            float expectedEyes = ownEyes * fit / ownHeight * size;
+            Assert.That(models.EyeHeight, Is.EqualTo(expectedEyes).Within(0.02f * size), "The eyes should scale with the model.");
+            if (models.EyePoint != null) { Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-4f)); }
         }
 
         private CapsuleCollider Capsule => rig.Character.GetComponent<CapsuleCollider>();
 
+        /// <summary>
+        /// Collider Fit makes the collider as tall as the model, standing on the character's feet: its width in proportion
+        /// as authored (Height), or as wide as the model's shoulders, times the margin (Height And Width). The character's
+        /// size still multiplies it.
+        /// </summary>
         [UnityTest]
-        public IEnumerator ColliderFit_Height_MakesTheColliderAsTallAsTheModel_InProportion()
+        public IEnumerator ColliderFit_MakesTheColliderAsTallAsTheModel_AndAsWideAsAsked(
+            [Values(ColliderFit.Height, ColliderFit.HeightAndWidth)] ColliderFit fit)
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
             float radius = Capsule.radius, height = Capsule.height;
-            rig.Models.ColliderFitting = ColliderFit.Height;
-            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(FittedMannequin(1.2f)));
+            rig.Models.ColliderFitting = fit;
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
 
             Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "The collider should be as tall as the model.");
-            Assert.That(Capsule.radius, Is.EqualTo(radius * 1.2f / height).Within(0.005f), "Its width should keep its proportions.");
             Assert.That(Capsule.center.y, Is.EqualTo(Capsule.height / 2f).Within(1e-4f), "It should stand on the character's feet.");
+            if (fit == ColliderFit.Height)
+            {
+                Assert.That(Capsule.radius, Is.EqualTo(radius * 1.2f / height).Within(0.005f), "Its width should keep its proportions.");
+            }
+            else
+            {
+                Animator animator = rig.Models.Animator;
+                if (animator == null || !animator.isHuman) { Assert.Ignore("The character's model isn't a humanoid, so it has no shoulders to fit."); }
+                float shoulders = Vector3.Distance(animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position,
+                    animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position);
+                Assert.That(Capsule.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
+                    "The collider should be as wide as the shoulders, times the margin.");
+            }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
 
             // The character's size still multiplies it.
+            float fitted = Capsule.height;
             rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
-            Assert.That(Capsule.height, Is.EqualTo(2.4f).Within(0.02f));
-        }
-
-        [UnityTest]
-        public IEnumerator ColliderFit_HeightAndWidth_MakesTheColliderAsWideAsTheModelsShoulders()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.WaitForModel();
-            yield return new WaitForFixedUpdate();
-            rig.Models.ColliderFitting = ColliderFit.HeightAndWidth;
-            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(rig.Models.ModelSource));
-
-            Animator animator = rig.Models.Animator;
-            float shoulders = Vector3.Distance(animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position,
-                animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position);
-            Assert.That(Capsule.height, Is.EqualTo(rig.Models.ModelHeightMeters).Within(0.01f));
-            Assert.That(Capsule.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
-                "The collider should be as wide as the shoulders, times the margin.");
-            Assert.That(Capsule.radius, Is.InRange(0.15f, 0.4f), "A human's shoulders, with room for the arms.");
+            Assert.That(Capsule.height, Is.EqualTo(2f * fitted).Within(0.02f));
         }
 
         [UnityTest]
@@ -417,11 +416,11 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             rig.Models.ColliderFitting = ColliderFit.Height;
-            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(FittedMannequin(1.2f)));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter collider should fit.");
 
-            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(FittedMannequin(1.8f)));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.8f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Models.IsFittingCollider, Is.True, "Under the ceiling, it should wait to grow.");
             Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
@@ -430,21 +429,23 @@ namespace CharacterShowcase.Tests
             AnimationController animation = rig.Animation;
             // The rig moves the character itself; the animation is fed each step, as the character's own update would.
             void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
-            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), Feed);
+            yield return rig.Run(rig.SecondsToWalk(3f + rig.Radius, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingCollider, Is.False);
             Assert.That(Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
         }
 
-        /// <summary>A source for the mannequin's model, as the character's own, but a separate asset.</summary>
-        private DirectCharacterModelSource MannequinCopy(GameObject prefab = null)
+        /// <summary>A source for the character's own model (or the given prefab), as its own, but a separate asset.</summary>
+        private DirectCharacterModelSource OwnCopy(GameObject prefab = null)
         {
-            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
+            DirectCharacterModelSource own = OwnSource();
             var copy = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
-            copy.ModelPrefab = prefab != null ? prefab : mannequin.ModelPrefab;
-            copy.Translator = mannequin.Translator;
-            copy.GroundOffset = mannequin.GroundOffset;
-            copy.AnimatedGroundOffset = mannequin.AnimatedGroundOffset;
+            copy.ModelPrefab = prefab != null ? prefab : own.ModelPrefab;
+            copy.Translator = own.Translator;
+            copy.AnimatorController = own.AnimatorController;
+            copy.Avatar = own.Avatar;
+            copy.GroundOffset = own.GroundOffset;
+            copy.AnimatedGroundOffset = own.AnimatedGroundOffset;
             copy.MeasureGroundOnLoad = false;
             return copy;
         }
@@ -461,26 +462,34 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             CharacterModelHost models = rig.Models;
-            int speed = Animator.StringToHash(AnimatorParameterTranslator.DefaultSpeedParameter);
+            if (models.Animator == null || models.Animator.runtimeAnimatorController == null) { Assert.Ignore("The character's model isn't animated."); }
+            // Every float parameter the controller has (the speed, for the package's), to check they carry over.
+            int[] floats = models.Animator.parameters.Where(p => p.type == AnimatorControllerParameterType.Float).Select(p => p.nameHash).ToArray();
             AnimationController animation = rig.Animation;
             // The rig moves the character itself; the animation is fed each step, as the character's own update would.
             void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), Feed);
 
             AnimatorStateInfo was = default;
-            float wasSpeed = 0f, wasFeet = 0f, newFeet = -1f;
+            float[] wasFloats = null;
+            float wasFeet = -1f, newFeet = -1f;
             int swapFrame = -1;
             float swapTime = 0f;
             models.ModelReplacing += old =>
             {
                 was = old.Animator.GetCurrentAnimatorStateInfo(0);
-                wasSpeed = old.Animator.GetFloat(speed);
-                wasFeet = old.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
+                wasFloats = floats.Select(old.Animator.GetFloat).ToArray();
+                FootPlacementIK feet = old.Animator.GetComponent<FootPlacementIK>();
+                wasFeet = feet != null ? feet.ActiveWeight : -1f;
                 swapFrame = Time.frameCount;
                 swapTime = Time.time;
             };
-            models.ModelLoaded += created => newFeet = created.Animator.GetComponent<FootPlacementIK>().ActiveWeight;
-            _ = models.LoadModelAsync(MannequinCopy());
+            models.ModelLoaded += created =>
+            {
+                FootPlacementIK feet = created.Animator.GetComponent<FootPlacementIK>();
+                newFeet = feet != null ? feet.ActiveWeight : -1f;
+            };
+            _ = models.LoadModelAsync(OwnCopy());
             // Running on while the new model loads, until the frame after it's in.
             for (int i = 0; i < 300 && (swapFrame < 0 || Time.frameCount == swapFrame); i++)
             {
@@ -490,69 +499,88 @@ namespace CharacterShowcase.Tests
             // A frame or so has passed since the swap, which the tolerance below covers.
             AnimatorStateInfo now = models.Animator.GetCurrentAnimatorStateInfo(0);
 
-            TestContext.WriteLine($"Before the swap: state {was.fullPathHash}, {was.normalizedTime:0.000} through it, Speed {wasSpeed:0.00}, " +
-                                  $"feet at {wasFeet:0.00}. After: state {now.fullPathHash}, {now.normalizedTime:0.000}, " +
-                                  $"Speed {models.Animator.GetFloat(speed):0.00}, feet at {newFeet:0.00}.");
+            TestContext.WriteLine($"Before the swap: state {was.fullPathHash}, {was.normalizedTime:0.000} through it, feet at {wasFeet:0.00}. " +
+                                  $"After: state {now.fullPathHash}, {now.normalizedTime:0.000}, feet at {newFeet:0.00}.");
             Assert.That(was.normalizedTime, Is.GreaterThan(0.5f), "Test setup: the old model should have been well into its state.");
             Assert.That(now.fullPathHash, Is.EqualTo(was.fullPathHash), "The new model should be in the state the old one was in.");
             // As far through, give or take the time that's passed since (now.length is the state's length at the speed
             // it plays at, which the blend tree raises for running), and a little.
             float passed = (Time.time - swapTime) / now.length;
             Assert.That(now.normalizedTime, Is.InRange(was.normalizedTime - 0.05f, was.normalizedTime + passed + 0.05f), "It should be as far through it.");
-            Assert.That(models.Animator.GetFloat(speed), Is.EqualTo(wasSpeed).Within(0.1f * wasSpeed), "It should be animated for the speed the old one was.");
-            Assert.That(wasFeet, Is.GreaterThan(0.99f), "Test setup: the old model's feet should have been placed.");
-            Assert.That(newFeet, Is.EqualTo(wasFeet), "Its feet should be placed as the old one's were, not fading back in.");
+            for (int i = 0; i < floats.Length; i++)
+            {
+                // A frame's change at most (the speed is smoothed).
+                Assert.That(models.Animator.GetFloat(floats[i]), Is.EqualTo(wasFloats[i]).Within(0.1f * Mathf.Abs(wasFloats[i]) + 1e-3f), "Its parameters should carry over.");
+            }
+            if (wasFeet >= 0f)
+            {
+                Assert.That(wasFeet, Is.GreaterThan(0.99f), "Test setup: the old model's feet should have been placed.");
+                Assert.That(newFeet, Is.EqualTo(wasFeet), "Its feet should be placed as the old one's were, not fading back in.");
+            }
         }
 
+#if UNITY_EDITOR
         /// <summary>
         /// The handover from one model's Animator to another's, directly: a model swapped in mid-transition (taking off
-        /// into a jump, say) is put back part-way through it, between the same two states.
+        /// into a jump, say) is put back part-way through it, between the same two states, with its parameters. On a
+        /// controller made here (two states, a transition between them on a bool), so it holds for any controller.
         /// </summary>
         [UnityTest]
         public IEnumerator AModelSwappedInMidTransition_CarriesOnPartWayThroughIt()
         {
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.WaitForModel();
-            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
-            RuntimeAnimatorController controller = rig.Models.Animator.runtimeAnimatorController;
+            var controller = Track(new UnityEditor.Animations.AnimatorController());
+            controller.AddLayer("Base");
+            controller.AddParameter(AnimatorParameterTranslator.DefaultGroundedParameter, AnimatorControllerParameterType.Bool);
+            UnityEditor.Animations.AnimatorStateMachine machine = controller.layers[0].stateMachine;
+            AnimationClip Clip(string name)
+            {
+                var clip = Track(new AnimationClip { name = name });
+                clip.SetCurve("", typeof(Transform), "localPosition.x", AnimationCurve.Linear(0f, 0f, 1f, 1f)); // A second long.
+                return clip;
+            }
+            UnityEditor.Animations.AnimatorState ground = machine.AddState("Ground"), air = machine.AddState("Air");
+            ground.motion = Clip("Ground");
+            air.motion = Clip("Air");
+            machine.defaultState = ground;
             Animator Spawn(string name)
             {
-                GameObject model = Track(Object.Instantiate(mannequin.ModelPrefab, new Vector3(5f, 0f, 0f), Quaternion.identity));
-                model.name = name;
-                Animator animator = model.GetComponentInChildren<Animator>();
+                var model = Track(new GameObject(name));
+                var animator = model.AddComponent<Animator>();
                 animator.runtimeAnimatorController = controller;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
                 return animator;
             }
             Animator old = Spawn("Old Model"), replacement = Spawn("New Model");
+            var translator = Track(ScriptableObject.CreateInstance<AnimatorParameterTranslator>());
             yield return null;
 
-            int locomotion = Animator.StringToHash("Base Layer.Locomotion"), airborne = Animator.StringToHash("Base Layer.Airborne");
+            int groundState = Animator.StringToHash("Base.Ground"), airState = Animator.StringToHash("Base.Air");
             int grounded = Animator.StringToHash(AnimatorParameterTranslator.DefaultGroundedParameter);
-            old.Play(locomotion, 0, 0.3f);
+            old.Play(groundState, 0, 0.3f);
             old.Update(0f);
             old.SetBool(grounded, false);
-            old.CrossFadeInFixedTime(airborne, 0.2f, 0);
+            old.CrossFadeInFixedTime(airState, 0.2f, 0);
             old.Update(0.08f);
-            Assert.That(old.IsInTransition(0), Is.True, "Test setup: the old model should be part-way into the jump.");
+            Assert.That(old.IsInTransition(0), Is.True, "Test setup: the old model should be part-way into the transition.");
             AnimatorTransitionInfo wasTransition = old.GetAnimatorTransitionInfo(0);
             AnimatorStateInfo wasNext = old.GetNextAnimatorStateInfo(0);
 
-            ICharacterAnimationDriver oldDriver = mannequin.Translator.CreateDriver(old.gameObject, old);
-            ICharacterAnimationDriver newDriver = mannequin.Translator.CreateDriver(replacement.gameObject, replacement);
+            ICharacterAnimationDriver oldDriver = translator.CreateDriver(old.gameObject, old);
+            ICharacterAnimationDriver newDriver = translator.CreateDriver(replacement.gameObject, replacement);
             oldDriver.Retire();
             newDriver.ContinueFrom(oldDriver);
             replacement.Update(0f);
 
             Assert.That(replacement.GetBool(grounded), Is.False, "Parameters should carry over.");
             Assert.That(replacement.IsInTransition(0), Is.True, "The new model should be in the transition the old one was in.");
-            Assert.That(replacement.GetCurrentAnimatorStateInfo(0).fullPathHash, Is.EqualTo(locomotion));
+            Assert.That(replacement.GetCurrentAnimatorStateInfo(0).fullPathHash, Is.EqualTo(groundState));
             AnimatorStateInfo next = replacement.GetNextAnimatorStateInfo(0);
-            Assert.That(next.fullPathHash, Is.EqualTo(airborne));
+            Assert.That(next.fullPathHash, Is.EqualTo(airState));
             Assert.That(next.normalizedTime, Is.EqualTo(wasNext.normalizedTime).Within(0.02f));
             Assert.That(replacement.GetAnimatorTransitionInfo(0).normalizedTime, Is.EqualTo(wasTransition.normalizedTime).Within(0.02f),
                 "It should be as far through the transition.");
         }
+#endif
 
         /// <summary>
         /// A source measuring on load measures a model once, for every copy of it: the measurement is kept until it's
@@ -564,16 +592,17 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
-            var mannequin = (DirectCharacterModelSource)rig.Models.ModelSource;
-            GameObject template = Track(Object.Instantiate(mannequin.ModelPrefab));
+            DirectCharacterModelSource own = OwnSource();
+            if (rig.Models.Animator == null || rig.Models.Animator.GetComponent<FootPlacementIK>() == null) { Assert.Ignore("The character's model has no foot placement to measure for."); }
+            GameObject template = Track(Object.Instantiate(own.ModelPrefab));
             template.SetActive(false);
-            DirectCharacterModelSource source = MannequinCopy(template);
+            DirectCharacterModelSource source = OwnCopy(template);
             source.MeasureGroundOnLoad = true;
             float FloorOffset() => rig.Models.Animator.GetComponent<FootPlacementIK>().FloorOffset;
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
             float first = FloorOffset();
-            Assert.That(first, Is.EqualTo(mannequin.GroundOffset).Within(1e-4f), "Test setup: measured as the mannequin's.");
+            if (!own.MeasureGroundOnLoad) { Assert.That(first, Is.EqualTo(own.GroundOffset).Within(1e-4f), "Test setup: measured as Prepare Character Models measured it."); }
 
             // A block under the model's feet: its lowest point, so its soles would be measured there.
             GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -632,8 +661,9 @@ namespace CharacterShowcase.Tests
             controller.layers[0].stateMachine.AddState("Idle");
             controller.AddParameter(AnimatorParameterTranslator.DefaultSpeedParameter, AnimatorControllerParameterType.Float);
             controller.AddParameter(AnimatorParameterTranslator.DefaultGroundedParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter(AnimatorParameterTranslator.DefaultDashingParameter, AnimatorControllerParameterType.Bool);
             controller.AddParameter("Land", AnimatorControllerParameterType.Trigger);
-            // No VerticalSpeed or Dashing parameters: the translator should skip them without complaint.
+            // No VerticalSpeed parameter: the translator should skip it without complaint.
 
             var model = Track(new GameObject("Translator Test Model"));
             var animator = model.AddComponent<Animator>();
@@ -655,6 +685,7 @@ namespace CharacterShowcase.Tests
             driver.UpdateAnimation(state, 0.02f);
             Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultSpeedParameter), Is.EqualTo(4f).Within(1e-4f));
             Assert.That(animator.GetBool(AnimatorParameterTranslator.DefaultGroundedParameter), Is.True);
+            Assert.That(animator.GetBool(AnimatorParameterTranslator.DefaultDashingParameter), Is.True, "Dashing should be passed on (it plays the dash animation).");
 
             driver.HandleMovementEvent(MovementEvents.Jumped, state);
             Assert.That(animator.GetBool("Land"), Is.False, "Only the bound event should fire the trigger.");
