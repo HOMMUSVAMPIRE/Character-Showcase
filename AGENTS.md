@@ -8,15 +8,20 @@ describes what the project does; this file describes how to change it safely.
 - A Unity character controller showcase: movement, collision, moving ground, dash, a standalone camera rig, a
   generated humanoid mannequin with animations and IK, and
   a pipeline for using other rigged humanoid models (`Assets/Models/CharacterModels`).
+- A generated graybox test level, the Meridian Complex (`Assets/Scenes/MeridianComplex`), built by editor tools in
+  `Assets/Editor/Level` (see README, "Test Level").
 - **Unity version: 6000.6.7f1.** `ProjectSettings/ProjectVersion.txt` is authoritative. Never change it, and never
   edit `Packages/manifest.json` or `Packages/packages-lock.json` unless the task explicitly asks for a package change.
-- About 4,400 lines of runtime C# (plus about 2,400 lines of tests and editor tools), in three assemblies plus tests:
+- About 6,000 lines of runtime C# (plus about 4,200 lines of tests and 4,800 of editor tools), in two runtime
+  assemblies, two editor assemblies and two test assemblies:
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
 | `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`) | `Character`, `Level` | Unity.InputSystem |
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
-| `CharacterShowcase.Editor` | `Assets/Editor` | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
+| `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
+| `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime **only** |
+| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor |
 | `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
 
 ## How to verify your work
@@ -27,20 +32,24 @@ describes what the project does; this file describes how to change it safely.
    ```
    It catches missing or orphaned `.meta` files, duplicate GUIDs, the camera assembly depending on character code,
    and renamed fields the tests read by name.
-2. **Play mode tests** need the Unity Editor. If you don't have it, push your branch or open a pull request: the
-   `Tests` GitHub Actions workflow runs the hygiene check and the full PlayMode suite, and reports failures as a check
-   with per-test annotations. The test results XML is uploaded as an artifact.
+2. **Edit mode and Play mode tests** need the Unity Editor. If you don't have it, push your branch or open a pull
+   request: the `Tests` GitHub Actions workflow runs the hygiene check and both suites, and reports failures as a
+   check with per-test annotations. The test results XML is uploaded as an artifact.
    A run takes several minutes, and a new push to the same branch cancels the run in progress, so batch code changes
    into fewer pushes. Changes that only touch Markdown files or `docs/` don't trigger a run.
    With Unity installed locally, close the editor and run:
    ```
-   <path to Unity 6000.6.7f1> -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults.xml
+   <path to Unity 6000.6.7f1> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
+   <path to Unity 6000.6.7f1> -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults PlayModeResults.xml
    ```
+   The tests don't cover the level. After changing the level builders, rebuild the level (see "Useful facts") and
+   check it in the editor.
 3. If you could not run the tests, say so plainly in your summary. Do not describe untested changes as working.
 
 ## Definition of done
 
-- The hygiene check passes and the PlayMode suite passes (or you have stated that you could not run it).
+- The hygiene check passes and the EditMode and PlayMode suites pass (or you have stated that you could not run
+  them).
 - New behaviour has PlayMode tests in `Assets/Tests/PlayMode`, built on `CharacterTestRig` (character) or the
   camera tests' plain-Transform setup (camera). Tests read expected values from the movement mode's settings
   (`rig.MovementSetting<T>("fieldName")`) rather than hard-coding tuning numbers, so retuning doesn't break them.
@@ -57,6 +66,9 @@ describes what the project does; this file describes how to change it safely.
 - **Models come from a `CharacterModelSource`.** The character's `CharacterModelHost` asks its source for a model with
   `CreateModelAsync` and gives it back with `ReleaseModel`; it never instantiates or destroys a model itself, so sources can load models
   however they like (directly, Addressables, asset bundles). New ways of getting a model are new subclasses.
+- **The level knows nothing about the character or the camera.** The level builders in `Assets/Editor/Level` make
+  level geometry, lighting and markers only, and their assembly references no project code. Keep game setup (the
+  character, cameras, spawn points with behaviour) out of them; connect it from the character side.
 - **Movement and animation are separate.** Movement code produces `MovementData` and raises `MovementEvents`.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
@@ -114,6 +126,7 @@ own each of these files at a time; others should wait or work elsewhere.
      Changing a tuning number in `Assets/ScriptableObjects/BasicMovementMode.asset` is fine.
   If a task needs inspector wiring you can't do safely, say so and describe the exact change for a person to make.
 - `Assets/Scenes/SampleScene.unity` is the playable demo. Don't modify it unless the task is about the scene.
+- `Assets/Scenes/MeridianComplex/MeridianComplex.unity` is generated (see below): never edit it by hand.
 
 ### Generated assets: regenerate, don't edit
 
@@ -126,11 +139,15 @@ These are produced by tools. Edit the generator instead and regenerate:
 | The model setup on `Assets/Prefabs/Character.prefab` (always the mannequin) | `MannequinGenerator` |
 | `[name] Model.prefab`, `[name].asset` and the avatar/T-pose import settings of every model in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Tools > Character Showcase > Prepare Character Models) |
 | The model override on the character in `Assets/Scenes/SampleScene.unity` | `CharacterModelWindow` (Tools > Character Showcase > Choose Character Model…) |
+| `Assets/Scenes/MeridianComplex/MeridianComplex.unity`, its `Environment/` assets (sky, post-processing, lighting settings) and its baked `MeridianComplex/` lighting data | `MeridianComplexBuilder` (Tools > Character Showcase > Level > Build Meridian Complex), which calls one builder per area in `Assets/Editor/Level` |
 
 The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
 the model sources. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
 in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
 still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
+
+The level's placeholder material (`Assets/Scenes/MeridianComplex/Materials/Placeholder_SmoothConcrete.mat`) is the
+exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be edited by hand.
 
 ## Useful facts for common tasks
 
@@ -146,6 +163,19 @@ still needed. All three tools have `-executeMethod` entry points (see README), s
 - **New movement events** go in the `MovementEvents` flags enum. Movement modes report events they cause;
   `MovementController.DetectEvents` detects the ones every mode shares. `AnimatorParameterTranslator` can fire
   Animator triggers on them.
+- **The level** is rebuilt with `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`
+  (Unity closed; it also bakes the environment lighting, about a minute). Each area has a builder with
+  `BuildInto(Transform complex, Material material)`, called from `MeridianComplexBuilder.Build`; a new area is a new
+  builder called from there, joined at the existing areas' connection markers. Builders share `Graybox`'s pieces
+  (flights of stairs, ramps, bridges, guardrails, walls with openings, underground cells, markers). Units are metres;
+  +Z is north. Each area's notes (`*_Blockout_Notes.md` beside the scene) record how its diagram was read; update them
+  with the builder.
+- **Level stairs and slopes keep to the character's limits:** steps under its 0.35 m step height (0.3 m, or 0.33 m
+  in the Kinetic Gardens), ramps no steeper than 1:4. The Calibration Annex's step and slope tests are the deliberate exceptions.
+- **Level collision is all box colliders.** `Graybox.Prism` gives its convex solids box colliders that fill the
+  footprint exactly (`FootprintBoxes`), which only holds for footprints whose edges all run at multiples of 45°.
+  Keep new prism footprints to that, or check the coverage another way. Openings below ground (stairwells, shafts,
+  basements) are cut from the ground slab through each builder's `GroundOpenings`.
 - **Test rig:** `CharacterTestRig` spawns the real Character prefab, disables `ACCharacterController`, and calls the
   `MovementController` directly once per physics step with scripted inputs (`Idle()`, `Dash(...)`, etc.). It runs
   at 4x time scale with unchanged physics step size. Add helpers there rather than duplicating setup in tests.

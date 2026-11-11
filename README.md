@@ -13,7 +13,9 @@ Once the project meets my standards for completion, I may release it as a Unity 
 5. Navigate to Add => Add project from disk
 6. Select the location of the cloned repo from step 1
 7. Open the project
-8. Click "Play"
+8. Click "Play" (in Assets/Scenes/SampleScene, the character's demo scene)
+
+The test level, the Meridian Complex, is Assets/Scenes/MeridianComplex/MeridianComplex.unity (see below).
 
 ## How to see the code in this project
 All of the code in this project is in the Assets/Scripts folder.
@@ -87,7 +89,7 @@ Character models live in subfolders of Assets/Models/CharacterModels: the genera
 2. **Prepare Character Models** imports and sets up every model file in Assets/Models/CharacterModels. It makes each a Humanoid, and straightens its arms and legs into a T-pose for the avatar's reference pose, so models rigged in an A-pose don't hold their arms up in every animation. It saves a model prefab next to each model ("[name] Model.prefab", with its Animator, CharacterIK and FootPlacementIK) and a DirectCharacterModelSource ("[name].asset"). A folder can hold several model files, such as variants of one model; each is its own choice, and its prefab and source are always named after its file, so adding or removing other models never renames them. Models that aren't rigged, or whose bones Unity can't map to a Humanoid, are reported and skipped. Each saved prefab is read back from disk and checked for its avatar and the shared Animator Controller, so a model is only reported ready, and listed in the window, once it can actually animate. Models with lost units (a 180 m or 1.8 cm character) get their source scaled to 1.8 m. IK settings and edits to the model sources are kept. It runs by itself: when model files in the folder are added, changed, moved or deleted, or animation they play changes (an Animator Controller, a clip, or a model source naming a different controller), it prepares whichever are new or changed once the editor is idle (a new model is imported as a Humanoid from the start), and skips the rest; the menu item prepares them all regardless. Prepared assets found under other names (an older naming scheme, or a renamed file) are moved to the current names, keeping their references, and sources whose model file is gone are reported rather than deleted.
 3. **Choose Character Model…** opens a window listing the models Prepare Character Models has set up, with previews and heights, and sets which one the sample scene's character uses. The choice is an override on the scene's instance of the Character prefab, so the prefab itself, which the tests spawn, keeps the mannequin.
 
-All three also run from the command line for automation: `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAll`, and `...CharacterModelWindow.UseInSceneFromCommandLine -model "X Bot"`.
+All three also run from the command line for automation: `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAll`, and `...CharacterModelWindow.UseInSceneFromCommandLine -model "base_basic_shaded"`.
 
 A Humanoid avatar's reference pose decides how every clip looks on that model, so Prepare Character Models builds it carefully. It starts from the skin's bind pose, the pose the mesh was modelled in, rather than the pose the skeleton is saved in, which can be an animation frame: Unity takes an FBX's default pose from its first take, and the mannequin's used to be the dash, so every mannequin clip was stored relative to a forward lean and other models played them leaning about 45 degrees back. (The mannequin now exports a one-frame rest-pose take first, which isn't imported as a clip.) It then straightens the spine up, the arms out and the legs down. With that, every model holds its torso at the mannequin's lean and keeps its planted feet in place to within a few percent of its speed, with no per-model tuning.
 
@@ -116,6 +118,25 @@ FootPlacementIK uses the same system to plant the feet on slopes, stairs and bum
 On a model of other proportions than the clips were made for, Unity reports each hand's and foot's goal where the clip's own character had it, which can be a few centimetres from where this model has it (up to 7 cm for the CustomModel's hands). So a goal set to where the animation reports it moves the hand or foot there, and a goal at partial weight is blended from there. A goal at full weight lands where it's set.
 
 To try manual targets in the editor, right-click the CharacterIK component and choose "Create Target Transforms For All Limbs", then enter Play mode, raise a weight, and drag the target around in the Scene view.
+
+## Test Level: The Meridian Complex
+The Meridian Complex is a large graybox level for putting the character through its paces: about 400 × 400 m of terraces, stairs, ramps, bridges, towers, tunnels and measured test courses, in seven connected areas. It's built from blockout diagrams (the MeridianComplex-*.png sheets at the repository's root) and is level geometry only so far: there's no character or camera in the scene yet.
+
+| Area | Where | What it's for |
+| --- | --- | --- |
+| 01 Concourse | Centre | The hub: a plaza, a terrace ring at +8, upper terraces up to +20, and bridges out to the areas around it |
+| 02 Kinetic Gardens | North-west | Open-air traversal: a beginner route of stairs, ramps and short gaps, and an advanced one of longer gaps, a beam and a ledge chain |
+| 03 Ascension Spire | North | Vertical traversal: a central core at +20 and a summit tower climbed by a switchback stair to +56 |
+| 04 Fabrication Hall | East | An industrial building: rooms on floors from -8 to +8, catwalks at +12, crates and shelves |
+| 05 Suspension Yard | South-east | Aerial: tower platforms at +8, +16 and +24, suspended bridges, and jump and dash gaps |
+| 06 Service Network | Underground | Corridors and tunnels at -12, lit, joining the gardens, the spire and the hall |
+| 07 Calibration Annex | South-west | Measured tests: step heights either side of the step limit, slopes from 10° to 60°, jump gaps from 2 to 20 m, tunnels with falling ceilings, a jump lane, wall-run and ledge-climb faces |
+
+Every area can be reached on foot, by stairs and ramps that keep to the character's step height and slope limit; the pieces that need a jump, a climb or a crouch are marked as such. Mechanics the character doesn't have yet (ladders, ropes, wall runs, climbable walls, pushable crates) have placeholder geometry and markers named "(future)", under Future Mechanics in each area. Each area's notes (in Assets/Scenes/MeridianComplex) say how its diagram was read and what was chosen where it was ambiguous.
+
+The whole scene is generated: Tools > Character Showcase > Level > Build Meridian Complex rebuilds it (also `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`), replacing it and its environment assets, so change the builders (Assets/Editor/Level, one per area) rather than the scene. All of it uses one placeholder material, a smooth matte cream concrete (Assets/Scenes/MeridianComplex/Materials), which is made once and then kept, so it can be edited by hand. Collision is all box colliders: the angled solids (octagonal platforms, terraces cut at 45°) are filled exactly by several boxes each, rather than with mesh colliders.
+
+It's lit as a sunny midday for URP: a high sun with soft shadows, a procedural sky that lights the ambient and reflections, light haze, and a global post-processing volume (ACES tonemapping, light bloom, a little contrast). The PC render pipeline asset's shadow distance is 150 m, up from 50, so the terraces' shadows reach across the hub.
 
 ## Automated Tests
 The tests are written to hold for any team's setup, not just this project's: they read what they need from the character (its capsule, step height, slope limit, walking and dashing speeds, jump count) and from whatever model, animations and camera settings it has, and size their test worlds from those. Play mode tests run on the package's Character prefab unless a CharacterTestSettings asset (Create > Character Showcase > Tests > Character Test Settings) names another: put one anywhere in the project to run the whole suite on your own character. A test of something the character doesn't have (an air jump on a character with one jump, foot placement on a model that isn't a humanoid) is skipped, with the reason, rather than failed. They've been run on a character tuned differently (a smaller capsule, a lower step height and slope limit, half the walking speed, a slower dash and a single jump).
@@ -176,7 +197,7 @@ Run them from Window > General > Test Runner (the EditMode and PlayMode tabs), o
 
 CI (.github/workflows/tests.yml) runs both.
 
-The character scripts are in the CharacterShowcase assembly (Assets/Scripts), and editor tools are in CharacterShowcase.Editor (Assets/Editor), so the tests can reference them.
+The character scripts are in the CharacterShowcase assembly (Assets/Scripts), and editor tools are in CharacterShowcase.Editor (Assets/Editor), so the tests can reference them. The level builders are in their own assembly, CharacterShowcase.Level.Editor (Assets/Editor/Level), which doesn't reference the character or camera code.
 
 ## Future Changes:
 ### Medium Priority Changes
