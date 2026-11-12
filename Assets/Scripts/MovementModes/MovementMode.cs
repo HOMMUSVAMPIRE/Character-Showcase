@@ -149,6 +149,20 @@ namespace Character
     }
 
     /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle sliding down walls: running into a
+    /// wall head-on in mid-air slides slowly down it, and jumping kicks off it, upward.
+    /// </summary>
+    public interface WallSlideMode
+    {
+        /// <summary>The fastest (m/s) the character slides down a wall, at its authored size.</summary>
+        public abstract float wallSlideSpeed { get; set; }
+        /// <summary>The longest a slide down a wall lasts, in seconds. 0 turns wall sliding off.</summary>
+        public abstract float wallSlideMaxDuration { get; set; }
+
+        public abstract bool ProcessMovementDataForWallSlide(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
     /// An interface defining the functions necessary for a deriving class to handle grabbing ledges in mid-air, hanging
     /// from them, and climbing up onto them.
     /// </summary>

@@ -30,6 +30,7 @@ MonoBehaviour:
   slidingParameter: Sliding
   rollingParameter: Rolling
   wallRunningParameter: WallRunning
+  wallSlidingParameter: WallSliding
   hangingParameter: Hanging
   climbingParameter: Climbing
   grabbingParameter: Grabbing

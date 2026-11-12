@@ -20,6 +20,7 @@ namespace Character
         public const string DefaultSlidingParameter = "Sliding";
         public const string DefaultRollingParameter = "Rolling";
         public const string DefaultWallRunningParameter = "WallRunning";
+        public const string DefaultWallSlidingParameter = "WallSliding";
         public const string DefaultWallSideParameter = "WallSide";
         public const string DefaultHangingParameter = "Hanging";
         public const string DefaultClimbingParameter = "Climbing";
@@ -51,7 +52,7 @@ namespace Character
         [SerializeField] private string sidewaysSpeedParameter = "";
         [Tooltip("Turn rate in degrees per second (for leaning or turn-on-the-spot animations)")]
         [SerializeField] private string turnSpeedParameter = "";
-        [Tooltip("Which side the wall is on during a wall run: 1 = right, -1 = left, 0 when not wall-running")]
+        [Tooltip("Which side the wall is on during a wall run: 1 = right, -1 = left. Kept after a wall run ends, so an animation leaving it doesn't swing through the middle")]
         [SerializeField] private string wallSideParameter = DefaultWallSideParameter;
         [Tooltip("While holding an object: speed in m/s toward it (positive pushing, negative pulling); 0 otherwise")]
         [SerializeField] private string grabSpeedParameter = DefaultGrabSpeedParameter;
@@ -70,6 +71,8 @@ namespace Character
         [SerializeField] private string slidingParameter = DefaultSlidingParameter;
         [SerializeField] private string rollingParameter = DefaultRollingParameter;
         [SerializeField] private string wallRunningParameter = DefaultWallRunningParameter;
+        [Tooltip("Sliding down a wall")]
+        [SerializeField] private string wallSlidingParameter = DefaultWallSlidingParameter;
         [Tooltip("Hanging from a ledge")]
         [SerializeField] private string hangingParameter = DefaultHangingParameter;
         [Tooltip("Climbing up from a ledge onto it")]
@@ -89,7 +92,7 @@ namespace Character
             // Parameter hashes, or 0 for parameters to skip
             private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress;
             private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, hanging, climbing, grabbing;
+            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, hanging, climbing, grabbing;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -127,6 +130,7 @@ namespace Character
                 sliding = Find(settings.slidingParameter, AnimatorControllerParameterType.Bool);
                 rolling = Find(settings.rollingParameter, AnimatorControllerParameterType.Bool);
                 wallRunning = Find(settings.wallRunningParameter, AnimatorControllerParameterType.Bool);
+                wallSliding = Find(settings.wallSlidingParameter, AnimatorControllerParameterType.Bool);
                 hanging = Find(settings.hangingParameter, AnimatorControllerParameterType.Bool);
                 climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
                 grabbing = Find(settings.grabbingParameter, AnimatorControllerParameterType.Bool);
@@ -156,7 +160,7 @@ namespace Character
                 if (jumping != 0) { animator.SetBool(jumping, state.jumping); }
                 if (dashing != 0) { animator.SetBool(dashing, state.dashing); }
                 if (moving != 0) { animator.SetBool(moving, state.moving); }
-                if (wallSide != 0) { animator.SetFloat(wallSide, state.wallSide); }
+                if (wallSide != 0 && state.wallRunning && state.wallSide != 0f) { animator.SetFloat(wallSide, state.wallSide); }
                 // As the authored model would push or pull (see speed, above).
                 if (grabSpeed != 0) { animator.SetFloat(grabSpeed, state.grabbing ? state.localVelocity.z / scale.z : 0f, speedDampTime, deltaTime); }
                 if (rollProgress != 0) { animator.SetFloat(rollProgress, state.rollProgress); }
@@ -165,6 +169,7 @@ namespace Character
                 if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
                 if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
                 if (wallRunning != 0) { animator.SetBool(wallRunning, state.wallRunning); }
+                if (wallSliding != 0) { animator.SetBool(wallSliding, state.wallSliding); }
                 if (hanging != 0) { animator.SetBool(hanging, state.hanging); }
                 if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
                 if (grabbing != 0) { animator.SetBool(grabbing, state.grabbing); }

@@ -77,6 +77,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 130729f09b695471f98fbb13fa44423d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5331514553494804618}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 130729f09b695471f98fbb13fa44423d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 4936738779864021829}
   m_SourcePrefab: {fileID: 100100000, guid: 130729f09b695471f98fbb13fa44423d, type: 3}
 --- !u!1 &2008021487495206053 stripped
 GameObject:
@@ -184,8 +187,25 @@ MonoBehaviour:
   fadeTime: 0.1
   wristAboveLedge: 0.03
   wristBackFromEdge: 0.04
-  handSpacing: 1.1
-  bodyFromWall: 0.16
+  handSpacing: 2.35
+  bodyFromWall: 0.12
   maxBodyShift: 0.4
   climbReleaseAt: 0.8
+  handRotationWeight: 0.8
+--- !u!114 &4936738779864021829
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2008021487495206053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de7cbd002ed448eea58e2c51b6d50c44, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CharacterShowcase::Character.WallSlideIK
+  weight: 1
+  fadeTime: 0.1
+  bodyFromWall: 0.18
+  wristFromWall: 0.03
   handRotationWeight: 0.8

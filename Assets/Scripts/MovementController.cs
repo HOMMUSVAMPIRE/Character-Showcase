@@ -311,6 +311,7 @@ namespace Character
         public SlideState slide { get; } = new SlideState();
         public RollState roll { get; } = new RollState();
         public WallRunState wallRun { get; } = new WallRunState();
+        public WallSlideState wallSlide { get; } = new WallSlideState();
         public LedgeState ledge { get; } = new LedgeState();
         public GrabState grab { get; } = new GrabState();
         // The maximum number of jumps the character can perform in succession
@@ -457,6 +458,7 @@ namespace Character
             (CharacterState.LedgeHanging, MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased),
             (CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
             (CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
+            (CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
         };
 
         private void RaiseEvents(MovementData data)

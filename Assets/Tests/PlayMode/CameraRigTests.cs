@@ -242,6 +242,29 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator ATargetComingUpAgainstAWallAndRunningAlongIt_NeverPullsTheCameraIn()
+        {
+            yield return Frames(3);
+            if (!rig.Collision.enabled) { Assert.Ignore("Camera collision is off."); }
+            // A wall along the right, beside the target's path. The target runs forward and drifts over until it's
+            // against the wall, as a character starting a wall run does; the view behind it stays clear throughout.
+            float face = 0.9f * rig.ThirdPerson.shoulderOffset.x;
+            Box("Wall", target.position + new Vector3(face + 1.5f + 0.5f, 2f, 20f), new Vector3(1f, 8f, 60f));
+            const float forwardSpeed = 9f, sideSpeed = 3f;
+            float nearest = float.PositiveInfinity;
+            for (float t = 0f; t < 1.2f; t += Time.fixedDeltaTime)
+            {
+                Vector3 p = target.position;
+                target.position = new Vector3(Mathf.Min(p.x + sideSpeed * Time.fixedDeltaTime, 1.5f), p.y, p.z + forwardSpeed * Time.fixedDeltaTime);
+                yield return PhysicsStepAndFrame();
+                Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
+                if (t > 0.3f) { nearest = Mathf.Min(nearest, Vector3.Distance(cam.transform.position, pivot)); }
+            }
+            Assert.That(nearest, Is.GreaterThan(0.85f * rig.Zoom.defaultDistance),
+                "A wall alongside the target, not behind it, shouldn't pull the camera in (it used to snap in to just behind the target's head).");
+        }
+
+        [UnityTest]
         public IEnumerator OnceTheWallIsGone_TheCameraReturnsToItsShoulder()
         {
             yield return Frames(3);
@@ -437,15 +460,22 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>Moves the target in step with physics, as a character would, then returns the field of view.</summary>
+        /// <summary>
+        /// Moves the target at a steady speed and gives the camera's FOV, read while the target is still moving: the FOV
+        /// the camera set in a frame whose every physics step moved the target. (Read a frame after stopping, it came from
+        /// a frame partly spent stopped: in the editor, where a frame holds several physics steps, the speed it saw was
+        /// lower, and the FOV was already easing back.)
+        /// </summary>
         private IEnumerator MoveTargetAndMeasureFov(float speed, System.Action<float> result)
         {
+            float fov = 0f;
             for (float t = 0f; t < 1.5f; t += Time.fixedDeltaTime)
             {
                 yield return new WaitForFixedUpdate();
+                fov = cam.fieldOfView; // As the camera set it last frame, with the target moving throughout.
                 target.position += Vector3.forward * speed * Time.fixedDeltaTime;
             }
-            yield return null;
-            result(cam.fieldOfView);
+            result(fov);
         }
 
         private static readonly float[] SpeedSizes = { 1f, 0.25f, 4f };
@@ -530,10 +560,10 @@ namespace CharacterShowcase.Tests
                 yield return new WaitForFixedUpdate();
                 target.position += Vector3.down * 12f * size * Time.fixedDeltaTime;
             }
+            // The lowest the camera dips, looked for every frame (not every physics step, which could step over it).
             float rest, lowest = float.PositiveInfinity;
-            for (int i = 0; i < 40; i++)
+            for (float t = 0f; t < 0.8f; t += Time.deltaTime)
             {
-                yield return new WaitForFixedUpdate();
                 yield return null;
                 lowest = Mathf.Min(lowest, cam.transform.position.y);
             }
@@ -555,7 +585,10 @@ namespace CharacterShowcase.Tests
                 "Camera should spring back up after landing.");
             SizeTarget(size);
             yield return MeasureLandingDip(size, d => dip = d);
-            Assert.That(normalDip, Is.GreaterThan(0.05f), "Test setup: the camera should dip at normal size.");
+            // As the landing settings dip it for a 12 m/s landing (the spring's peak is about that).
+            float expectedDip = Mathf.Min((12f - rig.Landing.minImpactSpeed) * rig.Landing.dipPerSpeed, rig.Landing.maxDip);
+            if (!rig.Landing.enabled || expectedDip <= 0f) { Assert.Ignore("Landing dips are off."); }
+            Assert.That(normalDip, Is.EqualTo(expectedDip).Within(0.3f * expectedDip), "The camera should dip as far as its landing settings say.");
             Assert.That(dip, Is.EqualTo(normalDip).Within(normalDip * 0.05f),
                 "Landing as fast for its size, a target of any size should dip the camera as far for its size.");
         }

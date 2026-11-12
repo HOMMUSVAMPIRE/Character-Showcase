@@ -26,10 +26,11 @@ namespace Character
         [Tooltip("How far (m, at the character's authored size) the wrists sit back from the edge, on top of the ledge, so the " +
                  "fingers hook over the edge.")]
         [SerializeField] private float wristBackFromEdge = 0.04f;
-        [Tooltip("How far apart the hands are along the edge, as a share of the model's shoulder width.")]
-        [SerializeField] private float handSpacing = 1.1f;
+        [Tooltip("How far apart the hands are along the edge, as a share of the model's shoulder width (about 0.8 m on the " +
+                 "mannequin, within the 0.75 to 1.4 m the Quaternius library's climbs grip ledges at).")]
+        [SerializeField] private float handSpacing = 2.35f;
         [Tooltip("How far (m, at the character's authored size) the body's centre hangs from the wall: about half the body's depth.")]
-        [SerializeField] private float bodyFromWall = 0.16f;
+        [SerializeField] private float bodyFromWall = 0.12f;
         [Tooltip("The furthest (m, at the character's authored size) the body is moved, up or down, so the hands reach the ledge.")]
         [Min(0f)] [SerializeField] private float maxBodyShift = 0.4f;
         [Tooltip("How far up a climb (0 to 1) the hands let go of the ledge: they ease off from halfway to this.")]
@@ -92,8 +93,12 @@ namespace Character
 
             // The body: against the wall, and as high as lets the hands reach the ledge as the animation holds them up
             // (within reason, should the ledge be out of the animation's reach).
-            Vector3 animatedHands = 0.5f * (animator.GetIKPosition(AvatarIKGoal.LeftHand) + animator.GetIKPosition(AvatarIKGoal.RightHand));
-            float rise = Mathf.Clamp(onLedge.y - animatedHands.y, -maxBodyShift * size, maxBodyShift * size);
+            Vector3 animatedLeft = animator.GetIKPosition(AvatarIKGoal.LeftHand), animatedRight = animator.GetIKPosition(AvatarIKGoal.RightHand);
+            Vector3 animatedHands = 0.5f * (animatedLeft + animatedRight);
+            // Spreading the hands wider than the animation holds them takes reach: the arms angle out, so they reach
+            // less high. The body hangs that much higher, so the hands still get to the ledge.
+            float reachLost = ReachLostToSpread(animator, along, animatedLeft, animatedRight, 0.5f * handSpacing * shoulderWidth);
+            float rise = Mathf.Clamp(onLedge.y - animatedHands.y + reachLost, -maxBodyShift * size, maxBodyShift * size);
             Vector3 body = animator.bodyPosition;
             float fromWall = Vector3.Dot(body - edge, wallNormal);
             Vector3 toWall = -wallNormal * (fromWall - bodyFromWall * size);
@@ -108,6 +113,25 @@ namespace Character
             // World positions: CharacterIK corrects them for a stretched model.
             ik.SetProceduralGoal(IKLimb.LeftHand, leftHand, leftRotation, activeWeight, rotationWeight);
             ik.SetProceduralGoal(IKLimb.RightHand, rightHand, rightRotation, activeWeight, rotationWeight);
+        }
+
+        /// <summary>
+        /// How much less high the hands reach with each one halfSpread from the middle along the ledge than as the
+        /// animation holds them, the arms (their upper and lower lengths) at the same stretch. From the bones' pose last
+        /// frame, which hardly changes while hanging.
+        /// </summary>
+        private static float ReachLostToSpread(Animator animator, Vector3 along, Vector3 animatedLeft, Vector3 animatedRight, float halfSpread)
+        {
+            Transform upper = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm), lower = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+            Transform hand = animator.GetBoneTransform(HumanBodyBones.LeftHand), otherUpper = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            if (upper == null || lower == null || hand == null || otherUpper == null) { return 0f; }
+            float arm = Vector3.Distance(upper.position, lower.position) + Vector3.Distance(lower.position, hand.position);
+            float shoulder = 0.5f * Mathf.Abs(Vector3.Dot(upper.position - otherUpper.position, along));
+            // How far each hand is out beyond its shoulder along the ledge: as animated, and as placed.
+            float animatedOut = Mathf.Max(0f, 0.5f * Mathf.Abs(Vector3.Dot(animatedLeft - animatedRight, along)) - shoulder);
+            float placedOut = Mathf.Max(0f, halfSpread - shoulder);
+            float Up(float sideways) => Mathf.Sqrt(Mathf.Max(0f, arm * arm - sideways * sideways));
+            return Mathf.Max(0f, Up(animatedOut) - Up(placedOut));
         }
     }
 }

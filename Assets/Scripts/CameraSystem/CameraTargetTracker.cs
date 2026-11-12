@@ -15,7 +15,8 @@ namespace CameraSystem
         private float previousSampleTime, currentSampleTime;
         private bool hasSamples;
 
-        private float previousVerticalSpeed;
+        // The fastest the target has fallen (most negative vertical speed) since it last rose or landed.
+        private float fallPeak;
 
         // If the target has a Rigidbody, its position is the physics pose (the transform may be interpolated).
         // If that Rigidbody also interpolates, the transform is already smooth and must not be interpolated again.
@@ -50,7 +51,7 @@ namespace CameraSystem
             Position = p;
             previousSampleTime = currentSampleTime = Time.fixedTime;
             Velocity = Vector3.zero;
-            previousVerticalSpeed = 0f;
+            fallPeak = 0f;
             hasSamples = target != null;
             TeleportedThisFrame = true;
             LandingSpeedThisFrame = 0f;
@@ -88,13 +89,17 @@ namespace CameraSystem
                     float stepTime = Mathf.Max(currentSampleTime - previousSampleTime, 1e-4f);
                     Velocity = (currentSample - previousSample) / stepTime;
 
-                    // Landing: was falling fast, and vertical speed has suddenly mostly stopped.
-                    if (previousVerticalSpeed < -landing.minImpactSpeed * this.sizeScale && Velocity.y > previousVerticalSpeed * 0.35f)
+                    // Landing: was falling fast, and vertical speed has suddenly mostly stopped. Judged against the
+                    // fastest fall since the target last rose, not just the last frame's: a frame can hold several
+                    // physics steps, and the one in which the target lands averages its fall with its stop, so at low
+                    // frame rates the landing read as half as fast (and the camera dipped a quarter as far).
+                    if (fallPeak < -landing.minImpactSpeed * this.sizeScale && Velocity.y > fallPeak * 0.35f)
                     {
-                        LandingSpeedThisFrame = -previousVerticalSpeed;
+                        LandingSpeedThisFrame = -fallPeak;
+                        fallPeak = 0f;
                     }
                 }
-                previousVerticalSpeed = Velocity.y;
+                fallPeak = Velocity.y >= 0f || LandingSpeedThisFrame > 0f ? 0f : Mathf.Min(fallPeak, Velocity.y);
             }
 
             bool rigidbodyInterpolates = body != null && body.interpolation != RigidbodyInterpolation.None;

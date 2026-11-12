@@ -44,12 +44,20 @@ describes what the project does; this file describes how to change it safely.
    ```
    The tests don't cover the level. After changing the level builders, rebuild the level (see "Useful facts") and
    check it in the editor.
-3. If you could not run the tests, say so plainly in your summary. Do not describe untested changes as working.
+3. **Run only the tests your change can affect while you work; run the full suites only when preparing a commit.**
+   A full PlayMode run takes several minutes and most of its tests can't be affected by most changes. While iterating,
+   run the fixtures that cover what you touched with `-testFilter` (a regex over test names, e.g.
+   `-testFilter "LedgeTests|AbilityAnimationTests"`), plus those of anything that depends on it: movement changes
+   reach the movement, ability and scale fixtures; animation, IK and model changes reach `AnimationTests`,
+   `AbilityAnimationTests`, `ModelTests`, `ModelVariantTests` and the EditMode model checks; camera changes reach
+   `CameraRigTests`. Before committing (or when asked for a commit), run both full suites and the hygiene check, and
+   only commit on green.
+4. If you could not run the tests, say so plainly in your summary. Do not describe untested changes as working.
 
 ## Definition of done
 
-- The hygiene check passes and the EditMode and PlayMode suites pass (or you have stated that you could not run
-  them).
+- The hygiene check passes, the tests the change can affect pass, and, before a commit, the full EditMode and
+  PlayMode suites pass (or you have stated that you could not run them).
 - New behaviour has PlayMode tests in `Assets/Tests/PlayMode`, built on `CharacterTestRig` (character) or the
   camera tests' plain-Transform setup (camera). Tests read expected values from the movement mode's settings
   (`rig.MovementSetting<T>("fieldName")`) rather than hard-coding tuning numbers, so retuning doesn't break them.
@@ -73,7 +81,7 @@ describes what the project does; this file describes how to change it safely.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects implementing capability interfaces** (`WalkRunMode`, `JumpMode`,
-  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `LedgeMode`, `PushPullMode` in
+  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `PushPullMode` in
   `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability, implemented by
   `BasicMovementMode`, with tunables as serialized fields on the asset. `BasicMovementMode` is a partial class: walking,
   jumping and dashing are in `BasicMovementMode.cs`, and each other ability in `BasicMovementMode.<Ability>.cs` with
@@ -118,7 +126,8 @@ own each of these files at a time; others should wait or work elsewhere.
   `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`, `holdToCrouch`, `slideMinStartSpeed`,
   `slideMaxDuration`, `rollSpeedCurve`, `rollCooldown`, `rollInputBuffer`, `wallRunMaxDuration`, `wallRunMinHeight`,
   `wallJumpAwaySpeed`, `wallJumpUpSpeed`, `ledgeClimbDuration`, `ledgeHangHeight`, `ledgeGrabMaxHeight`,
-  `ledgeMaxGrabRiseSpeed`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
+  `ledgeMaxGrabRiseSpeed`, `wallSlideBraking`, `wallSlideMaxAngle`, `wallSlideMaxJumps`, `wallSlideJumpUpSpeed`,
+  `wallSlideJumpAwaySpeed`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -193,9 +202,10 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
   moving something along with the character (a held `Level.PushableObject`).
 - **Ability animations** are Animator states built by `MannequinGenerator.BuildAbilityStates`, driven by the
   translator's Bool parameters (`Crouching`, `Sliding`, ...) and `GrabSpeed`, `RollProgress`, `ClimbProgress`; the
-  `Crouch` and `Hang` clips are the mannequin's own (`mannequin_animations.py`). Hands on a ledge are `LedgeHandIK` (on every model prefab,
-  added by `CharacterModelImporter` like `FootPlacementIK`), placed from `CharacterAnimationState.ledgeEdge` /
-  `ledgeNormal`. `AnimatorParameterTranslator` can fire
+  `Crouch`, `Hang` and `Wall Slide` clips are the mannequin's own (`mannequin_animations.py`), their hand spread and
+  height checked against the Quaternius climbs (the libraries have no hang or wall slide). Hands on a ledge are `LedgeHandIK`, and on a wall slid down
+  `WallSlideIK` (both on every model prefab, added by `CharacterModelImporter` like `FootPlacementIK`), placed from
+  `CharacterAnimationState.ledgeEdge` / `ledgeNormal` and `wallPoint` / `wallNormal`. `AnimatorParameterTranslator` can fire
   Animator triggers on them.
 - **Spawn points in the level** are spawn markers: empty objects named "Spawn Point (…)" made by `Graybox.SpawnMarker`,
   facing their forward. `SceneGameSetup` turns them into the spawner's spawn points (`SpawnMarkerPrefix` must match

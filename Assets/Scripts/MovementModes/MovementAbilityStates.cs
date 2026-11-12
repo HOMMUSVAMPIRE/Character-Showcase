@@ -87,6 +87,25 @@ namespace Character
         public bool hasLastWall;
     }
 
+    /// <summary>A slide down a wall in progress, the cooldown before the next, and the jumps off walls made since landing.</summary>
+    public class WallSlideState
+    {
+        public bool IsWallSliding;
+        // Seconds since the slide started
+        public float elapsed;
+        // Seconds until the character can slide down a wall again
+        public float cooldownRemaining;
+        // The wall's normal (horizontal, unit length, pointing away from the wall toward the character), and the point
+        // of the wall in front of the character
+        public Vector3 wallNormal;
+        public Vector3 wallPoint;
+        // Jumps off walls made while sliding down them since the character last touched the ground
+        public int jumpsUsed;
+        // A wall the character slid off the end of, or dropped from: not slid down again until it touches the ground
+        public Vector3 lastWallNormal;
+        public bool hasLastWall;
+    }
+
     /// <summary>
     /// A ledge being hung from or climbed. Positions are kept in the ledge's own space (the object it belongs to), so
     /// the character hangs on and climbs ledges that move.

@@ -747,14 +747,21 @@ namespace CameraSystem
         private bool Sweep(Vector3 origin, Vector3 direction, float maxDistance, out float safeDistance)
         {
             safeDistance = maxDistance;
-            int count = Physics.SphereCastNonAlloc(origin, collision.probeRadius * SizeScale, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
+            float probeRadius = collision.probeRadius * SizeScale;
+            // Each sweep stops this far short of what it hits, so a point placed by one sweep (the shoulder point,
+            // pulled in from a wall beside the target) isn't left touching the wall when the next sweep starts from it.
+            // A probe starting in contact hits at distance 0, which reads as fully blocked: the camera's backward sweep
+            // from a shoulder against a wall running alongside snapped the camera in to just behind the target's head
+            // (as a wall run began, say), however clear the view behind was.
+            float margin = 0.1f * probeRadius;
+            int count = Physics.SphereCastNonAlloc(origin, probeRadius, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
             bool found = false;
             for (int i = 0; i < count; i++)
             {
                 RaycastHit hit = sweepHits[i];
                 if (target != null && hit.transform.IsChildOf(target)) { continue; }
                 // A distance of 0 means the probe started inside geometry: treat as fully blocked.
-                float d = hit.distance;
+                float d = hit.distance > 0f ? Mathf.Max(0f, hit.distance - margin) : 0f;
                 if (d < safeDistance) { safeDistance = d; found = true; }
             }
             return found;

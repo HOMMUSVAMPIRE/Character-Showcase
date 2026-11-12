@@ -1,14 +1,14 @@
 # Quaternius Universal Animation Libraries
 
-The **Universal Animation Library** and **Universal Animation Library 2**, by Quaternius, in their free Standard
-editions: from [quaternius.com](https://quaternius.com/packs/universalanimationlibrary.html) and
+The **Universal Animation Library** (its free Standard edition) and **Universal Animation Library 2** (its Source
+edition, which has everything the Standard one does and more, wall runs among them), from [quaternius.com](https://quaternius.com/packs/universalanimationlibrary.html) and
 [itch.io](https://quaternius.itch.io/universal-animation-library). Both are **CC0 1.0** (public domain; see
 LICENSE.txt): free to use, change and redistribute, commercially too, with no attribution needed (credit is welcome).
 
 | File | Contents |
 |---|---|
 | `UAL1_Standard.fbx` | 43 animations: idles, walk, jog, sprint, jump (start, loop, land), crouch, roll, swim, sit, drive, pistol, sword, spells, punches, hits, death, interact, dance |
-| `UAL2_Standard.fbx` | 43 animations: sword combos, shield, slides, ninja jump, climb up, farming, chests, throw, consume, zombie, idle variants, carrying |
+| `UAL2.fbx` | 133 animations: wall runs (a wall on the left and on the right, and jumps off each), climbing up 1 m and 2 m, getting off a wall, stepping up, a safety vault, double jumps, slides, ninja jumps, strafing and backward walks, 180° turns, sword (light, heavy, aerial) and melee combos, shield, bow, fishing, mining, farming, chests, throw, consume, zombies, idle variants, carrying |
 
 Each file is Quaternius's mannequin with every animation as a take of its own, on one humanoid rig. These are the
 **in-place** versions (the packs' `_RM` files bake the root motion in; the character controller does the moving here

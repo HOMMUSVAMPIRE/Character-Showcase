@@ -1,5 +1,5 @@
 """
-Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch and Hang.
+Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch, Hang and Wall Slide.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -411,14 +411,31 @@ def crouch(p):
 
 def hang(p):
     """Hanging from a ledge by both hands: the arms straight up above the head and a little forward (onto the ledge),
-    the shoulders shrugged up with the weight, looking up, the legs dangling below, swaying a little."""
+    the shoulders shrugged up with the weight, looking up, the knees bent and the feet brought forward to rest their
+    toes on the wall, swaying a little. (As the Quaternius library's climbs hold the body against a wall: its feet a
+    little in front of its hips. LedgeHandIK spreads the hands along the ledge.)"""
     pose = Pose()
     w = math.sin(TAU * p)
     torso(pose, hips_lean=-2.0 + 1.5 * w, spine_lean=-3.0, chest_lean=-2.0, head_lean=-14.0)
-    legs(pose, "Left", thigh=-10.0 + 4.0 * w, knee=20.0, foot=36.0)
-    legs(pose, "Right", thigh=-2.0 - 4.0 * w, knee=30.0, foot=42.0)
+    legs(pose, "Left", thigh=-45.0 + 3.0 * w, knee=70.0, foot=30.0)
+    legs(pose, "Right", thigh=-30.0 - 3.0 * w, knee=55.0, foot=34.0)
     arms(pose, "Left", lower=82.0, swing=-166.0 + 1.0 * w, elbow=16.0, shoulder_lift=14.0)
     arms(pose, "Right", lower=82.0, swing=-166.0 - 1.0 * w, elbow=16.0, shoulder_lift=14.0)
+    return pose
+
+
+def wall_slide(p):
+    """Sliding down a wall it faces: the hands spread wide against the wall at head height, elbows bent out to take
+    the weight, looking up, one knee raised against the wall and the other leg hanging, swaying a little as it slides.
+    (Hand height and spread as the Quaternius library's climbs hold them against a wall: about a metre apart, at head
+    height.)"""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=-4.0, spine_lean=-3.0 + 1.0 * w, chest_lean=-2.0, head_lean=-12.0)
+    legs(pose, "Left", thigh=-58.0 + 2.0 * w, knee=78.0, foot=18.0)
+    legs(pose, "Right", thigh=-12.0 - 2.0 * w, knee=32.0, foot=36.0)
+    arms(pose, "Left", lower=55.0, swing=-97.0 + 1.5 * w, elbow=50.0, shoulder_lift=6.0)
+    arms(pose, "Right", lower=55.0, swing=-93.0 - 1.5 * w, elbow=50.0, shoulder_lift=6.0)
     return pose
 
 
@@ -437,6 +454,7 @@ CLIPS = {
     "Dash": (dash, 0.4),
     "Crouch": (crouch, 3.0),
     "Hang": (hang, 2.0),
+    "Wall Slide": (wall_slide, 1.5),
 }
 
 # Keys per second of animation. One per frame: a running foot is planted for only a few frames, and keys any

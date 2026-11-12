@@ -14,6 +14,8 @@ namespace Character
         // Velocity relative to the way the character faces: x = right, y = up, z = forward
         public Vector3 localVelocity;
         public float horizontalSpeed;
+        // Vertical speed in m/s, positive rising: in the air, that is. 0 while touching the ground, where vertical
+        // movement is only following the ground (up stairs, down slopes). See velocity for the movement itself.
         public float verticalSpeed;
         // Yaw turn rate in degrees per second (positive = turning right)
         public float turnSpeed;
@@ -47,6 +49,11 @@ namespace Character
         // character), and the wall's normal below it (horizontal, pointing toward the character). Zero otherwise.
         public Vector3 ledgeEdge;
         public Vector3 ledgeNormal;
+        // Sliding down a wall: a point on the wall's face in front of the character, and its normal (horizontal,
+        // pointing toward the character). Zero when not wall sliding.
+        public bool wallSliding;
+        public Vector3 wallPoint;
+        public Vector3 wallNormal;
         // Holding an object to push or pull (localVelocity.z is then positive pushing, negative pulling)
         public bool grabbing;
         /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>

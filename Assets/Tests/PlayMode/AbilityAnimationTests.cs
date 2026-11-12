@@ -122,15 +122,40 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator WallRunning_PlaysWallRun()
+        public IEnumerator WallRunning_PlaysWallRun_ForAWallOnThatSide([Values(1f, -1f)] float side)
         {
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 6f, -10f);
             float face = rig.Radius + 0.1f;
-            rig.Box("Wall", new Vector3(face + 0.5f, 10f, 0f), new Vector3(1f, 20f, 40f));
+            rig.Box("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
             float speed = rig.Mode<WallRunningMode>().wallRunSpeed * rig.Movement.SpeedScale;
             rig.Movement.OverrideVelocity(Vector3.forward * speed);
-            yield return ExpectState("Wall Run", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState("Wall Run", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
+            Assert.That(rig.InState(CharacterState.WallRunning), Is.True, "Test setup: the character should still be wall-running.");
+            Assert.That(animator.GetFloat("WallSide"), Is.EqualTo(side), "The Animator should be told which side the wall is on.");
+
+            // The wall run for that side: the feet out toward the wall, the head leaning away from it (where the
+            // libraries' wall runs are installed; the sprint fallback keeps both over the hips).
+            if (QuaterniusWallRunsInstalled())
+            {
+                Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+                float feet = 0.5f * (animator.GetBoneTransform(HumanBodyBones.LeftFoot).position.x + animator.GetBoneTransform(HumanBodyBones.RightFoot).position.x) - hips.position.x;
+                float head = animator.GetBoneTransform(HumanBodyBones.Head).position.x - hips.position.x;
+                Assert.That(feet * side, Is.GreaterThan(0.1f), "The feet should be out toward the wall.");
+                Assert.That(head * side, Is.LessThan(-0.03f), "The body should lean away from the wall.");
+            }
+        }
+
+        private static bool QuaterniusWallRunsInstalled()
+        {
+#if UNITY_EDITOR
+            return UnityEditor.AssetDatabase.FindAssets("UAL2 t:Model", new[] { "Assets/Animation/Quaternius" }).Length > 0
+                   && System.Array.Exists(UnityEditor.AssetDatabase.LoadAllAssetsAtPath(UnityEditor.AssetDatabase.GUIDToAssetPath(
+                       UnityEditor.AssetDatabase.FindAssets("UAL2 t:Model", new[] { "Assets/Animation/Quaternius" })[0])), a => a is AnimationClip c && c.name == "WallRun_R_Loop");
+#else
+            return false;
+#endif
         }
 
         [UnityTest]
@@ -162,6 +187,9 @@ namespace CharacterShowcase.Tests
             }
             Assert.That(left.position.x, Is.LessThan(rig.Position.x - 0.1f), "The left hand should hold the ledge to the character's left.");
             Assert.That(right.position.x, Is.GreaterThan(rig.Position.x + 0.1f), "The right hand should hold the ledge to the character's right.");
+            // As far apart as the Quaternius library's climbs grip ledges (0.75 to 1.4 m on the mannequin).
+            float grip = Vector3.Distance(left.position, right.position) / size;
+            Assert.That(grip, Is.InRange(0.7f, 1.4f), "The hands should grip the ledge about as far apart as the library's climbs do.");
             Assert.That(face - hips.position.z, Is.LessThan(0.25f * size), "The body should hang against the wall, not a collider's width away from it.");
             Assert.That(face - hips.position.z, Is.GreaterThan(0.05f * size), "The body shouldn't be pushed into the wall.");
 
@@ -191,6 +219,66 @@ namespace CharacterShowcase.Tests
             Assert.That(climbingSteps, Is.GreaterThan(10), "Test setup: the character should climb.");
             Assert.That(rig.Movement.crouch.IsCrouched, Is.True, "Test setup: the climb should be crouched.");
             Assert.That(outOfClimb, Is.Zero, "A crouched climb shouldn't leave the Climb state.");
+        }
+
+        [UnityTest]
+        public IEnumerator SlidingDownAWall_PlaysWallSlide_WithTheHandsOnTheWallAndTheBodyAgainstIt()
+        {
+            yield return Spawn();
+            rig.Body.position = new Vector3(0f, 8f, 0f);
+            float face = rig.Radius + 0.1f;
+            rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
+            yield return ExpectState("Wall Slide", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
+            Assert.That(rig.InState(CharacterState.WallSliding), Is.True, "Test setup: the character should still be sliding.");
+
+            // As the Quaternius library's climbs hold hands against a wall: on it, about a metre apart, at head height.
+            float size = rig.Controller.Scale.y;
+            Transform left = animator.GetBoneTransform(HumanBodyBones.LeftHand), right = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            Transform head = animator.GetBoneTransform(HumanBodyBones.Head), hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            foreach (Transform hand in new[] { left, right })
+            {
+                Assert.That(face - hand.position.z, Is.EqualTo(0.03f * size).Within(0.03f * size), $"The {hand.name} should be flat on the wall.");
+                Assert.That(hand.position.y - head.position.y, Is.InRange(-0.2f * size, 0.2f * size), $"The {hand.name} should be at about head height.");
+            }
+            Assert.That(Vector3.Distance(left.position, right.position) / size, Is.InRange(0.7f, 1.4f), "The hands should be spread about as wide as the library's climbs hold them.");
+            Assert.That(face - hips.position.z, Is.LessThan(0.3f * size), "The body should be against the wall, not a collider's width away from it.");
+        }
+
+        [UnityTest]
+        public IEnumerator JumpingOntoStairsAndClimbingThemOnTheRun_LandsRatherThanStayingInTheAir([Values(false, true)] bool sprint)
+        {
+            yield return Spawn();
+            // A long flight rising ahead, in the level's stair profile (0.3 m steps, 0.4 m deep): walking up them lifts
+            // the character at several metres a second each step, which used to read to the Animator as still rising
+            // after the jump, all the way up.
+            const int steps = 30;
+            const float rise = 0.3f, run = 0.4f;
+            if (rig.StepHeight < rise) { Assert.Ignore("The character's step height is lower than the level's steps."); }
+            float highest = 0f;
+            for (int i = 0; i < steps; i++)
+            {
+                rig.Box($"Step {i + 1}", new Vector3(0f, (i + 1) * rise / 2f, 2f + i * run + run / 2f), new Vector3(10f, (i + 1) * rise, run));
+            }
+            int landedAt = -1, airborneAfterLanding = 0;
+            yield return rig.Run(2.5f, step =>
+            {
+                Inputs inputs = sprint ? CharacterTestRig.Sprint(Vector3.forward, step) : CharacterTestRig.Move(Vector3.forward);
+                if (step >= 8 && step < 14) { inputs.jump = CharacterTestRig.Held(step - 8); }
+                return inputs;
+            }, step =>
+            {
+                StepAnimator(step);
+                highest = Mathf.Max(highest, rig.Position.y);
+                if (step > 14 && landedAt < 0 && rig.Grounded) { landedAt = step; }
+                bool inAir = InAnimatorState("Airborne") || animator.GetCurrentAnimatorStateInfo(0).IsName("Jump");
+                // On the flight, that is: running off its top end falls, as it should.
+                bool onFlight = rig.Position.z < 2f + (steps - 1) * run;
+                if (landedAt >= 0 && step > landedAt + CharacterTestRig.StepsFor(0.3f) && onFlight && inAir) { airborneAfterLanding++; }
+            });
+            Assert.That(landedAt, Is.GreaterThan(0), "Test setup: the character should land on the stairs.");
+            Assert.That(highest, Is.GreaterThan(5f * rise), "Test setup: the character should climb the stairs.");
+            Assert.That(airborneAfterLanding, Is.Zero, "Once landed on the stairs, the Animator should land, not stay in the air while the character climbs.");
         }
 
         [UnityTest]

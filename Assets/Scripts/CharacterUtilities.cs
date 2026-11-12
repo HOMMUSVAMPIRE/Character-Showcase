@@ -96,6 +96,8 @@ namespace Character
         LedgeClimbing = 2048,
         // Holding a large object to push or pull it
         Grabbing = 4096,
+        // Sliding slowly down a wall it ran into head-on
+        WallSliding = 8192,
     }
 
     /// <summary>
@@ -131,7 +133,7 @@ namespace Character
         RollEnded = 8192,
         WallRunStarted = 16384,
         WallRunEnded = 32768,
-        // Jumped off a wall during a wall run (reported by the movement mode)
+        // Jumped off a wall during a wall run or wall slide (reported by the movement mode)
         WallJumped = 65536,
         // Caught hold of a ledge in mid-air
         LedgeGrabbed = 131072,
@@ -144,6 +146,9 @@ namespace Character
         GrabStarted = 2097152,
         // Let go of an object
         GrabEnded = 4194304,
+        // Started or stopped sliding down a wall (jumping off one is a WallJumped)
+        WallSlideStarted = 8388608,
+        WallSlideEnded = 16777216,
     }
 
     /// <summary>How a character's speeds change with its size. See MovementController.</summary>

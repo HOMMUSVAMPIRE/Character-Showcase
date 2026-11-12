@@ -52,6 +52,17 @@ namespace Character
         [Tooltip("Seconds to smooth each foot's height offset, so stepping across a stair edge doesn't pop.")]
         [Range(0f, 0.3f)] [SerializeField] private float footSmoothTime = 0.05f;
 
+        [Header("Foot locking")]
+        [Tooltip("How firmly a planted foot stays where it was put down, rather than where the animation has it now. The " +
+                 "model turns after the character, about its feet, which would otherwise drag a planted foot round with it " +
+                 "(and any mismatch between a stride and the character's speed slides it). 0 = off.")]
+        [Range(0f, 1f)] [SerializeField] private float footLock = 1f;
+        [Tooltip("How far (meters, for a model of average size) the animation's foot can get from where a planted foot was " +
+                 "locked before the lock lets go, so the leg is never stretched to hold it. Scaled with the model's size.")]
+        [Min(0f)] [SerializeField] private float maxLockDistance = 0.25f;
+        [Tooltip("Seconds a foot lock takes to take hold, and to let go as the foot lifts, so it never pops.")]
+        [Min(0.001f)] [SerializeField] private float lockBlendTime = 0.08f;
+
         [Header("Pelvis")]
         [Tooltip("Lower the pelvis so the lower foot can reach its ground (otherwise the leg can only stretch).")]
         [SerializeField] private bool adjustPelvis = true;
@@ -71,6 +82,12 @@ namespace Character
         {
             public float offset, offsetVelocity;
             public Vector3 normal;
+            // Foot lock: whether the foot is locked, where (in the space of the ground it was put down on, or the world
+            // if none), and how far the lock is blended in.
+            public bool locked;
+            public Transform lockGround;
+            public Vector3 lockPoint;
+            public float lockWeight;
             // Debug
             public Vector3 rayOrigin, rayEnd, hitPoint;
             public bool hit;
@@ -155,6 +172,8 @@ namespace Character
             if (activeWeight <= 0f)
             {
                 pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
+                left.locked = right.locked = false;
+                left.lockWeight = right.lockWeight = 0f;
                 return;
             }
 
@@ -227,8 +246,43 @@ namespace Character
             rotation = Quaternion.FromToRotation(Vector3.up, foot.normal) * animatedRotation;
             rotationWeight = planted * alignToGround;
 
-            return animated + Vector3.up * foot.offset;
+            Vector3 placed = animated + Vector3.up * foot.offset;
+            return LockFoot(ref foot, placed, planted, foot.hit ? hit.transform : null, size, dt);
         }
+
+        /// <summary>
+        /// Holds a planted foot where it was put down: locked as the animation plants it, held there (in the space of the
+        /// ground under it, so it rides moving ground) while the animation keeps it planted, and let go as it lifts, or
+        /// if the animation's foot gets too far from the lock. The lock is blended in and out over the animation's foot.
+        /// Only the foot's position across the ground is held; its height stays as placed.
+        /// </summary>
+        private Vector3 LockFoot(ref FootState foot, Vector3 placed, float planted, Transform ground, float size, float dt)
+        {
+            if (footLock <= 0f) { return placed; }
+
+            if (foot.locked)
+            {
+                Vector3 held = LockPosition(foot);
+                Vector2 apart = new Vector2(held.x - placed.x, held.z - placed.z);
+                if (planted < 0.5f || apart.magnitude > maxLockDistance * size) { foot.locked = false; }
+            }
+            else if (planted >= 0.999f && foot.lockWeight <= 0f)
+            {
+                foot.locked = true;
+                foot.lockGround = ground;
+                foot.lockPoint = ground != null ? ground.InverseTransformPoint(placed) : placed;
+            }
+
+            foot.lockWeight = Mathf.MoveTowards(foot.lockWeight, foot.locked ? 1f : 0f, dt / lockBlendTime);
+            if (foot.lockWeight <= 0f) { return placed; }
+            Vector3 lockAt = LockPosition(foot);
+            float w = foot.lockWeight * footLock;
+            return new Vector3(Mathf.Lerp(placed.x, lockAt.x, w), placed.y, Mathf.Lerp(placed.z, lockAt.z, w));
+        }
+
+        /// <summary>Where a foot's lock is now, in world space (it moves with the ground it was put down on).</summary>
+        private static Vector3 LockPosition(in FootState foot) =>
+            foot.lockGround != null ? foot.lockGround.TransformPoint(foot.lockPoint) : foot.lockPoint;
 
         /// <summary>How much the model is scaled vertically in the world (by the character's size).</summary>
         private float WorldScale => Mathf.Max(transform.lossyScale.y, 1e-4f);

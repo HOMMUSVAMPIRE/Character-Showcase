@@ -5,13 +5,13 @@ namespace Character
 {
     /// <summary>
     /// A Scriptable Object type which defines a very standard character movement scheme: walking, sprinting, jumping and
-    /// dashing (here), and crouching, sliding, rolling, wall-running, ledge grabbing and climbing, and pushing and pulling
+    /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, and pushing and pulling
     /// objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
     /// header in the inspector.
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
     public partial class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode,
-        CrouchMode, SlideMode, RollMode, WallRunningMode, LedgeMode, PushPullMode
+        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, PushPullMode
     {
         [Header("Speed")]
         [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
@@ -126,6 +126,7 @@ namespace Character
             bool abilityHasCharacter = ProcessMovementDataForLedge(ref movementData, inputs, controller)
                 || ProcessMovementDataForPushPull(ref movementData, inputs, controller)
                 || ProcessMovementDataForWallRun(ref movementData, inputs, controller)
+                || ProcessMovementDataForWallSlide(ref movementData, inputs, controller)
                 || ProcessMovementDataForRoll(ref movementData, inputs, controller)
                 || ProcessMovementDataForSlide(ref movementData, inputs, controller);
             if (!abilityHasCharacter)
@@ -194,14 +195,15 @@ namespace Character
             controller.roll.press.Track(inputs.roll);
             controller.roll.cooldownRemaining = Mathf.Max(0f, controller.roll.cooldownRemaining - deltaTime);
             controller.wallRun.cooldownRemaining = Mathf.Max(0f, controller.wallRun.cooldownRemaining - deltaTime);
-            if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; }
+            if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; controller.wallSlide.jumpsUsed = 0; controller.wallSlide.hasLastWall = false; }
+            controller.wallSlide.cooldownRemaining = Mathf.Max(0f, controller.wallSlide.cooldownRemaining - deltaTime);
             controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - deltaTime);
         }
 
         /// <summary>Whether a dash or one of the abilities has the character, so no other ability may start.</summary>
         private static bool AbilityInProgress(MovementController controller) =>
             controller.dash.IsDashing || controller.ledge.IsActive || controller.grab.IsGrabbing
-            || controller.wallRun.IsWallRunning || controller.roll.IsRolling || controller.slide.IsSliding;
+            || controller.wallRun.IsWallRunning || controller.wallSlide.IsWallSliding || controller.roll.IsRolling || controller.slide.IsSliding;
 
         /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
         private static Vector3 InputDirection(MovementData movementData, Inputs inputs)
