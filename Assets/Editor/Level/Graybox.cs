@@ -201,6 +201,24 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>
+        /// The name every spawn marker's starts with. Game setup tools look for markers by this name (the level knows
+        /// nothing about what spawns there), so keep it in step with SceneGameSetup.SpawnMarkerPrefix.
+        /// </summary>
+        public const string SpawnMarkerPrefix = "Spawn Point";
+
+        /// <summary>
+        /// An empty marker where a character can start: its feet at the given height, facing yaw degrees clockwise from
+        /// north. Only a place: the game setup puts what spawns there.
+        /// </summary>
+        public static void SpawnMarker(Transform parent, string name, Vector2 at, float height, float yaw)
+        {
+            var marker = new GameObject($"{SpawnMarkerPrefix} ({name})");
+            marker.transform.SetParent(parent, false);
+            marker.transform.localPosition = new Vector3(at.x, height, at.y);
+            marker.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+        }
+
+        /// <summary>
         /// A level slab over an axis-aligned area (a Rect's x is x, its y is z), from y0 to y1, with axis-aligned holes
         /// cut through it: built as the fewest boxes the holes leave, band by band.
         /// </summary>
@@ -651,9 +669,13 @@ namespace CharacterShowcase.EditorTools.Level
             return kept;
         }
 
-        /// <summary>Level geometry doesn't move: static for batching, lighting and occlusion.</summary>
+        /// <summary>
+        /// Level geometry doesn't move: static for batching, occlusion and reflection probes. Not Contribute GI: the
+        /// level has no baked or realtime GI (it's lit by the sun and the sky's ambient), so nothing would use it, and
+        /// with it the lighting bake packed lightmaps for every piece anyway, which took about seven minutes.
+        /// </summary>
         public static void MakeStatic(GameObject obj) =>
-            GameObjectUtility.SetStaticEditorFlags(obj, StaticEditorFlags.BatchingStatic | StaticEditorFlags.ContributeGI
+            GameObjectUtility.SetStaticEditorFlags(obj, StaticEditorFlags.BatchingStatic
                 | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
     }
 }

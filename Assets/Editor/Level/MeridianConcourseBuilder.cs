@@ -64,6 +64,21 @@ namespace CharacterShowcase.EditorTools.Level
             var connections = Group(concourse, "Connections");
             BuildCardinals(ring, stairs, upper, bridges, rails, landmarks, connections);
             BuildDiagonals(ring, stairs, upper, bridges, rails, connections);
+            BuildSpawnPoints(Group(concourse, "Spawn Points"));
+        }
+
+        /// <summary>
+        /// Where the character can start: on the plaza, one on each side, between the dais's columns (at ±9 m) and the
+        /// plaza's edge, facing the dais. Just above the floor, so a character settles onto it rather than starting in
+        /// contact with it.
+        /// </summary>
+        private static void BuildSpawnPoints(Transform spawnPoints)
+        {
+            const float distance = 14f, height = 0.05f;
+            SpawnMarker(spawnPoints, "Plaza South", new Vector2(0f, -distance), height, 0f);
+            SpawnMarker(spawnPoints, "Plaza East", new Vector2(distance, 0f), height, 270f);
+            SpawnMarker(spawnPoints, "Plaza North", new Vector2(0f, distance), height, 180f);
+            SpawnMarker(spawnPoints, "Plaza West", new Vector2(-distance, 0f), height, 90f);
         }
 
         // ---- The areas ----

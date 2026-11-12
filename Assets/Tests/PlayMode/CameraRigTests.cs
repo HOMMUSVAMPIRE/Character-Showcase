@@ -258,6 +258,51 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator Follow_SnapsToANewTarget_LookingTheWayItFaces()
+        {
+            yield return Frames(3);
+            float pitch = rig.Pitch;
+            var spawned = Track(new GameObject("Spawned Target")).transform;
+            spawned.SetPositionAndRotation(new Vector3(40f, 2f, -30f), Quaternion.Euler(0f, 120f, 0f));
+
+            rig.Follow(spawned);
+            target = spawned; // So the expected position below is worked out from the new target.
+            yield return null;
+
+            Assert.That(rig.Target, Is.SameAs(spawned));
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(rig.Yaw, 120f)), Is.LessThan(0.01f), "Camera should look the way its new target faces.");
+            Assert.That(rig.Pitch, Is.EqualTo(pitch).Within(0.01f), "Following a new target shouldn't change the pitch.");
+            Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(rig.Zoom.defaultDistance)), Is.LessThan(0.01f),
+                "Camera should jump straight to its new target instead of flying across the level.");
+        }
+
+        [UnityTest]
+        public IEnumerator Follow_WithAnEyeAnchorAndSizeReference_UsesTheNewTargets()
+        {
+            yield return Frames(3);
+            var spawned = Track(new GameObject("Spawned Target")).transform;
+            spawned.position = new Vector3(-20f, 0f, 15f);
+            var eyes = Track(new GameObject("Eyes")).transform;
+            eyes.SetParent(spawned, false);
+            eyes.localPosition = Vector3.up * 1.6f;
+            var size = Track(new GameObject("Size")).transform;
+            size.SetParent(spawned, false);
+            size.localScale = Vector3.one * 2f;
+
+            rig.Follow(spawned, eyes, size);
+            yield return null;
+
+            Assert.That(rig.Target, Is.SameAs(spawned));
+            Assert.That(rig.FirstPerson.eyeAnchor, Is.SameAs(eyes));
+            Assert.That(rig.TargetSizeReference, Is.SameAs(size));
+            Assert.That(rig.SizeScale, Is.EqualTo(2f).Within(1e-4f), "The camera should frame the new target at its size.");
+
+            rig.Follow(target, null, null);
+            Assert.That(rig.FirstPerson.eyeAnchor, Is.Null, "A target without an eye anchor shouldn't keep the old target's.");
+            Assert.That(rig.TargetSizeReference, Is.Null, "A target without a size reference shouldn't keep the old target's.");
+        }
+
+        [UnityTest]
         public IEnumerator Shake_DisturbsCamera_ThenDecaysBackToRest()
         {
             yield return Frames(3);

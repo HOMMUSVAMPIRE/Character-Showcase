@@ -126,7 +126,9 @@ own each of these files at a time; others should wait or work elsewhere.
      Changing a tuning number in `Assets/ScriptableObjects/BasicMovementMode.asset` is fine.
   If a task needs inspector wiring you can't do safely, say so and describe the exact change for a person to make.
 - `Assets/Scenes/SampleScene.unity` is the playable demo. Don't modify it unless the task is about the scene.
-- `Assets/Scenes/MeridianComplex/MeridianComplex.unity` is generated (see below): never edit it by hand.
+- `Assets/Scenes/MeridianComplex/MeridianComplex.unity` is generated (see below): never edit it by hand. Its Game
+  Setup object (character spawner, input manager and camera) is added afterwards by `SceneGameSetup` (the Set Up Scene
+  window), from the spawn markers the builders place, since the level builders must not hold game setup.
 
 ### Generated assets: regenerate, don't edit
 
@@ -138,7 +140,7 @@ These are produced by tools. Edit the generator instead and regenerate:
 | `Assets/Animation/Mannequin.controller` | `MannequinGenerator` |
 | The model setup on `Assets/Prefabs/Character.prefab` (always the mannequin) | `MannequinGenerator` |
 | `[name] Model.prefab`, `[name].asset` and the avatar/T-pose import settings of every model in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Tools > Character Showcase > Prepare Character Models) |
-| The model override on the character in `Assets/Scenes/SampleScene.unity` | `CharacterModelWindow` (Tools > Character Showcase > Choose Character Model…) |
+| The Game Setup object in a scene (a `CharacterSpawner` wired to the camera, and copies of SampleScene's InputManager and Main Camera if the scene has none), including the character, model and movement mode the scene spawns, and the replacement of characters placed in it | `SceneGameSetup` (Tools > Character Showcase > Set Up Scene…, or `-executeMethod CharacterShowcase.EditorTools.SceneGameSetup.SetUpFromCommandLine -scene <path>`) |
 | `Assets/Scenes/MeridianComplex/MeridianComplex.unity`, its `Environment/` assets (sky, post-processing, lighting settings) and its baked `MeridianComplex/` lighting data | `MeridianComplexBuilder` (Tools > Character Showcase > Level > Build Meridian Complex), which calls one builder per area in `Assets/Editor/Level` |
 
 The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
@@ -172,9 +174,16 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
 - **New movement events** go in the `MovementEvents` flags enum. Movement modes report events they cause;
   `MovementController.DetectEvents` detects the ones every mode shares. `AnimatorParameterTranslator` can fire
   Animator triggers on them.
+- **Spawn points in the level** are spawn markers: empty objects named "Spawn Point (…)" made by `Graybox.SpawnMarker`,
+  facing their forward. `SceneGameSetup` turns them into the spawner's spawn points (`SpawnMarkerPrefix` must match
+  `Graybox.SpawnMarkerPrefix`; the level assembly can't reference it). Rebuilding the level removes its game setup:
+  set it up again afterwards.
 - **The level** is rebuilt with `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`
-  (Unity closed; it also bakes the environment lighting, about a minute). Each area has a builder with
-  `BuildInto(Transform complex, Material material)`, called from `MeridianComplexBuilder.Build`; a new area is a new
+  (Unity closed; it also bakes the environment lighting, a few seconds: level geometry isn't Contribute GI, which
+  made the baker pack lightmaps for every piece and took about seven minutes). The menu item builds the same steps
+  (`MeridianComplexBuilder.Steps`) one per editor update, with `MeridianBuildWindow` showing progress and the bake run
+  by `Lightmapping.BakeAsync`. Each area has a builder with
+  `BuildInto(Transform complex, Material material)`, called as one of `MeridianComplexBuilder.Steps`; a new area is a new
   builder called from there, joined at the existing areas' connection markers. Builders share `Graybox`'s pieces
   (flights of stairs, ramps, bridges, guardrails, walls with openings, underground cells, markers). Units are metres;
   +Z is north. Each area's notes (`*_Blockout_Notes.md` beside the scene) record how its diagram was read; update them
@@ -204,4 +213,6 @@ Match the existing code:
   why.
 - Never commit `Library/`, `Temp/`, `Logs/`, `UserSettings/`, `Builds/` or `TestResults.xml` (the `.gitignore`
   covers most of these).
+- `ReferenceAssets/` (at the root, outside `Assets/`, so Unity doesn't import it) holds reference material put
+  there for you to use. It's ignored by git: read from it, but don't commit, move or edit what's in it.
 - Base work on `main`.

@@ -61,6 +61,16 @@ namespace Character
 
         /// <summary>The source of the current (or loading) model.</summary>
         public CharacterModelSource ModelSource => modelSource;
+
+        /// <summary>
+        /// Chooses the model to load on Start, for a character that's just been created (CharacterSpawner's model
+        /// override). It does nothing to a model that's already loaded or loading: use LoadModelAsync to swap models.
+        /// </summary>
+        internal void SetModelSourceBeforeStart(CharacterModelSource source)
+        {
+            if (IsModelReady || IsLoadingModel) { return; }
+            modelSource = source;
+        }
         public CharacterModelSource FallbackSource { get => fallbackSource; set => fallbackSource = value; }
         /// <summary>The model in use, with its Animator, IK and translator, or null while there is none.</summary>
         public CharacterModel CurrentModel => model != null && model.Root != null ? model : null;

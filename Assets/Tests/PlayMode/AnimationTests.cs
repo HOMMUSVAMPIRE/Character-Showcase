@@ -555,10 +555,12 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// The clips lean the torso a little forward: about 1 degree standing, 12 walking (the Quaternius walk carries
-        /// the head forward) and 2 at the default speed. Every model should lean about the same way. A model whose
+        /// The clips lean the torso a little forward: about 1 degree standing and 12 walking (the Quaternius walk carries
+        /// the head forward). At full stick it depends on the tuning, since the walk speed picks the gait: about 2 in the
+        /// brisk walk at 3 m/s, about 22 in the jog at 5 m/s. Every model should lean about the same way. A model whose
         /// avatar was made from a posed skeleton (or that plays clips stored relative to one) leans tens of degrees off
-        /// instead, so the range is wide enough for the clips' own carriage and narrow enough to catch that.
+        /// instead (about 45), so the range is wide enough for the clips' own carriage at any gait and narrow enough to
+        /// catch that.
         /// </summary>
         [UnityTest]
         public IEnumerator EveryModel_KeepsItsTorsoUpright([ValueSource(nameof(PreparedModels))] string path)
@@ -580,7 +582,7 @@ namespace CharacterShowcase.Tests
                 });
                 lean /= samples;
                 TestContext.WriteLine($"Torso lean {activity}: {lean:0.0} degrees forward.");
-                Assert.That(lean, Is.InRange(-5f, 20f), $"While {activity}, the torso leans {lean:0} degrees forward (negative is backward).");
+                Assert.That(lean, Is.InRange(-5f, 30f), $"While {activity}, the torso leans {lean:0} degrees forward (negative is backward).");
             }
         }
     }

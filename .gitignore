@@ -106,3 +106,6 @@ TestResults*.xml
 
 # macOS Finder metadata
 .DS_Store
+
+# Local reference material (images, documents, assets) for working on the project: never committed
+/ReferenceAssets/

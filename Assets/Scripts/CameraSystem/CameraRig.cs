@@ -174,6 +174,28 @@ namespace CameraSystem
             if (snap) { Snap(); }
         }
 
+        /// <summary>
+        /// Follow a new target and look the way it faces, as the camera does at the start: for a target that's just
+        /// appeared, like a spawned character. Takes one argument, so it can be wired to a UnityEvent in the inspector.
+        /// </summary>
+        public void Follow(Transform newTarget)
+        {
+            SetTarget(newTarget);
+            if (newTarget != null) { SetLookRotation(newTarget.eulerAngles.y, pitch); }
+        }
+
+        /// <summary>
+        /// Follow a new target as Follow(Transform) does, with its first-person eye anchor and size reference (see
+        /// targetSizeReference) replacing the old target's. Either may be null: no eye anchor uses the fixed eye height,
+        /// and no size reference frames the target at size 1. Wire it to a UnityEvent with these three arguments.
+        /// </summary>
+        public void Follow(Transform newTarget, Transform eyeAnchor, Transform sizeReference)
+        {
+            firstPerson.eyeAnchor = eyeAnchor;
+            targetSizeReference = sizeReference; // Before snapping to the target, which frames it at this size.
+            Follow(newTarget);
+        }
+
         /// <summary>Requests a view mode. Returns false if that mode is disabled in the inspector.</summary>
         public bool SetMode(CameraMode mode)
         {

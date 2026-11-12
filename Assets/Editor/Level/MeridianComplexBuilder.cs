@@ -48,43 +48,115 @@ namespace CharacterShowcase.EditorTools.Level
         private static readonly Color HazeColor = new(0.74f, 0.82f, 0.9f);
         private const float HazeDensity = 0.0015f;  // Exponential: about 14% haze at 100 m, 45% at 400 m.
 
+        /// <summary>
+        /// Builds the level in the background (see MeridianBuildWindow), a step at a time between editor frames, with a
+        /// window showing its progress, so the editor doesn't freeze for the whole build. Opens the scene when it's done.
+        /// </summary>
         [MenuItem("Tools/Character Showcase/Level/Build Meridian Complex")]
         public static void BuildFromMenu()
         {
+            if (MeridianBuildWindow.IsBuilding)
+            {
+                MeridianBuildWindow.FocusBuild();
+                return;
+            }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) { return; }
-            Build();
-            EditorSceneManager.OpenScene(ScenePath);
+            MeridianBuildWindow.StartBuild();
         }
 
-        /// <summary>For -executeMethod.</summary>
+        /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake.</summary>
         public static void BuildFromCommandLine() => Build();
 
+        /// <summary>Builds the level and bakes its lighting in one go, which holds up the editor until it's done.</summary>
         public static void Build()
         {
-            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            Directory.CreateDirectory(EnvironmentFolder);
-            Directory.CreateDirectory(MaterialFolder);
-            AssetDatabase.Refresh();
-            Material concrete = LevelMaterial();
+            var build = new BuildState();
+            foreach (BuildStep step in Steps())
+            {
+                var timer = System.Diagnostics.Stopwatch.StartNew();
+                step.run(build);
+                Debug.Log($"[MeridianComplexBuilder] {step.name}: {timer.Elapsed.TotalSeconds:0.0} s.");
+            }
+            var bakeTimer = System.Diagnostics.Stopwatch.StartNew();
+            if (!Lightmapping.Bake()) { WarnLightingNotBaked(); }
+            Debug.Log($"[MeridianComplexBuilder] {BakeStepName}: {bakeTimer.Elapsed.TotalSeconds:0.0} s.");
+            Finish(build);
+        }
 
-            var complex = new GameObject("Meridian Complex").transform;
-            MeridianConcourseBuilder.BuildInto(complex, concrete);
-            MeridianKineticGardensBuilder.BuildInto(complex, concrete);
-            MeridianAscensionSpireBuilder.BuildInto(complex, concrete);
-            MeridianFabricationHallBuilder.BuildInto(complex, concrete);
-            MeridianSuspensionYardBuilder.BuildInto(complex, concrete);
-            MeridianServiceNetworkBuilder.BuildInto(complex, concrete);
-            MeridianCalibrationAnnexBuilder.BuildInto(complex, concrete);
-            BuildGround(complex, concrete);
-            BuildEnvironment(Graybox.Group(complex, "Environment"));
+        // ---- The build, in steps ----
 
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            BakeEnvironmentLighting(scene);
-            EditorSceneManager.SaveScene(scene, ScenePath);
+        /// <summary>What the build's steps share as they go.</summary>
+        internal sealed class BuildState
+        {
+            public Scene scene;
+            public Material concrete;
+            public Transform complex;
+        }
+
+        /// <summary>One step of the build: what it's called (for showing progress) and what it does.</summary>
+        internal readonly struct BuildStep
+        {
+            public readonly string name;
+            public readonly System.Action<BuildState> run;
+            /// <summary>
+            /// Whether the level can still be left as it was if the build stops after this step: not once the
+            /// environment's assets (which the old scene references) have been replaced.
+            /// </summary>
+            public readonly bool cancellable;
+
+            public BuildStep(string name, System.Action<BuildState> run, bool cancellable = true)
+            {
+                this.name = name;
+                this.run = run;
+                this.cancellable = cancellable;
+            }
+        }
+
+        internal const string BakeStepName = "Baking the environment lighting";
+
+        /// <summary>
+        /// The build up to the lighting bake, which comes after them (Lightmapping.Bake or BakeAsync), followed by
+        /// Finish. Run in order, each in one go. Building into a new scene, so the scene on disk is only replaced when
+        /// the new one is saved.
+        /// </summary>
+        internal static List<BuildStep> Steps() => new()
+        {
+            new("Starting a new scene", build =>
+            {
+                build.scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                Directory.CreateDirectory(EnvironmentFolder);
+                Directory.CreateDirectory(MaterialFolder);
+                AssetDatabase.Refresh();
+                build.concrete = LevelMaterial();
+                build.complex = new GameObject("Meridian Complex").transform;
+            }),
+            new("Building 01 Concourse", build => MeridianConcourseBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 02 Kinetic Gardens", build => MeridianKineticGardensBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 03 Ascension Spire", build => MeridianAscensionSpireBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 04 Fabrication Hall", build => MeridianFabricationHallBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 05 Suspension Yard", build => MeridianSuspensionYardBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 06 Service Network", build => MeridianServiceNetworkBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building 07 Calibration Annex", build => MeridianCalibrationAnnexBuilder.BuildInto(build.complex, build.concrete)),
+            new("Building the ground", build => BuildGround(build.complex, build.concrete)),
+            new("Setting up the environment", build => BuildEnvironment(Graybox.Group(build.complex, "Environment")), cancellable: false),
+            new("Saving the scene", build =>
+            {
+                EditorSceneManager.SaveScene(build.scene, ScenePath);
+                PrepareLighting(build.scene);
+            }, cancellable: false),
+        };
+
+        /// <summary>After the bake (or without it, if it was cancelled): saves the scene with its lighting, and the assets.</summary>
+        internal static void Finish(BuildState build)
+        {
+            EditorSceneManager.SaveScene(build.scene, ScenePath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"[MeridianComplexBuilder] Built the Meridian Complex graybox in '{ScenePath}'.");
         }
+
+        internal static void WarnLightingNotBaked() =>
+            Debug.LogWarning("[MeridianComplexBuilder] The environment lighting didn't bake: use Window > Rendering > Lighting > Generate Lighting.");
 
         /// <summary>
         /// The placeholder material for all the level geometry: URP Lit, smooth matte cream concrete, untextured. Made the
@@ -190,10 +262,10 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>
-        /// Lighting settings with no baked or realtime GI (the graybox has no lightmaps), then a bake: with nothing to
-        /// lightmap, it only renders the sky into the scene's ambient lighting and default reflections.
+        /// Lighting settings with no baked or realtime GI (the graybox has no lightmaps), ready for the bake: with nothing
+        /// to lightmap, it only renders the sky into the scene's ambient lighting and default reflections.
         /// </summary>
-        private static void BakeEnvironmentLighting(Scene scene)
+        private static void PrepareLighting(Scene scene)
         {
             var settings = Replace(LightingPath, new LightingSettings { name = "MeridianComplex_Lighting" });
             settings.bakedGI = false;
@@ -201,10 +273,6 @@ namespace CharacterShowcase.EditorTools.Level
             settings.realtimeEnvironmentLighting = true;
             EditorUtility.SetDirty(settings);
             Lightmapping.SetLightingSettingsForScene(scene, settings);
-            if (!Lightmapping.Bake())
-            {
-                Debug.LogWarning("[MeridianComplexBuilder] The environment lighting didn't bake: use Window > Rendering > Lighting > Generate Lighting.");
-            }
         }
 
         /// <summary>Saves asset at path, replacing what was there.</summary>

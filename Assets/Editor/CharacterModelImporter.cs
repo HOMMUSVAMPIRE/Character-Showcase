@@ -350,6 +350,14 @@ namespace CharacterShowcase.EditorTools
             return false;
         }
 
+        /// <summary>The model sources in the models folder that are ready to use (see Validate), sorted by path.</summary>
+        public static IEnumerable<DirectCharacterModelSource> FindReadyDefinitions() =>
+            AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { ModelsFolder })
+                .Select(AssetDatabase.GUIDToAssetPath)
+                .OrderBy(path => path, System.StringComparer.Ordinal)
+                .Select(AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>)
+                .Where(d => d != null && Validate(d) == null);
+
         /// <summary>Every model file (anything Unity imports as a model) in the models folder, sorted by path.</summary>
         public static IEnumerable<string> FindModelFiles() =>
             AssetDatabase.FindAssets("", new[] { ModelsFolder })

@@ -20,6 +20,7 @@ Units are metres (1 unit = 1 m). The origin is the centre of the plaza floor; +Z
 | Gate towers | to +36 | Two 6 × 6 m masses either side of the north terrace: the hub's tallest landmarks, framing the way north. |
 | Upper terraces | NE +12, SE +16, SW +12, NW +20 | On the ring's corners, each up an 8 m wide stair from the ring. NW is beyond the core (see below). |
 | Bridges | as their terrace | 20 m out from each exit, on columns, with guardrails, to where the next area joins: N (+16, 12 m wide), NE (+12), SE (+16), SW (+12), NW (+20), all 8 m wide, and E (+8, 10 m) and S (+8, 8 m). |
+| Spawn points | ±0 | Four empty spawn markers ("Spawn Point (Plaza South/East/North/West)") under Spawn Points, 14 m out from the plaza's centre on each side, between the columns and the plaza's edge, facing the dais. Only places: Set Up Scene (Tools > Character Showcase) spawns the character at one of them. |
 | West ramp | +8 to ±0 | 1:4 (about 14°), 12 m wide, down from the ring to the ground outside on the west. |
 | Ground (placeholder) | ±0 | 440 × 440 m, a little over the complex's footprint, built by MeridianComplexBuilder (not part of the Concourse), open where the Service Network and the Fabrication Hall's basements go below it. |
 
