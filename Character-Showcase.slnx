@@ -4,7 +4,7 @@
   <Project Path="CameraSystem.csproj" />
   <Project Path="CharacterShowcase.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
+  <Project Path="CharacterShowcase.Level.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="CharacterShowcase.Tests.EditMode.csproj" />
-  <Project Path="CharacterShowcase.Level.Editor.csproj" />
 </Solution>

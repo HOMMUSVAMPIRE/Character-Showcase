@@ -22,4 +22,6 @@ MonoBehaviour:
   jumpingParameter: 
   dashingParameter: Dashing
   movingParameter: 
-  eventTriggers: []
+  eventTriggers:
+  - events: 3
+    trigger: Jump

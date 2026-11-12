@@ -16,10 +16,11 @@ namespace CharacterShowcase.EditorTools
     /// - runs Tools/Mannequin/generate_mannequin.py in Blender to build the mannequin's mesh, rig and animation clips
     ///   (Blender's location is asked for once and remembered)
     /// - imports it as a Humanoid with looping, in-place clips
-    /// - builds the Animator Controller, and the Animator Parameter Translator that drives it: walking, running, rising and
-    ///   falling from the motion capture in Assets/Animation/CMU (see MotionCaptureLocomotion), and standing and dashing
-    ///   from the mannequin's own clips (a still, even stance, which motion capture never quite is; and the motion
-    ///   capture has no dash)
+    /// - builds the Animator Controller, and the Animator Parameter Translator that drives it, from the mannequin's own
+    ///   procedurally authored clips (Tools/Mannequin/mannequin_animations.py) and, where they're installed, the
+    ///   Quaternius Universal Animation Libraries' walk, jog, sprint and jump (QuaterniusAnimationImporter): standing,
+    ///   walking, walking briskly, running, jogging, sprinting, jumping, landing and dashing. Each loop's speed and
+    ///   phase are measured on the mannequin (MotionCaptureLocomotion's StrideSpeed and TouchDownPhase).
     /// - prepares the mannequin like any other character model (CharacterModelImporter), and makes it the Character
     ///   prefab's model
     /// Other models play these animations through Humanoid retargeting. Safe to run repeatedly: IK settings and edits to
@@ -47,14 +48,29 @@ namespace CharacterShowcase.EditorTools
         private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
         private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
         private const string DashingParameter = AnimatorParameterTranslator.DefaultDashingParameter;
+        // Fired by the translator on every jump, from the ground or in the air (with the Quaternius libraries' jump).
+        private const string JumpTrigger = "Jump";
+        // The libraries' landing plays this far (normalized) before handing back, or until the character moves faster than this (m/s).
+        private const float LandingLength = 0.45f, MoveOnFromLanding = 0.5f;
+        // The Quaternius libraries' clips used, where they're installed.
+        private static readonly string[] LibraryClips = { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Loop", "Jump_Land" };
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
-        // The top of the Locomotion blend tree, in m/s: the character's walking speed (BasicMovementMode), far faster
-        // than anyone runs. The run loop plays sped up to reach it, so its planted feet keep up with the ground.
+        // The top of the Locomotion blend tree, in m/s: well above the character's sprint (BasicMovementMode's run
+        // speed), for the momentum a dash leaves it with. Past the sprint loop's own speed, the loop plays sped up to
+        // reach it, so its planted feet keep up with the ground.
         public const float TopSpeed = 10f;
-        private const float FallThreshold = -8f;
-        private const float RiseThreshold = 6f;
+        // The brisk walk is shown up to past the character's default speed (BasicMovementMode's walk speed, 3 m/s),
+        // rather than handing over to the run: it reaches this speed played this much faster than its strides are made
+        // for, so it quickens a little and its planted feet slide a little (about a tenth of the speed at 3 m/s). No one
+        // walks at 3 m/s (people break into a run at about 2), so a walk there must hurry or slide; this keeps both small.
+        // The run takes over past it.
+        private const float BriskWalkUpTo = 3.2f, BriskWalkUpToPlayback = 1.25f;
+        // Airborne, by vertical speed (m/s): rising at take-off (the jump leaves the ground at 15 m/s), tucked at the top,
+        // falling. Falling locks in quickly, so walking off a ledge only passes through the tuck.
+        private const float FallThreshold = -5f;
+        private const float RiseThreshold = 8f;
 
         [MenuItem("Tools/Character Showcase/Generate Mannequin", priority = 1)]
         public static void GenerateFromMenu()
@@ -119,6 +135,7 @@ namespace CharacterShowcase.EditorTools
             AnimatorController controller = BuildAnimatorController();
             if (controller == null) { return false; }
             var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
+            BindJumpTrigger(translator, controller);
 
             CharacterModelImporter.Result mannequin = CharacterModelImporter.Prepare(ModelPath, controller, translator);
             if (!mannequin.Succeeded)
@@ -135,6 +152,26 @@ namespace CharacterShowcase.EditorTools
                       $"'{AssetDatabase.GetAssetPath(mannequin.definition)}', {mannequin.height:0.00} m tall) and the shared animations: controller '{ControllerPath}' with clips " +
                       $"{string.Join(", ", LoadClips().Keys)}, translator '{TranslatorPath}'. It's the Character prefab's model.");
             return true;
+        }
+
+        /// <summary>
+        /// Has the translator fire the controller's jump trigger on every jump, if the controller has one and the
+        /// translator doesn't already (other edits to the translator are kept).
+        /// </summary>
+        private static void BindJumpTrigger(AnimatorParameterTranslator translator, AnimatorController controller)
+        {
+            if (!controller.parameters.Any(p => p.name == JumpTrigger && p.type == AnimatorControllerParameterType.Trigger)) { return; }
+            var settings = new SerializedObject(translator);
+            SerializedProperty triggers = settings.FindProperty("eventTriggers");
+            for (int i = 0; i < triggers.arraySize; i++)
+            {
+                if (triggers.GetArrayElementAtIndex(i).FindPropertyRelative("trigger").stringValue == JumpTrigger) { return; }
+            }
+            triggers.arraySize++;
+            SerializedProperty binding = triggers.GetArrayElementAtIndex(triggers.arraySize - 1);
+            binding.FindPropertyRelative("events").intValue = (int)(MovementEvents.Jumped | MovementEvents.AirJumped);
+            binding.FindPropertyRelative("trigger").stringValue = JumpTrigger;
+            settings.ApplyModifiedPropertiesWithoutUndo();
         }
 
         /// <summary>
@@ -383,13 +420,85 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Builds the controller from scratch each time so it always matches this code:
-        /// Locomotion (Idle / Walk / Run by Speed) and Airborne (Fall / Rise by VerticalSpeed), switched by Grounded,
+        /// Locomotion (Idle / Walk / Brisk Walk / Run / Sprint by Speed) and Airborne (Fall / Apex / Rise by VerticalSpeed), switched by Grounded,
         /// plus Dash, entered from any state while Dashing.
         /// </summary>
+        /// <summary>
+        /// The Quaternius libraries' clips the controller uses, set up first if they aren't already
+        /// (QuaterniusAnimationImporter), or null if the libraries aren't installed or any clip is missing.
+        /// </summary>
+        private static Dictionary<string, AnimationClip> LoadLibraryClips()
+        {
+            if (!QuaterniusAnimationImporter.FindLibraryFiles().Any()) { return null; }
+            List<string> problems = QuaterniusAnimationImporter.PrepareAll();
+            if (problems.Count > 0) { return null; }
+            var clips = LibraryClips.ToDictionary(name => name, QuaterniusAnimationImporter.FindClip);
+            string[] missing = clips.Where(c => c.Value == null).Select(c => c.Key).ToArray();
+            if (missing.Length > 0)
+            {
+                Debug.LogWarning($"[MannequinGenerator] The Quaternius libraries are missing {string.Join(", ", missing)}: using the mannequin's own clips.");
+                return null;
+            }
+            return clips;
+        }
+
+        /// <summary>
+        /// Stands the libraries' clips the controller uses on the mannequin's floor: where its own idle stands its feet.
+        /// Played on the mannequin, each clip's lowest foot (its planted one) should be as low as the idle's, as foot
+        /// placement keeps each foot's height above its clip's floor; the libraries' clips stood about 3 cm lower, so
+        /// the feet went through the floor. Each is raised by the difference (its root height offset, stored in the
+        /// clip as the library's mannequin is sized, so it scales to every model). The jump's loop is raised as its
+        /// start is (it has no floor of its own: its feet are in the air).
+        /// </summary>
+        private static void StandLibraryOnMannequinsFloor(GameObject measuringModel, AnimationClip idle)
+        {
+            float idleFloor = MotionCaptureLocomotion.LowestFoot(measuringModel, idle);
+            // How the library's mannequin's sizes compare with this one's: the offsets are in its units.
+            float scale = LibraryHumanScale() / HumanScale(measuringModel);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var raise = new Dictionary<string, float>();
+                foreach (string name in new[] { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Land" })
+                {
+                    AnimationClip clip = QuaterniusAnimationImporter.FindClip(name);
+                    raise[name] = (idleFloor - MotionCaptureLocomotion.LowestFoot(measuringModel, clip)) * scale;
+                }
+                raise["Jump_Loop"] = raise["Jump_Start"];
+                Debug.Log($"[MannequinGenerator] Standing the libraries' clips on the mannequin's floor: raising " +
+                          string.Join(", ", raise.Select(r => $"{r.Key} {r.Value * 100f:0.0} cm")));
+                if (raise.Values.All(r => Mathf.Abs(r) < 0.002f) || !QuaterniusAnimationImporter.RaiseClips(raise)) { break; }
+            }
+        }
+
+        private static float HumanScale(GameObject model)
+        {
+            GameObject instance = Object.Instantiate(model);
+            try
+            {
+                Animator animator = instance.GetComponentInChildren<Animator>();
+                return animator != null && animator.isHuman ? animator.humanScale : 1f;
+            }
+            finally { Object.DestroyImmediate(instance); }
+        }
+
+        private static float LibraryHumanScale()
+        {
+            string path = QuaterniusAnimationImporter.FindLibraryFiles().First();
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            GameObject instance = Object.Instantiate(model);
+            try
+            {
+                Animator animator = instance.GetComponentInChildren<Animator>() ?? instance.AddComponent<Animator>();
+                animator.avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().First();
+                return animator.humanScale;
+            }
+            finally { Object.DestroyImmediate(instance); }
+        }
+
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Dash" };
+            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -401,13 +510,19 @@ namespace CharacterShowcase.EditorTools
             // Measured on the mannequin, as the clips play on it: its prepared prefab if there is one yet, else the file.
             var measuringModel = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPrefabPath);
             if (measuringModel == null) { measuringModel = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath); }
-            MotionCaptureLocomotion.Result mocap = MotionCaptureLocomotion.Prepare(measuringModel);
-            if (!mocap.Succeeded)
+
+            // The Quaternius libraries' walk, jog, sprint and jump, where they're installed (see QuaterniusAnimationImporter);
+            // otherwise the mannequin's own.
+            Dictionary<string, AnimationClip> library = LoadLibraryClips();
+            bool useLibrary = library != null;
+            if (useLibrary)
             {
-                Debug.LogError($"[MannequinGenerator] Couldn't cut the animations from the motion capture: {mocap.problem} Nothing was changed.");
-                return null;
+                StandLibraryOnMannequinsFloor(measuringModel, clips["Idle"]);
+                library = LoadLibraryClips();
             }
-            foreach (string note in mocap.notes) { Debug.Log($"[MannequinGenerator] {note}"); }
+            Debug.Log(useLibrary
+                ? $"[MannequinGenerator] Using the Quaternius libraries' {string.Join(", ", library.Keys)}, with the mannequin's own clips between them."
+                : $"[MannequinGenerator] The Quaternius libraries aren't in {QuaterniusAnimationImporter.LibraryFolder}: using the mannequin's own clips.");
 
             AnimatorController controller = LoadEmptyController();
             controller.AddParameter(SpeedParameter, AnimatorControllerParameterType.Float);
@@ -419,19 +534,61 @@ namespace CharacterShowcase.EditorTools
                 defaultBool = true,
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
+            if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
 
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
 
-            // Each loop at the speed its strides are made for, so the planted feet stay put there; past the run's own
-            // speed, the run loop sped up to match, up to the top speed.
-            var locomotionChildren = new List<(Motion, float, float)>
+            // Each loop at the speed its strides are made for (measured on the mannequin), so its planted feet stay put
+            // there, from walking to sprinting. The brisk walk is also sped up to BriskWalkUpTo, so the character's
+            // default speed looks like a walk (see BriskWalkUpTo); past the fastest loop's own speed, it's sped up to
+            // match, up to the top speed. Each loop is offset to land its left foot at the same moment as the others
+            // (see TouchDownPhase), so blending between them never mixes one foot's stride with the other's.
+            (AnimationClip clip, float speed, float phase) Measure(AnimationClip clip)
             {
-                (clips["Idle"], 0f, 1f), (mocap.walk, mocap.walkSpeed, 1f), (mocap.run, mocap.runSpeed, 1f),
-            };
-            if (mocap.runSpeed < TopSpeed) { locomotionChildren.Add((mocap.run, TopSpeed, TopSpeed / mocap.runSpeed)); }
+                var loop = (clip, MotionCaptureLocomotion.StrideSpeed(measuringModel, clip), MotionCaptureLocomotion.TouchDownPhase(measuringModel, clip));
+                Debug.Log($"[MannequinGenerator] {clip.name}: strides made for {loop.Item2:0.00} m/s, left foot landing " +
+                          $"{loop.Item3:0.000} of the way through, on '{measuringModel.name}'");
+                return loop;
+            }
+            var brisk = Measure(clips["Brisk Walk"]);
+            var loops = new List<(AnimationClip clip, float speed, float playback, float phase)>();
+            void Add((AnimationClip clip, float speed, float phase) loop, float speed = 0f, float playback = 1f) =>
+                loops.Add((loop.clip, speed > 0f ? speed : loop.speed, playback, loop.phase));
+            if (useLibrary)
+            {
+                // The libraries' walk is slow and their jog (what sprinting shows) quick: the mannequin's brisk walk
+                // and run fill the speeds between.
+                Add(Measure(library["Walk_Loop"]));
+                Add(brisk);
+                Add(brisk, BriskWalkUpTo, BriskWalkUpToPlayback);
+                Add(Measure(clips["Run"]));
+                Add(Measure(library["Jog_Fwd_Loop"]));
+                var sprint = Measure(library["Sprint_Loop"]);
+                Add(sprint);
+                Add(sprint, TopSpeed, TopSpeed / sprint.speed);
+            }
+            else
+            {
+                Add(Measure(clips["Walk"]));
+                Add(brisk);
+                Add(brisk, BriskWalkUpTo, BriskWalkUpToPlayback);
+                Add(Measure(clips["Run"]));
+                var sprint = Measure(clips["Sprint"]);
+                Add(sprint);
+                Add(sprint, TopSpeed, TopSpeed / sprint.speed);
+            }
+            for (int i = 1; i < loops.Count; i++)
+            {
+                if (!(loops[i - 1].speed < loops[i].speed) || !(loops[0].speed > 0.1f))
+                {
+                    Debug.LogError("[MannequinGenerator] The locomotion speeds are out of order: " +
+                                   string.Join(", ", loops.Select(l => $"{l.clip.name} at {l.speed:0.00} m/s")) + ". Nothing was changed.");
+                    return null;
+                }
+            }
+            var locomotionChildren = new List<(Motion, float, float, float)> { (clips["Idle"], 0f, 1f, 0f) };
+            locomotionChildren.AddRange(loops.Select(l => ((Motion)l.clip, l.speed, l.playback, l.phase)));
             BlendTree locomotionTree = CreateBlendTree(controller, "Locomotion", SpeedParameter, locomotionChildren.ToArray());
-            BlendTree airborneTree = CreateBlendTree(controller, "Airborne", VerticalSpeedParameter,
-                (mocap.fall, FallThreshold, 1f), (mocap.rise, RiseThreshold, 1f));
 
             // No Foot IK on the states: on a model stretched along one axis, Unity's Foot IK puts the feet where it
             // reports their goals, which is off by the stretch (see CharacterUtilities.AnimatedIKGoalPosition). Foot
@@ -439,18 +596,85 @@ namespace CharacterShowcase.EditorTools
             AnimatorState locomotion = stateMachine.AddState("Locomotion");
             locomotion.motion = locomotionTree;
             AnimatorState airborne = stateMachine.AddState("Airborne");
-            airborne.motion = airborneTree;
             stateMachine.defaultState = locomotion;
 
-            AnimatorStateTransition takeOff = locomotion.AddTransition(airborne);
-            takeOff.hasExitTime = false;
-            takeOff.duration = 0.12f;
-            takeOff.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
+            if (useLibrary)
+            {
+                // In the air, the libraries' jump: a jump starts from its take-off (skipping its crouch, so the jump
+                // shows the moment it's pressed) and carries on into its loop; walking off an edge goes straight to
+                // the loop; landing plays the start of its landing, which hands back to walking or running as soon as
+                // the character moves.
+                airborne.motion = library["Jump_Loop"];
+                AnimationClip jumpStart = library["Jump_Start"];
+                float takeOff = 0f;
+                if (MotionCaptureLocomotion.TryFindFlight(measuringModel, jumpStart, out int takeOffFrame, out _, out _))
+                {
+                    takeOff = takeOffFrame / (jumpStart.length * jumpStart.frameRate);
+                }
+                AnimatorState jump = stateMachine.AddState("Jump");
+                jump.motion = jumpStart;
+                jump.cycleOffset = takeOff;
+                AnimatorState landing = stateMachine.AddState("Land");
+                landing.motion = library["Jump_Land"];
 
-            AnimatorStateTransition land = airborne.AddTransition(locomotion);
-            land.hasExitTime = false;
-            land.duration = 0.08f;
-            land.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+                // Any jump, from the ground or in the air, starts the jump over.
+                AnimatorStateTransition jumped = stateMachine.AddAnyStateTransition(jump);
+                jumped.hasExitTime = false;
+                jumped.duration = 0.06f;
+                jumped.canTransitionToSelf = true;
+                jumped.AddCondition(AnimatorConditionMode.If, 0f, JumpTrigger);
+
+                AnimatorStateTransition rising = jump.AddTransition(airborne);
+                rising.hasExitTime = true;
+                rising.exitTime = Mathf.Lerp(takeOff, 1f, 0.6f);
+                rising.duration = 0.2f;
+
+                AnimatorStateTransition walkedOff = locomotion.AddTransition(airborne);
+                walkedOff.hasExitTime = false;
+                walkedOff.duration = 0.15f;
+                walkedOff.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
+
+                // Landing as soon as it's on the ground and no longer rising (at the start of a jump it's still on the
+                // ground, rising). Not by exit time: the Animator only checks one of those as it passes the exit time,
+                // so a jump landing after that stayed in its jump, sinking through the floor.
+                foreach (AnimatorState inAir in new[] { airborne, jump })
+                {
+                    AnimatorStateTransition touchDown = inAir.AddTransition(landing);
+                    touchDown.hasExitTime = false;
+                    touchDown.duration = 0.06f;
+                    touchDown.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+                    touchDown.AddCondition(AnimatorConditionMode.Less, 0.5f, VerticalSpeedParameter);
+                }
+
+                AnimatorStateTransition recovered = landing.AddTransition(locomotion);
+                recovered.hasExitTime = true;
+                recovered.exitTime = LandingLength;
+                recovered.duration = 0.2f;
+                AnimatorStateTransition movedOn = landing.AddTransition(locomotion);
+                movedOn.hasExitTime = false;
+                movedOn.duration = 0.15f;
+                movedOn.AddCondition(AnimatorConditionMode.Greater, MoveOnFromLanding, SpeedParameter);
+                AnimatorStateTransition fellAgain = landing.AddTransition(airborne);
+                fellAgain.hasExitTime = false;
+                fellAgain.duration = 0.1f;
+                fellAgain.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
+            }
+            else
+            {
+                // Rising, tucked at the top, and falling, by vertical speed.
+                airborne.motion = CreateBlendTree(controller, "Airborne", VerticalSpeedParameter,
+                    (clips["Fall"], FallThreshold, 1f, 0f), (clips["Apex"], 0f, 1f, 0f), (clips["Rise"], RiseThreshold, 1f, 0f));
+
+                AnimatorStateTransition takeOff = locomotion.AddTransition(airborne);
+                takeOff.hasExitTime = false;
+                takeOff.duration = 0.12f;
+                takeOff.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
+
+                AnimatorStateTransition land = airborne.AddTransition(locomotion);
+                land.hasExitTime = false;
+                land.duration = 0.08f;
+                land.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+            }
 
             // Dash: entered from anywhere almost instantly so it feels immediate, and left for whichever of
             // Locomotion / Airborne matches the character once the dash ends.
@@ -510,7 +734,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         private static BlendTree CreateBlendTree(AnimatorController controller, string name, string parameter,
-            params (Motion motion, float threshold, float timeScale)[] children)
+            params (Motion motion, float threshold, float timeScale, float cycleOffset)[] children)
         {
             var tree = new BlendTree
             {
@@ -520,10 +744,14 @@ namespace CharacterShowcase.EditorTools
                 useAutomaticThresholds = false,
                 hideFlags = HideFlags.HideInHierarchy,
             };
-            foreach (var (motion, threshold, _) in children) { tree.AddChild(motion, threshold); }
-            // Playback speeds can only be set on the children array, which is returned by copy.
+            foreach (var (motion, threshold, _, _) in children) { tree.AddChild(motion, threshold); }
+            // Playback speeds and cycle offsets can only be set on the children array, which is returned by copy.
             ChildMotion[] motions = tree.children;
-            for (int i = 0; i < motions.Length; i++) { motions[i].timeScale = children[i].timeScale; }
+            for (int i = 0; i < motions.Length; i++)
+            {
+                motions[i].timeScale = children[i].timeScale;
+                motions[i].cycleOffset = children[i].cycleOffset;
+            }
             tree.children = motions;
             AssetDatabase.AddObjectToAsset(tree, controller);
             return tree;

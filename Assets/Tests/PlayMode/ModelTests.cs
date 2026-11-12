@@ -103,9 +103,11 @@ namespace CharacterShowcase.Tests
 
             // The character carries on as normal without an Animator.
             models.Model.SetActive(true);
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            float startZ = rig.Position.z;
+            const float walkTime = 0.3f;
+            yield return rig.Run(walkTime, _ => CharacterTestRig.Move(Vector3.forward), _ =>
                 animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime));
-            Assert.That(rig.Position.z, Is.GreaterThan(1f), "The character should still move.");
+            Assert.That(rig.Position.z - startZ, Is.GreaterThan(0.5f * rig.WalkSpeed * walkTime), "The character should still move.");
             Assert.That(animation.AnimationState.moving, Is.True, "The animation state should still be worked out.");
         }
 

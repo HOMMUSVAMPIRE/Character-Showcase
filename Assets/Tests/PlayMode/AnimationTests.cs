@@ -184,10 +184,12 @@ namespace CharacterShowcase.Tests
             var feet = animator.GetComponent<FootPlacementIK>();
             if (feet != null) { feet.weight = footPlacementWeight; }
             float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), step =>
+            // Settled first: resizing at once can drop the character onto the floor (a tenth of its size, from 4 cm
+            // up), and a landing animation crouches for most of a second before it stands.
+            yield return rig.Run(2f, _ => CharacterTestRig.Idle(), step =>
             {
                 StepAnimator(step);
-                if (step < CharacterTestRig.StepsFor(0.5f)) { return; } // Settled first.
+                if (step < CharacterTestRig.StepsFor(1.5f)) { return; }
                 float sole = LowestPointOfModel();
                 lowest = Mathf.Min(lowest, sole);
                 highest = Mathf.Max(highest, sole);
@@ -483,8 +485,8 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// The speed the walk loop is made for (measured by MotionCaptureLocomotion), so it plays on its own, unblended:
-        /// its threshold in the model's controller's Locomotion blend tree.
+        /// The speed the slowest walk loop is made for, so it plays on its own, unblended: the threshold of the first loop
+        /// in the model's controller's Locomotion blend tree played at its own pace (the one after standing).
         /// </summary>
         private float WalkLoopSpeed()
         {
@@ -493,8 +495,10 @@ namespace CharacterShowcase.Tests
             var tree = controller != null
                 ? controller.layers[0].stateMachine.states.FirstOrDefault(s => s.state.name == "Locomotion").state?.motion as UnityEditor.Animations.BlendTree
                 : null;
-            UnityEditor.Animations.ChildMotion walk = tree != null ? tree.children.FirstOrDefault(c => c.motion != null && c.motion.name == "Walk Cycle") : default;
-            if (walk.motion == null) { Assert.Ignore("The model's controller isn't the package's (no Walk Cycle in a Locomotion blend tree)."); }
+            UnityEditor.Animations.ChildMotion walk = tree != null
+                ? tree.children.FirstOrDefault(c => c.motion != null && c.threshold > 0f && Mathf.Approximately(c.timeScale, 1f))
+                : default;
+            if (walk.motion == null) { Assert.Ignore("The model's controller isn't the package's (no walk loop in a Locomotion blend tree)."); }
             return walk.threshold;
 #else
             Assert.Ignore("Reads the controller in the editor.");
@@ -551,9 +555,10 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// The clips lean the torso a little forward, more the faster the character goes: about 1 degree standing, 5
-        /// walking and 11 running. Every model should lean the same way. A model whose avatar was made from a posed
-        /// skeleton (or that plays clips stored relative to one) leans tens of degrees off instead.
+        /// The clips lean the torso a little forward: about 1 degree standing, 12 walking (the Quaternius walk carries
+        /// the head forward) and 2 at the default speed. Every model should lean about the same way. A model whose
+        /// avatar was made from a posed skeleton (or that plays clips stored relative to one) leans tens of degrees off
+        /// instead, so the range is wide enough for the clips' own carriage and narrow enough to catch that.
         /// </summary>
         [UnityTest]
         public IEnumerator EveryModel_KeepsItsTorsoUpright([ValueSource(nameof(PreparedModels))] string path)
@@ -575,7 +580,7 @@ namespace CharacterShowcase.Tests
                 });
                 lean /= samples;
                 TestContext.WriteLine($"Torso lean {activity}: {lean:0.0} degrees forward.");
-                Assert.That(lean, Is.InRange(-3f, 12f), $"While {activity}, the torso leans {lean:0} degrees forward (negative is backward).");
+                Assert.That(lean, Is.InRange(-5f, 20f), $"While {activity}, the torso leans {lean:0} degrees forward (negative is backward).");
             }
         }
     }

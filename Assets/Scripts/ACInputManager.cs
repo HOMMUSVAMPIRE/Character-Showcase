@@ -33,6 +33,7 @@ namespace Character
                 movementVector = Vector3.zero,
                 jump = new(),
                 dash = new(),
+                sprint = new(),
             };
         }
 
@@ -59,6 +60,7 @@ namespace Character
                 movementVector = moveVector,
                 jump = jump,
                 dash = ReadButton("Dash", inputs.dash),
+                sprint = ReadButton("Sprint", inputs.sprint),
             };
 
             inputs = newInputs;

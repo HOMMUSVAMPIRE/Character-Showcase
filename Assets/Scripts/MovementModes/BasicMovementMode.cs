@@ -10,9 +10,9 @@ namespace Character
     public class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode
     {
         [Header("Speed")]
-        [Tooltip("How fast the character moves by default")]
+        [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
         [SerializeField] private float walkSpeed;
-        [Tooltip("How fast the character moves when sprinting (not yet implemented)")]
+        [Tooltip("How fast (m/s) the character moves while the Sprint button is held, at its authored size. At or below Walk Speed, sprinting does nothing.")]
         [SerializeField] private float runSpeed;
 
         [Header("Jumping")]
@@ -276,7 +276,7 @@ namespace Character
             // if there is any input and we can move, Move the character at their walking speed in the direction of their input, relative to the camera. Face the direction they are moving.
             if (inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0)
             {
-                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * steeringEffectiveness * walkSpeed * controller.SpeedScale * Time.fixedDeltaTime;
+                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * steeringEffectiveness * MoveSpeed(inputs) * controller.SpeedScale * Time.fixedDeltaTime;
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(movementData.directMovementVector.sqrMagnitude > 0 ? movementData.directMovementVector : movementData.initialRotation * Vector3.forward, Vector3.up), steeringEffectiveness);
             }
 
@@ -284,11 +284,14 @@ namespace Character
             movementData.state = movementData.state | CharacterState.Moving;
         }
 
+        /// <summary>The speed to move at for these inputs: the run speed while sprinting, otherwise the walk speed (see WalkRunMode.MoveSpeed).</summary>
+        private float MoveSpeed(Inputs inputs) => ((WalkRunMode)this).MoveSpeed(inputs);
+
         /// <summary>
         /// Steers the character's horizontal momentum in the air. Rather than adding walking movement on top of the
         /// momentum carried off the ground (which would double the character's speed), the horizontal velocity is
-        /// accelerated toward the steering input at walking speed. Any speed beyond walking speed in the steering
-        /// direction is kept (e.g. from a dash jump), and with no input the character slowly loses speed.
+        /// accelerated toward the steering input at walking speed (or running speed, while sprinting). Any speed beyond
+        /// that in the steering direction is kept (e.g. from a dash jump), and with no input the character slowly loses speed.
         /// </summary>
         /// <param name="movementData"></param>
         /// <param name="inputs"></param>
@@ -306,7 +309,7 @@ namespace Character
             {
                 steerDirection /= steerDirection.magnitude;
                 float speedAlongInput = Vector2.Dot(velocity, steerDirection);
-                Vector2 target = steerDirection * Mathf.Max(walkSpeed * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
+                Vector2 target = steerDirection * Mathf.Max(MoveSpeed(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
                 velocity = Vector2.MoveTowards(velocity, target, airAcceleration * controller.AccelerationScale * steeringEffectiveness * movementData.deltaTime);
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(steer, Vector3.up), steeringEffectiveness);
             }

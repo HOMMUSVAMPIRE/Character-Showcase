@@ -524,8 +524,13 @@ namespace CharacterShowcase.EditorTools
             }
             if (importer.animationType != ModelImporterAnimationType.Human)
             {
+                // A model being set up for the first time. Its axis conversion is baked in, so its skeleton isn't hung
+                // under a node turned to convert axes: straightening such a node (StraightenAboveSkeleton) didn't put
+                // Quaternius's female mannequin's avatar in a T-pose, and every animation held her arms overhead.
+                // (Models already set up keep their setting.)
                 importer.animationType = ModelImporterAnimationType.Human;
                 importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+                importer.bakeAxisConversion = true;
                 changed = true;
             }
             Set(importer.importCameras, false, v => importer.importCameras = v);
@@ -550,7 +555,7 @@ namespace CharacterShowcase.EditorTools
         /// lean or twist on every other one.
         /// Returns whether the reference pose changed.
         /// </summary>
-        private static bool EnforceTPose(ModelImporter importer, string modelPath)
+        public static bool EnforceTPose(ModelImporter importer, string modelPath)
         {
             // Unity maps the bones automatically on import without saving the mapping, so read it from the avatar.
             HumanDescription description = importer.humanDescription;

@@ -90,6 +90,8 @@ namespace CharacterShowcase.Tests
         public float MaxSlopeAngle => Movement.MaxSlopeAngle;
         /// <summary>The character's walking speed in m/s at full stick (WalkRunMode), at its size.</summary>
         public float WalkSpeed => Mode<WalkRunMode>().walkSpeed * Movement.SpeedScale;
+        /// <summary>The character's sprinting speed (its run speed) at its current size.</summary>
+        public float RunSpeed => Mode<WalkRunMode>().runSpeed * Movement.SpeedScale;
         /// <summary>Seconds to walk the given distance at full stick, plus a margin for speeding up and settling.</summary>
         public float SecondsToWalk(float metres, float margin = 0.5f) => metres / WalkSpeed + margin;
 
@@ -204,6 +206,19 @@ namespace CharacterShowcase.Tests
             jump = new InputButton(),
             dash = new InputButton(),
         };
+
+        /// <summary>Movement input in world space with Sprint held (on the given step of the press; 0 = the step it was pressed).</summary>
+        public static Inputs Sprint(Vector3 direction, int heldSteps = 1)
+        {
+            Inputs inputs = Move(direction);
+            inputs.sprint = new InputButton
+            {
+                value = true,
+                justPressed = heldSteps == 0,
+                holdDuration = heldSteps * Time.fixedDeltaTime,
+            };
+            return inputs;
+        }
 
         /// <summary>Jump held for the given step of the press (0 = the step it was pressed).</summary>
         public static Inputs Jump(int heldSteps, Vector3 direction = default)

@@ -216,7 +216,7 @@ namespace CharacterShowcase.EditorTools
         /// A jump's flight, in frames of the clip, played on the model: the longest stretch with both feet off the ground
         /// (each toe more than a few centimetres above the lowest it gets), and the top of it, where the hips are highest.
         /// </summary>
-        private static bool TryFindFlight(GameObject model, AnimationClip clip, out int takeOff, out int top, out int landing)
+        public static bool TryFindFlight(GameObject model, AnimationClip clip, out int takeOff, out int top, out int landing)
         {
             takeOff = top = landing = 0;
             float fps = clip.frameRate;
@@ -335,6 +335,50 @@ namespace CharacterShowcase.EditorTools
             if (clips.Length == 0 || !clips.Skip(1).Any(c => unwanted.Contains(c.name))) { return; }
             importer.clipAnimations = clips.Take(1).Concat(clips.Skip(1).Where(c => !unwanted.Contains(c.name))).ToArray();
             importer.SaveAndReimport();
+        }
+
+        // ---- Floor ----
+
+        /// <summary>
+        /// How high (m) a clip's lowest foot gets, played on the model: the lowest its ankles or toe joints get over the
+        /// clip. For a clip with a planted foot, that's where it plants it: the clip's floor, as the model plays it.
+        /// </summary>
+        public static float LowestFoot(GameObject model, AnimationClip clip)
+        {
+            const int samples = 120;
+            Vector3[][] p = SampleBones(model, clip, Enumerable.Range(0, samples).Select(i => clip.length * i / samples).ToArray(),
+                HumanBodyBones.LeftFoot, HumanBodyBones.LeftToes, HumanBodyBones.RightFoot, HumanBodyBones.RightToes);
+            return p == null ? 0f : p.Min(bone => bone.Min(v => v.y));
+        }
+
+        // ---- Phase ----
+
+        /// <summary>
+        /// When, as a fraction of a looping clip (0 to 1), its left foot touches down, played on the model: the start of
+        /// the longest stretch (wrapping round the loop) with its toe or ankle within a couple of centimetres of the lowest
+        /// they get and moving back under the body, as a planted foot does. (A swinging foot moves forward, however low it
+        /// skims, and the longest stretch is the stance, not a brief skim.) Blend trees
+        /// offset each loop by this, so every loop lands its left foot at the same moment and blending between them
+        /// doesn't mix one foot's stride with the other's.
+        /// </summary>
+        public static float TouchDownPhase(GameObject model, AnimationClip clip)
+        {
+            const int samples = 240;
+            Vector3[][] p = SampleBones(model, clip, Enumerable.Range(0, samples).Select(i => clip.length * i / samples).ToArray(),
+                HumanBodyBones.LeftFoot, HumanBodyBones.LeftToes);
+            if (p == null) { return 0f; }
+            float lowestAnkle = p[0].Min(v => v.y), lowestToe = p[1].Min(v => v.y);
+            bool Down(int i) => Mathf.Min(p[0][i].y - lowestAnkle, p[1][i].y - lowestToe) < 0.02f
+                                && p[0][(i + 1) % samples].z < p[0][i].z;
+            int bestStart = -1, bestLength = 0;
+            for (int i = 0; i < samples; i++)
+            {
+                if (!Down(i) || Down((i + samples - 1) % samples)) { continue; }
+                int length = 1;
+                while (length < samples && Down((i + length) % samples)) { length++; }
+                if (length > bestLength) { bestStart = i; bestLength = length; }
+            }
+            return bestStart < 0 ? 0f : (float)bestStart / samples;
         }
 
         // ---- Stride speed ----

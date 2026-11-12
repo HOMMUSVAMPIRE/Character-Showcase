@@ -1,1 +1,2 @@
 Assets/Animation/CMU/**/*.fbx filter=lfs diff=lfs merge=lfs -text
+Assets/Animation/Quaternius/**/*.fbx filter=lfs diff=lfs merge=lfs -text

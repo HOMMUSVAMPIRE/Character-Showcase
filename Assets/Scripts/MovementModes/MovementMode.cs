@@ -20,11 +20,18 @@ namespace Character
         public abstract float walkSpeed { get; set; }
         public abstract float runSpeed { get; set; }
 
+        /// <summary>
+        /// The speed to move at for these inputs, at full movement input and the character's authored size: the run
+        /// speed while Sprint is held (if there is one, faster than walking), otherwise the walk speed.
+        /// </summary>
+        public float MoveSpeed(Inputs inputs) =>
+            inputs.sprint != null && inputs.sprint.value && runSpeed > walkSpeed ? runSpeed : walkSpeed;
+
         public virtual void ProcessMovementDataForWalk(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (inputs.movementVector.sqrMagnitude > 0.001f)
             {
-                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * walkSpeed * Time.fixedDeltaTime;
+                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * MoveSpeed(inputs) * Time.fixedDeltaTime;
                 movementData.targetRotation = Quaternion.LookRotation(movementData.directMovementVector.sqrMagnitude > 0 ? movementData.directMovementVector : movementData.initialRotation * Vector3.forward, Vector3.up);
             }
             movementData.state = movementData.state | CharacterState.Moving;

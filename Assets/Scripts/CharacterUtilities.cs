@@ -134,6 +134,8 @@ namespace Character
         public Vector3 movementVector;
         public InputButton jump;
         public InputButton dash;
+        // Held to move at the movement mode's run speed instead of its walk speed. May be null (never sprinting).
+        public InputButton sprint;
     }
 
     /// <summary>

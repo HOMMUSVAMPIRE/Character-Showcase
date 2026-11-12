@@ -1,5 +1,5 @@
 """
-Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Rise, Fall and Dash.
+Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall and Dash.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -252,72 +252,132 @@ def idle(p):
     return pose
 
 
-def swinging_arms(lower, swing, forward_bias, elbow, elbow_forward):
-    """Arms swinging opposite the legs: the left arm is back while the left foot is planted in front (p = 0).
-    The elbow bends further as each arm comes forward."""
+def swinging_arms(lower, swing, forward_bias, elbow, elbow_forward, phase=0.0):
+    """Arms swinging opposite the legs: the left arm is furthest back at p = phase (by default while the left foot is
+    planted in front, p = 0), as the left thigh is furthest forward. The elbow bends further as each arm comes forward."""
     def apply(pose, p):
-        c = math.cos(TAU * p)
+        c = math.cos(TAU * (p - phase))
         arms(pose, "Left", lower=lower, swing=swing * c - forward_bias, elbow=elbow + elbow_forward * positive(-c))
         arms(pose, "Right", lower=lower, swing=-swing * c - forward_bias, elbow=elbow + elbow_forward * positive(c))
     return apply
 
 
-# Walking: each foot is planted 60% of the time, so both are down together briefly after each step. The hips are
-# highest as they pass over the planted foot and lowest while both feet are down.
-WALK_STANCE = 0.6
-walk = Gait(
-    speed=1.6, stance=WALK_STANCE, contact_y=-0.28, push_off_y=0.42,
-    # Heel strike with the toes up, flat through the step, heel lifting into push-off, toes clearing the ground.
-    foot_keys=[(0.0, -14.0), (0.08, 0.0), (0.38, 0.0), (0.5, 9.0), (0.6, 30.0), (0.68, 24.0), (0.8, 2.0),
-               (0.92, -10.0)],
-    # (q, thigh, knee): knee bends most just after push-off, then the leg reaches forward to straighten for the step.
-    swing_keys=[(0.7, -6.0, 60.0), (0.8, -22.0, 54.0), (0.9, -28.0, 20.0)],
-    hips_height=lambda p: -0.04 + 0.014 * math.cos(2.0 * TAU * (p - WALK_STANCE / 2.0)),
-    torso=lambda pose, p: torso(pose, hips_twist=-6.0 * math.cos(TAU * p), spine_lean=3.0,
-                                chest_twist=5.0 * math.cos(TAU * p), head_turn=-1.0 * math.cos(TAU * p)),
-    arms=swinging_arms(lower=78.0, swing=18.0, forward_bias=3.0, elbow=12.0, elbow_forward=10.0),
-)
+def walking(speed, stance, contact_y, push_off_y, arm_swing, hips_bob, hips_low, swing_knee, reach):
+    """
+    A walk at the given ground speed, in the style of the walk reference: upright, a long reaching step landing on the
+    heel, the trailing foot rolling up onto its toes to push off, the swinging knee bending about 50 degrees as it
+    passes, and the arms swinging from the shoulders opposite the legs with the elbows soft. Faster walks take longer
+    steps and swing the arms further.
+    """
+    return Gait(
+        speed=speed, stance=stance, contact_y=contact_y, push_off_y=push_off_y,
+        # Heel strike with the toes up, flat through the step, heel lifting into push-off, toes clearing the ground,
+        # then the foot coming level and the toes lifting to reach for the next heel strike.
+        foot_keys=[(0.0, -16.0), (0.08, 0.0), (stance - 0.22, 0.0), (stance - 0.08, 12.0), (stance, 32.0),
+                   (stance + 0.08, 26.0), (stance + 0.22, 2.0), (0.92, -12.0)],
+        # (q, thigh, knee): the knee bends most just after push-off, then the leg swings through and straightens. (The
+        # lower the hips ride, the more the knee must bend for the swinging foot to clear the ground.)
+        swing_keys=[(stance + 0.08, -2.0, swing_knee), (stance + 0.2, -22.0, swing_knee - 4.0), (0.9, *reach)],
+        # The hips ride lower in faster walks, for the leg to reach further.
+        hips_height=lambda p: -hips_low + hips_bob * math.cos(2.0 * TAU * (p - stance / 2.0)),
+        torso=lambda pose, p: torso(pose, hips_twist=-6.0 * math.cos(TAU * p), spine_lean=3.0,
+                                    chest_twist=6.0 * math.cos(TAU * p), head_lean=-2.0),
+        # Each arm furthest forward as the opposite foot lands, the elbow bending a little more as it comes forward.
+        arms=swinging_arms(lower=87.0, swing=arm_swing, forward_bias=0.0, elbow=12.0, elbow_forward=12.0),
+    )
 
-# Running: each foot is planted only briefly, with the body in the air between steps. The hips dip as each foot
-# takes the landing and rise through the flight.
-RUN_STANCE = 0.16
+
+# Walking, at an everyday pace (about two steps a second), and briskly, for the character's default speed: longer
+# steps and a quicker pace, with the arms swinging further. Each foot is down a little over half the time, so both
+# are down together briefly after each step; the hips are highest as they pass over the planted foot.
+walk = walking(speed=1.3, stance=0.62, contact_y=-0.33, push_off_y=0.44, arm_swing=15.0, hips_bob=0.016, hips_low=0.045,
+               swing_knee=54.0, reach=(-28.0, 14.0))
+brisk_walk = walking(speed=2.2, stance=0.58, contact_y=-0.38, push_off_y=0.52, arm_swing=22.0, hips_bob=0.018, hips_low=0.07,
+                     swing_knee=66.0, reach=(-35.0, 36.0))
+
+# Running, in the style of the run reference, for a steady run (about three steps a second): upright with a slight
+# lean, each foot down for a little over a quarter of the cycle with flight between steps, landing under the knee,
+# the heel kicking up behind until the shin is level, the knee driving forward to about 50 degrees, and the arms
+# swinging fully front and back with the elbows at about a right angle. The hips dip as each foot takes the landing.
+RUN_STANCE = 0.27
 run = Gait(
-    speed=10.0, stance=RUN_STANCE, contact_y=-0.24, push_off_y=0.42,
-    # Landing almost flat, pushing off through the toes, then the foot trailing toes-down and coming through level.
-    foot_keys=[(0.0, 2.0), (0.08, 4.0), (0.16, 32.0), (0.26, 48.0), (0.45, 55.0), (0.65, 30.0), (0.85, 4.0),
-               (0.94, -2.0)],
-    # (q, thigh, knee): the heel kicks up behind, the knee drives forward and high, then the leg reaches for the ground.
-    swing_keys=[(0.26, 16.0, 62.0), (0.45, -8.0, 118.0), (0.65, -42.0, 108.0), (0.8, -54.0, 62.0),
-                (0.92, -38.0, 26.0)],
-    hips_height=lambda p: -0.03 - 0.028 * math.cos(2.0 * TAU * (p - RUN_STANCE / 2.0)),
-    torso=lambda pose, p: torso(pose, hips_twist=-9.0 * math.cos(TAU * p), spine_lean=10.0,
-                                chest_twist=10.0 * math.cos(TAU * p), head_lean=-8.0),
-    # Elbows held at about a right angle, hands rising to chest height in front and passing the hips behind.
-    arms=swinging_arms(lower=80.0, swing=38.0, forward_bias=-5.0, elbow=70.0, elbow_forward=14.0),
+    speed=3.9, stance=RUN_STANCE, contact_y=-0.27, push_off_y=0.44,
+    foot_keys=[(0.0, 2.0), (0.08, 4.0), (0.18, 22.0), (0.27, 40.0), (0.38, 55.0), (0.55, 38.0), (0.75, 6.0),
+               (0.9, -6.0)],
+    # (q, thigh, knee): the heel kicks up behind, the knee drives forward, then the shin reaches out to land.
+    swing_keys=[(0.36, 20.0, 60.0), (0.5, 0.0, 112.0), (0.65, -32.0, 104.0), (0.78, -48.0, 64.0), (0.9, -34.0, 26.0)],
+    hips_height=lambda p: -0.045 - 0.03 * math.cos(2.0 * TAU * (p - RUN_STANCE / 2.0)),
+    torso=lambda pose, p: torso(pose, hips_lean=6.0, hips_twist=-8.0 * math.cos(TAU * p), spine_lean=18.0,
+                                chest_twist=10.0 * math.cos(TAU * p), head_lean=-20.0),
+    arms=swinging_arms(lower=86.0, swing=38.0, forward_bias=4.0, elbow=84.0, elbow_forward=14.0, phase=-0.1),
 )
 
+# Sprinting, in the style of the sprint reference, for the character's sprint (its run speed), about 3.6 steps a
+# second: driving forward, the trunk leaning about 25 degrees with the head up, the hips lower, each foot down about
+# a fifth of the cycle on the forefoot, landing under the body, the trailing leg straightening right out behind at
+# push-off, the heel folding up under the hips and the knee driving up to about 70 degrees in front, and the arms
+# pumping hard from the shoulders, elbows near a right angle in front and opening behind.
+SPRINT_STANCE = 0.22
+sprint = Gait(
+    # (Its strides measure about 6% slower in Unity, on the toes rather than the pivots planted here: 5.84 here makes
+    # them 5.5 m/s there.)
+    speed=5.84, stance=SPRINT_STANCE, contact_y=-0.22, push_off_y=0.48,
+    # Landing on the forefoot nearly level, rolling up onto the toes to push off, the foot trailing toes-down as the
+    # heel folds up, then coming through level and reaching forward toes-up.
+    foot_keys=[(0.0, 4.0), (0.06, 8.0), (0.14, 26.0), (0.22, 48.0), (0.32, 62.0), (0.5, 42.0), (0.7, 8.0),
+               (0.86, -8.0), (0.95, 0.0)],
+    # (q, thigh, knee): leaving the ground stretched out behind, the heel folds up under the hips, the knee drives
+    # forward and high, and the shin reaches out under the knee to land.
+    swing_keys=[(0.3, 26.0, 40.0), (0.42, 6.0, 104.0), (0.55, -32.0, 124.0), (0.68, -64.0, 100.0), (0.8, -68.0, 58.0),
+                (0.9, -46.0, 26.0)],
+    hips_height=lambda p: -0.06 - 0.03 * math.cos(2.0 * TAU * (p - SPRINT_STANCE / 2.0)),
+    torso=lambda pose, p: torso(pose, hips_lean=14.0, hips_twist=-9.0 * math.cos(TAU * p), spine_lean=28.0,
+                                chest_twist=12.0 * math.cos(TAU * p), head_lean=-38.0),
+    # Each arm furthest back just before its foot lands, as its thigh is furthest forward (as the motion capture does).
+    arms=swinging_arms(lower=86.0, swing=56.0, forward_bias=4.0, elbow=72.0, elbow_forward=26.0, phase=-0.1),
+)
+
+
+# Jumping, after the jump reference: rising, the body stretched out from the take-off with the arms flung up; at the
+# top, tucked, the knees pulled up and the fists up by the head; falling, stretched out again, the arms raised and
+# the legs reaching down for the ground. The Animator blends them by vertical speed. Each holds still but for a
+# little drift, so it doesn't freeze.
 
 def rise(p):
     pose = Pose()
     w = math.sin(TAU * p)
-    torso(pose, spine_lean=6.0, chest_lean=-4.0, head_lean=-6.0, chest_twist=3.0)
-    legs(pose, "Left", thigh=-62.0 + 3.0 * w, knee=95.0, foot=20.0)
-    legs(pose, "Right", thigh=8.0 - 3.0 * w, knee=38.0, foot=30.0)
-    # Arms opposite the legs, as if carried up from a running stride: the right arm drives up in front.
-    arms(pose, "Left", lower=72.0, swing=28.0, elbow=35.0)
-    arms(pose, "Right", lower=68.0 + 2.0 * w, swing=-48.0, elbow=62.0)
+    # Leaning into the jump, the legs trailing straight behind from the push-off, toes pointed.
+    torso(pose, hips_lean=10.0, spine_lean=8.0, chest_lean=-2.0, head_lean=-6.0)
+    legs(pose, "Left", thigh=18.0 + 2.0 * w, knee=10.0, foot=48.0)
+    legs(pose, "Right", thigh=30.0 - 2.0 * w, knee=22.0, foot=52.0)
+    # Arms flung up overhead, a little bent, one ahead of the other.
+    arms(pose, "Left", lower=80.0, swing=-150.0 + 3.0 * w, elbow=30.0)
+    arms(pose, "Right", lower=80.0, swing=-162.0 - 3.0 * w, elbow=24.0)
+    return pose
+
+
+def apex(p):
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=18.0, spine_lean=16.0, chest_lean=6.0, head_lean=-20.0)
+    legs(pose, "Left", thigh=-88.0 + 2.0 * w, knee=128.0, foot=30.0)
+    legs(pose, "Right", thigh=-76.0 - 2.0 * w, knee=120.0, foot=36.0)
+    # Fists up by the head, elbows bent hard.
+    arms(pose, "Left", lower=72.0, swing=-112.0 + 3.0 * w, elbow=110.0)
+    arms(pose, "Right", lower=72.0, swing=-100.0 - 3.0 * w, elbow=104.0)
     return pose
 
 
 def fall(p):
     pose = Pose()
     w = math.sin(TAU * p)
-    torso(pose, spine_lean=-4.0, chest_lean=2.0, head_lean=4.0)
-    legs(pose, "Left", thigh=-24.0 + 4.0 * w, knee=32.0, foot=8.0)
-    legs(pose, "Right", thigh=-10.0 - 4.0 * w, knee=22.0, foot=12.0)
-    # Arms raised out and a little forward for balance, elbows soft. (Much higher reads as the T-pose.)
-    arms(pose, "Left", lower=48.0 - 5.0 * w, swing=-15.0, elbow=30.0, shoulder_lift=5.0)
-    arms(pose, "Right", lower=48.0 + 5.0 * w, swing=-15.0, elbow=30.0, shoulder_lift=5.0)
+    torso(pose, hips_lean=-6.0, spine_lean=-6.0, chest_lean=-2.0, head_lean=10.0)
+    # Legs reaching forward and down for the ground, one ahead of the other, knees soft, toes pointing down.
+    legs(pose, "Left", thigh=-24.0 + 3.0 * w, knee=12.0, foot=18.0)
+    legs(pose, "Right", thigh=-6.0 - 3.0 * w, knee=24.0, foot=24.0)
+    # Arms flung up and open above the head, as if caught by the fall.
+    arms(pose, "Left", lower=30.0 - 4.0 * w, swing=-172.0, elbow=18.0)
+    arms(pose, "Right", lower=46.0 + 4.0 * w, swing=-158.0, elbow=26.0)
     return pose
 
 
@@ -334,13 +394,17 @@ def dash(p):
     return pose
 
 
-# name -> (pose function, duration in seconds). Walk and Run take their durations from their ground speeds, which
-# match the speeds the Animator blend tree uses (Walk at 1.6 m/s, Run at 10 m/s), so the planted feet don't slide.
+# name -> (pose function, duration in seconds). Walk, Run and Sprint take their durations from their ground speeds, so
+# their planted feet don't slide at those speeds. Of them, the Animator's blend tree uses only Sprint, at the speed its
+# strides measure in Unity (MannequinGenerator); the walk and run there are the motion capture's.
 CLIPS = {
     "Idle": (idle, 3.0),
     "Walk": (walk, walk.duration),
+    "Brisk Walk": (brisk_walk, brisk_walk.duration),
     "Run": (run, run.duration),
+    "Sprint": (sprint, sprint.duration),
     "Rise": (rise, 1.0),
+    "Apex": (apex, 1.0),
     "Fall": (fall, 0.6),
     "Dash": (dash, 0.4),
 }

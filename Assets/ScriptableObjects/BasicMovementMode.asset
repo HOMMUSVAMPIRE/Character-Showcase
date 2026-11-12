@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: BasicMovementMode
   m_EditorClassIdentifier: 
   maxJumps: 2
-  walkSpeed: 10
-  runSpeed: 20
+  walkSpeed: 3
+  runSpeed: 5.8
   jumpStrength: 15
   jumpStrengthCurve:
     serializedVersion: 2

@@ -153,10 +153,19 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
 
 - **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton reading the `Player` action
   map) → `Inputs` / `InputButton` (in `CharacterUtilities.cs`) → `MovementController.ProcessMovementInputs`. The
-  action map already defines `Sprint`, `Crouch`, `Attack` and `Interact`, which nothing reads yet. New
+  action map also defines `Crouch`, `Attack` and `Interact`, which nothing reads yet. New
   buttons are read inside `ACInputManager` with its private `ReadButton` helper, the way `Dash` is. Camera input
   is read separately by `CameraSystem/CameraInputReader`.
-- **Sprint** is stubbed: `runSpeed` exists on `WalkRunMode` / `BasicMovementMode` but isn't used.
+- **Sprint** is `Inputs.sprint` (read like `Dash`), held to move at `runSpeed` instead of `walkSpeed`:
+  `WalkRunMode.MoveSpeed(inputs)` picks the speed, for walking and air steering alike. The speeds suit the
+  animations (README, "Walking and Sprinting"): sprinting shows the Quaternius jog at its measured 5.79 m/s, and
+  the Locomotion blend tree's speeds are each loop's measured strides plus `MannequinGenerator`'s `BriskWalkUpTo`,
+  so retune them together. The in-between gaits (`brisk_walk`, `run`) and the fallback clips are in
+  `Tools/Mannequin/mannequin_animations.py`; after changing them, regenerate the mannequin with Blender.
+- **Quaternius clips** (`Assets/Animation/Quaternius`, CC0, LFS) are prepared by `QuaterniusAnimationImporter`
+  and found with `QuaterniusAnimationImporter.FindClip("Walk_Loop")`. Generate Mannequin stores their root height
+  offsets (a positive `heightOffset` lowers a clip) so they share the mannequin's floor: don't hand-edit them.
+  Without the libraries the generator falls back to the mannequin's own clips.
 - **Known couplings that block NPCs:** `MovementController.cameraTransform` uses `Camera.main`, and
   `ACCharacterController` reads `ACInputManager.instance`. `ACCharacterController.Setup` and `UpdateCaches` are empty
   placeholders.
