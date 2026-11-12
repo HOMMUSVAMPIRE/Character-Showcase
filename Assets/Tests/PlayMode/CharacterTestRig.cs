@@ -55,6 +55,14 @@ namespace CharacterShowcase.Tests
             Character.GetComponent<ACCharacterController>().enabled = false;
             Movement = Character.GetComponent<MovementController>();
             Body = Character.GetComponent<Rigidbody>();
+            // The character moves with its own copy of its movement mode, so a test can change settings on it (see
+            // SetMovementSetting) without changing the asset: in the editor, a change to the asset itself would stay.
+            // The copy starts from the asset, so the tests still check the movement as it's tuned.
+            if (Movement.movementHandler != null)
+            {
+                Movement.movementHandler = Object.Instantiate(Movement.movementHandler);
+                created.Add(Movement.movementHandler);
+            }
         }
 
         /// <summary>The character prefab the tests run on: a CharacterTestSettings asset's, or the package's own.</summary>
@@ -263,6 +271,21 @@ namespace CharacterShowcase.Tests
                 Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
             }
             return (T)field.GetValue(handler);
+        }
+
+        /// <summary>
+        /// Changes a setting on the character's movement mode by name, for this test only: the mode is the rig's own copy
+        /// of the asset (see SpawnCharacter). Ignores the test if the mode has no such setting, as MovementSetting does.
+        /// </summary>
+        public void SetMovementSetting<T>(string fieldName, T value)
+        {
+            object handler = Movement.movementHandler;
+            FieldInfo field = handler?.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (field == null || field.FieldType != typeof(T))
+            {
+                Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
+            }
+            field.SetValue(handler, value);
         }
 
         public void Dispose()

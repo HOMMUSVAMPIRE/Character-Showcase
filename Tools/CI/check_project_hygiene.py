@@ -8,7 +8,8 @@ Checks:
   1. Every file and folder under Assets/ has a .meta, and every .meta has its asset (no orphans).
   2. No two .meta files share a GUID (copy-pasted .meta files break references silently).
   3. The CameraSystem assembly stays independent of the character code.
-  4. Every serialized field the tests read by name (rig.MovementSetting<T>("name")) still exists.
+  4. Every serialized field the tests read or set by name (rig.MovementSetting<T>("name"),
+     rig.SetMovementSetting("name", value)) still exists.
 """
 import json
 import os
@@ -70,11 +71,11 @@ def check_reflected_settings():
     mode = ASSETS / "Scripts" / "MovementModes" / "BasicMovementMode.cs"
     source = mode.read_text(errors="replace")
     for test in (ASSETS / "Tests").rglob("*.cs"):
-        for name in set(re.findall(r'MovementSetting<\w+>\("(\w+)"\)', test.read_text(errors="replace"))):
+        for name in set(re.findall(r'MovementSetting(?:<\w+>)?\("(\w+)"', test.read_text(errors="replace"))):
             # A field declaration: "<type> name;" or "<type> name = ..."
             if not re.search(rf"\b\w[\w<>\[\],]*\s+{name}\s*(=|;)", source):
                 problems.append(
-                    f"{test.relative_to(ROOT)} reads BasicMovementMode field '{name}' by reflection, "
+                    f"{test.relative_to(ROOT)} reads or sets BasicMovementMode field '{name}' by reflection, "
                     f"but no such field is declared in {mode.relative_to(ROOT)}"
                 )
 

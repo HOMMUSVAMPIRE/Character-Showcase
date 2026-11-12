@@ -106,9 +106,10 @@ own each of these files at a time; others should wait or work elsewhere.
 - Renaming a serialized field (anything with `[SerializeField]` or public on a MonoBehaviour/ScriptableObject)
   silently drops its saved value in every asset, prefab and scene. If a rename is really needed, add
   `[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`.
-- The tests read these `BasicMovementMode` fields **by name through reflection**, so renaming them compiles fine but
-  fails at runtime: `walkSpeed`, `gravityStrength`, `coyoteTime`, `maxJumps`, `dashSpeed`, `dashDuration`,
-  `dashCooldown`, `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`.
+- The tests read and set these `BasicMovementMode` fields **by name through reflection**, so renaming them compiles
+  fine but fails at runtime: `walkSpeed`, `runSpeed`, `gravityStrength`, `maxFallSpeed`, `coyoteTime`, `maxJumps`,
+  `jumpInputBuffer`, `dashSpeed`, `dashDuration`, `dashSpeedCurve`, `dashEndSpeedRetention`, `dashCooldown`,
+  `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`. The hygiene check catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -196,7 +197,9 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
   basements) are cut from the ground slab through each builder's `GroundOpenings`.
 - **Test rig:** `CharacterTestRig` spawns the real Character prefab, disables `ACCharacterController`, and calls the
   `MovementController` directly once per physics step with scripted inputs (`Idle()`, `Dash(...)`, etc.). It runs
-  at 4x time scale with unchanged physics step size. Add helpers there rather than duplicating setup in tests.
+  at 4x time scale with unchanged physics step size. The spawned character moves with the rig's own copy of its
+  movement mode (destroyed with the rig): change settings for a test with `rig.SetMovementSetting("fieldName", value)`,
+  never on the asset. `EdgeCaseTuningTests` covers extreme settings. Add helpers there rather than duplicating setup in tests.
 
 ## Code style
 

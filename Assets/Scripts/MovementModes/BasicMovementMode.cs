@@ -48,7 +48,7 @@ namespace Character
         [Header("Dashing")]
         [Tooltip("How fast the character moves during a dash")]
         [SerializeField] private float dashSpeed = 30f;
-        [Tooltip("How long a dash lasts, in seconds")]
+        [Tooltip("How long a dash lasts, in seconds. 0 turns dashing off")]
         [SerializeField] private float dashDuration = 0.15f;
         [Tooltip("A curve over the dash (0 = start, 1 = end) scaling its speed, so a dash can burst out and ease off")]
         [SerializeField] private AnimationCurve dashSpeedCurve = AnimationCurve.Linear(0f, 1f, 1f, 0.75f);
@@ -174,7 +174,9 @@ namespace Character
             DashState dash = controller.dash;
             bool pressed = inputs.dash != null && inputs.dash.value && !dash.pressConsumed && inputs.dash.holdDuration <= dashInputBuffer;
             bool hasAirDash = data.initialGrounded || dash.airDashesUsed < maxAirDashes;
-            return pressed && !dash.IsDashing && dash.cooldownRemaining <= 0f && hasAirDash;
+            // A dash with no length would start (raising DashStarted, using the cooldown and an air dash) and be over
+            // before its first step, so it would never raise DashEnded: no length means no dashing.
+            return pressed && dashDuration > 0f && !dash.IsDashing && dash.cooldownRemaining <= 0f && hasAirDash;
         }
 
         /// <summary>
