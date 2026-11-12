@@ -12,10 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ca1e81fede9c8646be9df210767311d, type: 3}
   m_Name: BasicMovementMode
   m_EditorClassIdentifier: 
-  maxJumps: 2
-  walkSpeed: 3
-  runSpeed: 5.8
-  jumpStrength: 15
+  walkSpeed: 5
+  runSpeed: 10
+  jumpStrength: 10
   jumpStrengthCurve:
     serializedVersion: 2
     m_Curve:
@@ -40,6 +39,8 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  maxJumps: 2
+  jumpInputBuffer: 0.1
   gravityStrength: 40
   maxFallSpeed: 100
   coyoteTime: 0.1
@@ -110,4 +111,37 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  airAcceleration: 80
+  airDrag: 4
+  dashSpeed: 20
+  dashDuration: 0.15
+  dashSpeedCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: -0.25
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.75
+      inSlope: -0.25
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  dashEndSpeedRetention: 0.3
+  dashCooldown: 0.4
+  maxAirDashes: 1
+  dashInputBuffer: 0.1
+  dashJumpSpeedRetention: 0.5
   groundedDampenHorizontalInertia: 10
