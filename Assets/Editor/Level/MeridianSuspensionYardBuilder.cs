@@ -67,6 +67,9 @@ namespace CharacterShowcase.EditorTools.Level
             Walkway(Group(bridges, "Bridge (from the Concourse)"), rails, concourse, SE, Vector2.Distance(concourse, arrivalFlat), 8f, 16f);
             arrival.Openings.Add((arrivalFlat, 8f));
             Marker(connections, "To Concourse (NW, +16)", arrivalFlat, 16f);
+            // Standing on the arrival tower, facing those arriving, beside the way across it.
+            AreaSign(towers, arrival.Centre + NW * 3f + new Vector2(1f, 1f).normalized * 5f, arrival.Height + Settings.signs.areaSignLift, NW,
+                "05", "Suspension Yard", freeStanding: true);
 
             Link(bridges, stairs, rails, arrival, north, E);
             Link(bridges, stairs, rails, north, northEast, E);
@@ -95,23 +98,38 @@ namespace CharacterShowcase.EditorTools.Level
                 Transform t = Group(towers, tower.Name);
                 Vector2[] deck = Offset(Octagon(tower.Apothem), tower.Centre);
                 Prism(t, "Deck", deck, tower.Height - Deck, tower.Height);
-                BoxXZ(t, "Column", tower.Centre, new Vector2(ColumnWidth, ColumnWidth), 0f, tower.Height - Deck);
+                Column(t, "Column", tower.Centre, new Vector2(ColumnWidth, ColumnWidth), 0f, tower.Height - Deck, accent: true, capped: false);
+                // A banner down the tall columns' south faces (the concept art's yard).
+                if (tower.Height >= 16f)
+                {
+                    Banner(t, tower.Centre + Vector2.down * (ColumnWidth / 2f), Vector2.down, tower.Height - Deck - 0.6f, Mathf.Min(8f, tower.Height - 6f), "05");
+                }
                 RailAround(rails, deck, tower.Height, tower.Openings.ToArray());
+                // A floodlight mast in the middle of each large tower's deck, facing its first way in.
+                if (tower.Apothem >= 8f && tower.Openings.Count > 0)
+                {
+                    Floodlight(t, tower.Centre, tower.Height, (tower.Openings[0].centre - tower.Centre).normalized);
+                }
             }
 
             // Rope anchors: posts on the +24 towers, and a gantry over the hub to +32, for the swings to come.
             foreach (Tower tower in new[] { north, northEast })
             {
-                BoxXZ(future, "Rope Anchor (+24)", tower.Centre + new Vector2(0f, -tower.Apothem + 2f), new Vector2(1f, 1f), tower.Height, tower.Height + 4f);
+                BoxXZ(future, "Rope Anchor (+24)", tower.Centre + new Vector2(0f, -tower.Apothem + 2f), new Vector2(1f, 1f), tower.Height, tower.Height + 4f, 0f, Surface.Graphite);
             }
             Marker(future, "Rope Swing (future): North Tower to North-East Tower, +24", (north.Centre + northEast.Centre) / 2f, 24f);
             foreach (float side in new[] { -1f, 1f })
             {
-                BoxXZ(future, "Anchor Gantry Column", hub.Centre + new Vector2(side * 7f, 0f), new Vector2(2f, 2f), hub.Height, AnchorFrame);
+                BoxXZ(future, "Anchor Gantry Column", hub.Centre + new Vector2(side * 7f, 0f), new Vector2(2f, 2f), hub.Height, AnchorFrame, 0f, Surface.Steel);
             }
-            BoxXZ(future, "Anchor Gantry Beam (+32)", hub.Centre, new Vector2(16f, 2f), AnchorFrame - 1f, AnchorFrame);
+            BoxXZ(future, "Anchor Gantry Beam (+32)", hub.Centre, new Vector2(16f, 2f), AnchorFrame - 1f, AnchorFrame, 0f, Surface.Steel);
             Marker(future, "Rope Swing (future): Hub Gantry, +32", hub.Centre, AnchorFrame);
             Marker(future, "Optional Higher Route (future): above +24", northEast.Centre, 32f);
+            // Lawn and trees (sparser) over the recovery level below the towers, where they don't crowd a column, stair or
+            // walkway.
+            UnityEngine.Rect ground = UnityEngine.Rect.MinMaxRect(30f, -200f, 200f, -54f);
+            Lawns(yard, ground, new[] { 0f }, 6, spacing: 2f, density: 0.5f);
+            ScatterTrees(yard, ground, 0f, 5, spread: 1.6f);
         }
 
         /// <summary>
@@ -152,6 +170,14 @@ namespace CharacterShowcase.EditorTools.Level
             a.Openings.Add((a.Flat(direction), 2f * a.Apothem * Mathf.Tan(22.5f * Mathf.Deg2Rad)));
             b.Openings.Add((b.Flat(-direction), side));
             Marker(markers, name, (a.Flat(direction) + b.Flat(-direction)) / 2f, a.Height);
+            // Hazard stripes along both flats.
+            Vector2 across = new Vector2(direction.y, -direction.x).normalized;
+            foreach ((Tower tower, Vector2 flat) in new[] { (a, direction), (b, -direction) })
+            {
+                Vector2 centre = tower.Flat(flat);
+                float half = tower.Apothem * Mathf.Tan(22.5f * Mathf.Deg2Rad);
+                HazardStripes(markers, centre - across * half, centre + across * half, -flat, tower.Height);
+            }
         }
 
         /// <summary>A stair from the ground up to a tower's flat.</summary>

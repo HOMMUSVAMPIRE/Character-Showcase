@@ -25,8 +25,6 @@ namespace CharacterShowcase.EditorTools.Level
         private const float TunnelHeight = 4f;     // Service tunnels: 4 m wide, 4 m high.
         private const float ShaftTop = 16f;        // Ventilation shafts rise to +16.
         private const float GroundUnderside = -1f; // Open cells' walls rise to the ground's underside.
-        private const float LightSpacing = 12f, LightIntensity = 3f;
-        private static readonly Color LightColour = new(1f, 0.93f, 0.82f);
 
         /// <summary>Where the Fabrication Hall's basement door is (world x, z): the service tunnel's stair comes up to it at -8.</summary>
         public static readonly UnityEngine.Rect HallDoor = UnityEngine.Rect.MinMaxRect(66f, -43f, 67f, -37f);
@@ -76,7 +74,13 @@ namespace CharacterShowcase.EditorTools.Level
             Begin(material);
             Transform network = Group(complex, "06 Service Network");
             Cells(Group(network, "Rooms and Passages"), Layout(), new[] { HallDoor }, GroundUnderside);
-            BuildLighting(Group(network, "Lighting"));
+            CellLighting(Group(network, "Lighting"), Layout());
+            Transform utilities = Group(network, "Utilities");
+            CellUtilities(utilities, Layout());
+            // Utility stations on the rooms' walls without openings.
+            UtilityStation(utilities, new Vector2(-38f, 116f), Vector2.down, Level);   // Pump Room, north wall.
+            UtilityStation(utilities, new Vector2(-20f, 100f), Vector2.up, Level);     // Junction Room, south wall.
+            UtilityStation(utilities, new Vector2(24f, 100f), Vector2.up, Level);      // Spire Access Room, south wall.
 
             Transform stairs = Group(network, "Stairs"), rails = Group(network, "Guardrails"), shafts = Group(network, "Ventilation Shafts");
             Transform connections = Group(network, "Connections"), future = Group(network, "Future Mechanics");
@@ -86,6 +90,8 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(stairs, "Stair (to the Kinetic Gardens, South)", new Vector2(-100f, 115f), Vector2.right, 6f, Level, gardens, Level);
             Guard(rails, -100f, 112f, -83.6f, 118f, gardens, openSide: Vector2.right);
             Marker(connections, "To the Kinetic Gardens (South Access, ±0)", new Vector2(-83.6f, 115f), gardens);
+            // Facing those coming down the south stair, on the stair foot's west wall.
+            AreaSign(network, new Vector2(-106f, 111.5f), Level + 2f, Vector2.right, "06", "Service Network");
 
             Flight(stairs, "Stair (to the Kinetic Gardens, North)", new Vector2(-23f, 168f), Vector2.left, 6f, Level, gardens, Level);
             Guard(rails, -39.4f, 165f, -23f, 171f, gardens, openSide: Vector2.left);
@@ -101,54 +107,13 @@ namespace CharacterShowcase.EditorTools.Level
             Marker(connections, "To the Fabrication Hall (Basement, -8)", new Vector2(66f, -40f), HallDoorFloor);
 
             // Ventilation shafts: open to the network below, walled up to +16 above the ground.
-            Chimney(shafts, "Ventilation Shaft (West)", 10f, 104f, 18f, 112f);
-            Chimney(shafts, "Ventilation Shaft (East)", 56f, 56f, 64f, 64f);
+            ShaftWalls(shafts, "Ventilation Shaft (West)", 10f, 104f, 18f, 112f, GroundUnderside, ShaftTop);
+            ShaftWalls(shafts, "Ventilation Shaft (East)", 56f, 56f, 64f, 64f, GroundUnderside, ShaftTop);
             Marker(future, "Ladder (future): West Shaft, -12 to +16", new Vector2(14f, 108f), Level);
             Marker(future, "Ladder (future): East Shaft, -12 to +16", new Vector2(60f, 60f), Level);
             Marker(future, "Ceiling Climb (future): Pump Room", new Vector2(-38f, 108f), Level + RoomHeight);
             Marker(future, "Crawl Space (future): from the Junction Room", new Vector2(-14f, 113.5f), Level);
             Marker(future, "Hidden Route (future): Spire Access Room", new Vector2(24f, 100f), Level);
-        }
-
-        /// <summary>
-        /// The sheet's "clear navigation lighting": plain point lights along the passages and in the rooms (no shadows),
-        /// and a baked reflection probe in each, so the network reflects itself instead of the sky above.
-        /// </summary>
-        private static void BuildLighting(Transform lighting)
-        {
-            foreach (Cell cell in Layout())
-            {
-                if (cell.Open) { continue; }
-                UnityEngine.Rect a = cell.Area;
-                float height = cell.Ceiling - cell.Floor;
-                float length = Mathf.Max(a.width, a.height);
-                int count = Mathf.Max(1, Mathf.RoundToInt(length / LightSpacing));
-                for (int i = 0; i < count; i++)
-                {
-                    float f = (i + 0.5f) / count;
-                    Vector2 at = a.width >= a.height ? new Vector2(Mathf.Lerp(a.xMin, a.xMax, f), a.center.y) : new Vector2(a.center.x, Mathf.Lerp(a.yMin, a.yMax, f));
-                    var lamp = new GameObject($"Light ({cell.Name})");
-                    lamp.transform.SetParent(lighting, false);
-                    lamp.transform.localPosition = new Vector3(at.x, cell.Ceiling - 0.5f, at.y);
-                    var light = lamp.AddComponent<Light>();
-                    light.type = LightType.Point;
-                    light.color = LightColour;
-                    light.intensity = LightIntensity;
-                    light.range = Mathf.Max(LightSpacing, Mathf.Min(a.width, a.height)) * 1.25f;
-                    light.shadows = LightShadows.None;
-                    light.lightmapBakeType = LightmapBakeType.Realtime;
-                }
-
-                var probeObject = new GameObject($"Reflection Probe ({cell.Name})");
-                probeObject.transform.SetParent(lighting, false);
-                probeObject.transform.localPosition = new Vector3(a.center.x, cell.Floor + height / 2f, a.center.y);
-                var probe = probeObject.AddComponent<ReflectionProbe>();
-                probe.mode = UnityEngine.Rendering.ReflectionProbeMode.Baked;
-                probe.size = new Vector3(a.width + 1f, height + 1f, a.height + 1f);
-                probe.boxProjection = true;
-                probe.resolution = 64;
-                probe.importance = 2;
-            }
         }
 
         /// <summary>Guardrails round a stairwell's opening at the surface, but for the side the stair comes up on.</summary>
@@ -159,20 +124,6 @@ namespace CharacterShowcase.EditorTools.Level
             if (openSide != Vector2.right) { Rail(rails, b, c, height); }
             if (openSide != Vector2.up) { Rail(rails, c, d, height); }
             if (openSide != Vector2.left) { Rail(rails, d, a, height); }
-        }
-
-        /// <summary>A shaft's walls above the ground, from the ground's underside to ShaftTop, round its opening.</summary>
-        private static void Chimney(Transform parent, string name, float x0, float z0, float x1, float z1)
-        {
-            Transform shaft = Group(parent, name);
-            const float t = 0.5f;
-            Platform(shaft, "Wall (North)", x0 - t, x1 + t, z1, z1 + t);
-            Platform(shaft, "Wall (South)", x0 - t, x1 + t, z0 - t, z0);
-            Platform(shaft, "Wall (East)", x1, x1 + t, z0, z1);
-            Platform(shaft, "Wall (West)", x0 - t, x0, z0, z1);
-
-            static void Platform(Transform p, string n, float a0, float a1, float b0, float b1) =>
-                BoxXZ(p, n, new Vector2((a0 + a1) / 2f, (b0 + b1) / 2f), new Vector2(a1 - a0, b1 - b0), GroundUnderside, ShaftTop);
         }
     }
 }

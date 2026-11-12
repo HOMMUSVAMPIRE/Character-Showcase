@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1560416dfa5cc464e880e01608951692, type: 3}
+  m_Name: GrayboxSettings
+  m_EditorClassIdentifier: CharacterShowcase.Level.Editor::CharacterShowcase.EditorTools.Level.GrayboxSettings
+  stairs:
+    stepRise: 0.3
+    stepRun: 0.4
+    nosingDepth: 0.04
+  decks:
+    deckThickness: 1
+    bridgeLength: 20
+    walkwayColumnSize: {x: 1, y: 1}
+    walkwayColumnSpacing: 10
+    walkwayColumnSpread: 0.8
+    rampSupportSpacing: 8
+    trussInset: 0.25
+    trussMaxDepth: 1.5
+  rails:
+    railHeight: 1.1
+    railThickness: 0.15
+    postSpacing: 2
+    postSize: 0.06
+    topRailSize: {x: 0.08, y: 0.08}
+    midRailHeight: 0.45
+    midRailSize: {x: 0.05, y: 0.05}
+    fasciaDrop: {x: 0.05, y: 0.2}
+    fasciaProud: 0.01
+  walls:
+    pilasterMinWallLength: 12
+    pilasterSpacing: 8
+    pilasterWidth: 0.8
+    pilasterDepth: 0.08
+    frameWidth: 0.2
+    frameLip: 0.05
+    frameDepth: 0.06
+    skirtingSize: {x: 0.12, y: 0.02}
+  platforms:
+    copingHeight: 0.3
+    copingDepth: 0.03
+    copingGap: 0.01
+  columns:
+    chamfer: 0.15
+    accentStripWidth: 0.15
+    accentStripProud: 0.02
+    accentStripSpan: {x: 0.15, y: 0.85}
+  structure:
+    iBeamFlangeAndWeb: {x: 0.08, y: 0.06}
+    trussThickness: 0.3
+    trussChord: 0.2
+    framePost: 0.3
+    frameBrace: 0.12
+    bracketSize: 1
+  fixtures:
+    ceilingPanelSize: {x: 1.2, y: 0.6}
+    ceilingPanelDrop: 0.08
+    stripLightSize: {x: 0.15, y: 0.06}
+    corridorWidth: 7
+    doorLightSize: {x: 0.6, y: 0.12}
+    doorLightGap: 0.15
+    bollardSize: {x: 1, y: 0.25}
+    bollardSpacing: 6
+    floodlightMastHeight: 4
+    floodlightHeadSize: {x: 0.7, y: 0.45}
+    accentPost: {x: 0.1, y: 0.5}
+  lights:
+    spacing: 12
+    intensity: 3
+    colour: {r: 1, g: 0.93, b: 0.82, a: 1}
+    rangeFactor: 1.25
+    fixturesCastLight: 0
+    fixtureLight: {x: 2, y: 8}
+    floodlightAngle: 70
+  utilities:
+    pipeDiameters: {x: 0.3, y: 0.18}
+    pipeDrop: 0.45
+    pipeWallOffset: 0.5
+    hangerSpacing: 3
+    pipeSides: 8
+    utilityPanelSize: {x: 0.8, y: 1.4, z: 0.25}
+    utilityPanelLift: 0.4
+    conduit: {x: 0.08, y: 4}
+    ventSize: {x: 0.7, y: 0.45}
+    ventSlatSpacing: 0.09
+  environment:
+    sunRotation: {x: 65, y: -30, z: 0}
+    sunColour: {r: 1, g: 0.96, b: 0.9, a: 1}
+    sunIntensity: 2
+    hazeColour: {r: 0.74, g: 0.82, b: 0.9, a: 1}
+    hazeDensity: 0.0015

@@ -70,7 +70,11 @@ namespace CharacterShowcase.EditorTools.Level
             BuildStairs(stairs, rails);
             BuildCatwalks(catwalks, stairs, rails);
             BuildObjects(objects, future);
+            BuildUtilities(Group(building, "Utilities"));
             Marker(connections, "To Concourse (W, +8)", new Vector2(-60f, 0f), 8f);
+            // Beside the main entrance, on the west wall's face, between its pilasters.
+            AreaSign(building, new Vector2(-60f, -12f), 8.6f, Vector2.left, "04", "Fabrication Hall");
+            Banner(building, new Vector2(-60f, 10f), Vector2.left, WallTop - 0.6f, 6f, "04"); // And a banner the other side of it.
             Marker(connections, "To Concourse (NW, +12)", new Vector2(-60f, 38f), Catwalk);
             Marker(connections, "To Service Network (W, -8)", new Vector2(-60f, -40f), Basement);
             Marker(connections, "Service Door (S, ±0)", new Vector2(-4f, -50f), 0f);
@@ -79,9 +83,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         private static GameObject Room(Transform parent, string name, float x0, float x1, float z0, float z1, float floor) =>
-            floor > 0f
-                ? BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), 0f, floor)
-                : BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), floor - 0.5f, floor);
+            Block(parent, name, x0, x1, z0, z1, floor > 0f ? 0f : floor - 0.5f, floor);
 
         /// <summary>The rooms' floors: solid up to +4 and +8, the ground at ±0, and slabs at -8 in the basements.</summary>
         private static void BuildRooms(Transform rooms)
@@ -172,6 +174,21 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(stairs, "Stair (Catwalk to Storage)", new Vector2(-4f, z1 + FlightLength(8f, Catwalk)), Vector2.down, StairWidth, 8f, Catwalk);
             Flight(stairs, "Stair (Catwalk to Parts Store)", new Vector2(40f, z1 + FlightLength(8f, Catwalk)), Vector2.down, StairWidth, 8f, Catwalk);
 
+            // Braced frames under it, on the floors below (clear of the stairs, shelves and crates there), and brackets
+            // under it where it goes through the walls.
+            float post = Settings.structure.framePost;
+            foreach ((float x, float floor) in new[] { (-44f, 4f), (-14f, 8f), (8f, 8f), (30f, 8f), (50f, 8f) })
+            {
+                BracedFrame(catwalks, "Braced Frame", new Vector2(x, z0 + post / 2f), new Vector2(x, z1 - post / 2f), floor, Catwalk - Deck);
+            }
+            foreach ((float face, float outward) in new[] { (WestX0, 1f), (WestX1, -1f), (CentreX0, 1f), (CentreX1, -1f), (EastX0, 1f), (EastX1, -1f) })
+            {
+                foreach (float z in new[] { z0 + 0.5f, z1 - 0.5f })
+                {
+                    Bracket(catwalks, new Vector2(face, z), new Vector2(outward, 0f), Catwalk - Deck);
+                }
+            }
+
             // The spur, through the storage wall into the workshop ring.
             CatwalkDeck(catwalks, "Catwalk (Spur)", -24f, -20f, NorthZ0 - 1f, z0);
             Rail(rails, new Vector2(-24f, NorthZ0), new Vector2(-24f, z0), Catwalk);
@@ -182,6 +199,12 @@ namespace CharacterShowcase.EditorTools.Level
             CatwalkDeck(catwalks, "Workshop Ring (South)", wx0, wx1, wz0, wz0 + ring);
             CatwalkDeck(catwalks, "Workshop Ring (West)", wx0, wx0 + ring, wz0 + ring, wz1 - ring);
             CatwalkDeck(catwalks, "Workshop Ring (East)", wx1 - ring, wx1, wz0 + ring, wz1 - ring);
+            // An overhead crane over the workshop, its runway rails on the column walls' tops.
+            const float railTop = WallTop + 0.3f;
+            Block(catwalks, "Crane Runway (West)", CentreX0 - 0.7f, CentreX0 - 0.3f, wz0, wz1, WallTop, railTop, Surface.Steel);
+            Block(catwalks, "Crane Runway (East)", CentreX1 + 0.3f, CentreX1 + 0.7f, wz0, wz1, WallTop, railTop, Surface.Steel);
+            OverheadCrane(catwalks, new Vector2(CentreX0 - 0.5f, 4f), new Vector2(CentreX1 + 0.5f, 4f), railTop, Catwalk + 1f);
+
             Flight(stairs, "Stair (Workshop to Ring)", new Vector2(-4f, wz1 - ring - FlightLength(8f, Catwalk)), Vector2.up, StairWidth, 8f, Catwalk);
             Vector2 a = new(wx0 + ring, wz0 + ring), b = new(wx1 - ring, wz0 + ring), c = new(wx1 - ring, wz1 - ring), d = new(wx0 + ring, wz1 - ring);
             Rail(rails, a, b, Catwalk);
@@ -192,13 +215,13 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>A catwalk deck at +12, 1 m thick, hung from the walls.</summary>
         private static void CatwalkDeck(Transform parent, string name, float x0, float x1, float z0, float z1) =>
-            BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), Catwalk - Deck, Catwalk);
+            Block(parent, name, x0, x1, z0, z1, Catwalk - Deck, Catwalk, Surface.Steel);
 
         /// <summary>Crates, shelves and machinery: static stand-ins for the sheet's interactive objects, with markers for what they'll become.</summary>
         private static void BuildObjects(Transform objects, Transform future)
         {
             void Crate(string where, float x, float z, float floor) =>
-                BoxXZ(objects, $"Crate ({where})", new Vector2(x, z), new Vector2(CrateSize, CrateSize), floor, floor + CrateSize);
+                BoxXZ(objects, $"Crate ({where})", new Vector2(x, z), new Vector2(CrateSize, CrateSize), floor, floor + CrateSize, 0f, Surface.Steel);
             Crate("Loading Bay", -50f, 25f, 4f);
             Crate("Loading Bay", -52f, -10f, 4f);
             Crate("Loading Bay", -35f, -10f, 4f);
@@ -218,17 +241,17 @@ namespace CharacterShowcase.EditorTools.Level
             // Shelves in storage, 2 m aisles between them (narrow passages), low enough to stay under the catwalk.
             foreach ((float x0, float x1, float z) in new[] { (-26f, -8f, 31f), (8f, 18f, 31f), (-26f, -9f, 46.5f), (3f, 18f, 46.5f) })
             {
-                BoxXZ(objects, "Storage Shelf", new Vector2((x0 + x1) / 2f, z), new Vector2(x1 - x0, 1.5f), 8f, 10.5f);
+                BoxXZ(objects, "Storage Shelf", new Vector2((x0 + x1) / 2f, z), new Vector2(x1 - x0, 1.5f), 8f, 10.5f, 0f, Surface.Graphite);
             }
-            BoxXZ(objects, "Assembly Line", new Vector2(42f, 12f), new Vector2(24f, 3f), 4f, 5f);
-            BoxXZ(objects, "Assembly Line", new Vector2(42f, -4f), new Vector2(24f, 3f), 4f, 5f);
+            BoxXZ(objects, "Assembly Line", new Vector2(42f, 12f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
+            BoxXZ(objects, "Assembly Line", new Vector2(42f, -4f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
             foreach (Vector2 at in new[] { new Vector2(30f, -40f), new Vector2(42f, -40f), new Vector2(52f, -24f) })
             {
-                BoxXZ(objects, "Machinery", at, new Vector2(CrateSize, CrateSize), Basement, Basement + CrateSize);
+                BoxXZ(objects, "Machinery", at, new Vector2(CrateSize, CrateSize), Basement, Basement + CrateSize, 0f, Surface.Graphite);
             }
             foreach (Vector2 at in new[] { new Vector2(-52f, -42f), new Vector2(-52f, -26f) })
             {
-                BoxXZ(objects, "Tank", at, new Vector2(5f, 5f), Basement, Basement + 6f);
+                BoxXZ(objects, "Tank", at, new Vector2(5f, 5f), Basement, Basement + 6f, 0f, Surface.Steel);
             }
 
             Marker(future, "Sliding Door (future): Storage", new Vector2(4f, 28.5f), 8f);
@@ -238,6 +261,19 @@ namespace CharacterShowcase.EditorTools.Level
             Marker(future, "Ladder (future): Workshop to Ring", new Vector2(18f, -14f), 8f);
             Marker(future, "Crouch Passage (future): between the shelves", new Vector2(-17f, 33.5f), 8f);
             Marker(future, "Maintenance Access (future): catwalk to the roofline", new Vector2(56f, 38f), Catwalk);
+        }
+
+        /// <summary>
+        /// Utility stations on the rooms' outer and column walls, one in each of the maintenance and utility rooms,
+        /// the assembly wing, the loading bay and the workshop, between the walls' pilasters and clear of their doors.
+        /// </summary>
+        private static void BuildUtilities(Transform utilities)
+        {
+            UtilityStation(utilities, new Vector2(-59f, -34f), Vector2.right, Basement); // 6 Maintenance, west wall.
+            UtilityStation(utilities, new Vector2(59f, -36f), Vector2.left, Basement);   // 7 Utility Room, east wall.
+            UtilityStation(utilities, new Vector2(59f, 4f), Vector2.left, 4f);           // 4 Assembly Wing, east wall.
+            UtilityStation(utilities, new Vector2(-59f, -12f), Vector2.right, 4f);       // 3 Loading Bay, west wall.
+            UtilityStation(utilities, new Vector2(-28f, 12f), Vector2.right, 8f);        // 1 Main Workshop, west column wall.
         }
 
         /// <summary>

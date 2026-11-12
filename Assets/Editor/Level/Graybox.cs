@@ -5,23 +5,96 @@ using UnityEngine;
 namespace CharacterShowcase.EditorTools.Level
 {
     /// <summary>
-    /// Graybox building blocks shared by the level builders: boxes and solids in one material (see Begin), stairs, ramps,
-    /// bridges, guardrails and connection markers, laid out on the ground plane (a Vector2's x is x east, its y is z
-    /// north) under rotated or offset groups. A builder calls Begin, sets the stair profile and other dimensions it
-    /// wants, then builds.
+    /// Graybox building blocks shared by the level builders: boxes and solids, stairs, ramps, bridges, guardrails and
+    /// connection markers, laid out on the ground plane (a Vector2's x is x east, its y is z north) under rotated or
+    /// offset groups, each part of them in one of the palette's surfaces (see Surface). A builder calls Begin, sets the
+    /// stair profile and other dimensions it wants, then builds.
     /// </summary>
-    public static class Graybox
+    public static partial class Graybox
     {
-        /// <summary>Each stair step at most this high (keep it under the character's step height) and this deep.</summary>
+        /// <summary>
+        /// Each stair step at most this high (keep it under the character's step height) and this deep: the settings'
+        /// profile after Begin, which a builder can change for its area.
+        /// </summary>
         public static float StepRise = 0.3f, StepRun = 0.4f;
-        /// <summary>How far bridges run out, how thick decks are, and guardrails' height and thickness.</summary>
+        /// <summary>How far bridges run out, how thick decks are, and guardrails' height and thickness: the settings' after Begin.</summary>
         public static float BridgeLength = 20f, Deck = 1f, RailHeight = 1.1f, RailThickness = 0.15f;
-        /// <summary>The material everything's given: the one passed to Begin, or the render pipeline's default.</summary>
+        /// <summary>The numbers the pieces are made with (see GrayboxSettings), loaded by Begin.</summary>
+        public static GrayboxSettings Settings { get; private set; }
+        /// <summary>The material everything's given that has no surface of its own in the palette: the one passed to Begin, or the render pipeline's default.</summary>
         public static Material Material;
 
         /// <summary>
-        /// Gets ready to build: everything's given material (or, if that's null, the render pipeline's default), and
-        /// the dimensions are reset to their defaults.
+        /// What a piece, or part of one, is made of: each a material of the palette (see UsePalette). The pieces choose
+        /// their own (walls are panelled concrete, guardrails metal with an orange top rail, stairs concrete with orange
+        /// nosings, the ground paving); boxes and solids are concrete unless a builder says otherwise.
+        /// </summary>
+        public enum Surface
+        {
+            /// <summary>Smooth cast concrete: decks, floors, terraces, steps.</summary>
+            Concrete,
+            /// <summary>Concrete in panels with recessed seams: walls and large masses.</summary>
+            Panel,
+            /// <summary>The ground: darker concrete in large paving slabs.</summary>
+            Ground,
+            /// <summary>Dark painted metal: posts, rails, trims, machinery.</summary>
+            Graphite,
+            /// <summary>Bare steel: columns, supports, catwalks, crates.</summary>
+            Steel,
+            /// <summary>Orange paint, for edges worth seeing: top rails, stair nosings, platform fascias.</summary>
+            Accent,
+            /// <summary>A light fixture's glowing face, warm white: ceiling panels, strip lights, door lights, floodlights.</summary>
+            Light,
+            /// <summary>Glowing cyan, the style sheet's accent light: posts marking the bridges between areas.</summary>
+            Cyan,
+            /// <summary>Off-white paint: guide lines, banners' emblems, spawn pads, rulers.</summary>
+            White,
+            /// <summary>Leaves: trees' canopies and shrubs.</summary>
+            Foliage,
+            /// <summary>Earth and bark: planters' soil, tree trunks.</summary>
+            Soil,
+            /// <summary>Lawn: grass over open ground and platform tops, and its tufts.</summary>
+            Grass,
+        }
+
+        private static Material[] palette;
+
+        /// <summary>
+        /// The materials the surfaces are given (indexed by Surface) for the builds to come: GrayboxScene sets it before
+        /// building. A surface it has no material for is given Material.
+        /// </summary>
+        public static void UsePalette(Material[] materials) => palette = materials;
+
+        private static readonly List<System.Action> deferred = new();
+
+        /// <summary>
+        /// Puts off placing something until the whole level's built (RunDeferred, which GrayboxScene calls after every
+        /// part): for what has to find the floor under it, or room round it, among everything else.
+        /// </summary>
+        public static void Defer(System.Action place) => deferred.Add(place);
+
+        /// <summary>Places everything put off (see Defer), now that the level's colliders are all where they'll be.</summary>
+        public static void RunDeferred()
+        {
+            Physics.SyncTransforms();
+            System.Action[] places = deferred.ToArray();
+            deferred.Clear();
+            foreach (System.Action place in places) { place(); }
+        }
+
+        /// <summary>Forgets anything put off by a build that didn't finish.</summary>
+        public static void ClearDeferred() => deferred.Clear();
+
+        /// <summary>The material for a surface: the palette's, or Material.</summary>
+        public static Material For(Surface surface)
+        {
+            Material material = palette != null && (int)surface < palette.Length ? palette[(int)surface] : null;
+            return material != null ? material : Material;
+        }
+
+        /// <summary>
+        /// Gets ready to build: the material for anything the palette has no surface for (or, if that's null, the render
+        /// pipeline's default), the settings loaded, and the dimensions reset to the settings'.
         /// </summary>
         public static void Begin(Material material = null)
         {
@@ -32,7 +105,13 @@ namespace CharacterShowcase.EditorTools.Level
                 Material = probe.GetComponent<MeshRenderer>().sharedMaterial;
                 Object.DestroyImmediate(probe);
             }
-            StepRise = 0.3f; StepRun = 0.4f; BridgeLength = 20f; Deck = 1f; RailHeight = 1.1f; RailThickness = 0.15f;
+            Settings = GrayboxSettings.Load();
+            StepRise = Settings.stairs.stepRise;
+            StepRun = Settings.stairs.stepRun;
+            BridgeLength = Settings.decks.bridgeLength;
+            Deck = Settings.decks.deckThickness;
+            RailHeight = Settings.rails.railHeight;
+            RailThickness = Settings.rails.railThickness;
         }
 
         // ---- Pieces ----
@@ -40,22 +119,86 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>
         /// A straight flight of solid steps from base (its bottom edge's middle) along direction, rising from y0 to y1,
         /// each at most StepRise high and StepRun deep, and solid down to floor (the ground, unless it's below ground).
-        /// Returns its length along the direction.
+        /// It's one object: one mesh of the whole flight (see FlightMesh) and a box collider per step. Returns its
+        /// length along the direction.
         /// </summary>
         public static float Flight(Transform parent, string name, Vector2 basePoint, Vector2 direction, float width, float y0, float y1,
             float floor = 0f)
         {
-            Transform flight = Group(parent, name);
             int steps = Mathf.CeilToInt((y1 - y0) / StepRise - 1e-4f);
             float rise = (y1 - y0) / steps;
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
+            // Solid to the ground, so a flight over open ground stands on something.
+            float bottom = Mathf.Min(floor, y0);
+
+            // Laid out facing north (+z up the flight) from its base, and turned to face the direction.
+            var flight = new GameObject(name);
+            flight.transform.SetParent(parent, false);
+            flight.transform.SetLocalPositionAndRotation(new Vector3(basePoint.x, 0f, basePoint.y), Quaternion.Euler(0f, yaw, 0f));
+            if (steps < 1) { return 0f; }
+            FlightMesh(steps, width, StepRun, y0, rise, bottom).AddTo(flight, name);
             for (int i = 0; i < steps; i++)
             {
-                Vector2 centre = basePoint + direction * ((i + 0.5f) * StepRun);
-                // Solid to the ground, so a flight over open ground stands on something.
-                BoxXZ(flight, $"Step {i + 1}", centre, new Vector2(width, StepRun), Mathf.Min(floor, y0), y0 + rise * (i + 1), yaw);
+                float top = y0 + rise * (i + 1);
+                var step = flight.AddComponent<BoxCollider>();
+                step.center = new Vector3(0f, (bottom + top) / 2f, (i + 0.5f) * StepRun);
+                step.size = new Vector3(width, top - bottom, StepRun);
             }
+            MakeStatic(flight);
             return steps * StepRun;
+        }
+
+        /// <summary>
+        /// The visible solid of a flight of steps, up +z from z = 0 and centred on x = 0: its steps' treads (each with an
+        /// orange nosing strip along its front edge) and risers (the first running down to the bottom), its back, and its
+        /// two sides, each side one stair-shaped face. It has no underside, since a flight always stands on its floor.
+        /// That's 10 triangles a step and 2 more, with no faces hidden inside it and none overlapping (where a box per
+        /// step's sides met in one plane and flickered).
+        /// </summary>
+        private static GrayboxMesh FlightMesh(int steps, float width, float run, float y0, float rise, float bottom)
+        {
+            float half = width / 2f, length = steps * run;
+            var mesh = new GrayboxMesh();
+            const Surface concrete = Surface.Concrete;
+
+            for (int i = 0; i < steps; i++)
+            {
+                float z0 = i * run, zn = z0 + Settings.stairs.nosingDepth, z1 = z0 + run, top = y0 + rise * (i + 1), below = i == 0 ? bottom : top - rise;
+                mesh.Quad(Surface.Accent, Vector3.up, new Vector3(-half, top, z0), new Vector3(half, top, z0), new Vector3(half, top, zn), new Vector3(-half, top, zn));
+                mesh.Quad(concrete, Vector3.up, new Vector3(-half, top, zn), new Vector3(half, top, zn), new Vector3(half, top, z1), new Vector3(-half, top, z1));
+                mesh.Quad(concrete, Vector3.back, new Vector3(-half, below, z0), new Vector3(half, below, z0), new Vector3(half, top, z0), new Vector3(-half, top, z0));
+            }
+            float summit = y0 + rise * steps;
+            mesh.Quad(concrete, Vector3.forward, new Vector3(-half, bottom, length), new Vector3(half, bottom, length), new Vector3(half, summit, length),
+                new Vector3(-half, summit, length));
+
+            // Each side's outline: the bottom front corner, then each step's front top corner (P) and back top corner
+            // (Q), then the bottom back corner. It's triangulated with the fewest triangles (as many as its corners, less
+            // two) and no extra vertices: each step after the first gives the triangle under its tread and beside its
+            // riser (Q before, P, Q after), and what's left, under the line of back corners along the stair's slope, is
+            // fanned from the bottom back corner, which sees all of it.
+            foreach (float x in new[] { -half, half })
+            {
+                Vector3 normal = new Vector3(Mathf.Sign(x), 0f, 0f);
+                var outline = new List<Vector3> { new(x, bottom, 0f) };
+                for (int i = 0; i < steps; i++)
+                {
+                    float top = y0 + rise * (i + 1);
+                    outline.Add(new Vector3(x, top, i * run));
+                    outline.Add(new Vector3(x, top, (i + 1) * run));
+                }
+                outline.Add(new Vector3(x, bottom, length));
+                int first = mesh.Face(normal, outline);
+                int front = first, back = first + outline.Count - 1;
+                // P(i): step i's front top corner, steps counted from 0; Q(i): step i's back top corner, counted from 1.
+                int P(int i) => first + 1 + 2 * i;
+                int Q(int i) => first + 2 * i;
+                for (int i = 1; i < steps; i++) { mesh.Triangle(concrete, Q(i), P(i), Q(i + 1), normal); }
+                mesh.Triangle(concrete, back, front, P(0), normal);
+                mesh.Triangle(concrete, back, P(0), Q(1), normal);
+                for (int i = 1; i < steps; i++) { mesh.Triangle(concrete, back, Q(i), Q(i + 1), normal); }
+            }
+            return mesh;
         }
 
         /// <summary>How long a flight from y0 to y1 is, in the current stair profile.</summary>
@@ -74,20 +217,24 @@ namespace CharacterShowcase.EditorTools.Level
             Vector3 centre = new Vector3(middle.x, (y0 + y1) / 2f, middle.y) - rotation * Vector3.up * (Deck / 2f);
             GameObject deck = Box(ramp, "Ramp", centre, new Vector3(width, Deck, slab));
             deck.transform.localRotation = rotation;
-            for (float d = 6f; d < length - 2f; d += 8f)
+            float spacing = Settings.decks.rampSupportSpacing;
+            Vector2 support = Settings.decks.walkwayColumnSize;
+            for (float d = 0.75f * spacing; d < length - 2f; d += spacing)
             {
                 float y = Mathf.Lerp(y0, y1, d / length) - Deck;
                 foreach (float side in new[] { -1f, 1f })
                 {
-                    Vector2 at = start + direction * d + new Vector2(direction.y, -direction.x) * (side * (width / 2f - 1f));
-                    if (y > 0.5f) { BoxXZ(ramp, "Support", at, new Vector2(1f, 1f), 0f, y, yaw); }
+                    Vector2 at = start + direction * d + new Vector2(direction.y, -direction.x) * (side * (width / 2f - support.x));
+                    if (y > 0.5f) { IBeamColumn(ramp, "Support", at, support, 0f, y, yaw); }
                 }
             }
         }
 
         /// <summary>
         /// A bridge out from start along direction at the given height, with guardrails along both sides, columns
-        /// down to the ground, and a marker at its far end where the next area joins.
+        /// down to the ground, a marker at its far end where the next area joins, a cyan accent post at each corner of
+        /// its deck, so the way from one area to another reads from a distance, and a sign gantry over its start naming
+        /// where it goes (when its name says: "To [place] (...)").
         /// </summary>
         public static void Bridge(Transform bridges, Transform rails, Transform connections, string name, Vector2 start, Vector2 direction,
             float width, float height)
@@ -95,11 +242,22 @@ namespace CharacterShowcase.EditorTools.Level
             Transform bridge = Group(bridges, name.Replace("To ", "Bridge to ").Replace("Future Connection", "Bridge"));
             Vector2 end = Walkway(bridge, rails, start, direction, BridgeLength, width, height);
             Marker(connections, name, end, height);
+            string destination = Destination(name);
+            if (destination != null) { BridgeGantry(bridge, destination, start, direction, width, height); }
+            Vector2 side = new Vector2(direction.y, -direction.x) * (width / 2f);
+            // Set in from the bridge's ends a little, so the posts' faces aren't in the plane of the top rails' ends.
+            float inset = Settings.fixtures.accentPost.x / 2f + 0.02f;
+            foreach (Vector2 at in new[] { start + direction * inset, end - direction * inset })
+            {
+                AccentPost(bridge, at + side, height);
+                AccentPost(bridge, at - side, height);
+            }
         }
 
         /// <summary>
         /// A deck from start along direction for length at the given height, with guardrails along both sides, and
-        /// columns down to the ground unless it's suspended (hung between the things at its ends). Returns its far end.
+        /// I-beam columns down to the ground; or, if it's suspended (hung between the things at its ends), a truss
+        /// under each side instead. Returns its far end.
         /// </summary>
         public static Vector2 Walkway(Transform parent, Transform rails, Vector2 start, Vector2 direction, float length, float width,
             float height, bool suspended = false)
@@ -107,14 +265,26 @@ namespace CharacterShowcase.EditorTools.Level
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
             Vector2 end = start + direction * length, side = new Vector2(direction.y, -direction.x) * (width / 2f);
             BoxXZ(parent, "Deck", start + direction * (length / 2f), new Vector2(width, length), height - Deck, height, yaw);
+            GrayboxSettings.DeckSettings decks = Settings.decks;
             if (!suspended)
             {
-                for (float d = 5f; d < length; d += 10f)
+                for (float d = decks.walkwayColumnSpacing / 2f; d < length; d += decks.walkwayColumnSpacing)
                 {
                     foreach (float s in new[] { -1f, 1f })
                     {
-                        BoxXZ(parent, "Column", start + direction * d + side * (s * 0.8f), new Vector2(1f, 1f), 0f, height - Deck, yaw);
+                        IBeamColumn(parent, "Column", start + direction * d + side * (s * decks.walkwayColumnSpread), decks.walkwayColumnSize, 0f,
+                            height - Deck, yaw);
                     }
+                }
+            }
+            else
+            {
+                // Just in from the deck's edges, so the edge is still a ledge with something to hang against.
+                Vector2 inset = side.normalized * (width / 2f - decks.trussInset);
+                float depth = Mathf.Min(decks.trussMaxDepth, length / 6f);
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    Truss(parent, "Truss", start + inset * s, end + inset * s, height - Deck - depth, height - Deck);
                 }
             }
             Rail(rails, start + side, end + side, height);
@@ -123,8 +293,9 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>
-        /// A wall along the line from a to b (centred on it), from y0 to y1, with openings (centre on the line, width,
-        /// and the opening's bottom and top: the wall's filled in below and above each).
+        /// A wall of panelled concrete along the line from a to b (centred on it), from y0 to y1, with openings (centre
+        /// on the line, width, and the opening's bottom and top: the wall's filled in below and above each), pilasters
+        /// along it and frames round its openings (see WallDetail).
         /// </summary>
         public static void Wall(Transform parent, string name, Vector2 a, Vector2 b, float y0, float y1, float thickness,
             params (Vector2 centre, float width, float bottom, float top)[] openings)
@@ -136,7 +307,7 @@ namespace CharacterShowcase.EditorTools.Level
             void Piece(string piece, float s, float e, float bottom, float top)
             {
                 if (e - s < 0.05f || top - bottom < 0.05f) { return; }
-                BoxXZ(parent, piece, a + dir * ((s + e) / 2f), new Vector2(thickness, e - s), bottom, top, yaw);
+                BoxXZ(parent, piece, a + dir * ((s + e) / 2f), new Vector2(thickness, e - s), bottom, top, yaw, Surface.Panel);
             }
             var cuts = new List<(float from, float to, float bottom, float top)>();
             foreach ((Vector2 centre, float width, float bottom, float top) in openings)
@@ -154,6 +325,7 @@ namespace CharacterShowcase.EditorTools.Level
                 from = Mathf.Max(from, cutTo);
             }
             Piece(name, from, length, y0, y1);
+            WallDetail(parent, name, a, dir, length, y0, y1, thickness, cuts);
         }
 
         /// <summary>Guardrails along every edge of a shape at the given height, leaving gaps (centre, width) where routes go through.</summary>
@@ -162,7 +334,10 @@ namespace CharacterShowcase.EditorTools.Level
             for (int i = 0; i < shape.Length; i++) { Rail(rails, shape[i], shape[(i + 1) % shape.Length], height, gaps); }
         }
 
-        /// <summary>A guardrail from a to b on a surface at the given height, leaving gaps (centre, width) that lie along it.</summary>
+        /// <summary>
+        /// A guardrail from a to b on a surface at the given height, leaving gaps (centre, width) that lie along it: one
+        /// object for each run between gaps (see GuardrailRun).
+        /// </summary>
         public static void Rail(Transform rails, Vector2 a, Vector2 b, float height, params (Vector2 centre, float width)[] gaps)
         {
             float length = Vector2.Distance(a, b);
@@ -182,7 +357,7 @@ namespace CharacterShowcase.EditorTools.Level
             void Piece(float s, float e)
             {
                 if (e - s < 0.2f) { return; }
-                BoxXZ(rails, "Guardrail", a + dir * ((s + e) / 2f), new Vector2(RailThickness, e - s), height, height + RailHeight, yaw);
+                GuardrailRun(rails, a + dir * ((s + e) / 2f), e - s, height, yaw);
             }
             foreach ((float cutFrom, float cutTo) in cuts)
             {
@@ -192,12 +367,54 @@ namespace CharacterShowcase.EditorTools.Level
             Piece(from, length);
         }
 
-        /// <summary>An empty marker where a route leaves for another area: where that area's geometry joins this one.</summary>
+        /// <summary>
+        /// One straight run of guardrail, centred on centre along yaw, on a surface at the given height: graphite posts at
+        /// most the settings' post spacing apart under an orange top rail, a graphite mid rail, and an orange fascia band along the edge
+        /// it stands on, just below the surface and standing a little proud of the face under it. One mesh, and one box
+        /// collider the full height and length (RailThickness thick), so nothing can slip between the rails: the
+        /// collision is that of the solid guardrails the level had before.
+        /// </summary>
+        private static void GuardrailRun(Transform parent, Vector2 centre, float length, float height, float yaw)
+        {
+            var rail = new GameObject("Guardrail");
+            rail.transform.SetParent(parent, false);
+            rail.transform.SetLocalPositionAndRotation(new Vector3(centre.x, height, centre.y), Quaternion.Euler(0f, yaw, 0f));
+
+            // Laid out along +z, centred; the top rail sits on the posts. The mid rail stops inside the end posts and is
+            // narrower than them (as they are than the top rail), so no two faces share a plane but where they meet face
+            // to face.
+            GrayboxSettings.RailSettings r = Settings.rails;
+            float post = r.postSize / 2f, topRail = r.topRailSize.x / 2f, cap = r.topRailSize.y, midRail = r.midRailSize.x / 2f;
+            float half = length / 2f, top = RailHeight, mid = top * r.midRailHeight, fascia = RailThickness / 2f + r.fasciaProud;
+            var mesh = new GrayboxMesh();
+            mesh.Box(Surface.Accent, new Vector3(-topRail, top - cap, -half), new Vector3(topRail, top, half));
+            mesh.Box(Surface.Graphite, new Vector3(-midRail, mid, -half + post), new Vector3(midRail, mid + r.midRailSize.y, half - post));
+            int bays = Mathf.Max(1, Mathf.CeilToInt(length / r.postSpacing - 1e-3f));
+            for (int i = 0; i <= bays; i++)
+            {
+                float z = Mathf.Lerp(-half + post, half - post, (float)i / bays);
+                // No top (under the top rail) or bottom (on the surface).
+                mesh.Box(Surface.Graphite, new Vector3(-post, 0f, z - post), new Vector3(post, top - cap, z + post), top: false, bottom: false);
+            }
+            mesh.Box(Surface.Accent, new Vector3(-fascia, -r.fasciaDrop.y, -half), new Vector3(fascia, -r.fasciaDrop.x, half));
+            mesh.AddTo(rail, "Guardrail");
+
+            var collider = rail.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, top / 2f, 0f);
+            collider.size = new Vector3(RailThickness, top, length);
+            MakeStatic(rail, occluder: false);
+        }
+
+        /// <summary>
+        /// An empty marker where a route leaves for another area (where that area's geometry joins this one), or where a
+        /// mechanic to come will be: one named "[Mechanic] (future): …" is marked on the floor under it (see FutureMark).
+        /// </summary>
         public static void Marker(Transform parent, string name, Vector2 at, float height)
         {
             var marker = new GameObject(name);
             marker.transform.SetParent(parent, false);
             marker.transform.localPosition = new Vector3(at.x, height, at.y);
+            FutureMark(parent, name, at, height);
         }
 
         /// <summary>
@@ -208,7 +425,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>
         /// An empty marker where a character can start: its feet at the given height, facing yaw degrees clockwise from
-        /// north. Only a place: the game setup puts what spawns there.
+        /// north, with a spawn pad on the floor under it (see SpawnPad). Only a place: the game setup puts what spawns there.
         /// </summary>
         public static void SpawnMarker(Transform parent, string name, Vector2 at, float height, float yaw)
         {
@@ -216,6 +433,7 @@ namespace CharacterShowcase.EditorTools.Level
             marker.transform.SetParent(parent, false);
             marker.transform.localPosition = new Vector3(at.x, height, at.y);
             marker.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
+            SpawnPad(parent, at, height, yaw);
         }
 
         /// <summary>
@@ -223,7 +441,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// cut through it: built as the fewest boxes the holes leave, band by band.
         /// </summary>
         public static void SlabWithHoles(Transform parent, string name, UnityEngine.Rect area, IEnumerable<UnityEngine.Rect> holes,
-            float y0, float y1)
+            float y0, float y1, Surface surface = Surface.Concrete)
         {
             var cuts = new List<UnityEngine.Rect>();
             foreach (UnityEngine.Rect hole in holes) { if (hole.Overlaps(area)) { cuts.Add(hole); } }
@@ -263,10 +481,17 @@ namespace CharacterShowcase.EditorTools.Level
                 foreach ((float x0, float x1) in spans)
                 {
                     if (x1 - x0 < 0.001f) { continue; }
-                    BoxXZ(parent, cuts.Count == 0 ? name : $"{name} {++n}", new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1);
+                    BoxXZ(parent, cuts.Count == 0 ? name : $"{name} {++n}", new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1, 0f, surface);
                 }
             }
         }
+
+        /// <summary>
+        /// A placeholder ground at ±0 (a 1 m slab under it, in large paving slabs) over a square half across from the parent's origin, open
+        /// where anything goes below it (stairwells, shafts, basements).
+        /// </summary>
+        public static void Ground(Transform parent, float half, IEnumerable<UnityEngine.Rect> openings) =>
+            SlabWithHoles(Group(parent, "Ground (placeholder)"), "Ground", UnityEngine.Rect.MinMaxRect(-half, -half, half, half), openings, -1f, 0f, Surface.Ground);
 
         private static bool SameSpans(List<(float x0, float x1)> a, List<(float x0, float x1)> b)
         {
@@ -359,11 +584,20 @@ namespace CharacterShowcase.EditorTools.Level
                     Vector2 offset = n * (thickness / 2f);
                     void Piece(string name, float s, float e, float bottom, float pieceTop, bool extendStart, bool extendEnd)
                     {
+                        // A graphite skirting along the foot of the wall inside the cell. The east and west walls' stop
+                        // short of the corners, where the north and south walls' run on to them, so none overlap.
+                        Vector2 skirting = Settings.walls.skirtingSize;
+                        float inset = n.x != 0f ? skirting.y : 0f;
+                        if (name == "Wall" && e - s - 2f * inset > eps)
+                        {
+                            Trim(group, "Skirting", p + dir * ((s + e) / 2f) - n * (skirting.y / 2f), new Vector2(skirting.y, e - s - 2f * inset),
+                                cell.Floor, cell.Floor + skirting.x, yaw, Surface.Graphite);
+                        }
                         // Close the outside corners: extend past a corner of the cell unless that's inside the network.
                         if (extendStart && !Inside(p + dir * (s - thickness / 2f) + n * (thickness / 2f))) { s -= thickness; }
                         if (extendEnd && !Inside(p + dir * (e + thickness / 2f) + n * (thickness / 2f))) { e += thickness; }
                         if (e - s < eps || pieceTop - bottom < eps) { return; }
-                        BoxXZ(group, name, p + dir * ((s + e) / 2f) + offset, new Vector2(thickness, e - s), bottom, pieceTop, yaw);
+                        BoxXZ(group, name, p + dir * ((s + e) / 2f) + offset, new Vector2(thickness, e - s), bottom, pieceTop, yaw, Surface.Panel);
                     }
                     float at = 0f;
                     foreach ((float from, float to, float neighbourTop) in openings)
@@ -375,6 +609,20 @@ namespace CharacterShowcase.EditorTools.Level
                     Piece("Wall", at, length, cell.Floor - slab, top, at < eps, true);
                 }
             }
+        }
+
+        /// <summary>
+        /// Walls round an axis-aligned opening (x from x0 to x1, z from z0 to z1), from y0 to y1, outside it: a shaft's
+        /// chimney above the ground. The north and south walls run across the corners.
+        /// </summary>
+        public static void ShaftWalls(Transform parent, string name, float x0, float z0, float x1, float z1, float y0, float y1, float thickness = 0.5f)
+        {
+            Transform shaft = Group(parent, name);
+            float t = thickness;
+            Block(shaft, "Wall (North)", x0 - t, x1 + t, z1, z1 + t, y0, y1, Surface.Panel);
+            Block(shaft, "Wall (South)", x0 - t, x1 + t, z0 - t, z0, y0, y1, Surface.Panel);
+            Block(shaft, "Wall (East)", x1, x1 + t, z0, z1, y0, y1, Surface.Panel);
+            Block(shaft, "Wall (West)", x0 - t, x0, z0, z1, y0, y1, Surface.Panel);
         }
 
         // ---- Shapes (on the ground plane: x east, y here meaning z north) ----
@@ -440,27 +688,42 @@ namespace CharacterShowcase.EditorTools.Level
             return group;
         }
 
-        public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f)
+        public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f, Surface surface = Surface.Concrete)
         {
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
             box.name = name;
             box.transform.SetParent(parent, false);
             box.transform.SetLocalPositionAndRotation(localCentre, Quaternion.Euler(0f, yaw, 0f));
             box.transform.localScale = size;
-            box.GetComponent<MeshRenderer>().sharedMaterial = Material;
+            box.GetComponent<MeshRenderer>().sharedMaterial = For(surface);
             MakeStatic(box);
             return box;
         }
 
         /// <summary>A box over a footprint on the ground plane (centre and size in the parent's x and z), from y0 to y1.</summary>
-        public static GameObject BoxXZ(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f) =>
-            Box(parent, name, new Vector3(centre.x, (y0 + y1) / 2f, centre.y), new Vector3(size.x, y1 - y0, size.y), yaw);
+        public static GameObject BoxXZ(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f,
+            Surface surface = Surface.Concrete) =>
+            Box(parent, name, new Vector3(centre.x, (y0 + y1) / 2f, centre.y), new Vector3(size.x, y1 - y0, size.y), yaw, surface);
+
+        /// <summary>A box as BoxXZ makes it, but only to see: no collider, for trims too small to matter to movement.</summary>
+        public static GameObject Trim(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw, Surface surface)
+        {
+            GameObject trim = BoxXZ(parent, name, centre, size, y0, y1, yaw, surface);
+            Object.DestroyImmediate(trim.GetComponent<BoxCollider>());
+            MakeStatic(trim, occluder: false);
+            return trim;
+        }
+
+        /// <summary>An axis-aligned box over x from x0 to x1 and z from z0 to z1 (in the parent's x and z), from y0 to y1.</summary>
+        public static GameObject Block(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float y1,
+            Surface surface = Surface.Concrete) =>
+            BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1, 0f, surface);
 
         /// <summary>
         /// A solid with the given convex footprint (in the parent's x and z), from y0 to y1: a mesh to see, and box
         /// colliders to stand on (see FootprintBoxes), on child objects named "Collider".
         /// </summary>
-        public static GameObject Prism(Transform parent, string name, Vector2[] shape, float y0, float y1)
+        public static GameObject Prism(Transform parent, string name, Vector2[] shape, float y0, float y1, Surface surface = Surface.Concrete)
         {
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
@@ -499,7 +762,7 @@ namespace CharacterShowcase.EditorTools.Level
             var solid = new GameObject(name);
             solid.transform.SetParent(parent, false);
             solid.AddComponent<MeshFilter>().sharedMesh = mesh;
-            solid.AddComponent<MeshRenderer>().sharedMaterial = Material;
+            solid.AddComponent<MeshRenderer>().sharedMaterial = For(surface);
             MakeStatic(solid);
             foreach ((Vector2 centre, Vector2 size, float yaw) in FootprintBoxes(shape))
             {
@@ -672,10 +935,13 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>
         /// Level geometry doesn't move: static for batching, occlusion and reflection probes. Not Contribute GI: the
         /// level has no baked or realtime GI (it's lit by the sun and the sky's ambient), so nothing would use it, and
-        /// with it the lighting bake packed lightmaps for every piece anyway, which took about seven minutes.
+        /// with it the lighting bake packed lightmaps for every piece anyway, which took about seven minutes. Only solid
+        /// pieces (boxes, solids, stairs, columns) are occluders, hiding what's behind them in the occlusion bake; what
+        /// can be seen through or round (railings, trusses, frames, foliage, lawns, markings, fixtures, pipes, signs) is
+        /// only hidden, never hides: as an occluder it would only cost the bake and risk culling what shows through it.
         /// </summary>
-        public static void MakeStatic(GameObject obj) =>
-            GameObjectUtility.SetStaticEditorFlags(obj, StaticEditorFlags.BatchingStatic
-                | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic | StaticEditorFlags.ReflectionProbeStatic);
+        public static void MakeStatic(GameObject obj, bool occluder = true) =>
+            GameObjectUtility.SetStaticEditorFlags(obj, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic
+                | StaticEditorFlags.ReflectionProbeStatic | (occluder ? StaticEditorFlags.OccluderStatic : 0));
     }
 }

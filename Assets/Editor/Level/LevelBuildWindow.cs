@@ -8,67 +8,77 @@ using UnityEngine;
 namespace CharacterShowcase.EditorTools.Level
 {
     /// <summary>
-    /// Builds the Meridian Complex without freezing the editor, and shows how far along it is. MeridianComplexBuilder's
-    /// steps (one area at a time) run one per editor update, so the editor redraws between them, and the lighting is
-    /// baked in the background (Lightmapping.BakeAsync), its progress shown as it goes. The build is also shown in the
-    /// editor's Background Tasks. Each step still runs in one go, so the editor pauses briefly for each.
+    /// Builds a graybox scene (the Meridian Complex, or the Level Playground) without freezing the editor, and shows
+    /// how far along it is. The scene's build steps (see GrayboxScene: one area at a time) run one per editor update,
+    /// so the editor redraws between them, then the lighting (Lightmapping.BakeAsync) and the occlusion culling
+    /// (StaticOcclusionCulling.GenerateInBackground, if the generation settings bake it) are baked in the background,
+    /// the progress shown as they go. The build is also shown in the editor's Background Tasks. Each step still runs in
+    /// one go, so the editor pauses briefly for each. One scene is built at a time.
     ///
     /// Until the environment is replaced, cancelling leaves the level as it was (reopening the scene from disk).
-    /// After that the scene is saved first, and cancelling the bake leaves it without its baked environment lighting.
+    /// After that the scene is saved first, and cancelling a bake leaves it without that bake's data (the lighting, or
+    /// the occlusion culling).
     /// </summary>
-    public sealed class MeridianBuildWindow : EditorWindow
+    public sealed class LevelBuildWindow : EditorWindow
     {
         // How much of the bar the steps take, the bake taking the rest: about their share of the time (under a second
         // for all the steps, about three and a half for the bake).
         private const float StepsShare = 0.2f;
 
         // The build in progress (not kept across a script reload, which stops it: see wasBuilding).
-        [NonSerialized] private static MeridianBuildWindow running;
-        [NonSerialized] private List<MeridianComplexBuilder.BuildStep> steps;
-        [NonSerialized] private MeridianComplexBuilder.BuildState build;
+        [NonSerialized] private static LevelBuildWindow running;
+        [NonSerialized] private GrayboxScene level;
+        [NonSerialized] private List<GrayboxScene.BuildStep> steps;
+        [NonSerialized] private GrayboxScene.BuildState build;
         [NonSerialized] private int nextStep;
-        [NonSerialized] private bool baking;
+        [NonSerialized] private bool baking, occluding;
         [NonSerialized] private int progressId;
         [NonSerialized] private double startTime;
 
         // Kept across a script reload, so a build it stopped can be reported rather than seeming to vanish.
         [SerializeField] private bool wasBuilding;
+        [SerializeField] private string levelName = "";
         [SerializeField] private string status = "";
         [SerializeField] private float progress;
         [SerializeField] private string result;
         [SerializeField] private MessageType resultType;
 
-        /// <summary>Whether the level is being built now.</summary>
+        /// <summary>Whether a level is being built now.</summary>
         public static bool IsBuilding => running != null;
 
-        /// <summary>Brings the window of the build in progress to the front, if there is one.</summary>
-        public static void FocusBuild()
+        /// <summary>
+        /// For a level's menu item: starts building it in the background, after offering to save the open scene (which
+        /// the build replaces); or, if a level's already being built, brings that build's window to the front.
+        /// </summary>
+        internal static void BuildFromMenu(GrayboxScene level)
         {
-            if (running != null) { running.Focus(); }
-        }
-
-        /// <summary>Starts building the level, replacing the open scene, and shows the window.</summary>
-        public static void StartBuild()
-        {
-            if (running != null) { return; }
-            var window = GetWindow<MeridianBuildWindow>(true, "Building the Meridian Complex", true);
+            if (running != null)
+            {
+                running.Focus();
+                return;
+            }
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) { return; }
+            var window = GetWindow<LevelBuildWindow>(true, $"Building the {level.Name}", true);
             window.minSize = window.maxSize = new Vector2(420f, 150f);
-            window.Begin();
+            window.Begin(level);
         }
 
-        private void Begin()
+        private void Begin(GrayboxScene toBuild)
         {
             running = this;
-            steps = MeridianComplexBuilder.Steps();
-            build = new MeridianComplexBuilder.BuildState();
+            level = toBuild;
+            levelName = level.Name;
+            steps = level.Steps();
+            build = new GrayboxScene.BuildState();
             nextStep = 0;
             baking = false;
+            occluding = false;
             wasBuilding = true;
             result = null;
             startTime = EditorApplication.timeSinceStartup;
             status = steps[0].name;
             progress = 0f;
-            progressId = Progress.Start("Building the Meridian Complex");
+            progressId = Progress.Start($"Building the {level.Name}");
             EditorApplication.update += Tick;
             Repaint();
         }
@@ -81,14 +91,20 @@ namespace CharacterShowcase.EditorTools.Level
         {
             try
             {
+                if (occluding)
+                {
+                    if (!StaticOcclusionCulling.isRunning) { Complete(); }
+                    return;
+                }
                 if (baking)
                 {
                     if (Lightmapping.isRunning)
                     {
-                        Report(MeridianComplexBuilder.BakeStepName, StepsShare + (1f - StepsShare) * Mathf.Clamp01(Lightmapping.buildProgress));
+                        Report(GrayboxScene.BakeStepName, StepsShare + (1f - StepsShare) * 0.9f * Mathf.Clamp01(Lightmapping.buildProgress));
                         return;
                     }
-                    Complete();
+                    baking = false;
+                    AfterLighting();
                     return;
                 }
 
@@ -102,7 +118,7 @@ namespace CharacterShowcase.EditorTools.Level
                 {
                     steps[nextStep].run(build);
                     nextStep++;
-                    Report(nextStep < steps.Count ? steps[nextStep].name : MeridianComplexBuilder.BakeStepName, StepsShare * nextStep / steps.Count);
+                    Report(nextStep < steps.Count ? steps[nextStep].name : GrayboxScene.BakeStepName, StepsShare * nextStep / steps.Count);
                     return;
                 }
 
@@ -112,14 +128,26 @@ namespace CharacterShowcase.EditorTools.Level
                     baking = true;
                     return;
                 }
-                MeridianComplexBuilder.WarnLightingNotBaked();
-                Complete();
+                level.WarnLightingNotBaked();
+                AfterLighting();
             }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
                 Stop($"The build failed at \"{status}\": {exception.Message} See the Console.", MessageType.Error);
             }
+        }
+
+        /// <summary>After the lighting: bakes the occlusion culling in the background (the settings willing), or finishes.</summary>
+        private void AfterLighting()
+        {
+            if (level.StartOcclusionBake())
+            {
+                occluding = true;
+                Report(GrayboxScene.OcclusionStepName, 0.95f);
+                return;
+            }
+            Complete();
         }
 
         private void Report(string nextStatus, float fraction)
@@ -133,10 +161,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>Saves the built level, opens it and closes the window.</summary>
         private void Complete()
         {
-            MeridianComplexBuilder.Finish(build);
+            level.Finish(build);
             double seconds = EditorApplication.timeSinceStartup - startTime;
             EndBuild(Progress.Status.Succeeded);
-            Debug.Log($"[MeridianComplexBuilder] The build took {seconds:0} s.");
+            level.Log($"The build took {seconds:0} s.");
             Close();
         }
 
@@ -145,19 +173,28 @@ namespace CharacterShowcase.EditorTools.Level
 
         private void Cancel()
         {
+            if (occluding)
+            {
+                StaticOcclusionCulling.Cancel();
+                level.Finish(build);
+                level.WarnOcclusionNotBaked();
+                Stop("Cancelled during the occlusion bake. The level is built and saved, with its lighting, without occlusion " +
+                     "culling data: use Window > Rendering > Occlusion Culling > Bake.", MessageType.Warning);
+                return;
+            }
             if (baking)
             {
                 // The scene was saved before the bake; save it again with whatever lighting it has.
                 Lightmapping.Cancel();
-                MeridianComplexBuilder.Finish(build);
-                MeridianComplexBuilder.WarnLightingNotBaked();
+                level.Finish(build);
+                level.WarnLightingNotBaked();
                 Stop("Cancelled during the lighting bake. The level is built and saved, without its baked environment " +
                      "lighting: use Window > Rendering > Lighting > Generate Lighting.", MessageType.Warning);
                 return;
             }
             // Before the environment: nothing on disk has changed but the folders, so put the old level back.
-            bool hadLevel = File.Exists(MeridianComplexBuilder.ScenePath);
-            if (hadLevel) { EditorSceneManager.OpenScene(MeridianComplexBuilder.ScenePath); }
+            bool hadLevel = File.Exists(level.ScenePath);
+            if (hadLevel) { EditorSceneManager.OpenScene(level.ScenePath); }
             Stop(hadLevel ? "Cancelled. The level is as it was before the build." : "Cancelled. The level hasn't been built.", MessageType.Info);
         }
 
@@ -202,12 +239,27 @@ namespace CharacterShowcase.EditorTools.Level
         private void OnDestroy()
         {
             if (running != this) { return; }
-            if (!baking && CanUndo)
+            if (!baking && !occluding && CanUndo)
             {
                 Cancel();
                 return;
             }
-            MeridianComplexBuilder.BuildState carryOn = build;
+            GrayboxScene carryOnLevel = level;
+            GrayboxScene.BuildState carryOn = build;
+            if (occluding)
+            {
+                // The occlusion bake carries on in the background: save the level when it's done.
+                void SaveWhenOccluded()
+                {
+                    if (StaticOcclusionCulling.isRunning) { return; }
+                    EditorApplication.update -= SaveWhenOccluded;
+                    carryOnLevel.Finish(carryOn);
+                }
+                EditorApplication.update += SaveWhenOccluded;
+                level.Log("The build window was closed: the occlusion culling carries on baking, and the level is saved when it's done.");
+                EndBuild(Progress.Status.Succeeded);
+                return;
+            }
             if (!baking)
             {
                 for (; nextStep < steps.Count; nextStep++) { steps[nextStep].run(carryOn); }
@@ -218,15 +270,17 @@ namespace CharacterShowcase.EditorTools.Level
                 void FinishAfterBake()
                 {
                     Lightmapping.bakeCompleted -= FinishAfterBake;
-                    MeridianComplexBuilder.Finish(carryOn);
+                    carryOnLevel.BakeOcclusion();
+                    carryOnLevel.Finish(carryOn);
                 }
                 Lightmapping.bakeCompleted += FinishAfterBake;
-                Debug.Log("[MeridianComplexBuilder] The build window was closed: the lighting carries on baking, and the level is saved when it's done.");
+                level.Log("The build window was closed: the lighting carries on baking, then the occlusion culling, and the level is saved when they're done.");
             }
             else
             {
-                MeridianComplexBuilder.WarnLightingNotBaked();
-                MeridianComplexBuilder.Finish(carryOn);
+                level.WarnLightingNotBaked();
+                level.BakeOcclusion();
+                level.Finish(carryOn);
             }
             EndBuild(Progress.Status.Succeeded);
         }
@@ -242,7 +296,7 @@ namespace CharacterShowcase.EditorTools.Level
                 return;
             }
 
-            EditorGUILayout.LabelField("Building the Meridian Complex", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField($"Building the {levelName}", EditorStyles.boldLabel);
             Rect bar = GUILayoutUtility.GetRect(18f, 20f, GUILayout.ExpandWidth(true));
             EditorGUI.ProgressBar(bar, progress, $"{progress * 100f:0}%");
             EditorGUILayout.LabelField(status + "…", EditorStyles.wordWrappedLabel);
@@ -253,7 +307,7 @@ namespace CharacterShowcase.EditorTools.Level
             }
             GUILayout.FlexibleSpace();
 
-            bool cancellable = baking || steps != null && CanUndo;
+            bool cancellable = baking || occluding || steps != null && CanUndo;
             using (new EditorGUI.DisabledScope(running != this || !cancellable))
             {
                 if (GUILayout.Button(new GUIContent("Cancel", cancellable ? "Stop the build." : "Not while the environment is being replaced and the scene saved.")))
@@ -262,7 +316,7 @@ namespace CharacterShowcase.EditorTools.Level
                 }
             }
             // Keep the elapsed time ticking over while the bake runs in the background.
-            if (running == this && baking) { Repaint(); }
+            if (running == this && (baking || occluding)) { Repaint(); }
         }
     }
 }

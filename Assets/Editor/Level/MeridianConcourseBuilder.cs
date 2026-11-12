@@ -83,15 +83,43 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- The areas ----
 
-        /// <summary>The open plaza: the ground's floor, with a two-tier octagonal dais at its centre and four columns around it.</summary>
+        /// <summary>
+        /// The open plaza: the ground's floor, with a two-tier octagonal dais at its centre (a tree on it, guide rings round
+        /// it), four columns and four planters around it, guide lines out to the broad stairs, bollards round its edge,
+        /// and the Concourse's area sign on the west terrace's face.
+        /// </summary>
         private static void BuildPlaza(Transform plaza)
         {
+            // Bollards round the plaza, inside its edge, but where the broad stairs come down.
+            const float bollardLine = PlazaHalf - 2.5f, stairGap = BroadStairWidth + 2f;
+            Bollards(plaza, Octagon(bollardLine), 0f, (new Vector2(0f, bollardLine), stairGap), (new Vector2(bollardLine, 0f), stairGap),
+                (new Vector2(0f, -bollardLine), stairGap));
+            AreaSign(plaza, new Vector2(-PlazaHalf, 0f), 3f, Vector2.right, "01", "Concourse"); // On the west terrace's face.
             Prism(plaza, "Dais (Lower)", Octagon(4.5f), 0f, 0.6f);
             Prism(plaza, "Dais (Upper)", Octagon(3f), 0f, 1.2f);
+            // The concept art's plaza: a tree on the dais, orange and white rings round it, orange lanes out to the broad
+            // stairs, and planters with trees on the diagonals.
+            var random = new System.Random(Settings.foliage.seed + 1);
+            Tree(plaza, Vector2.zero, 1.2f, random);
+            GuideLine(plaza, "Guide Ring (Orange)", Octagon(6.5f), 0f, Surface.Accent, closed: true);
+            GuideLine(plaza, "Guide Ring (White)", Octagon(7.1f), 0f, Surface.White, closed: true);
+            foreach (Vector2 way in new[] { Vector2.up, Vector2.right, Vector2.down })
+            {
+                Vector2 across = new Vector2(way.y, -way.x) * (BroadStairWidth / 2f);
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    GuideLine(plaza, "Guide Line (to the Broad Stair)", new[] { across * s + way * 8f, across * s + way * (PlazaHalf - 0.4f) }, 0f, Surface.Accent);
+                }
+            }
+            foreach (Vector2 corner in new[] { new Vector2(1f, 1f), new Vector2(-1f, 1f), new Vector2(1f, -1f), new Vector2(-1f, -1f) })
+            {
+                Vector2 c = corner * 11.5f;
+                Planter(plaza, "Planter", c.x - 1.2f, c.x + 1.2f, c.y - 1.2f, c.y + 1.2f, 0f, tree: true, random);
+            }
             for (int i = 0; i < 4; i++)
             {
                 float x = (i & 1) == 0 ? -9f : 9f, z = (i & 2) == 0 ? -9f : 9f;
-                Box(plaza, $"Column {i + 1}", new Vector3(x, 2f, z), new Vector3(2f, 4f, 2f), 45f);
+                Column(plaza, $"Column {i + 1}", new Vector2(x, z), new Vector2(2f, 2f), 0f, 4f, 45f, accent: true);
             }
         }
 
@@ -186,7 +214,9 @@ namespace CharacterShowcase.EditorTools.Level
             foreach (float x in new[] { -terraceHalf - 3f, terraceHalf + 3f })
             {
                 BoxXZ(landmarks, x < 0f ? "Gate Tower (West, +36)" : "Gate Tower (East, +36)",
-                    new Vector2(x, secondEnd + terraceDepth / 2f), new Vector2(6f, 6f), 0f, 36f);
+                    new Vector2(x, secondEnd + terraceDepth / 2f), new Vector2(6f, 6f), 0f, 36f, 0f, Surface.Panel);
+                // A banner down each tower's face toward the plaza.
+                Banner(landmarks, new Vector2(x, secondEnd + terraceDepth / 2f - 3f), Vector2.down, 33f, 14f);
             }
         }
 

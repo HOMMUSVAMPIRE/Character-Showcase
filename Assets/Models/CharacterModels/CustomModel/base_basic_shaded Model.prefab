@@ -166,6 +166,9 @@ MonoBehaviour:
   liftedHeight: 0.18
   alignToGround: 1
   footSmoothTime: 0.05
+  footLock: 1
+  maxLockDistance: 0.25
+  lockBlendTime: 0.08
   adjustPelvis: 1
   maxPelvisDrop: 0.4
   pelvisSmoothTime: 0.1

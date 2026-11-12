@@ -63,11 +63,19 @@ namespace CharacterShowcase.EditorTools.Level
             BuildBandsBAndC(platforms, stairs, traversal, bridges, rails, connections, route);
             BuildBandsDAndE(platforms, stairs, traversal, route);
             BuildApproach(Group(gardens, "Approach from the Concourse"));
+            // Lawns over the district's open ground and its platforms' tops (paving left round what stands on them and
+            // along their edges), then trees over the open ground, where they don't crowd a platform, stair or route.
+            UnityEngine.Rect plan = UnityEngine.Rect.MinMaxRect(-198f, -198f, -82f, -82f);
+            Lawns(district, plan, new[] { FloorTop, HeightStep, 2f * HeightStep, 3f * HeightStep, 4f * HeightStep, 5f * HeightStep }, 3);
+            ScatterTrees(district, plan, FloorTop, 2);
         }
 
-        /// <summary>A platform over a rectangle of the plan (x from x0 to x1, z from z0 to z1), solid from the ground to its top.</summary>
+        /// <summary>
+        /// A platform over a rectangle of the plan (x from x0 to x1, z from z0 to z1), solid from the ground to its top,
+        /// with an orange coping round its edge (the concept art's gardens).
+        /// </summary>
         private static GameObject Platform(Transform parent, string name, float x0, float x1, float z0, float z1, float top) =>
-            BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), 0f, top);
+            Graybox.Platform(parent, name, x0, x1, z0, z1, 0f, top, coping: Surface.Accent);
 
         /// <summary>
         /// The district's floor (±0, a few centimetres proud of the ground so the two don't flicker where they meet) and
@@ -81,13 +89,14 @@ namespace CharacterShowcase.EditorTools.Level
             {
                 openings.Add(new UnityEngine.Rect(r.x - PlanToWorld.x, r.y - PlanToWorld.z, r.width, r.height));
             }
-            SlabWithHoles(boundary, "Floor (±0)", UnityEngine.Rect.MinMaxRect(-200f, -200f, -80f, -80f), openings, -0.5f, FloorTop);
+            SlabWithHoles(boundary, "Floor (±0)", UnityEngine.Rect.MinMaxRect(-200f, -200f, -80f, -80f), openings, -0.5f, FloorTop, Surface.Ground);
             float t = BoundaryThickness, h = BoundaryHeight;
-            Platform(boundary, "Wall (North)", -200f - t, -80f + t, -80f, -80f + t, h);
-            Platform(boundary, "Wall (West)", -200f - t, -200f, -200f - t, -80f, h);
-            Platform(boundary, "Wall (East)", -80f, -80f + t, -200f - t, -80f, h);
-            Platform(boundary, "Wall (South-West)", -200f - t, -150f, -200f - t, -200f, h);
-            Platform(boundary, "Wall (South-East)", -130f, -80f + t, -200f - t, -200f, h);
+            Block(boundary, "Wall (North)", -200f - t, -80f + t, -80f, -80f + t, 0f, h, Surface.Panel);
+            Block(boundary, "Wall (West)", -200f - t, -200f, -200f - t, -80f, 0f, h, Surface.Panel);
+            Block(boundary, "Wall (East)", -80f, -80f + t, -200f - t, -80f, 0f, h, Surface.Panel);
+            Block(boundary, "Wall (South-West)", -200f - t, -150f, -200f - t, -200f, 0f, h, Surface.Panel);
+            Block(boundary, "Wall (South-East)", -130f, -80f + t, -200f - t, -200f, 0f, h, Surface.Panel);
+            AreaSign(boundary, new Vector2(-120f, -200f - t), 1.2f, Vector2.down, "02", "Kinetic Gardens"); // Beside the south entrance.
         }
 
         /// <summary>
@@ -130,6 +139,8 @@ namespace CharacterShowcase.EditorTools.Level
             Marker(route, "Route 3 (+8)", new Vector2(-123f, -142f), 2f * HeightStep);
             // The central walk's west end faces the west terrace across a 10 m gap at +8: a jump (or dash) on the advanced route.
             Marker(traversal, "Gap (10 m, +8): B3 to C1", new Vector2(-155f, -140f), 2f * HeightStep);
+            HazardStripes(traversal, new Vector2(-150f, -158f + flight), new Vector2(-150f, -136f), Vector2.right, 2f * HeightStep);
+            HazardStripes(traversal, new Vector2(-160f, -150f), new Vector2(-160f, -124f), Vector2.left, 2f * HeightStep);
 
             // East: up to +12 from the central walk, and from the south-east platform by a stair along the east wall.
             Flight(stairs, "Stair (+8 to +12, East)", new Vector2(-116f, -140f), Vector2.right, StairWidth, 2f * HeightStep, 3f * HeightStep);
@@ -168,8 +179,8 @@ namespace CharacterShowcase.EditorTools.Level
             Platform(traversal, "D3 Dash Island (+12)", -160f, -152f, -122f, -112f, h12);
             // Advanced 5 to 4: a narrow beam out from the north-west terrace at +16, dropping to the north platform, beside a
             // wall to run along (planned: at least 4 m wide and 8 m high).
-            BoxXZ(traversal, "Narrow Beam (+16)", new Vector2(-154f, -95f), new Vector2(12f, BeamWidth), h16 - 1f, h16);
-            BoxXZ(traversal, "Wall-Run Wall (planned)", new Vector2(-154f, -101.5f), new Vector2(12f, 1f), 0f, h20);
+            BoxXZ(traversal, "Narrow Beam (+16)", new Vector2(-154f, -95f), new Vector2(12f, BeamWidth), h16 - 1f, h16, 0f, Surface.Steel);
+            BoxXZ(traversal, "Wall-Run Wall (planned)", new Vector2(-154f, -101.5f), new Vector2(12f, 1f), 0f, h20, 0f, Surface.Panel);
 
             // Beginner route 4 to 6: up from the north platform to the viewpoint, by a stair, a landing at +16 and a stair
             // into the viewpoint itself.
@@ -188,7 +199,7 @@ namespace CharacterShowcase.EditorTools.Level
             float[] chain = { 14f, 16f, 18f };
             for (int i = 0; i < chain.Length; i++)
             {
-                BoxXZ(traversal, $"Ledge Chain Column (+{chain[i]:0})", new Vector2(-115f + 4f * i, -88f), new Vector2(2f, 2f), 0f, chain[i]);
+                BoxXZ(traversal, $"Ledge Chain Column (+{chain[i]:0})", new Vector2(-115f + 4f * i, -88f), new Vector2(2f, 2f), 0f, chain[i], 0f, Surface.Graphite);
             }
         }
 

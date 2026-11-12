@@ -20,7 +20,7 @@ describes what the project does; this file describes how to change it safely.
 | `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`) | `Character`, `Level` | Unity.InputSystem |
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
 | `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
-| `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime **only** |
+| `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
 | `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor |
 | `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
 
@@ -161,14 +161,16 @@ These are produced by tools. Edit the generator instead and regenerate:
 | `[name] Model.prefab`, `[name].asset` and the avatar/T-pose import settings of every model in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Tools > Character Showcase > Prepare Character Models) |
 | The Game Setup object in a scene (a `CharacterSpawner` wired to the camera, and copies of SampleScene's InputManager and Main Camera if the scene has none), including the character, model and movement mode the scene spawns, and the replacement of characters placed in it | `SceneGameSetup` (Tools > Character Showcase > Set Up Scene…, or `-executeMethod CharacterShowcase.EditorTools.SceneGameSetup.SetUpFromCommandLine -scene <path>`) |
 | `Assets/Scenes/MeridianComplex/MeridianComplex.unity`, its `Environment/` assets (sky, post-processing, lighting settings) and its baked `MeridianComplex/` lighting data | `MeridianComplexBuilder` (Tools > Character Showcase > Level > Build Meridian Complex), which calls one builder per area in `Assets/Editor/Level` |
+| `Assets/Scenes/LevelPlayground/LevelPlayground.unity`, its `Environment/` assets and baked `LevelPlayground/` lighting data | `LevelPlaygroundBuilder` (Tools > Character Showcase > Level > Build Level Playground) |
 
 The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
 the model sources. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
 in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
 still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
 
-The level's placeholder material (`Assets/Scenes/MeridianComplex/Materials/Placeholder_SmoothConcrete.mat`) is the
-exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be edited by hand.
+The levels' materials (`Assets/Materials/Level/Level_[Surface].mat`, one per `Graybox.Surface`, shared by both level
+scenes) are the exception: `GrayboxScene` makes each only if it's missing, so they can be edited by hand. They use
+`Assets/Materials/NoiseConcrete.shadergraph`, which is edited in the Shader Graph editor (nothing generates it).
 
 ## Useful facts for common tasks
 
@@ -214,11 +216,46 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
 - **The level** is rebuilt with `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`
   (Unity closed; it also bakes the environment lighting, a few seconds: level geometry isn't Contribute GI, which
   made the baker pack lightmaps for every piece and took about seven minutes). The menu item builds the same steps
-  (`MeridianComplexBuilder.Steps`) one per editor update, with `MeridianBuildWindow` showing progress and the bake run
-  by `Lightmapping.BakeAsync`. Each area has a builder with
-  `BuildInto(Transform complex, Material material)`, called as one of `MeridianComplexBuilder.Steps`; a new area is a new
-  builder called from there, joined at the existing areas' connection markers. Builders share `Graybox`'s pieces
-  (flights of stairs, ramps, bridges, guardrails, walls with openings, underground cells, markers). Units are metres;
+  (`GrayboxScene.Steps`) one per editor update, with `LevelBuildWindow` showing progress and the bake run
+  by `Lightmapping.BakeAsync`. `GrayboxScene` is the build both level scenes share (new scene, material, a part per
+  builder, environment, save, bake); `MeridianComplexBuilder.Scene` lists the complex's parts. Each area has a builder with
+  `BuildInto(Transform complex, Material material)`, listed as one of `MeridianComplexBuilder.Scene`'s parts; a new area is a new
+  builder listed there, joined at the existing areas' connection markers. Builders share `Graybox`'s pieces
+  (flights of stairs, ramps, bridges, guardrails, walls with openings, underground cells and their lighting, shaft
+  walls, blocks, the ground, markers): put a piece used in more than one place there rather than in a builder. Each
+  piece gives its parts their palette surfaces (`Graybox.Surface`); a piece made of several (a flight, a guardrail) is one
+  mesh with a submesh per surface (`GrayboxMesh`). Visual detail never changes collision: trims get no collider
+  (`Graybox.Trim`), and a guardrail's collider is one solid box whatever its posts and rails look like. `Graybox` is
+  a partial class: the basic pieces are in `Graybox.cs`, architectural detail (wall pilasters and opening frames,
+  platform copings, chamfered columns) in `Graybox.Detail.cs`, and structure (I-beam columns, trusses, braced frames,
+  brackets) in `Graybox.Structure.cs`. Detail has no colliders (columns keep their footprint's box); structure that can
+  be walked into has one box collider round the whole of it. Detail that meets a walkable top stops just short of it
+  (copings end 1 cm below the platform's top), so it never shares a plane with a step or ramp arriving there. Lighting
+  (`Graybox.Lighting.cs`: underground ceiling panels, strip lights and their lights, door lights, bollards, floodlights,
+  accent posts), utilities (`Graybox.Utilities.cs`: pipe runs, utility stations) and markings and wayfinding
+  (`Graybox.Markings.cs`: hazard stripes, corner brackets, floor labels, bridge sign gantries, area signs) are in their
+  own files too, as are dressing (`Graybox.Dressing.cs`: banners, guide lines, spawn pads, future-mechanic marks, rulers,
+  tower bands, the overhead crane) and foliage (`Graybox.Foliage.cs`: trees, shrubs, planters, lawns and grass
+  tufts, scattering). Lawns are most of the level's triangles (the tufts): tune `foliage.tuftDensity` first if it needs
+  to be lighter. Tufts are their own objects under each lawn chunk, casting no shadows, with a LOD group that stops
+  drawing them beyond `foliage.tuftDrawDistance` (allowing for the quality level's LOD bias).
+- **Occlusion culling:** `GrayboxScene` bakes it after the lighting (`StaticOcclusionCulling`, settings in
+  `culling`), the build window in the background. Only solid pieces are occluders: pass `occluder: false` to
+  `Graybox.MakeStatic` for anything that can be seen through or round (railings, trusses, foliage, decals, fixtures),
+  or it may hide what shows through it. What has to
+  find the floor under it or room round it is put off with `Graybox.Defer` and placed by `RunDeferred`, which
+  `GrayboxScene` runs after every part ("Placing the finishing touches"), using physics queries against the built
+  level: spawn markers get pads and markers named "… (future): …" get marks that way. Anything random is seeded
+  (`foliage.seed`), so builds repeat. Lettering is TextMeshPro (the levels are for demonstration and stay out of the package, so the level
+  assembly may use it; TMP's essential resources are in `Assets/TextMesh Pro`). Text objects aren't marked static.
+- **Generation settings:** every number a shared piece is made with is in `GrayboxSettings`
+  (`Assets/Editor/Level/GrayboxSettings.asset`, made with the field defaults if it's missing), loaded by `Graybox.Begin`
+  and read through `Graybox.Settings`. A new piece's dimensions go there (a field with a `[Tooltip]` under its section),
+  not in constants; an area's layout stays in its builder. Daylight fixtures cast no light unless
+  `lights.fixturesCastLight` is on: keep the level's real-time light count down.
+  **Try level changes in the Level Playground first** (`LevelPlaygroundBuilder`, one of each piece, built with
+  `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine` in a couple of
+  seconds), then rebuild the complex; a new kind of piece gets one example in the playground too. Units are metres;
   +Z is north. Each area's notes (`*_Blockout_Notes.md` beside the scene) record how its diagram was read; update them
   with the builder.
 - **Level stairs and slopes keep to the character's limits:** steps under its 0.35 m step height (0.3 m, or 0.33 m

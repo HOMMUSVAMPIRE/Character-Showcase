@@ -34,9 +34,6 @@ namespace CharacterShowcase.EditorTools.Level
         private static readonly float[] TunnelHeights = { 3f, 2.5f, 2f, 1.5f, 1f };
         private const float WallRunPlatform = 8f, WallRunGap = 16f, WallRunWall = 20f;
 
-        private static GameObject Block(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float y1) =>
-            BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1);
-
         /// <summary>Builds the Calibration Annex under the complex's root, all in the given material.</summary>
         public static void BuildInto(Transform complex, Material material)
         {
@@ -48,14 +45,15 @@ namespace CharacterShowcase.EditorTools.Level
             // The yard: its floor and a low wall round it, open on the north and east, with the arrival platform in its north-east corner.
             Block(yard, "Floor (±0)", X0, X1, Z0, Z1, -0.5f, FloorTop);
             const float t = WallThickness, open0 = -100f, open1 = -90f, corner = -74f;
-            Block(yard, "Wall (West)", X0, X0 + t, Z0, Z1, 0f, WallHeight);
-            Block(yard, "Wall (South)", X0 + t, X1, Z0, Z0 + t, 0f, WallHeight);
-            Block(yard, "Wall (North, West)", X0 + t, open0, Z1 - t, Z1, 0f, WallHeight);
-            Block(yard, "Wall (North, East)", open1, corner, Z1 - t, Z1, 0f, WallHeight);
-            Block(yard, "Wall (East, South)", X1 - t, X1, Z0 + t, open0, 0f, WallHeight);
-            Block(yard, "Wall (East, North)", X1 - t, X1, open1, corner, 0f, WallHeight);
+            Block(yard, "Wall (West)", X0, X0 + t, Z0, Z1, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (South)", X0 + t, X1, Z0, Z0 + t, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (North, West)", X0 + t, open0, Z1 - t, Z1, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (North, East)", open1, corner, Z1 - t, Z1, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (East, South)", X1 - t, X1, Z0 + t, open0, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (East, North)", X1 - t, X1, open1, corner, 0f, WallHeight, Surface.Panel);
             Marker(connections, "Entrance (N, ±0)", new Vector2((open0 + open1) / 2f, Z1), FloorTop);
             Marker(connections, "Entrance (E, ±0)", new Vector2(X1, (open0 + open1) / 2f), FloorTop);
+            AreaSign(yard, new Vector2(-106f, Z1), 1.2f, Vector2.up, "07", "Calibration Annex"); // Beside the north entrance, on the wall's face.
 
             BuildArrival(arrival, rails, connections, future, corner);
             BuildStepAndLedgeTests(Group(annex, "Step and Ledge Tests"));
@@ -80,7 +78,7 @@ namespace CharacterShowcase.EditorTools.Level
             const float stairZ = -62f;
             float upper = FlightLength(ArrivalLanding, Arrival), lower = FlightLength(FloorTop, ArrivalLanding), landing = 3f;
             Flight(arrival, "Stair (+12 to +6)", new Vector2(corner - upper, stairZ), Vector2.right, StairWidth, ArrivalLanding, Arrival);
-            Block(arrival, "Landing (+6)", corner - upper - landing, corner - upper, stairZ - StairWidth / 2f, stairZ + StairWidth / 2f, 0f, ArrivalLanding);
+            Platform(arrival, "Landing (+6)", corner - upper - landing, corner - upper, stairZ - StairWidth / 2f, stairZ + StairWidth / 2f, 0f, ArrivalLanding);
             Flight(arrival, "Stair (+6 to ±0)", new Vector2(corner - upper - landing - lower, stairZ), Vector2.right, StairWidth, FloorTop, ArrivalLanding);
             RailAround(rails, platform, Arrival, (platformEdge, 8f), (new Vector2(corner, stairZ), StairWidth));
             Marker(connections, "To Concourse (NE, +12)", platformEdge, Arrival);
@@ -94,11 +92,15 @@ namespace CharacterShowcase.EditorTools.Level
             {
                 float x = -132f + 6f * i;
                 Block(tests, $"Step {StepHeights[i]:0.00} m", x, x + LaneWidth, -66f, -63f, 0f, FloorTop + StepHeights[i]);
+                CornerBrackets(tests, x, x + LaneWidth, -66f, -63f, FloorTop);
+                FloorLabel(tests, $"{StepHeights[i]:0.00} m", new Vector2(x + LaneWidth / 2f, -67.6f), FloorTop, Vector2.up);
             }
             for (int i = 0; i < LedgeHeights.Length; i++)
             {
                 float x = -132f + 6f * i;
-                Block(tests, $"Ledge {LedgeHeights[i]:0.0} m", x, x + LaneWidth, -78f, -74f, 0f, FloorTop + LedgeHeights[i]);
+                Platform(tests, $"Ledge {LedgeHeights[i]:0.0} m", x, x + LaneWidth, -78f, -74f, 0f, FloorTop + LedgeHeights[i]);
+                CornerBrackets(tests, x, x + LaneWidth, -78f, -74f, FloorTop);
+                FloorLabel(tests, $"{LedgeHeights[i]:0.0} m", new Vector2(x + LaneWidth / 2f, -72.4f), FloorTop, Vector2.down);
             }
         }
 
@@ -111,9 +113,10 @@ namespace CharacterShowcase.EditorTools.Level
                 float length = SlopeRise / Mathf.Tan(SlopeAngles[i] * Mathf.Deg2Rad);
                 float x = -130f + 6f * i;
                 Ramp(test, $"Slope {SlopeAngles[i]:0}°", new Vector2(x, deckZ1 + length), Vector2.down, LaneWidth, length, FloorTop, FloorTop + SlopeRise);
+                FloorLabel(test, $"{SlopeAngles[i]:0}°", new Vector2(x, deckZ1 + length + 1.4f), FloorTop, Vector2.down);
             }
             float top = FloorTop + SlopeRise;
-            Block(test, "Slope Test Deck (+3)", -132f, -98f, deckZ0, deckZ1, 0f, top);
+            Platform(test, "Slope Test Deck (+3)", -132f, -98f, deckZ0, deckZ1, 0f, top);
             Flight(test, "Stair (Slope Test Deck)", new Vector2(-132f - FlightLength(FloorTop, top), (deckZ0 + deckZ1) / 2f), Vector2.right, 6f, FloorTop, top);
         }
 
@@ -140,12 +143,17 @@ namespace CharacterShowcase.EditorTools.Level
         {
             const float x0 = -132f, x1 = -92f, z0 = -122f, z1 = -114f, landing = 6f;
             float top = Runway;
-            Block(test, "Runway (+4)", x0, x1, z0, z1, 0f, top);
+            Platform(test, "Runway (+4)", x0, x1, z0, z1, 0f, top);
             Flight(test, "Stair (Runway)", new Vector2(x0 - FlightLength(FloorTop, top), (z0 + z1) / 2f), Vector2.right, 6f, FloorTop, top);
+            HazardStripes(test, new Vector2(x0, z0), new Vector2(x1, z0), Vector2.up, top);
+            // A ruler on the floor beside the lanes, out from the runway's edge, to read the gaps by.
+            Ruler(test, "Ruler (Jump Distance)", new Vector2(x0 - 1.5f, z0), Vector2.down, 26f, FloorTop);
             for (int i = 0; i < JumpGaps.Length; i++)
             {
                 float x = -132f + 5f * i;
-                Block(test, $"Landing (Gap {JumpGaps[i]:0} m)", x, x + LaneWidth, z0 - JumpGaps[i] - landing, z0 - JumpGaps[i], 0f, top);
+                Platform(test, $"Landing (Gap {JumpGaps[i]:0} m)", x, x + LaneWidth, z0 - JumpGaps[i] - landing, z0 - JumpGaps[i], 0f, top);
+                HazardStripes(test, new Vector2(x, z0 - JumpGaps[i]), new Vector2(x + LaneWidth, z0 - JumpGaps[i]), Vector2.down, top);
+                FloorLabel(test, $"{JumpGaps[i]:0} m", new Vector2(x + LaneWidth / 2f, z0 - JumpGaps[i] - landing / 2f), top, Vector2.down);
             }
         }
 
@@ -155,7 +163,7 @@ namespace CharacterShowcase.EditorTools.Level
             for (int k = 1; k <= 8; k++)
             {
                 float z = -94f - 6f * (k - 1);
-                Block(lane, $"Jump Lane Block (+{2 * k})", -66f, -62f, z - 2f, z + 2f, 0f, 2f * k);
+                Platform(lane, $"Jump Lane Block (+{2 * k})", -66f, -62f, z - 2f, z + 2f, 0f, 2f * k);
             }
         }
 
@@ -164,9 +172,11 @@ namespace CharacterShowcase.EditorTools.Level
         {
             const float x0 = -88f, x1 = -80f, near0 = -100f, near1 = -92f;
             float far1 = near0 - WallRunGap, far0 = far1 - 8f;
-            Block(test, "Wall-Run Start (+8)", x0, x1, near0, near1, 0f, WallRunPlatform);
-            Block(test, "Wall-Run Finish (+8)", x0, x1, far0, far1, 0f, WallRunPlatform);
-            Block(test, "Wall-Run Wall (+20)", x1 + 1f, x1 + 2f, far1 - 2f, near0 + 2f, 0f, WallRunWall);
+            Platform(test, "Wall-Run Start (+8)", x0, x1, near0, near1, 0f, WallRunPlatform);
+            Platform(test, "Wall-Run Finish (+8)", x0, x1, far0, far1, 0f, WallRunPlatform);
+            HazardStripes(test, new Vector2(x0, near0), new Vector2(x1, near0), Vector2.up, WallRunPlatform);
+            HazardStripes(test, new Vector2(x0, far1), new Vector2(x1, far1), Vector2.down, WallRunPlatform);
+            Block(test, "Wall-Run Wall (+20)", x1 + 1f, x1 + 2f, far1 - 2f, near0 + 2f, 0f, WallRunWall, Surface.Panel);
             Flight(test, "Stair (Wall-Run Start)", new Vector2(x0 - FlightLength(FloorTop, WallRunPlatform), (near0 + near1) / 2f), Vector2.right, 8f, FloorTop, WallRunPlatform);
             Marker(future, "Wall Run (future): along the wall, across the 16 m gap", new Vector2(x1 + 1f, (near0 + far1) / 2f), WallRunPlatform);
         }
