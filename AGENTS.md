@@ -73,8 +73,14 @@ describes what the project does; this file describes how to change it safely.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects implementing capability interfaces** (`WalkRunMode`, `JumpMode`,
-  `DashMode` in `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability,
-  implemented by `BasicMovementMode`, with tunables as serialized fields on the asset.
+  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `LedgeMode`, `PushPullMode` in
+  `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability, implemented by
+  `BasicMovementMode`, with tunables as serialized fields on the asset. `BasicMovementMode` is a partial class: walking,
+  jumping and dashing are in `BasicMovementMode.cs`, and each other ability in `BasicMovementMode.<Ability>.cs` with
+  its fields under its own header. A new ability gets a file of its own, a state class on the `MovementController`
+  (`MovementAbilityStates.cs`; modes are shared assets), a `CharacterState` flag (its start and end events then come
+  from `MovementController.StateEvents`), and a place in the chain in `ProcessMovementData`, which tries the abilities
+  most committed first; each returns whether it has the character this step.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
 - **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never
@@ -98,7 +104,7 @@ describes what the project does; this file describes how to change it safely.
 ### Hotspots
 
 `Assets/Scripts/MovementController.cs` and `Assets/Scripts/MovementModes/BasicMovementMode.cs` are where almost every
-movement feature lands. Parallel edits to them will conflict. If several agents are working at once, only one should
+movement feature lands (the ability files beside `BasicMovementMode.cs` less so: each is one ability's). Parallel edits to them will conflict. If several agents are working at once, only one should
 own each of these files at a time; others should wait or work elsewhere.
 
 ### Serialized field names are part of the interface
@@ -109,7 +115,10 @@ own each of these files at a time; others should wait or work elsewhere.
 - The tests read and set these `BasicMovementMode` fields **by name through reflection**, so renaming them compiles
   fine but fails at runtime: `walkSpeed`, `runSpeed`, `gravityStrength`, `maxFallSpeed`, `coyoteTime`, `maxJumps`,
   `jumpInputBuffer`, `dashSpeed`, `dashDuration`, `dashSpeedCurve`, `dashEndSpeedRetention`, `dashCooldown`,
-  `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`. The hygiene check catches a missing one.
+  `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`, `holdToCrouch`, `slideMinStartSpeed`,
+  `slideMaxDuration`, `rollSpeedCurve`, `rollCooldown`, `rollInputBuffer`, `wallRunMaxDuration`, `wallRunMinHeight`,
+  `wallJumpAwaySpeed`, `wallJumpUpSpeed`, `ledgeClimbDuration`, `ledgeHangHeight`, `ledgeGrabMaxHeight`,
+  `ledgeMaxGrabRiseSpeed`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -156,8 +165,10 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
 
 - **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton reading the `Player` action
   map) → `Inputs` / `InputButton` (in `CharacterUtilities.cs`) → `MovementController.ProcessMovementInputs`. The
-  action map also defines `Crouch`, `Attack` and `Interact`, which nothing reads yet. New
-  buttons are read inside `ACInputManager` with its private `ReadButton` helper, the way `Dash` is. Camera input
+  action map also defines `Attack`, which nothing reads yet. `Crouch` and `Roll` are read as `Inputs.crouch` and
+  `Inputs.roll`, and `Interact` (a plain button, held) as `Inputs.grab`. New buttons are read inside `ACInputManager`
+  with its private `ReadButton` helper, the way `Dash` is. One-off presses of ability buttons go through a
+  `ButtonPress` (press buffer, one use per press), since a press can last several physics steps or fall between them. Camera input
   is read separately by `CameraSystem/CameraInputReader`.
 - **Sprint** is `Inputs.sprint` (read like `Dash`), held to move at `runSpeed` instead of `walkSpeed`:
   `WalkRunMode.MoveSpeed(inputs)` picks the speed, for walking and air steering alike. The speeds suit the
@@ -173,7 +184,18 @@ exception: `MeridianComplexBuilder` makes it only if it's missing, so it can be 
   `ACCharacterController` reads `ACInputManager.instance`. `ACCharacterController.Setup` and `UpdateCaches` are empty
   placeholders.
 - **New movement events** go in the `MovementEvents` flags enum. Movement modes report events they cause;
-  `MovementController.DetectEvents` detects the ones every mode shares. `AnimatorParameterTranslator` can fire
+  `MovementController.DetectEvents` detects the ones every mode shares, including each ability's start and end, from
+  its `CharacterState` flag (`StateEvents`).
+- **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `CanFitAt`,
+  `StandingHeight`, `Radius`, `Skin`), which skip the character's own colliders and its `IgnoredCollisionRoot` (an
+  object it holds). Crouching lowers the collider with `SetHeightFraction`, which keeps the feet in place and only
+  raises it where there's room. `MovementMode.AfterMovementResolved` runs once the step's movement is resolved, for
+  moving something along with the character (a held `Level.PushableObject`).
+- **Ability animations** are Animator states built by `MannequinGenerator.BuildAbilityStates`, driven by the
+  translator's Bool parameters (`Crouching`, `Sliding`, ...) and `GrabSpeed`, `RollProgress`, `ClimbProgress`; the
+  `Crouch` and `Hang` clips are the mannequin's own (`mannequin_animations.py`). Hands on a ledge are `LedgeHandIK` (on every model prefab,
+  added by `CharacterModelImporter` like `FootPlacementIK`), placed from `CharacterAnimationState.ledgeEdge` /
+  `ledgeNormal`. `AnimatorParameterTranslator` can fire
   Animator triggers on them.
 - **Spawn points in the level** are spawn markers: empty objects named "Spawn Point (…)" made by `Graybox.SpawnMarker`,
   facing their forward. `SceneGameSetup` turns them into the spawner's spawn points (`SpawnMarkerPrefix` must match

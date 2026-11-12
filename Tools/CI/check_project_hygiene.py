@@ -68,15 +68,17 @@ def check_camera_independence():
 
 
 def check_reflected_settings():
+    # BasicMovementMode is a partial class: its fields are spread over BasicMovementMode.cs and
+    # BasicMovementMode.<Ability>.cs.
     mode = ASSETS / "Scripts" / "MovementModes" / "BasicMovementMode.cs"
-    source = mode.read_text(errors="replace")
+    source = "\n".join(p.read_text(errors="replace") for p in sorted(mode.parent.glob("BasicMovementMode*.cs")))
     for test in (ASSETS / "Tests").rglob("*.cs"):
         for name in set(re.findall(r'MovementSetting(?:<\w+>)?\("(\w+)"', test.read_text(errors="replace"))):
             # A field declaration: "<type> name;" or "<type> name = ..."
             if not re.search(rf"\b\w[\w<>\[\],]*\s+{name}\s*(=|;)", source):
                 problems.append(
                     f"{test.relative_to(ROOT)} reads or sets BasicMovementMode field '{name}' by reflection, "
-                    f"but no such field is declared in {mode.relative_to(ROOT)}"
+                    f"but no such field is declared in {mode.relative_to(ROOT)} (or its BasicMovementMode.*.cs parts)"
                 )
 
 

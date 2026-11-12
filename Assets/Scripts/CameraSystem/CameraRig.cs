@@ -676,15 +676,19 @@ namespace CameraSystem
             if (thirdPerson.autoSwapWhenBlocked && collision.enabled && shoulderX > 1e-3f)
             {
                 float preferredFree = SweepFraction(pivot, pivot + right * (shoulderX * preferredSide) + lift);
+                float otherFree = SweepFraction(pivot, pivot - right * (shoulderX * preferredSide) + lift);
                 if (autoSwapped)
                 {
-                    // Hysteresis: only return once the preferred side is clearly free again.
-                    if (preferredFree > 0.9f) { autoSwapped = false; }
+                    // Hysteresis: only return once the preferred side is clearly free again (or no worse than the other).
+                    if (preferredFree > 0.95f || preferredFree >= otherFree) { autoSwapped = false; }
                 }
-                else if (preferredFree < 0.5f)
+                else
                 {
-                    float otherFree = SweepFraction(pivot, pivot - right * (shoulderX * preferredSide) + lift);
-                    autoSwapped = otherFree > 0.9f;
+                    // Swap as soon as the preferred side is noticeably blocked and the other is clearly freer. A shoulder
+                    // only partly blocked is no good either: it leaves the camera's backward sweep grazing the wall, which
+                    // pulls the camera in to its minimum distance. (Swapping only once the side was half blocked left a
+                    // target moving along a wall, a wall run say, framed from inches behind its head, against the wall.)
+                    autoSwapped = preferredFree < 0.9f && otherFree > preferredFree + 0.15f;
                 }
                 if (autoSwapped) { side = -preferredSide; }
             }

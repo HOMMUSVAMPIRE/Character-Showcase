@@ -139,9 +139,10 @@ namespace Character
             // period, so small step-offs don't switch placement off.
             CharacterAnimationState state = stateSource?.AnimationState ?? new CharacterAnimationState { grounded = true };
             bool grounded = state.grounded;
-            // Not while dashing either: the dash pose trails the legs behind, which planting the feet would undo.
-            bool dashing = state.dashing;
-            float goal = grounded && !dashing ? weight : 0f;
+            // Not while dashing, sliding or rolling either: their poses trail or tuck the legs, which planting the feet
+            // would undo.
+            bool posed = state.dashing || state.sliding || state.rolling;
+            float goal = grounded && !posed ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
 
             // The model is placed for its soles where this holds the feet (at their IK goals). Where the animation has

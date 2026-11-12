@@ -4,10 +4,14 @@ using static Character.CharacterUtilities;
 namespace Character
 {
     /// <summary>
-    /// A Scriptable Object type which defines a very standard character movement scheme
+    /// A Scriptable Object type which defines a very standard character movement scheme: walking, sprinting, jumping and
+    /// dashing (here), and crouching, sliding, rolling, wall-running, ledge grabbing and climbing, and pushing and pulling
+    /// objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
+    /// header in the inspector.
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
-    public class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode
+    public partial class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode,
+        CrouchMode, SlideMode, RollMode, WallRunningMode, LedgeMode, PushPullMode
     {
         [Header("Speed")]
         [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
@@ -108,12 +112,51 @@ namespace Character
         /// <param name="controller"></param>
         public override void ProcessMovementData(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            // A released jump button frees the next press to start a jump (checked here, before the dash, which can
-            // skip jump processing while it lasts)
+            // A released jump button frees the next press to start a jump (checked here, before the dash and the other
+            // abilities, which can skip jump processing while they last)
             if (inputs.jump == null || !inputs.jump.value) { controller.jumpPressConsumed = false; }
+            AdvanceAbilityTimers(ref movementData, inputs, controller);
+            AdvanceDashTimers(ref movementData, inputs, controller);
 
+            ApplyGravity(ref movementData, controller);
+
+            // The abilities that take over the character's movement while they last, most committed first: each carries
+            // on if it's under way, or starts if its inputs and surroundings call for it, and returns whether it has the
+            // character this step. Otherwise the character walks, dashes and jumps (crouched or not).
+            bool abilityHasCharacter = ProcessMovementDataForLedge(ref movementData, inputs, controller)
+                || ProcessMovementDataForPushPull(ref movementData, inputs, controller)
+                || ProcessMovementDataForWallRun(ref movementData, inputs, controller)
+                || ProcessMovementDataForRoll(ref movementData, inputs, controller)
+                || ProcessMovementDataForSlide(ref movementData, inputs, controller);
+            if (!abilityHasCharacter)
+            {
+                ProcessMovementDataForCrouch(ref movementData, inputs, controller);
+                // Apply movement input to the character
+                (this as WalkRunMode).ProcessMovementDataForWalk(ref movementData, inputs, controller);
+                // Apply dash input to the character. A dash takes over the character's movement while it lasts.
+                ProcessMovementDataForDash(ref movementData, inputs, controller);
+                // Apply jump input to the character (not while dashing, including the dash's last frame, where the dash's
+                // velocity override would make the jump use up a jump without any effect, nor while crouched with no
+                // room to stand up for it: see ProcessMovementDataForCrouch)
+                if (!movementData.state.HasFlag(CharacterState.Dashing) && !controller.crouch.IsCrouched)
+                {
+                    (this as JumpMode).ProcessMovementDataForJump(ref movementData, inputs, controller);
+                }
+            }
+
+            // The collider is lowered while crouched, sliding or rolling, and raised again where there's room.
+            UpdatePosture(ref movementData, controller);
+            ClampFallSpeed(ref movementData, controller);
+        }
+
+        /// <summary>
+        /// Applies gravity to the character, and on the ground keeps just enough of it to stay on the ground. Abilities
+        /// that move the character without gravity (a dash, a wall run, hanging from a ledge) override the velocity
+        /// this gives.
+        /// </summary>
+        private void ApplyGravity(ref MovementData movementData, MovementController controller)
+        {
             // How much gravity do we apply
-            // TODO: this could be it's own function, but for now, this suffices
             // The coyote gravity curve only applies after walking off the ground. After a jump, gravity is at full
             // strength, so a jump ended early (a short tap, or bumping a ceiling) doesn't float at its peak.
             float airGravity = controller.HasJumpedSinceGrounded ? 1f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded);
@@ -138,18 +181,47 @@ namespace Character
                 // (added via velocityChange above) still applies, which keeps a slight downward push to stay grounded.
                 movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0f), movementData.initialInertia.z);
             }
+        }
 
-            // Apply movement input to the character
-            (this as WalkRunMode).ProcessMovementDataForWalk(ref movementData, inputs, controller);
-            // Apply dash input to the character. A dash takes over the character's movement while it lasts.
-            ProcessMovementDataForDash(ref movementData, inputs, controller);
-            // Apply jump input to the character (not while dashing, including the dash's last frame, where the dash's
-            // velocity override would make the jump use up a jump without any effect)
-            if (!movementData.state.HasFlag(CharacterState.Dashing))
-            {
-                (this as JumpMode).ProcessMovementDataForJump(ref movementData, inputs, controller);
-            }
+        /// <summary>
+        /// Frees the next press of each ability button once it's released, and advances the abilities' cooldowns. Every
+        /// step, whichever ability has the character, so their cooldowns run out meanwhile.
+        /// </summary>
+        private static void AdvanceAbilityTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            float deltaTime = movementData.deltaTime;
+            controller.crouch.press.Track(inputs.crouch);
+            controller.roll.press.Track(inputs.roll);
+            controller.roll.cooldownRemaining = Mathf.Max(0f, controller.roll.cooldownRemaining - deltaTime);
+            controller.wallRun.cooldownRemaining = Mathf.Max(0f, controller.wallRun.cooldownRemaining - deltaTime);
+            if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; }
+            controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - deltaTime);
+        }
 
+        /// <summary>Whether a dash or one of the abilities has the character, so no other ability may start.</summary>
+        private static bool AbilityInProgress(MovementController controller) =>
+            controller.dash.IsDashing || controller.ledge.IsActive || controller.grab.IsGrabbing
+            || controller.wallRun.IsWallRunning || controller.roll.IsRolling || controller.slide.IsSliding;
+
+        /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
+        private static Vector3 InputDirection(MovementData movementData, Inputs inputs)
+        {
+            Vector3 direction = movementData.cameraLookFlat * inputs.movementVector;
+            direction.y = 0f;
+            return Vector3.ClampMagnitude(direction, 1f);
+        }
+
+        /// <summary>The way the character faces, flattened onto the ground (unit length).</summary>
+        private static Vector3 Facing(MovementData movementData)
+        {
+            Vector3 forward = movementData.initialRotation * Vector3.forward;
+            forward.y = 0f;
+            return forward.sqrMagnitude > 1e-6f ? forward.normalized : Vector3.forward;
+        }
+
+        /// <summary>Limits how fast the character falls.</summary>
+        private void ClampFallSpeed(ref MovementData movementData, MovementController controller)
+        {
             // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
             // Like every speed, the limit scales with the character's size (see MovementController.SpeedScale).
             float fallLimit = maxFallSpeed * controller.SpeedScale;
@@ -180,6 +252,18 @@ namespace Character
         }
 
         /// <summary>
+        /// Advances the dash's cooldown, gives back air dashes on the ground, and frees the next press once the button is
+        /// released. Every step, including while another ability has the character, so its cooldown runs out meanwhile.
+        /// </summary>
+        private static void AdvanceDashTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            DashState dash = controller.dash;
+            dash.cooldownRemaining = Mathf.Max(0f, dash.cooldownRemaining - movementData.deltaTime);
+            if (movementData.initialGrounded) { dash.airDashesUsed = 0; }
+            if (inputs.dash == null || !inputs.dash.value) { dash.pressConsumed = false; }
+        }
+
+        /// <summary>
         /// Reads dash button input and turns it into a short, fast burst of movement. While dashing, the character moves
         /// at the dash's speed in a straight line, ignoring gravity and steering; when the dash ends they keep a fraction
         /// of its speed as momentum, which the grounded friction or the landing then eases out.
@@ -191,11 +275,6 @@ namespace Character
         {
             DashState dash = controller.dash;
             float deltaTime = movementData.deltaTime;
-
-            // Advance timers, and give back air dashes on the ground
-            dash.cooldownRemaining = Mathf.Max(0f, dash.cooldownRemaining - deltaTime);
-            if (movementData.initialGrounded) { dash.airDashesUsed = 0; }
-            if (inputs.dash == null || !inputs.dash.value) { dash.pressConsumed = false; }
 
             // Start a dash in the direction of movement input (relative to the camera), or straight ahead without input
             if (CanDash(movementData, inputs, controller))
@@ -220,7 +299,8 @@ namespace Character
             float topSpeed = dashSpeed * controller.SpeedScale;
             float dashElapsed = duration - dash.timeRemaining;
             bool jumpPressedDuringDash = IsNewJumpPress(inputs, controller) && inputs.jump.holdDuration < dashElapsed;
-            bool hasJump = movementData.initialGrounded || controller.jumpsRemaining > 0;
+            // Not while crouched with no room to stand up for the jump (it's skipped then, so the dash would just stop).
+            bool hasJump = (movementData.initialGrounded || controller.jumpsRemaining > 0) && !controller.crouch.IsCrouched;
             if (jumpPressedDuringDash && hasJump)
             {
                 dash.timeRemaining = 0f;
@@ -278,7 +358,7 @@ namespace Character
             // if there is any input and we can move, Move the character at their walking speed in the direction of their input, relative to the camera. Face the direction they are moving.
             if (inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0)
             {
-                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * steeringEffectiveness * MoveSpeed(inputs) * controller.SpeedScale * Time.fixedDeltaTime;
+                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * steeringEffectiveness * MoveSpeed(inputs, controller) * controller.SpeedScale * Time.fixedDeltaTime;
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(movementData.directMovementVector.sqrMagnitude > 0 ? movementData.directMovementVector : movementData.initialRotation * Vector3.forward, Vector3.up), steeringEffectiveness);
             }
 
@@ -286,8 +366,12 @@ namespace Character
             movementData.state = movementData.state | CharacterState.Moving;
         }
 
-        /// <summary>The speed to move at for these inputs: the run speed while sprinting, otherwise the walk speed (see WalkRunMode.MoveSpeed).</summary>
-        private float MoveSpeed(Inputs inputs) => ((WalkRunMode)this).MoveSpeed(inputs);
+        /// <summary>
+        /// The speed to move at for these inputs: the crouch speed while crouched, otherwise the run speed while sprinting,
+        /// or the walk speed (see WalkRunMode.MoveSpeed).
+        /// </summary>
+        private float MoveSpeed(Inputs inputs, MovementController controller) =>
+            controller.crouch.IsCrouched ? crouchSpeed : ((WalkRunMode)this).MoveSpeed(inputs);
 
         /// <summary>
         /// Steers the character's horizontal momentum in the air. Rather than adding walking movement on top of the
@@ -311,7 +395,7 @@ namespace Character
             {
                 steerDirection /= steerDirection.magnitude;
                 float speedAlongInput = Vector2.Dot(velocity, steerDirection);
-                Vector2 target = steerDirection * Mathf.Max(MoveSpeed(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
+                Vector2 target = steerDirection * Mathf.Max(MoveSpeed(inputs, controller) * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
                 velocity = Vector2.MoveTowards(velocity, target, airAcceleration * controller.AccelerationScale * steeringEffectiveness * movementData.deltaTime);
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(steer, Vector3.up), steeringEffectiveness);
             }

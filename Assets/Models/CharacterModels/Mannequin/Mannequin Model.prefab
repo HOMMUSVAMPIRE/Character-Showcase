@@ -74,6 +74,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 374137656580557004}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2776550883312693812}
   m_SourcePrefab: {fileID: 100100000, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
 --- !u!1 &5392532283294212038 stripped
 GameObject:
@@ -165,3 +168,24 @@ MonoBehaviour:
   pelvisSmoothTime: 0.1
   groundedFadeTime: 0.12
   drawGizmos: 1
+--- !u!114 &2776550883312693812
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5392532283294212038}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6091e81e97124ba38c175e9aa49d395e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CharacterShowcase::Character.LedgeHandIK
+  weight: 1
+  fadeTime: 0.1
+  wristAboveLedge: 0.03
+  wristBackFromEdge: 0.04
+  handSpacing: 1.1
+  bodyFromWall: 0.16
+  maxBodyShift: 0.4
+  climbReleaseAt: 0.8
+  handRotationWeight: 0.8

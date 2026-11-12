@@ -157,7 +157,7 @@ namespace Character
         /// Resizes the character's collision to the given size: the capsule's height (and center) scale with y, and its
         /// radius with the larger of x and z, since a capsule is round however the character is stretched. Collision
         /// sweeps, ground checks and depenetration all use the capsule, so they follow. (The radius is also capped at half
-        /// the height; see ScaledRadius.) Doesn't check for room: see
+        /// the height; see CapsuleAt. A crouched character's capsule is lower too: see SetHeightFraction.) Doesn't check for room: see
         /// CanFit. Called by ACCharacterController.SetScale.
         /// </summary>
         public void ApplyScale(Vector3 scale)
@@ -165,20 +165,49 @@ namespace Character
             Scale = scale;
             RememberBaseCapsule();
             if (capsule == null) { return; }
-            capsule.radius = ScaledRadius(scale);
-            capsule.height = baseHeight * scale.y;
-            capsule.center = Vector3.Scale(baseCenter, scale);
+            CapsuleAt(scale, heightFraction, baseRadius, baseHeight, baseCenter, out float radius, out float height, out Vector3 center);
+            capsule.radius = radius;
+            capsule.height = height;
+            capsule.center = center;
+        }
+
+        // The share of its standing height the character's collider has: below 1 while crouched (see SetHeightFraction).
+        private float heightFraction = 1f;
+
+        /// <summary>The share of its standing height the character's collider has now (1 standing; less crouched).</summary>
+        public float HeightFraction => heightFraction;
+
+        /// <summary>
+        /// Lowers or raises the top of the character's collider, keeping its feet where they are: to the given share of
+        /// its standing height (crouching, say). Lowering always works; raising only where there's room above the
+        /// character standing at feet (its physics position this step), and otherwise nothing changes and this returns
+        /// false. The share stays through changes of size.
+        /// </summary>
+        public bool SetHeightFraction(float fraction, Vector3 feet)
+        {
+            fraction = Mathf.Clamp(fraction, 0.1f, 1f);
+            if (Mathf.Abs(fraction - heightFraction) < 1e-5f) { return true; }
+            if (fraction > heightFraction && !CanFitAt(feet, fraction)) { return false; }
+            heightFraction = fraction;
+            ApplyScale(Scale);
+            return true;
         }
 
         /// <summary>
-        /// The capsule's radius at a size: the larger of the width and depth scales, since a capsule is round however the
-        /// character is stretched, but no more than half its height, so a wide, flat character's collider doesn't
-        /// become a sphere taller than the character.
+        /// The capsule at a size and share of its standing height. Its height scales with both. Its radius scales with the
+        /// larger of the width and depth scales, since a capsule is round however the character is stretched, but is no
+        /// more than half its height, so a wide, flat (or crouched) character's collider doesn't become a sphere taller
+        /// than the character. Its bottom stays at the feet, so a lower capsule is lowered from the top.
         /// </summary>
-        private float ScaledRadius(Vector3 scale) => ScaledRadius(scale, baseRadius, baseHeight);
-
-        private static float ScaledRadius(Vector3 scale, float radius, float height) =>
-            Mathf.Min(radius * Mathf.Max(scale.x, scale.z), height * scale.y * 0.5f);
+        private static void CapsuleAt(Vector3 scale, float fraction, float authoredRadius, float authoredHeight, Vector3 authoredCenter,
+            out float radius, out float height, out Vector3 center)
+        {
+            height = authoredHeight * scale.y * fraction;
+            radius = Mathf.Min(authoredRadius * Mathf.Max(scale.x, scale.z), height * 0.5f);
+            center = Vector3.Scale(authoredCenter, scale);
+            float bottom = (authoredCenter.y - authoredHeight * 0.5f) * scale.y;
+            center.y = bottom + height * 0.5f;
+        }
 
         /// <summary>The capsule's radius and height at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         /// <summary>The tallest step or ledge the character steps up by itself at its authored size (see StepHeight for its current size).</summary>
@@ -201,7 +230,7 @@ namespace Character
             radius = Mathf.Min(radius, height * 0.5f);
             var center = new Vector3(baseCenter.x, height * 0.5f, baseCenter.z);
             bool grows = height > baseHeight + 1e-5f || radius > baseRadius + 1e-5f;
-            if (grows && !CanFit(Scale, radius, height, center)) { return false; }
+            if (grows && !CanFit(rb != null ? rb.position : transform.position, Scale, heightFraction, radius, height, center)) { return false; }
             baseRadius = radius;
             baseHeight = height;
             baseCenter = center;
@@ -216,22 +245,31 @@ namespace Character
         public bool CanFit(Vector3 scale)
         {
             RememberBaseCapsule();
-            return CanFit(scale, baseRadius, baseHeight, baseCenter);
+            return CanFit(rb != null ? rb.position : transform.position, scale, heightFraction, baseRadius, baseHeight, baseCenter);
+        }
+
+        /// <summary>
+        /// Whether the character would fit with its feet at the given position, at its size and the given share of its
+        /// standing height (1 standing; see SetHeightFraction), without overlapping the world.
+        /// </summary>
+        public bool CanFitAt(Vector3 feet, float fraction = 1f)
+        {
+            RememberBaseCapsule();
+            return CanFit(feet, Scale, Mathf.Clamp(fraction, 0.1f, 1f), baseRadius, baseHeight, baseCenter);
         }
 
         /// <summary>The same, for a capsule of another authored size.</summary>
-        private bool CanFit(Vector3 scale, float authoredRadius, float authoredHeight, Vector3 authoredCenter)
+        private bool CanFit(Vector3 feet, Vector3 scale, float fraction, float authoredRadius, float authoredHeight, Vector3 authoredCenter)
         {
             if (capsule == null) { return true; }
-            Vector3 feet = rb != null ? rb.position : transform.position;
-            float radiusAtScale = ScaledRadius(scale, authoredRadius, authoredHeight);
+            CapsuleAt(scale, fraction, authoredRadius, authoredHeight, authoredCenter, out float radiusAtScale, out float heightAtScale, out Vector3 centerAtScale);
             float skinAtScale = skinWidth * (authoredRadius > 0f ? Mathf.Min(scale.y, radiusAtScale / authoredRadius) : scale.y);
-            GetSweepCapsule(feet, radiusAtScale, authoredHeight * scale.y, Vector3.Scale(authoredCenter, scale), skinAtScale,
+            GetSweepCapsule(feet, radiusAtScale, heightAtScale, centerAtScale, skinAtScale,
                 out Vector3 top, out Vector3 bottom, out float radius);
             int count = Physics.OverlapCapsuleNonAlloc(top, bottom, radius, overlaps, movementLayerMask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
-                if (!overlaps[i].transform.IsChildOf(transform)) { return false; }
+                if (!IsOwnCollider(overlaps[i].transform)) { return false; }
             }
             return true;
         }
@@ -268,6 +306,13 @@ namespace Character
 
         // The character's dash timers and counters (used by movement modes that support dashing)
         public DashState dash { get; } = new DashState();
+        // The state of the character's other abilities (used by movement modes that support them; see MovementMode.cs)
+        public CrouchState crouch { get; } = new CrouchState();
+        public SlideState slide { get; } = new SlideState();
+        public RollState roll { get; } = new RollState();
+        public WallRunState wallRun { get; } = new WallRunState();
+        public LedgeState ledge { get; } = new LedgeState();
+        public GrabState grab { get; } = new GrabState();
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
 
@@ -362,6 +407,7 @@ namespace Character
 
             // Check whether the character can currently move in the way that is called for by their movement data, and fix it if not
             CheckMovementValid(ref data);
+            if (movementHandler != null) { movementHandler.AfterMovementResolved(data, this); }
 
             // Save this frame's complete movement data
             currentMovementData = data;
@@ -389,7 +435,29 @@ namespace Character
             CollisionFlags newContacts = data.collisions & ~data.previousCollisions;
             if ((newContacts & CollisionFlags.Above) != 0) { data.events |= MovementEvents.HitCeiling; }
             if ((newContacts & CollisionFlags.Sides) != 0) { data.events |= MovementEvents.HitWall; }
+
+            foreach (var (state, started, ended) in StateEvents)
+            {
+                bool was = (data.previousState & state) != 0, now = (data.state & state) != 0;
+                if (!was && now) { data.events |= started; }
+                if (was && !now) { data.events |= ended; }
+            }
         }
+
+        /// <summary>
+        /// The events raised when the character starts and stops being in each state, so movement modes only have to
+        /// set the state (a new ability adds its state and events here).
+        /// </summary>
+        private static readonly (CharacterState state, MovementEvents started, MovementEvents ended)[] StateEvents =
+        {
+            (CharacterState.Crouching, MovementEvents.CrouchStarted, MovementEvents.CrouchEnded),
+            (CharacterState.Sliding, MovementEvents.SlideStarted, MovementEvents.SlideEnded),
+            (CharacterState.Rolling, MovementEvents.RollStarted, MovementEvents.RollEnded),
+            (CharacterState.WallRunning, MovementEvents.WallRunStarted, MovementEvents.WallRunEnded),
+            (CharacterState.LedgeHanging, MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased),
+            (CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
+            (CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
+        };
 
         private void RaiseEvents(MovementData data)
         {
@@ -525,9 +593,9 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit hit = castHits[i];
-                if (hit.transform.IsChildOf(transform)) { continue; }
+                if (IsOwnCollider(hit.transform)) { continue; }
                 if (hit.distance <= 0f) { continue; }
-                if (Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                if (Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(hit, position)) { continue; }
                 if (hit.distance < best)
                 {
                     best = hit.distance;
@@ -538,6 +606,46 @@ namespace Character
             }
             return float.IsFinite(best);
         }
+
+        // Reused by IsStepEdge, which runs while castHits is being read.
+        private readonly RaycastHit[] stepHits = new RaycastHit[8];
+
+        /// <summary>
+        /// Whether a contact too steep to stand on is the edge of a step the character stands at the top of or is walking
+        /// down: one below its middle, with walkable ground no further than the step height straight below its feet.
+        /// Stairs' treads are shallower than the capsule is wide, so its rounded bottom rests on their edges (their
+        /// nosings), whose contact normals are steep. Counted as too steep, walking down stairs whose steps neared the
+        /// step height lifted the character off the ground at the top step: it floated out over the stairs in coyote
+        /// time, landed a few steps down carrying its walk as momentum on top of walking, and went again. The edge of
+        /// a drop taller than a step still isn't ground, so a character perched on a ledge's edge slides off it.
+        /// </summary>
+        private bool IsStepEdge(RaycastHit hit, Vector3 feet)
+        {
+            float radius = capsule != null ? capsule.radius : 0.5f * HeightScale;
+            if (hit.point.y > feet.y + radius) { return false; }
+            float lift = SkinWidth;
+            float reach = lift + StepHeight + GroundedTolerance + SkinWidth;
+            // A few rays around the feet rather than one: on stairs whose treads are a multiple of a step's movement, a
+            // single ray down the character's middle could land exactly on the line between two treads, and hit the
+            // riser's face there (its normal sideways). Walking down a long flight, that came round now and then, and
+            // the character fell off the stairs mid-flight.
+            float spread = 0.25f * radius;
+            for (int ray = 0; ray < StepEdgeRays.Length; ray++)
+            {
+                Vector3 origin = feet + StepEdgeRays[ray] * spread + Vector3.up * lift;
+                int count = Physics.RaycastNonAlloc(origin, Vector3.down, stepHits, reach, movementLayerMask, QueryTriggerInteraction.Ignore);
+                for (int i = 0; i < count; i++)
+                {
+                    RaycastHit below = stepHits[i];
+                    if (IsOwnCollider(below.collider.transform)) { continue; }
+                    if (Vector3.Angle(below.normal, Vector3.up) <= maxSlopeAngle) { return true; }
+                }
+            }
+            return false;
+        }
+
+        // Where IsStepEdge looks for ground, around the feet (horizontal offsets, as shares of its spread).
+        private static readonly Vector3[] StepEdgeRays = { Vector3.zero, Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
 
         /// <summary>
         /// Resolve the character's intended motion against the world: push out of anything that moved into the
@@ -593,7 +701,7 @@ namespace Character
                 float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + SkinWidth;
                 if (horizDist > 1e-4f * HeightScale) { maxDrop = Mathf.Max(maxDrop, StepHeight + SkinWidth); }
                 if (CapsuleSweep(pos, Vector3.down, maxDrop + SkinWidth, out var snapHit)
-                    && Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle)
+                    && (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle || IsStepEdge(snapHit, pos)))
                 {
                     // Negative when the ground is closer than the skin width (rolling over a step's edge can close the
                     // gap): then this lifts the character back to it, as nothing else would. Depenetration ignores
@@ -790,7 +898,7 @@ namespace Character
                 for (int i = 0; i < count; i++)
                 {
                     Collider other = overlaps[i];
-                    if (other.transform.IsChildOf(transform)) { continue; }
+                    if (IsOwnCollider(other.transform)) { continue; }
                     GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
                     if (Physics.ComputePenetration(capsule, feetPos + offset, rotation, other, otherPosition, otherRotation,
                             out Vector3 direction, out float distance))
@@ -863,13 +971,66 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit h = castHits[i];
-                if (h.transform.IsChildOf(transform)) { continue; }
+                if (IsOwnCollider(h.collider.transform)) { continue; }
                 // hit.distance of 0 means we started already overlapping — skip so we can slide out instead of locking up.
                 if (h.distance <= 0f) { continue; }
                 if (h.distance < min) { min = h.distance; closest = h; found = true; }
             }
             return found;
         }
+
+        /// <summary>
+        /// Something the character's collision ignores, as it does its own colliders: an object it's holding and moving
+        /// along with itself (see GrabState), which would otherwise block it. Null for nothing.
+        /// </summary>
+        public Transform IgnoredCollisionRoot { get; set; }
+
+        /// <summary>Whether a collider is the character's own (or ignored: see IgnoredCollisionRoot), so collision skips it.</summary>
+        private bool IsOwnCollider(Transform other) =>
+            other.IsChildOf(transform) || (IgnoredCollisionRoot != null && other.IsChildOf(IgnoredCollisionRoot));
+
+        // ---- For movement modes: the character's size, and collision queries that skip the character itself ----
+
+        /// <summary>The character's collider height standing up, in metres at its size (its collider may be lower: see HeightFraction).</summary>
+        public float StandingHeight => BaseHeight * Scale.y;
+        /// <summary>The character's collider radius, in metres at its size.</summary>
+        public float Radius => capsule != null ? capsule.radius : 0.5f * HeightScale;
+        /// <summary>The gap the character keeps from surfaces, in metres at its size.</summary>
+        public float Skin => SkinWidth;
+        /// <summary>The physics layers the character collides with.</summary>
+        public LayerMask MovementLayerMask => movementLayerMask;
+
+        /// <summary>
+        /// Sweeps the character's collider (as it is now) from feet along direction, returning the nearest thing it
+        /// would hit within distance, other than the character itself. A hit's distance includes the skin width, so a
+        /// surface the character rests against is about Skin away.
+        /// </summary>
+        public bool SweepCapsule(Vector3 feet, Vector3 direction, float distance, out RaycastHit hit) =>
+            CapsuleSweep(feet, direction, distance, out hit);
+
+        /// <summary>The nearest thing a ray hits within distance, other than the character itself (triggers aren't hit).</summary>
+        public bool Raycast(Vector3 origin, Vector3 direction, float distance, out RaycastHit hit)
+        {
+            hit = default;
+            if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
+            int count = Physics.RaycastNonAlloc(origin, direction.normalized, castHits, distance, movementLayerMask, QueryTriggerInteraction.Ignore);
+            float nearest = float.PositiveInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit candidate = castHits[i];
+                if (IsOwnCollider(candidate.collider.transform) || candidate.distance >= nearest) { continue; }
+                nearest = candidate.distance;
+                hit = candidate;
+            }
+            return float.IsFinite(nearest);
+        }
+
+        /// <summary>
+        /// An object's physics pose (its Rigidbody's, if it has one, rather than its possibly interpolated transform), for
+        /// following things that move, such as a ledge on a moving platform.
+        /// </summary>
+        public static void GetPhysicsPose(Transform target, out Vector3 position, out Quaternion rotation) =>
+            GetGroundPose(target, out position, out rotation);
 
         /// <summary>
         /// Uses the rigidbody to move the character in accordance with the finished movement data for the frame

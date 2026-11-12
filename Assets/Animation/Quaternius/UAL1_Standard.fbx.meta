@@ -39,7 +39,7 @@ ModelImporter:
       lastFrame: 60
       wrapMode: 0
       orientationOffsetY: 0
-      level: 0
+      level: -0.029718108
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -68,7 +68,7 @@ ModelImporter:
       lastFrame: 88
       wrapMode: 0
       orientationOffsetY: 0
-      level: 0
+      level: -0.027874451
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -387,7 +387,7 @@ ModelImporter:
       lastFrame: 28
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.023031102
+      level: -0.023150465
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -416,7 +416,7 @@ ModelImporter:
       lastFrame: 38
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.028942883
+      level: -0.029092932
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -445,7 +445,7 @@ ModelImporter:
       lastFrame: 75
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.096502185
+      level: -0.09700235
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -474,7 +474,7 @@ ModelImporter:
       lastFrame: 40
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.096502185
+      level: -0.09700235
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -764,7 +764,7 @@ ModelImporter:
       lastFrame: 80
       wrapMode: 0
       orientationOffsetY: 0
-      level: 0
+      level: -0.029084604
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -1054,7 +1054,7 @@ ModelImporter:
       lastFrame: 20
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.023345122
+      level: -0.023466209
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
@@ -1228,7 +1228,7 @@ ModelImporter:
       lastFrame: 40
       wrapMode: 0
       orientationOffsetY: 0
-      level: -0.024577275
+      level: -0.024704725
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0

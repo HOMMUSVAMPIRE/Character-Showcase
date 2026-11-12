@@ -16,6 +16,17 @@ namespace Character
         public const string DefaultVerticalSpeedParameter = "VerticalSpeed";
         public const string DefaultGroundedParameter = "Grounded";
         public const string DefaultDashingParameter = "Dashing";
+        public const string DefaultCrouchingParameter = "Crouching";
+        public const string DefaultSlidingParameter = "Sliding";
+        public const string DefaultRollingParameter = "Rolling";
+        public const string DefaultWallRunningParameter = "WallRunning";
+        public const string DefaultWallSideParameter = "WallSide";
+        public const string DefaultHangingParameter = "Hanging";
+        public const string DefaultClimbingParameter = "Climbing";
+        public const string DefaultGrabbingParameter = "Grabbing";
+        public const string DefaultGrabSpeedParameter = "GrabSpeed";
+        public const string DefaultRollProgressParameter = "RollProgress";
+        public const string DefaultClimbProgressParameter = "ClimbProgress";
 
         /// <summary>A trigger to fire when any of the given movement events happens.</summary>
         [Serializable]
@@ -40,6 +51,14 @@ namespace Character
         [SerializeField] private string sidewaysSpeedParameter = "";
         [Tooltip("Turn rate in degrees per second (for leaning or turn-on-the-spot animations)")]
         [SerializeField] private string turnSpeedParameter = "";
+        [Tooltip("Which side the wall is on during a wall run: 1 = right, -1 = left, 0 when not wall-running")]
+        [SerializeField] private string wallSideParameter = DefaultWallSideParameter;
+        [Tooltip("While holding an object: speed in m/s toward it (positive pushing, negative pulling); 0 otherwise")]
+        [SerializeField] private string grabSpeedParameter = DefaultGrabSpeedParameter;
+        [Tooltip("How far through a roll (0 to 1), for a roll animation timed to it")]
+        [SerializeField] private string rollProgressParameter = DefaultRollProgressParameter;
+        [Tooltip("How far through a climb onto a ledge (0 to 1), for a climbing animation timed to it")]
+        [SerializeField] private string climbProgressParameter = DefaultClimbProgressParameter;
 
         [Header("Bool parameters")]
         [Tooltip("Whether the character should be animated as on the ground")]
@@ -47,6 +66,16 @@ namespace Character
         [SerializeField] private string jumpingParameter = "";
         [SerializeField] private string dashingParameter = DefaultDashingParameter;
         [SerializeField] private string movingParameter = "";
+        [SerializeField] private string crouchingParameter = DefaultCrouchingParameter;
+        [SerializeField] private string slidingParameter = DefaultSlidingParameter;
+        [SerializeField] private string rollingParameter = DefaultRollingParameter;
+        [SerializeField] private string wallRunningParameter = DefaultWallRunningParameter;
+        [Tooltip("Hanging from a ledge")]
+        [SerializeField] private string hangingParameter = DefaultHangingParameter;
+        [Tooltip("Climbing up from a ledge onto it")]
+        [SerializeField] private string climbingParameter = DefaultClimbingParameter;
+        [Tooltip("Holding an object to push or pull")]
+        [SerializeField] private string grabbingParameter = DefaultGrabbingParameter;
 
         [Header("Triggers")]
         [Tooltip("Animator triggers fired by movement events, such as a landing or jump animation")]
@@ -58,8 +87,9 @@ namespace Character
         private sealed class Driver : ICharacterAnimationDriver
         {
             // Parameter hashes, or 0 for parameters to skip
-            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed;
+            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress;
             private readonly int grounded, jumping, dashing, moving;
+            private readonly int crouching, sliding, rolling, wallRunning, hanging, climbing, grabbing;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -89,6 +119,17 @@ namespace Character
                 jumping = Find(settings.jumpingParameter, AnimatorControllerParameterType.Bool);
                 dashing = Find(settings.dashingParameter, AnimatorControllerParameterType.Bool);
                 moving = Find(settings.movingParameter, AnimatorControllerParameterType.Bool);
+                wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
+                grabSpeed = Find(settings.grabSpeedParameter, AnimatorControllerParameterType.Float);
+                rollProgress = Find(settings.rollProgressParameter, AnimatorControllerParameterType.Float);
+                climbProgress = Find(settings.climbProgressParameter, AnimatorControllerParameterType.Float);
+                crouching = Find(settings.crouchingParameter, AnimatorControllerParameterType.Bool);
+                sliding = Find(settings.slidingParameter, AnimatorControllerParameterType.Bool);
+                rolling = Find(settings.rollingParameter, AnimatorControllerParameterType.Bool);
+                wallRunning = Find(settings.wallRunningParameter, AnimatorControllerParameterType.Bool);
+                hanging = Find(settings.hangingParameter, AnimatorControllerParameterType.Bool);
+                climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
+                grabbing = Find(settings.grabbingParameter, AnimatorControllerParameterType.Bool);
 
                 triggers = new (MovementEvents, int)[settings.eventTriggers.Length];
                 for (int i = 0; i < triggers.Length; i++)
@@ -115,6 +156,18 @@ namespace Character
                 if (jumping != 0) { animator.SetBool(jumping, state.jumping); }
                 if (dashing != 0) { animator.SetBool(dashing, state.dashing); }
                 if (moving != 0) { animator.SetBool(moving, state.moving); }
+                if (wallSide != 0) { animator.SetFloat(wallSide, state.wallSide); }
+                // As the authored model would push or pull (see speed, above).
+                if (grabSpeed != 0) { animator.SetFloat(grabSpeed, state.grabbing ? state.localVelocity.z / scale.z : 0f, speedDampTime, deltaTime); }
+                if (rollProgress != 0) { animator.SetFloat(rollProgress, state.rollProgress); }
+                if (climbProgress != 0) { animator.SetFloat(climbProgress, state.climbProgress); }
+                if (crouching != 0) { animator.SetBool(crouching, state.crouching); }
+                if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
+                if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
+                if (wallRunning != 0) { animator.SetBool(wallRunning, state.wallRunning); }
+                if (hanging != 0) { animator.SetBool(hanging, state.hanging); }
+                if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
+                if (grabbing != 0) { animator.SetBool(grabbing, state.grabbing); }
             }
 
             public void HandleMovementEvent(MovementEvents movementEvent, in CharacterAnimationState state)

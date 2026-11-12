@@ -19,8 +19,9 @@ namespace CharacterShowcase.EditorTools
     /// - builds the Animator Controller, and the Animator Parameter Translator that drives it, from the mannequin's own
     ///   procedurally authored clips (Tools/Mannequin/mannequin_animations.py) and, where they're installed, the
     ///   Quaternius Universal Animation Libraries' walk, jog, sprint and jump (QuaterniusAnimationImporter): standing,
-    ///   walking, walking briskly, running, jogging, sprinting, jumping, landing and dashing. Each loop's speed and
-    ///   phase are measured on the mannequin (MotionCaptureLocomotion's StrideSpeed and TouchDownPhase).
+    ///   walking, walking briskly, running, jogging, sprinting, jumping, landing and dashing, and crouching, sliding,
+    ///   rolling, wall-running, hanging, climbing and pushing (the libraries' clips for those too, where installed).
+    ///   Each loop's speed and phase are measured on the mannequin (MotionCaptureLocomotion's StrideSpeed and TouchDownPhase).
     /// - prepares the mannequin like any other character model (CharacterModelImporter), and makes it the Character
     ///   prefab's model
     /// Other models play these animations through Humanoid retargeting. Safe to run repeatedly: IK settings and edits to
@@ -48,12 +49,34 @@ namespace CharacterShowcase.EditorTools
         private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
         private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
         private const string DashingParameter = AnimatorParameterTranslator.DefaultDashingParameter;
-        // Fired by the translator on every jump, from the ground or in the air (with the Quaternius libraries' jump).
+        private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
+        private const string SlidingParameter = AnimatorParameterTranslator.DefaultSlidingParameter;
+        private const string RollingParameter = AnimatorParameterTranslator.DefaultRollingParameter;
+        private const string WallRunningParameter = AnimatorParameterTranslator.DefaultWallRunningParameter;
+        private const string HangingParameter = AnimatorParameterTranslator.DefaultHangingParameter;
+        private const string ClimbingParameter = AnimatorParameterTranslator.DefaultClimbingParameter;
+        private const string GrabbingParameter = AnimatorParameterTranslator.DefaultGrabbingParameter;
+        private const string GrabSpeedParameter = AnimatorParameterTranslator.DefaultGrabSpeedParameter;
+        private const string RollProgressParameter = AnimatorParameterTranslator.DefaultRollProgressParameter;
+        private const string ClimbProgressParameter = AnimatorParameterTranslator.DefaultClimbProgressParameter;
+        // Fired by the translator on every jump, from the ground, in the air or off a wall (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
+        private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped;
         // The libraries' landing plays this far (normalized) before handing back, or until the character moves faster than this (m/s).
         private const float LandingLength = 0.45f, MoveOnFromLanding = 0.5f;
         // The Quaternius libraries' clips used, where they're installed.
         private static readonly string[] LibraryClips = { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Loop", "Jump_Land" };
+        // The libraries' clips for the movement abilities, each used where it's installed (the mannequin's own fallback
+        // otherwise; see BuildAbilityStates). Of them, those standing on the floor are raised onto the mannequin's, as
+        // the locomotion clips are (see StandLibraryOnMannequinsFloor).
+        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m" };
+        private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
+        // The top of the Crouch blend tree, in m/s: well above BasicMovementMode's crouch speed (2 m/s). Past the crouch
+        // walk's own speed, it plays sped up to reach it.
+        private const float CrouchTopSpeed = 3f;
+        // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
+        // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
+        private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
@@ -165,11 +188,20 @@ namespace CharacterShowcase.EditorTools
             SerializedProperty triggers = settings.FindProperty("eventTriggers");
             for (int i = 0; i < triggers.arraySize; i++)
             {
-                if (triggers.GetArrayElementAtIndex(i).FindPropertyRelative("trigger").stringValue == JumpTrigger) { return; }
+                SerializedProperty existing = triggers.GetArrayElementAtIndex(i);
+                if (existing.FindPropertyRelative("trigger").stringValue != JumpTrigger) { continue; }
+                // Bound by an earlier version, before wall jumps: they're jumps too.
+                SerializedProperty events = existing.FindPropertyRelative("events");
+                if ((events.intValue & (int)MovementEvents.Jumped) != 0 && (events.intValue & (int)MovementEvents.WallJumped) == 0)
+                {
+                    events.intValue |= (int)MovementEvents.WallJumped;
+                    settings.ApplyModifiedPropertiesWithoutUndo();
+                }
+                return;
             }
             triggers.arraySize++;
             SerializedProperty binding = triggers.GetArrayElementAtIndex(triggers.arraySize - 1);
-            binding.FindPropertyRelative("events").intValue = (int)(MovementEvents.Jumped | MovementEvents.AirJumped);
+            binding.FindPropertyRelative("events").intValue = (int)JumpEvents;
             binding.FindPropertyRelative("trigger").stringValue = JumpTrigger;
             settings.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -421,7 +453,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// Builds the controller from scratch each time so it always matches this code:
         /// Locomotion (Idle / Walk / Brisk Walk / Run / Sprint by Speed) and Airborne (Fall / Apex / Rise by VerticalSpeed), switched by Grounded,
-        /// plus Dash, entered from any state while Dashing.
+        /// plus Dash, entered from any state while Dashing, and the movement abilities' states (see BuildAbilityStates).
         /// </summary>
         /// <summary>
         /// The Quaternius libraries' clips the controller uses, set up first if they aren't already
@@ -458,9 +490,10 @@ namespace CharacterShowcase.EditorTools
             for (int pass = 0; pass < 2; pass++)
             {
                 var raise = new Dictionary<string, float>();
-                foreach (string name in new[] { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Land" })
+                foreach (string name in new[] { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Land" }.Concat(GroundedAbilityLibraryClips))
                 {
                     AnimationClip clip = QuaterniusAnimationImporter.FindClip(name);
+                    if (clip == null) { continue; } // An ability's clip that isn't installed: the mannequin's own is used.
                     raise[name] = (idleFloor - MotionCaptureLocomotion.LowestFoot(measuringModel, clip)) * scale;
                 }
                 raise["Jump_Loop"] = raise["Jump_Start"];
@@ -498,7 +531,7 @@ namespace CharacterShowcase.EditorTools
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash" };
+            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash", "Crouch", "Hang" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -535,6 +568,14 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, HangingParameter, ClimbingParameter, GrabbingParameter })
+            {
+                controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
+            }
+            foreach (string value in new[] { GrabSpeedParameter, RollProgressParameter, ClimbProgressParameter })
+            {
+                controller.AddParameter(value, AnimatorControllerParameterType.Float);
+            }
 
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
 
@@ -698,6 +739,8 @@ namespace CharacterShowcase.EditorTools
             dashToAir.AddCondition(AnimatorConditionMode.IfNot, 0f, DashingParameter);
             dashToAir.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
 
+            BuildAbilityStates(controller, stateMachine, locomotion, airborne, clips, useLibrary ? library["Sprint_Loop"] : clips["Sprint"], measuringModel);
+
             // OnAnimatorIK (and so CharacterIK) only runs on layers with IK Pass enabled. Layers are returned by
             // copy, so modify the array and assign it back.
             AnimatorControllerLayer[] layers = controller.layers;
@@ -706,6 +749,137 @@ namespace CharacterShowcase.EditorTools
 
             AssetDatabase.SaveAssets();
             return controller;
+        }
+
+        /// <summary>
+        /// The states for the movement abilities: Crouch (standing still and crouch-walking, by Speed), Slide, Roll
+        /// (timed by RollProgress), Wall Run (the sprint, at the run's speed), Hang, Climb (timed by ClimbProgress) and
+        /// Push (pushing, or played backward pulling, by GrabSpeed). Each is entered from any state while its
+        /// parameter is set, and left for Locomotion, Crouch or Airborne, whichever matches the character, once it's
+        /// cleared. The Quaternius libraries' crouch, slide, roll, climb and push are used where they're installed, and
+        /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
+        /// rise for the climb and its walk for the push). Hanging is always the mannequin's own.
+        /// </summary>
+        private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
+            AnimatorState locomotion, AnimatorState airborne, Dictionary<string, AnimationClip> clips, AnimationClip sprint,
+            GameObject measuringModel)
+        {
+            AnimationClip Library(string name, AnimationClip fallback)
+            {
+                AnimationClip clip = QuaterniusAnimationImporter.FindLibraryFiles().Any() ? QuaterniusAnimationImporter.FindClip(name) : null;
+                return clip != null ? clip : fallback;
+            }
+            // The speed (m/s) a loop's strides are made for, measured on the mannequin; 0 if it can't be measured.
+            float Strides(AnimationClip clip)
+            {
+                float speed = MotionCaptureLocomotion.StrideSpeed(measuringModel, clip);
+                return float.IsFinite(speed) && speed > 0.05f ? speed : 0f;
+            }
+
+            AnimationClip crouchIdle = Library("Crouch_Idle_Loop", clips["Crouch"]);
+            AnimationClip crouchWalk = Library("Crouch_Fwd_Loop", clips["Crouch"]);
+            AnimationClip push = Library("Push_Loop", clips["Walk"]);
+
+            // Crouch: still, then crouch-walking at the speed its strides are made for, sped up past it to the top.
+            AnimatorState crouch = stateMachine.AddState("Crouch");
+            float crouchStrides = crouchWalk != crouchIdle ? Strides(crouchWalk) : 0f;
+            if (crouchStrides > 0f && crouchStrides < CrouchTopSpeed)
+            {
+                crouch.motion = CreateBlendTree(controller, "Crouch", SpeedParameter,
+                    (crouchIdle, 0f, 1f, 0f), (crouchWalk, crouchStrides, 1f, 0f), (crouchWalk, CrouchTopSpeed, CrouchTopSpeed / crouchStrides, 0f));
+            }
+            else { crouch.motion = crouchIdle; }
+
+            AnimatorState slide = stateMachine.AddState("Slide");
+            slide.motion = Library("Slide_Loop", clips["Dash"]);
+
+            // The roll and the climb play through once over the roll or climb, however long it's tuned to take.
+            AnimatorState roll = stateMachine.AddState("Roll");
+            roll.motion = Library("Roll", clips["Apex"]);
+            roll.timeParameterActive = true;
+            roll.timeParameter = RollProgressParameter;
+
+            // Running along a wall is sprinting, at the speed the character runs.
+            AnimatorState wallRun = stateMachine.AddState("Wall Run");
+            wallRun.motion = sprint;
+            float sprintStrides = Strides(sprint);
+            if (sprintStrides > 0f)
+            {
+                wallRun.speedParameterActive = true;
+                wallRun.speedParameter = SpeedParameter;
+                wallRun.speed = 1f / sprintStrides;
+            }
+
+            AnimatorState hang = stateMachine.AddState("Hang");
+            hang.motion = clips["Hang"];
+
+            AnimatorState climb = stateMachine.AddState("Climb");
+            climb.motion = Library("ClimbUp_1m", clips["Rise"]);
+            climb.timeParameterActive = true;
+            climb.timeParameter = ClimbProgressParameter;
+
+            // Pushing at the speed the push's strides are made for, and pulling the same played backward; standing
+            // still holding the object, held still.
+            AnimatorState pushPull = stateMachine.AddState("Push");
+            pushPull.motion = push;
+            float pushStrides = Strides(push);
+            pushPull.speedParameterActive = true;
+            pushPull.speedParameter = GrabSpeedParameter;
+            pushPull.speed = pushStrides > 0f ? 1f / pushStrides : 1f;
+
+            foreach (var (state, parameter, enter) in new[]
+            {
+                (crouch, CrouchingParameter, 0.15f), (slide, SlidingParameter, 0.1f), (roll, RollingParameter, 0.05f),
+                (wallRun, WallRunningParameter, 0.12f), (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
+                (pushPull, GrabbingParameter, 0.15f),
+            })
+            {
+                AnimatorStateTransition start = stateMachine.AddAnyStateTransition(state);
+                start.hasExitTime = false;
+                start.duration = enter;
+                start.canTransitionToSelf = false;
+                start.AddCondition(AnimatorConditionMode.If, 0f, parameter);
+                // Not back into the roll from walking on out of the end of one (see below), while it's still rolling.
+                if (state == roll) { start.AddCondition(AnimatorConditionMode.Less, 0.5f, RollProgressParameter); }
+                if (state == crouch)
+                {
+                    // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
+                    // falling): that shows instead, or two Any State transitions would keep swapping the states.
+                    start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, HangingParameter, ClimbingParameter, GrabbingParameter })
+                    {
+                        start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
+                    }
+                }
+
+                // Back on the ground, standing or crouched (crouching is entered from any state, above), or in the air.
+                AnimatorStateTransition toGround = state.AddTransition(locomotion);
+                toGround.hasExitTime = false;
+                toGround.duration = 0.15f;
+                toGround.AddCondition(AnimatorConditionMode.IfNot, 0f, parameter);
+                toGround.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+                if (state != crouch) { toGround.AddCondition(AnimatorConditionMode.IfNot, 0f, CrouchingParameter); }
+
+                // Moving on out of a roll, blend into walking or running over its end, rather than after it.
+                if (state == roll)
+                {
+                    AnimatorStateTransition walkOn = state.AddTransition(locomotion);
+                    walkOn.hasExitTime = false;
+                    walkOn.hasFixedDuration = true;
+                    walkOn.duration = RollBlendOutTime;
+                    walkOn.AddCondition(AnimatorConditionMode.Greater, RollBlendOutAt, RollProgressParameter);
+                    walkOn.AddCondition(AnimatorConditionMode.Greater, MoveOnFromLanding, SpeedParameter);
+                    walkOn.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
+                    walkOn.AddCondition(AnimatorConditionMode.IfNot, 0f, CrouchingParameter);
+                }
+
+                // A crouched character falling (walked off an edge crouched) shows the air too.
+                AnimatorStateTransition toAir = state.AddTransition(airborne);
+                toAir.hasExitTime = false;
+                toAir.duration = 0.15f;
+                if (state != crouch) { toAir.AddCondition(AnimatorConditionMode.IfNot, 0f, parameter); }
+                toAir.AddCondition(AnimatorConditionMode.IfNot, 0f, GroundedParameter);
+            }
         }
 
         /// <summary>

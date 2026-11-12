@@ -18,7 +18,7 @@ namespace CharacterShowcase.EditorTools
     ///   model's soles stand from its origin as it stands idle: so its feet rest on the ground at any size, even when
     ///   the character is stretched on one axis only
     /// - saves a model prefab next to it ("[name] Model.prefab"): the model with an Animator using the shared Animator
-    ///   Controller, CharacterIK and FootPlacementIK
+    ///   Controller, CharacterIK, FootPlacementIK and LedgeHandIK
     /// - saves a DirectCharacterModelSource next to it ("[name].asset") naming the prefab and the shared translator,
     ///   which the Character Model window (or a CharacterModelHost) can then use
     /// Each subfolder can hold one model, or several (variants of one model with different materials, say); each model
@@ -743,7 +743,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Saves the model as a prefab (a variant of the model file, so it follows changes to the file) with its Animator,
-        /// CharacterIK and FootPlacementIK. IK settings come from an earlier run if there was one, otherwise from the
+        /// CharacterIK, FootPlacementIK and LedgeHandIK. IK settings come from an earlier run if there was one, otherwise from the
         /// mannequin's model prefab, so tuning done there carries over to new models.
         /// </summary>
         private static GameObject SaveModelPrefab(GameObject modelAsset, Avatar avatar, AnimatorController controller, string prefabPath)
@@ -752,6 +752,7 @@ namespace CharacterShowcase.EditorTools
             var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(MannequinGenerator.ModelPrefabPath);
             string ikSettings = SettingsOf<CharacterIK>(existing) ?? SettingsOf<CharacterIK>(mannequin);
             string footPlacementSettings = SettingsOf<FootPlacementIK>(existing) ?? SettingsOf<FootPlacementIK>(mannequin);
+            string ledgeHandSettings = SettingsOf<LedgeHandIK>(existing) ?? SettingsOf<LedgeHandIK>(mannequin);
 
             var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
             try
@@ -775,6 +776,9 @@ namespace CharacterShowcase.EditorTools
                 // Automatic foot placement on uneven ground, fed through CharacterIK's procedural channel.
                 if (!model.TryGetComponent(out FootPlacementIK footPlacement)) { footPlacement = model.AddComponent<FootPlacementIK>(); }
                 if (footPlacementSettings != null) { EditorJsonUtility.FromJsonOverwrite(footPlacementSettings, footPlacement); }
+                // Hands on the ledge while hanging from one, through the same channel.
+                if (!model.TryGetComponent(out LedgeHandIK ledgeHands)) { ledgeHands = model.AddComponent<LedgeHandIK>(); }
+                if (ledgeHandSettings != null) { EditorJsonUtility.FromJsonOverwrite(ledgeHandSettings, ledgeHands); }
 
                 return PrefabUtility.SaveAsPrefabAsset(model, prefabPath);
             }

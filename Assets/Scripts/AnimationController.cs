@@ -137,6 +137,9 @@ namespace Character
 
             float horizontalSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             float speedScale = movementController != null ? movementController.SpeedScale : 1f;
+            Vector3 ledgeEdge = Vector3.zero, ledgeNormal = Vector3.zero;
+            bool onLedge = movementData.state.HasFlag(CharacterState.LedgeHanging) || movementData.state.HasFlag(CharacterState.LedgeClimbing);
+            if (onLedge && movementController != null) { movementController.ledge.TryGetEdge(out ledgeEdge, out ledgeNormal); }
             return new CharacterAnimationState
             {
                 velocity = velocity,
@@ -151,6 +154,18 @@ namespace Character
                 moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
                 dashing = movementData.state.HasFlag(CharacterState.Dashing),
+                crouching = movementData.state.HasFlag(CharacterState.Crouching),
+                sliding = movementData.state.HasFlag(CharacterState.Sliding),
+                rolling = movementData.state.HasFlag(CharacterState.Rolling),
+                wallRunning = movementData.state.HasFlag(CharacterState.WallRunning),
+                wallSide = movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null ? movementController.wallRun.side : 0f,
+                rollProgress = movementController != null ? movementController.roll.Progress : 0f,
+                climbProgress = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing) ? movementController.ledge.ClimbProgress : 0f,
+                hanging = movementData.state.HasFlag(CharacterState.LedgeHanging),
+                climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing),
+                grabbing = movementData.state.HasFlag(CharacterState.Grabbing),
+                ledgeEdge = ledgeEdge,
+                ledgeNormal = ledgeNormal,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
                     ? modelHost.ModelParent.localScale : Vector3.one,
                 speedScale = speedScale,

@@ -30,6 +30,25 @@ namespace Character
         public bool moving;
         public bool jumping;
         public bool dashing;
+        // Crouched (not counting the low stance of a slide or roll)
+        public bool crouching;
+        public bool sliding;
+        public bool rolling;
+        // How far through the roll (0 to 1) while rolling, and through the climb onto a ledge while climbing
+        public float rollProgress;
+        public float climbProgress;
+        public bool wallRunning;
+        // Which side the wall is on during a wall run: 1 = right, -1 = left, 0 when not wall-running
+        public float wallSide;
+        // Hanging from a ledge, and climbing up from one onto it
+        public bool hanging;
+        public bool climbing;
+        // While hanging or climbing: the point on the ledge's edge the character holds (on its top, in front of the
+        // character), and the wall's normal below it (horizontal, pointing toward the character). Zero otherwise.
+        public Vector3 ledgeEdge;
+        public Vector3 ledgeNormal;
+        // Holding an object to push or pull (localVelocity.z is then positive pushing, negative pulling)
+        public bool grabbing;
         /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>
         public Vector3 scale;
         /// <summary>

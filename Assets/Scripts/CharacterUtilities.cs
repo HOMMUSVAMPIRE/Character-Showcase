@@ -85,6 +85,17 @@ namespace Character
         Dashing = 8,
         Running = 16,
         Dead = 32,
+        // Crouched (low and slow), not counting the low stance of a slide or roll
+        Crouching = 64,
+        Sliding = 128,
+        Rolling = 256,
+        WallRunning = 512,
+        // Hanging from a ledge
+        LedgeHanging = 1024,
+        // Climbing up from a ledge onto it
+        LedgeClimbing = 2048,
+        // Holding a large object to push or pull it
+        Grabbing = 4096,
     }
 
     /// <summary>
@@ -110,6 +121,29 @@ namespace Character
         HitCeiling = 64,
         // Started touching a wall
         HitWall = 128,
+        // The starts and ends of the abilities below are found by the MovementController, from the character's state
+        // (see MovementController.StateEvents), so every movement mode raises them alike.
+        CrouchStarted = 256,
+        CrouchEnded = 512,
+        SlideStarted = 1024,
+        SlideEnded = 2048,
+        RollStarted = 4096,
+        RollEnded = 8192,
+        WallRunStarted = 16384,
+        WallRunEnded = 32768,
+        // Jumped off a wall during a wall run (reported by the movement mode)
+        WallJumped = 65536,
+        // Caught hold of a ledge in mid-air
+        LedgeGrabbed = 131072,
+        // Stopped hanging from a ledge: let go, or started climbing up
+        LedgeReleased = 262144,
+        LedgeClimbStarted = 524288,
+        // Finished climbing up onto a ledge
+        LedgeClimbEnded = 1048576,
+        // Took hold of an object to push or pull
+        GrabStarted = 2097152,
+        // Let go of an object
+        GrabEnded = 4194304,
     }
 
     /// <summary>How a character's speeds change with its size. See MovementController.</summary>
@@ -136,6 +170,12 @@ namespace Character
         public InputButton dash;
         // Held to move at the movement mode's run speed instead of its walk speed. May be null (never sprinting).
         public InputButton sprint;
+        // Crouches (or, pressed while sprinting, slides). May be null (never pressed), as may the buttons below.
+        public InputButton crouch;
+        // Starts a roll
+        public InputButton roll;
+        // Held to grab an object in front of the character, to push or pull it
+        public InputButton grab;
     }
 
     /// <summary>

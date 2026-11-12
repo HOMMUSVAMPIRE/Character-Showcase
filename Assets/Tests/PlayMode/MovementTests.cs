@@ -411,6 +411,46 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator WalkingAndSprintingDownALongFlightOfStairsNearTheStepHeight_StaysOnTheSteps_AtAnEvenSpeed(
+            [Values(false, true)] bool sprint, [Values(0f, 0.137f)] float startOffset, [Values(0f, 25f)] float inputAngle)
+        {
+            // Forty steps down along +Z, each nearly the step height and shallower than the character is wide (as the
+            // level's are), so it rests on their edges all the way down. Long, because trouble used to show only part
+            // way down (where the character's middle happened to come down exactly on the line between two treads), and
+            // from different starting points and headings, so the character's path crosses the treads differently.
+            rig.Floor(0f, 200f);
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
+            if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
+            const int steps = 40;
+            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.Radius, top = steps * rise, width = 40f;
+            rig.Box("Top Landing", new Vector3(0f, top / 2f, -5f), new Vector3(width, top, 10f));
+            for (int i = 0; i < steps - 1; i++)
+            {
+                float height = top - rise * (i + 1);
+                rig.Box($"Step {i + 1}", new Vector3(0f, height / 2f, i * run + run / 2f), new Vector3(width, height, run));
+            }
+            rig.Body.position = new Vector3(0f, top + 0.05f, -1.5f - startOffset);
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should stand at the top of the stairs.");
+
+            Vector3 heading = Quaternion.Euler(0f, inputAngle, 0f) * Vector3.forward;
+            float speed = sprint ? rig.RunSpeed : rig.WalkSpeed;
+            int airborneSteps = 0;
+            float fastest = 0f;
+            yield return rig.Run((1.5f + steps * run) / (speed * heading.z) + 0.5f,
+                step => sprint ? CharacterTestRig.Sprint(heading, step) : CharacterTestRig.Move(heading), _ =>
+            {
+                if (rig.Position.z < 0f || rig.Position.z > steps * run) { return; }
+                if (!rig.Grounded) { airborneSteps++; }
+                fastest = Mathf.Max(fastest, rig.HorizontalSpeed);
+            });
+
+            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "The character should reach the bottom of the stairs.");
+            Assert.That(airborneSteps, Is.Zero, "The character left the steps instead of walking down them.");
+            Assert.That(fastest, Is.LessThanOrEqualTo(1.02f * speed), "The character sped up going down the stairs.");
+        }
+
+        [UnityTest]
         public IEnumerator IdleOnRamp_DoesNotSlide()
         {
             // A ramp a little over half as steep as the steepest walkable slope, rising along +Z from the origin. (The

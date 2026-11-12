@@ -216,6 +216,59 @@ namespace CharacterShowcase.Tests
             Assert.That(camera, Is.GreaterThan(face - probe - 0.1f * size), "Camera should only pull in as far as needed.");
         }
 
+        /// <summary>A wall along the target's right, its face a little closer than the shoulder offset (as for a target running along it).</summary>
+        private GameObject WallOnTheShoulderSide()
+        {
+            float face = 0.9f * rig.ThirdPerson.shoulderOffset.x;
+            return Box("Wall", target.position + new Vector3(face + 0.5f, 2f, 0f), new Vector3(1f, 8f, 40f));
+        }
+
+        [UnityTest]
+        public IEnumerator AWallPartlyBlockingTheShoulder_SwapsToTheOtherShoulder_AtFullDistance()
+        {
+            yield return Frames(3);
+            if (!rig.ThirdPerson.startOnRightShoulder || !rig.ThirdPerson.autoSwapWhenBlocked || !rig.Collision.enabled)
+            {
+                Assert.Ignore("The camera doesn't start on the right shoulder with auto-swap and collision on.");
+            }
+            WallOnTheShoulderSide();
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+
+            Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, rig.Yaw, 0f)) * (cam.transform.position - target.position);
+            Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
+            Assert.That(local.x, Is.LessThan(-0.5f * rig.ThirdPerson.shoulderOffset.x), "The camera should move to the shoulder away from the wall.");
+            Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.9f * rig.Zoom.defaultDistance),
+                "Beside a wall, the camera should keep its distance rather than be pulled in against it.");
+        }
+
+        [UnityTest]
+        public IEnumerator OnceTheWallIsGone_TheCameraReturnsToItsShoulder()
+        {
+            yield return Frames(3);
+            if (!rig.ThirdPerson.startOnRightShoulder || !rig.ThirdPerson.autoSwapWhenBlocked || !rig.Collision.enabled)
+            {
+                Assert.Ignore("The camera doesn't start on the right shoulder with auto-swap and collision on.");
+            }
+            GameObject wall = WallOnTheShoulderSide();
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f);
+            wall.SetActive(false);
+            Physics.SyncTransforms();
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+            Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(rig.Zoom.defaultDistance)), Is.LessThan(0.05f),
+                "With the wall gone, the camera should go back over its own shoulder.");
+        }
+
+        [UnityTest]
+        public IEnumerator AWallOnTheOtherSide_DoesNotSwapTheShoulder()
+        {
+            yield return Frames(3);
+            float face = 0.9f * rig.ThirdPerson.shoulderOffset.x;
+            Box("Wall", target.position + new Vector3(-face - 0.5f, 2f, 0f), new Vector3(1f, 8f, 40f));
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f);
+            Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(rig.Zoom.defaultDistance)), Is.LessThan(0.05f),
+                "A wall away from the camera's shoulder shouldn't move it.");
+        }
+
         [UnityTest]
         public IEnumerator Collision_IgnoresTheTargetsOwnColliders()
         {

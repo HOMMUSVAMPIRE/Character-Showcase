@@ -34,6 +34,9 @@ namespace Character
                 jump = new(),
                 dash = new(),
                 sprint = new(),
+                crouch = new(),
+                roll = new(),
+                grab = new(),
             };
         }
 
@@ -61,6 +64,10 @@ namespace Character
                 jump = jump,
                 dash = ReadButton("Dash", inputs.dash),
                 sprint = ReadButton("Sprint", inputs.sprint),
+                crouch = ReadButton("Crouch", inputs.crouch),
+                roll = ReadButton("Roll", inputs.roll),
+                // Grabbing objects to push or pull is the Interact button, held.
+                grab = ReadButton("Interact", inputs.grab),
             };
 
             inputs = newInputs;

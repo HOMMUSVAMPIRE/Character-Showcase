@@ -163,6 +163,17 @@ namespace CharacterShowcase.Tests
         public GameObject Floor(float topHeight = 0f, float width = 100f) =>
             Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));
 
+        /// <summary>A box the character can grab, push and pull (a PushableObject), resting with its bottom at center.y - size.y / 2.</summary>
+        public PushableObject PushableBox(Vector3 center, Vector3 size, float speedMultiplier = 1f, bool canBePulled = true)
+        {
+            GameObject box = Box("Pushable Box", center, size);
+            box.AddComponent<Rigidbody>();
+            var pushable = box.AddComponent<PushableObject>();
+            pushable.SpeedMultiplier = speedMultiplier;
+            pushable.CanBePulled = canBePulled;
+            return pushable;
+        }
+
         public MovingPlatform Platform(Vector3 topCenter, Vector3 size, Vector3 travel, float period, Vector3 spin)
         {
             GameObject box = Box("Platform", topCenter - Vector3.up * (size.y / 2f), size);
@@ -256,6 +267,77 @@ namespace CharacterShowcase.Tests
 
         public bool Dashing => Movement.lastFrameMovementData != null
                                && Movement.lastFrameMovementData.state.HasFlag(CharacterState.Dashing);
+
+        /// <summary>Whether the character was in the given state (crouching, sliding, wall-running...) in the last step.</summary>
+        public bool InState(CharacterState state) => Movement.lastFrameMovementData != null
+                                                     && Movement.lastFrameMovementData.state.HasFlag(state);
+
+        /// <summary>The character's horizontal speed in the last step, in m/s.</summary>
+        public float HorizontalSpeed
+        {
+            get
+            {
+                if (Movement.lastFrameMovementData == null) { return 0f; }
+                Vector3 v = Movement.lastFrameMovementData.finalVelocity;
+                return new Vector2(v.x, v.z).magnitude;
+            }
+        }
+
+        /// <summary>The character's collider height now, in metres (lower than its standing height while crouched).</summary>
+        public float CurrentHeight => Capsule.height;
+        /// <summary>The character's collider height standing up, in metres at its size.</summary>
+        public float StandingHeight => Movement.StandingHeight;
+
+        /// <summary>
+        /// Spawns the character, waits for its model to load (which fits its collider to the model, so its size is
+        /// settled before a test builds a world around it), then lets it stand for a moment. With no settling time, the
+        /// character stays exactly where it was spawned (in mid-air, say), as nothing moves it until the test runs it.
+        /// </summary>
+        public IEnumerator SpawnSettled(Vector3 position, float settleSeconds = 0.3f)
+        {
+            SpawnCharacter(position);
+            yield return WaitForModel();
+            if (settleSeconds > 0f) { yield return Run(settleSeconds, _ => Idle()); }
+        }
+
+        /// <summary>Sets the character moving at the given velocity (for one step, before its movement takes over), with the given input.</summary>
+        public IEnumerator Launch(Vector3 velocity, Inputs inputs)
+        {
+            Movement.OverrideVelocity(velocity);
+            yield return Run(1, _ => inputs);
+        }
+
+        /// <summary>A button held for the given step of its press (0 = the step it was pressed).</summary>
+        public static InputButton Held(int heldSteps) => new()
+        {
+            value = true,
+            justPressed = heldSteps == 0,
+            holdDuration = heldSteps * Time.fixedDeltaTime,
+        };
+
+        /// <summary>Crouch held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
+        public static Inputs Crouch(int heldSteps, Vector3 direction = default)
+        {
+            Inputs inputs = Move(direction);
+            inputs.crouch = Held(heldSteps);
+            return inputs;
+        }
+
+        /// <summary>Roll held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
+        public static Inputs Roll(int heldSteps, Vector3 direction = default)
+        {
+            Inputs inputs = Move(direction);
+            inputs.roll = Held(heldSteps);
+            return inputs;
+        }
+
+        /// <summary>Grab held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
+        public static Inputs Grab(int heldSteps, Vector3 direction = default)
+        {
+            Inputs inputs = Move(direction);
+            inputs.grab = Held(heldSteps);
+            return inputs;
+        }
 
         /// <summary>
         /// Reads a tuning value the movement mode interfaces don't have (BasicMovementMode's gravity, coyote time and dash

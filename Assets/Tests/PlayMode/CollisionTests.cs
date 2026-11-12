@@ -82,6 +82,21 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator PerchedOnTheEdgeOfADropTallerThanAStep_SlidesOffIt()
+        {
+            // A block 2 m tall whose edge the character starts perched on: its middle well past the edge, its rounded
+            // bottom on the edge, too steeply to stand there. A step's edge counts as ground (stairs); a drop this
+            // tall's doesn't.
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            float radius = CapsuleRadius;
+            rig.Box("Block", new Vector3(0f, 1f, -2f), new Vector3(4f, 2f, 4f)); // Its edge at z = 0.
+            rig.Body.position = new Vector3(0f, 2f + 0.3f * radius, 0.85f * radius);
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Position.y, Is.LessThan(0.05f), "The character should slide off the edge and fall, not perch on it.");
+        }
+
+        [UnityTest]
         public IEnumerator LandingOnSteepSlope_SlidesOffIt()
         {
             rig.Floor();

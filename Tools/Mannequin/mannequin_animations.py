@@ -1,5 +1,5 @@
 """
-Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall and Dash.
+Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch and Hang.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -394,6 +394,34 @@ def dash(p):
     return pose
 
 
+def crouch(p):
+    """Crouched low on bent knees, leaning forward over them, the arms held loosely in front: crouching, and the
+    fallback for crouch-walking where the Quaternius libraries (with their own crouch) aren't installed."""
+    pose = Pose()
+    breath = math.sin(TAU * p)
+    torso(pose, hips_lean=24.0, spine_lean=12.0 + 0.8 * breath, chest_lean=-1.0 * breath, head_lean=-26.0)
+    # The left foot a little ahead, the right knee lower, both feet flat.
+    legs(pose, "Left", thigh=-82.0, knee=118.0, foot=0.0)
+    legs(pose, "Right", thigh=-62.0, knee=122.0, foot=0.0)
+    arms(pose, "Left", lower=72.0, swing=-34.0 + 1.5 * breath, elbow=48.0)
+    arms(pose, "Right", lower=72.0, swing=-28.0 - 1.5 * breath, elbow=52.0)
+    ground(pose, lift=-0.004 * breath)
+    return pose
+
+
+def hang(p):
+    """Hanging from a ledge by both hands: the arms straight up above the head and a little forward (onto the ledge),
+    the shoulders shrugged up with the weight, looking up, the legs dangling below, swaying a little."""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=-2.0 + 1.5 * w, spine_lean=-3.0, chest_lean=-2.0, head_lean=-14.0)
+    legs(pose, "Left", thigh=-10.0 + 4.0 * w, knee=20.0, foot=36.0)
+    legs(pose, "Right", thigh=-2.0 - 4.0 * w, knee=30.0, foot=42.0)
+    arms(pose, "Left", lower=82.0, swing=-166.0 + 1.0 * w, elbow=16.0, shoulder_lift=14.0)
+    arms(pose, "Right", lower=82.0, swing=-166.0 - 1.0 * w, elbow=16.0, shoulder_lift=14.0)
+    return pose
+
+
 # name -> (pose function, duration in seconds). Walk, Run and Sprint take their durations from their ground speeds, so
 # their planted feet don't slide at those speeds. Of them, the Animator's blend tree uses only Sprint, at the speed its
 # strides measure in Unity (MannequinGenerator); the walk and run there are the motion capture's.
@@ -407,6 +435,8 @@ CLIPS = {
     "Apex": (apex, 1.0),
     "Fall": (fall, 0.6),
     "Dash": (dash, 0.4),
+    "Crouch": (crouch, 3.0),
+    "Hang": (hang, 2.0),
 }
 
 # Keys per second of animation. One per frame: a running foot is planted for only a few frames, and keys any

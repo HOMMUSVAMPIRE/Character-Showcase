@@ -18,10 +18,21 @@ MonoBehaviour:
   forwardSpeedParameter: 
   sidewaysSpeedParameter: 
   turnSpeedParameter: 
+  wallSideParameter: WallSide
+  grabSpeedParameter: GrabSpeed
+  rollProgressParameter: RollProgress
+  climbProgressParameter: ClimbProgress
   groundedParameter: Grounded
   jumpingParameter: 
   dashingParameter: Dashing
   movingParameter: 
+  crouchingParameter: Crouching
+  slidingParameter: Sliding
+  rollingParameter: Rolling
+  wallRunningParameter: WallRunning
+  hangingParameter: Hanging
+  climbingParameter: Climbing
+  grabbingParameter: Grabbing
   eventTriggers:
-  - events: 3
+  - events: 65539
     trigger: Jump
