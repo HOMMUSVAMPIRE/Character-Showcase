@@ -316,6 +316,7 @@ namespace Character
         public LedgeState ledge { get; } = new LedgeState();
         public VaultState vault { get; } = new VaultState();
         public GrabState grab { get; } = new GrabState();
+        public WallClimbState wallClimb { get; } = new WallClimbState();
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
 
@@ -463,14 +464,17 @@ namespace Character
             (CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
             (CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
             (CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
+            (CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
         };
 
         private void RaiseEvents(MovementData data)
         {
             if (data.events == MovementEvents.None || MovementEventRaised == null) { return; }
-            for (int bit = 1; bit <= (int)data.events; bit <<= 1)
+            // Every bit of the enum, by count rather than while the bit is no more than the events: with the top bit in
+            // use (1 << 30), shifting on past it goes negative and then to 0, and a loop on bit <= events never ends.
+            for (int shift = 0; shift < 31; shift++)
             {
-                var single = (MovementEvents)bit;
+                var single = (MovementEvents)(1 << shift);
                 if ((data.events & single) != 0) { MovementEventRaised(single, data); }
             }
         }
@@ -1029,6 +1033,41 @@ namespace Character
                 hit = candidate;
             }
             return float.IsFinite(nearest);
+        }
+
+        /// <summary>
+        /// Finds the colliders within radius of center, other than the character's own (and what it ignores: see
+        /// IgnoredCollisionRoot), triggers aside, into results. Returns how many there are.
+        /// </summary>
+        public int OverlapSphere(Vector3 center, float radius, Collider[] results)
+        {
+            if (results == null || results.Length == 0 || radius <= 0f) { return 0; }
+            int count = Physics.OverlapSphereNonAlloc(center, radius, results, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int kept = 0;
+            for (int i = 0; i < count; i++)
+            {
+                if (!IsOwnCollider(results[i].transform)) { results[kept++] = results[i]; }
+            }
+            return kept;
+        }
+
+        /// <summary>
+        /// The point on a collider nearest to point, at the collider's physics pose. Unity can only find that for boxes,
+        /// spheres, capsules and convex meshes; for other colliders (a concave mesh, terrain), the point a ray from point
+        /// along hint hits within reach is used instead. False if there's none (or point is inside the collider).
+        /// </summary>
+        public static bool ClosestPointOn(Collider collider, Vector3 point, Vector3 hint, float reach, out Vector3 closest)
+        {
+            closest = point;
+            if (collider is BoxCollider || collider is SphereCollider || collider is CapsuleCollider || collider is MeshCollider { convex: true })
+            {
+                GetColliderPose(collider, out Vector3 position, out Quaternion rotation);
+                closest = Physics.ClosestPoint(point, collider, position, rotation);
+                return (closest - point).sqrMagnitude > 1e-10f;
+            }
+            if (hint.sqrMagnitude < 1e-8f || !collider.Raycast(new Ray(point, hint.normalized), out RaycastHit hit, reach)) { return false; }
+            closest = hit.point;
+            return true;
         }
 
         /// <summary>

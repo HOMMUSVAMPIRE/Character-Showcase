@@ -210,7 +210,7 @@ namespace CharacterShowcase.EditorTools.Level
             GrayboxSettings.FoliageSettings f = Settings.foliage;
             var grass = new GameObject("Grass Tufts");
             grass.transform.SetParent(lawn, false);
-            tufts.AddTo(grass, grass.name);
+            tufts.AddTo(grass, grass.name, uv2: false);
             var renderer = grass.GetComponent<MeshRenderer>();
             renderer.shadowCastingMode = f.tuftsCastShadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
             var lod = grass.AddComponent<LODGroup>();

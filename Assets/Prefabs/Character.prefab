@@ -128,6 +128,17 @@ MonoBehaviour:
   airborneDelay: 0.12
   movingSpeedThreshold: 0.1
   rotationFixSpeed: 10
+  maxTurnSpeedStanding: 900
+  maxTurnSpeedMoving: 420
+  fullTurnSpeedAt: 8
+  abilityTurnTime: 0.04
+  turnLean: 0.5
+  accelerationLean: 0.25
+  maxLean: 15
+  maxLeanPerSpeed: 1.5
+  leanSmoothTime: 0.12
+  stepUpSmoothTime: 0.08
+  stepUpMaxLag: 0.35
 --- !u!136 &2503010006209077673
 CapsuleCollider:
   m_ObjectHideFlags: 0

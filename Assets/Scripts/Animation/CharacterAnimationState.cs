@@ -32,7 +32,8 @@ namespace Character
         public bool moving;
         public bool jumping;
         public bool dashing;
-        // Crouched (not counting the low stance of a slide or roll)
+        // Crouched (not counting the low stance of a slide or roll). While rolling, whether the roll ends crouched (it
+        // started crouched), so its animation blends into crouching over its end, not into standing and back down.
         public bool crouching;
         public bool sliding;
         public bool rolling;
@@ -58,9 +59,19 @@ namespace Character
         // same for the edge vaulted over (the normal toward where the vault started). Zero otherwise.
         public Vector3 ledgeEdge;
         public Vector3 ledgeNormal;
-        // Sliding down a wall: a point on the wall's face in front of the character, and its normal (horizontal,
-        // pointing toward the character). Zero when not wall sliding.
+        // Sliding down a wall, or climbing a climbable surface (localVelocity then gives the climb: x to the right, y up):
+        // a point on the wall's face in front of the character, and its normal (horizontal, pointing toward the
+        // character). Zero when doing neither.
         public bool wallSliding;
+        public bool wallClimbing;
+        // Climbing, stepping onto the surface from the ground or off its bottom onto the ground (the character holds
+        // still meanwhile), and how far through it (0 to 1; 0 otherwise)
+        public bool climbEntering;
+        public bool climbExiting;
+        public float climbStepProgress;
+        // Climbing a ladder (wallClimbing is set too), and the ladder: where its rungs are, for placing hands and feet on them
+        public bool onLadder;
+        public LadderPose ladder;
         public Vector3 wallPoint;
         public Vector3 wallNormal;
         // Holding an object to push or pull (localVelocity.z is then positive pushing, negative pulling)
@@ -88,6 +99,33 @@ namespace Character
                 return new Vector2(s.x * direction.x, s.z * direction.y).magnitude;
             }
         }
+    }
+
+    /// <summary>
+    /// A ladder being climbed, in world space, as animation needs it: where its rungs are. Its rung k is at
+    /// frontBottom + up * (k + 1) * rungSpacing, a rung's thickness behind the front face, spanning its width.
+    /// </summary>
+    public struct LadderPose
+    {
+        // The middle of the bottom of its front face, and its directions: up it, across it (its own right), and out of
+        // its front (toward the climber)
+        public Vector3 frontBottom;
+        public Vector3 up;
+        public Vector3 right;
+        public Vector3 forward;
+        public float height;
+        public float width;
+        public float rungSpacing;
+        public float rungSize;
+        public float depth;
+        public int rungCount;
+
+        /// <summary>Where rung k's middle is (its centre, between the rails), offset across it by side metres.</summary>
+        public Vector3 Rung(int k, float side) =>
+            frontBottom + up * ((k + 1) * rungSpacing) + right * side - forward * (0.5f * depth);
+
+        /// <summary>How high a point is up the ladder from its bottom.</summary>
+        public float HeightOf(Vector3 point) => Vector3.Dot(point - frontBottom, up);
     }
 
     /// <summary>

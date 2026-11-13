@@ -37,6 +37,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _ClimbableMask:
+        m_Texture: {fileID: 2800000, guid: 22fae81cac68418aaea499d35ab0912b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -52,17 +56,38 @@ Material:
     m_Ints: []
     m_Floats:
     - _BumpStrength: 0.004
+    - _ClimbableBumpStrength: 0.02
+    - _ClimbableGrain: 0.5
+    - _ClimbableMetallic: 0
+    - _ClimbablePanelSize: 0.5
+    - _ClimbablePanelVariation: 0.1
+    - _ClimbablePanels: 1
+    - _ClimbablePitSize: 0.1
+    - _ClimbablePitting: 0.8
+    - _ClimbableSeamWidth: 0.03
+    - _ClimbableSmoothness: 0.1
+    - _ClimbableStainSoftness: 0.2
+    - _ClimbableStainStrength: 0.12
+    - _ClimbableStainThreshold: 0.55
     - _Grain: 1
+    - _Metallic: 0
     - _NoiseScale: 1
+    - _PanelSize: 2
+    - _PanelVariation: 0.04
+    - _Panels: 0
     - _PitSize: 0.02
     - _Pitting: 0.204
     - _QueueControl: 0
     - _QueueOffset: 0
+    - _SeamWidth: 0.02
     - _Smoothness: 0
     - _StainSoftness: 0.5
     - _StainStrength: 0.056
     - _StainThreshold: 0.4
     m_Colors:
+    - _ClimbableEmission: {r: 0, g: 0, b: 0, a: 1}
+    - _ClimbableTint: {r: 0.78, g: 0.6, b: 0.31999996, a: 1}
+    - _Emission: {r: 0, g: 0, b: 0, a: 1}
     - _Tint: {r: 0.72, g: 0.7, b: 0.65999997, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

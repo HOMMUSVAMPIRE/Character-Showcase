@@ -29,8 +29,9 @@ namespace CharacterShowcase.EditorTools.Level
     ///   slope past the slope limit, a tunnel to crouch through, and a narrow beam beside a wall-run wall (the
     ///   platforms with copings round their edges, the lanes marked out with corner brackets and their measures, the
     ///   edges to jump from with hazard stripes);
-    /// - south, one of each mechanic: a lift (a moving platform), a slide gate, and a timed 20 m run between two
-    ///   timing gates, and in the building a crate to push (fixtures Set Up Scene makes work);
+    /// - south, one of each mechanic: a lift (a moving platform) to a landing with a ladder up its side, a slide gate,
+    ///   and a timed 20 m run between two timing gates, and in the building a crate to push (fixtures Set Up Scene makes
+    ///   work);
     /// - placeholders and markers for mechanics to come, as the complex has them.
     /// </summary>
     public static class LevelPlaygroundBuilder
@@ -304,6 +305,8 @@ namespace CharacterShowcase.EditorTools.Level
             // A lift up to a landing at +4.
             MovingPlatform(mechanics, "Lift", new Vector3(-34f, 0.05f, -48f), new Vector3(4f, 0.5f, 4f), new Vector3(0f, 4f, 0f), 6f, pause: 1.5f);
             Platform(mechanics, "Lift Landing (+4)", -32f, -28f, -50f, -46f, 0f, 4f, coping: Surface.Accent);
+            // A ladder up the landing's east face, to climb instead of riding the lift.
+            Ladder(mechanics, new Vector2(-28f, -48f), 0f, 4f, Vector2.right);
             // A low beam to slide or crouch under.
             LowBeam(mechanics, "Slide Gate", new Vector2(-20f, -51f), new Vector2(-20f, -45f), 0f, 1.2f);
             FloorLabel(mechanics, "1.2 m", new Vector2(-22.5f, -48f), 0f, Vector2.right);

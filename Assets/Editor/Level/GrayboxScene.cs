@@ -31,6 +31,9 @@ namespace CharacterShowcase.EditorTools.Level
         public const string MaterialFolder = "Assets/Materials/Level";
         /// <summary>The shader they're made with: noise-built concrete, world-space, no textures (tint, panels, metal and all).</summary>
         public const string SurfaceShaderPath = "Assets/Materials/NoiseConcrete.shadergraph";
+        // The climbable mask every unpainted surface shares: 1 pixel of black, nothing climbable (see the shader's
+        // Climbable settings, and PaintedClimbableSurface, which gives painted objects masks of their own).
+        public const string NoClimbableMaskPath = "Assets/Materials/ClimbableMask_None.png";
 
         // ---- The palette (tunable; only used when a material's first made, so they can be edited by hand) ----
 
@@ -287,6 +290,7 @@ namespace CharacterShowcase.EditorTools.Level
             material.SetFloat("_Panels", look.panels);
             material.SetFloat("_PanelSize", look.panelSize);
             material.SetColor("_Emission", look.emission);
+            if (material.HasProperty("_ClimbableMask")) { material.SetTexture("_ClimbableMask", AssetDatabase.LoadAssetAtPath<Texture>(NoClimbableMaskPath)); }
             if (look.emission.maxColorComponent > 0f) { material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive; }
             return material;
         }

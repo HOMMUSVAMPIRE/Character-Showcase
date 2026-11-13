@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Character
 {
     // Per-character state for the movement abilities (crouching, sliding, rolling, wall-running, ledges, vaulting,
-    // pushing and pulling), which persists between physics steps. Like DashState, it lives on the MovementController (one per
+    // climbing, pushing and pulling), which persists between physics steps. Like DashState, it lives on the MovementController (one per
     // character), since movement modes are shared assets.
 
     /// <summary>
@@ -64,6 +64,12 @@ namespace Character
         // How long the current roll lasts, in seconds
         public float duration;
         public readonly ButtonPress press = new();
+        // Where the character's current fall started (its feet's y, m: where it last wasn't falling, or was on the ground
+        // or held by a wall or a ledge), and, on the step it lands, how far it fell from there (0 on every other step):
+        // for rolling on landing
+        public float fallTop;
+        public bool hasFallTop;
+        public float landingFall;
 
         public bool IsRolling => timeRemaining > 0f;
         /// <summary>How far through the roll the character is: 0 at its start, 1 at its end.</summary>
@@ -246,6 +252,47 @@ namespace Character
             wallNormal.Normalize();
             return true;
         }
+    }
+
+    /// <summary>
+    /// A climb over a climbable surface in progress, and the delay before taking hold of one again. The character's
+    /// position is kept in the space of the object climbed, so it climbs on surfaces that move.
+    /// </summary>
+    public class WallClimbState
+    {
+        /// <summary>
+        /// Holding on and climbing; or, at the bottom, stepping onto the surface from the ground or back off it onto the
+        /// ground, held still while it's done.
+        /// </summary>
+        public enum Phase { Climbing, Entering, Exiting }
+
+        public bool IsClimbing;
+        public Phase phase;
+        // Seconds since stepping on or off started, and how long it takes
+        public float stepElapsed;
+        public float stepDuration;
+        // The surface held: its normal at the point nearest the character's grip (unit length, pointing toward the
+        // character; it turns smoothly round an outside corner), and that point
+        public Vector3 normal;
+        public Vector3 point;
+        // The object climbed (its Rigidbody's, if it has one), and the character's feet in its space at the end of the
+        // last step, to move along with it
+        public Transform surface;
+        public Vector3 localFeet;
+        public bool hasLocalFeet;
+        // The surface's speed multiplier (see Level.ClimbableSurface)
+        public float speedMultiplier = 1f;
+        // The ladder climbed, if it's one (see Level.Ladder): straight up and down it, on its middle; null otherwise
+        public Level.Ladder ladder;
+        // Seconds since the climb started
+        public float elapsed;
+        // Seconds until a climbable surface can be taken hold of again, after letting go of one or jumping off it
+        public float regrabCooldown;
+
+        public bool IsEntering => IsClimbing && phase == Phase.Entering;
+        public bool IsExiting => IsClimbing && phase == Phase.Exiting;
+        /// <summary>How far through stepping onto the surface or off it the character is: 0 at its start, 1 at its end (0 otherwise).</summary>
+        public float StepProgress => (IsEntering || IsExiting) && stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
     }
 
     /// <summary>An object held to push or pull.</summary>

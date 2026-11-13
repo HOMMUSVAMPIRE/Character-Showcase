@@ -215,8 +215,8 @@ namespace Character
         }
 
         /// <summary>
-        /// Kicks off the wall: upward, and away from it. Gives back the character's jumps, less the one this uses, as a
-        /// wall run's jump does, but only off a different wall from the last one jumped off since landing: kicking off a
+        /// Kicks off the wall: upward, and away from it. Gives back the character's jumps, less the one this uses, and its
+        /// air dashes, as a wall run does, but only off a different wall from the last one jumped off since landing: kicking off a
         /// wall, jumping back onto it higher and kicking off again, the jumps given back each time climbed any wall.
         /// Air steering comes back gradually, as after a wall run's jump.
         /// </summary>
@@ -225,9 +225,11 @@ namespace Character
             EndWallSlide(controller);
             controller.wallSlide.jumpsUsed++;
             controller.jumpPressConsumed = true;
+            // Air dashes come back with the jumps, under the same rule (off a different wall from the last): given back
+            // for every slide, hopping up one wall would have a dash each time on top of the character's own jumps.
             if (!JumpedOffThisWallLast(controller, normal))
             {
-                controller.ResetJumps();
+                GiveBackAirMoves(controller);
                 controller.TryUseJump();
             }
             RememberWallJumpedOff(controller, normal);

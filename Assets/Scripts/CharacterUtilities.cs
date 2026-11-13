@@ -102,6 +102,8 @@ namespace Character
         Vaulting = 16384,
         // Stepping up onto the top of something low and deep, reached from mid-air or sprinting (see Vaulting)
         SteppingUp = 32768,
+        // Climbing a climbable surface (see Level.ClimbableSurface), moving over it in any direction
+        WallClimbing = 65536,
     }
 
     /// <summary>
@@ -137,7 +139,7 @@ namespace Character
         RollEnded = 8192,
         WallRunStarted = 16384,
         WallRunEnded = 32768,
-        // Jumped off a wall during a wall run or wall slide (reported by the movement mode)
+        // Jumped off a wall during a wall run, wall slide or wall climb (reported by the movement mode)
         WallJumped = 65536,
         // Caught hold of a ledge in mid-air
         LedgeGrabbed = 131072,
@@ -159,6 +161,10 @@ namespace Character
         // Started or finished stepping up onto something low and deep
         StepUpStarted = 134217728,
         StepUpEnded = 268435456,
+        // Took hold of a climbable surface, and let go of it (jumping off one is a WallJumped; climbing up over its top
+        // onto a ledge is a LedgeClimbStarted)
+        WallClimbStarted = 536870912,
+        WallClimbEnded = 1073741824,
     }
 
     /// <summary>How a character's speeds change with its size. See MovementController.</summary>

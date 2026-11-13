@@ -4,8 +4,8 @@ using UnityEngine;
 
 namespace CharacterShowcase.EditorTools.Level
 {
-    // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates), and low
-    // beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
+    // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders), and
+    // low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
     // with its settings after the name ("Moving Platform (Lift) | travel=0,8,0 | period=5"); the scene's game setup
     // (SceneGameSetup, LevelFixtureSetup) turns it into the real thing. The names' starts must match LevelFixtureSetup's.
     // Fixtures that move are never static.
@@ -15,6 +15,8 @@ namespace CharacterShowcase.EditorTools.Level
         public const string PushablePrefix = "Pushable Crate";
         public const string TimingGatePrefix = "Timing Gate";
         public const string TimingDisplayPrefix = "Timing Display";
+        // A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders.
+        public const string LadderPrefix = "Ladder";
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
         private static string F(Vector3 v) => $"{F(v.x)},{F(v.y)},{F(v.z)}";
@@ -63,6 +65,45 @@ namespace CharacterShowcase.EditorTools.Level
             mesh.AddTo(crate, crate.name);
             crate.AddComponent<BoxCollider>().size = Vector3.one * size;
             return crate;
+        }
+
+        /// <summary>
+        /// A ladder height tall standing on a floor at floor, its back against whatever is at "at" (a wall's face, say),
+        /// climbed from the side facing points to: two orange rails width apart with steel rungs between them, every rung
+        /// spacing from a spacing up (Ladder.RungCountFor's layout, so the game's Ladder finds them where they are). A box
+        /// collider round the whole ladder. The game setup makes it climbable (see LevelFixtureSetup). Its top should be
+        /// level with the floor it's climbed onto: a ladder is only climbed off its top onto a floor there.
+        /// </summary>
+        [Piece]
+        public static GameObject Ladder(Transform parent, Vector2 at, float floor, float height, Vector2 facing, float width = 0.6f)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ladder), parent, at, floor, height, facing, width);
+            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            float spacing = m.ladderRungSpacing, rail = m.ladderRail, rung = m.ladderRung;
+            var ladder = new GameObject($"{LadderPrefix} | height={F(height)} | width={F(width)} | spacing={F(spacing)} | rail={F(rail)} | rung={F(rung)}");
+            ladder.transform.SetParent(parent, false);
+            Vector2 forward = facing.sqrMagnitude > 1e-8f ? facing.normalized : Vector2.up;
+            Vector2 middle = at + forward * (rail / 2f);
+            ladder.transform.SetLocalPositionAndRotation(new Vector3(middle.x, floor, middle.y),
+                Quaternion.LookRotation(new Vector3(forward.x, 0f, forward.y), Vector3.up));
+
+            // In its own space: up +Y, climbed from +Z, rails at the sides, rungs between them.
+            float h = width / 2f, r = rail / 2f, s = rung / 2f;
+            var mesh = new GrayboxMesh();
+            mesh.Box(Surface.Accent, new Vector3(-h, 0f, -r), new Vector3(-h + rail, height, r), bottom: false);
+            mesh.Box(Surface.Accent, new Vector3(h - rail, 0f, -r), new Vector3(h, height, r), bottom: false);
+            int rungs = Mathf.Max(0, Mathf.FloorToInt((height - 0.5f * spacing) / spacing + 1e-4f));
+            for (int k = 0; k < rungs; k++)
+            {
+                float y = (k + 1) * spacing;
+                mesh.Box(Surface.Steel, new Vector3(-h + rail, y - s, -s), new Vector3(h - rail, y + s, s), ends: false);
+            }
+            mesh.AddTo(ladder, ladder.name);
+            var collider = ladder.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, height / 2f, 0f);
+            collider.size = new Vector3(width, height, rail);
+            MakeStatic(ladder, occluder: false);
+            return ladder;
         }
 
         /// <summary>

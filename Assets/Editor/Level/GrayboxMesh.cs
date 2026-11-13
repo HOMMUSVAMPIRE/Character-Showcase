@@ -6,13 +6,16 @@ namespace CharacterShowcase.EditorTools.Level
     /// <summary>
     /// A mesh being put together from flat faces for one object, each face in one of the palette's surfaces (a submesh
     /// per surface, so the object takes one material per surface it uses). Each face has its own vertices, for flat
-    /// shading, and UVs in metres projected along the axis it faces. Used for the pieces that are more than a box: a
+    /// shading, UVs in metres projected along the axis it faces, and (unless asked not to) a UV2 with a chart of its own
+    /// (see GrayboxUV2). Used for the pieces that are more than a box: a
     /// flight of steps, a guardrail.
     /// </summary>
     internal sealed class GrayboxMesh
     {
         private readonly List<Vector3> vertices = new();
         private readonly List<Vector2> uvs = new();
+        // Each face's vertices (from Face), for its UV2 chart.
+        private readonly List<List<int>> faces = new();
         private readonly List<Graybox.Surface> surfaces = new();
         private readonly List<List<int>> triangles = new();
 
@@ -20,6 +23,9 @@ namespace CharacterShowcase.EditorTools.Level
         public int Face(Vector3 normal, IList<Vector3> corners)
         {
             int first = vertices.Count;
+            var face = new List<int>(corners.Count);
+            for (int i = 0; i < corners.Count; i++) { face.Add(first + i); }
+            faces.Add(face);
             foreach (Vector3 v in corners)
             {
                 vertices.Add(v);
@@ -195,13 +201,17 @@ namespace CharacterShowcase.EditorTools.Level
             if (bottom) { Cap(y0, Vector3.down); }
         }
 
-        /// <summary>Gives obj the mesh (named name), and a renderer with the material of each surface it uses.</summary>
-        public void AddTo(GameObject obj, string name)
+        /// <summary>
+        /// Gives obj the mesh (named name), and a renderer with the material of each surface it uses. With uv2, the mesh
+        /// has a UV2 too (see GrayboxUV2): leave it out for meshes nothing will be painted onto, of many small faces (grass).
+        /// </summary>
+        public void AddTo(GameObject obj, string name, bool uv2 = true)
         {
             var mesh = new Mesh { name = name, subMeshCount = surfaces.Count };
             if (vertices.Count > 65535) { mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; }
             mesh.SetVertices(vertices);
             mesh.SetUVs(0, uvs);
+            if (uv2) { mesh.SetUVs(1, GrayboxUV2.Pack(vertices, faces)); }
             var materials = new Material[surfaces.Count];
             for (int i = 0; i < surfaces.Count; i++)
             {

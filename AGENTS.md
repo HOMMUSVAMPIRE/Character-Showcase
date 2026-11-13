@@ -81,7 +81,7 @@ describes what the project does; this file describes how to change it safely.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects implementing capability interfaces** (`WalkRunMode`, `JumpMode`,
-  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `VaultMode`, `PushPullMode` in
+  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `VaultMode`, `WallClimbMode`, `PushPullMode` in
   `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability, implemented by
   `BasicMovementMode`, with tunables as serialized fields on the asset. `BasicMovementMode` is a partial class: walking,
   jumping and dashing are in `BasicMovementMode.cs`, and each other ability in `BasicMovementMode.<Ability>.cs` with
@@ -128,7 +128,9 @@ own each of these files at a time; others should wait or work elsewhere.
   `wallJumpAwaySpeed`, `wallJumpUpSpeed`, `ledgeClimbDuration`, `ledgeHangHeight`, `ledgeGrabMaxHeight`,
   `ledgeMaxGrabRiseSpeed`, `wallSlideBraking`, `wallSlideMaxAngle`, `wallSlideMaxJumps`, `wallSlideJumpUpSpeed`,
   `wallSlideJumpAwaySpeed`, `ledgeGrabMinHeight`, `vaultRiseDuration`, `vaultSpeedRetention`, `vaultMinSpeed`, `vaultFromGround`, `vaultGroundMaxAngle`, `vaultStepUpHeight`, `wallRunFootHeight`, `wallRunReleaseDelay`, `wallSlideReleaseDelay`,
-  `wallJumpSteeringRecovery`, `wallSlideMaxStartRiseSpeed`, `wallRunMaxSteerAngle`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
+  `wallJumpSteeringRecovery`, `wallSlideMaxStartRiseSpeed`, `wallRunMaxSteerAngle`, `wallClimbSpeed`, `wallClimbStartMaxAngle`,
+  `wallClimbGripHeight`, `wallClimbJumpUpSpeed`, `wallClimbJumpAwaySpeed`, `wallClimbRegrabDelay`, `wallClimbEnterDuration`,
+  `wallClimbExitDuration`, `landingRollMinFall`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -173,6 +175,9 @@ the model sources. New Animator parameters or states belong in `MannequinGenerat
 in the Blender scripts. If you can't run Blender or Unity, make the source changes, and state that regeneration is
 still needed. All three tools have `-executeMethod` entry points (see README), so they can run headless.
 
+Climbable paint masks (`Assets/ClimbablePaint/...`) are written by the paint tool from a `PaintedClimbableSurface`'s
+cells: repaint them (the component's Repaint Masks button), don't edit them.
+
 The levels' materials (`Assets/Materials/Level/Level_[Surface].mat`, one per `Graybox.Surface`, shared by both level
 scenes) are the exception: `GrayboxScene` makes each only if it's missing, so they can be edited by hand. They use
 `Assets/Materials/NoiseConcrete.shadergraph`, which is edited in the Shader Graph editor (nothing generates it).
@@ -202,11 +207,29 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
 - **New movement events** go in the `MovementEvents` flags enum. Movement modes report events they cause;
   `MovementController.DetectEvents` detects the ones every mode shares, including each ability's start and end, from
   its `CharacterState` flag (`StateEvents`).
-- **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `CanFitAt`,
-  `StandingHeight`, `Radius`, `Skin`), which skip the character's own colliders and its `IgnoredCollisionRoot` (an
+- **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `OverlapSphere`,
+  `ClosestPointOn`, `CanFitAt`, `StandingHeight`, `Radius`, `Skin`), which skip the character's own colliders and its `IgnoredCollisionRoot` (an
   object it holds). Crouching lowers the collider with `SetHeightFraction`, which keeps the feet in place and only
   raises it where there's room. `MovementMode.AfterMovementResolved` runs once the step's movement is resolved, for
   moving something along with the character (a held `Level.PushableObject`).
+- **Climbable surfaces** are marked with `Level.ClimbableSurface` (on a collider or a parent: all of it), or painted
+  with `Level.PaintedClimbableSurface` (cells per object-space face, painted in the Scene view by
+  `PaintedClimbableSurfaceEditor`). Climbing asks `ClimbableSurface.IsClimbableAt` about the point of each collider
+  nearest the grip; wall climbing (`BasicMovementMode.WallClimb.cs`) climbs those and nothing else. Painting also
+  paints a mask per renderer in the mesh's UV2 (`PaintedClimbableSurface.RebuildMasks`, saved by
+  `ClimbablePaintAssets` in `Assets/ClimbablePaint`), passed as `_ClimbableMask` to materials that have it: the
+  NoiseConcrete shader blends a "Climbable" twin of each look setting by it (the twins were added to the graph's JSON
+  by a script, laid out beside the properties they blend; tidy them in the Shader Graph editor freely). Unpainted
+  materials share `Assets/Materials/ClimbableMask_None.png`. The level's meshes get a UV2 from `GrayboxUV2` (boxes use
+  its Graybox Cube asset); new mesh pieces should give theirs one too (`GrayboxMesh.AddTo` does, unless `uv2: false`).
+  Wall climbing hands over to the ledge climb (`TryClimbOverTop`) at a walkable top. The level builders can't reference the component, so climbable level geometry
+  would be a fixture (see "Level mechanics are fixtures"); none exists yet. Climbing animates with the Quaternius Pro
+  library's Climb_*_Loop clips in MannequinGenerator's Wall Climb blend tree (ClimbRight/ClimbUp), each loop placed at
+  its measured speed (`MotionCaptureLocomotion.ClimbSpeed`); WallSlideIK moves the climbing body to the wall. Stepping
+  on from the ground and off onto it are timed phases of the climb (`WallClimbState.Phase`), shown by Climb Enter/Exit;
+  the ledge climb (from hanging or a wall climb) plays ClimbLedge. Ladders (`Level.Ladder`) are climbed by the same
+  ability (its contact carries the ladder: up and down only, on its middle, from its front) and animated procedurally
+  by `LadderIK` (on every model prefab, added by `CharacterModelImporter`) over the Animator's Ladder state.
 - **Ability animations** are Animator states built by `MannequinGenerator.BuildAbilityStates`, driven by the
   translator's Bool parameters (`Crouching`, `Sliding`, ...) and `GrabSpeed`, `RollProgress`, `ClimbProgress`; the
   `Crouch`, `Hang` and `Wall Slide` clips are the mannequin's own (`mannequin_animations.py`), their hand spread and
@@ -218,11 +241,12 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
   facing their forward. `SceneGameSetup` turns them into the spawner's spawn points (`SpawnMarkerPrefix` must match
   `Graybox.SpawnMarkerPrefix`; the level assembly can't reference it). Rebuilding the level removes its game setup:
   set it up again afterwards.
-- **Level mechanics are fixtures** the same way: `Graybox.Mechanics` builds a moving platform, pushable crate or
-  timing gate (and its display) as geometry named "Moving Platform (…) | key=value | …", "Pushable Crate | …",
-  "Timing Gate | course=… | role=… | distance=…" and "Timing Display | course=…", and `LevelFixtureSetup` (run by
-  `SceneGameSetup`) adds `Level.MovingPlatform`, `Level.PushableObject`, `Level.TimingGate` and a `Level.CourseTimer`
-  per course from them. The prefixes in `Graybox` and `LevelFixtureSetup` must match. A new mechanic is a fixture
+- **Level mechanics are fixtures** the same way: `Graybox.Mechanics` builds a moving platform, pushable crate,
+  ladder or timing gate (and its display) as geometry named "Moving Platform (…) | key=value | …", "Pushable Crate | …",
+  "Ladder | height=… | …", "Timing Gate | course=… | role=… | distance=…" and "Timing Display | course=…", and
+  `LevelFixtureSetup` (run by `SceneGameSetup`) adds `Level.MovingPlatform`, `Level.PushableObject`, `Level.Ladder`
+  (keeping the level's mesh), `Level.TimingGate` and a `Level.CourseTimer` per course from them. Ladders match only
+  "Ladder |", since "Ladder (future): …" markers exist; a ladder's rung layout is `Ladder.RungCountFor`'s in both. The prefixes in `Graybox` and `LevelFixtureSetup` must match. A new mechanic is a fixture
   builder in `Graybox.Mechanics`, a set-up step in `LevelFixtureSetup`, an example in the Level Playground and a
   `LevelFixtureSetupTests` case. Displays are wired through their `text` setter by reflection, so the editor
   assembly needn't reference TextMeshPro.

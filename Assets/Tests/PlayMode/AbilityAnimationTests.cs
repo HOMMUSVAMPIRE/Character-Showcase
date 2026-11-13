@@ -21,7 +21,7 @@ namespace CharacterShowcase.Tests
 
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Hang", "Climb", "Vault", "Push" })
+            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push" })
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -351,6 +351,122 @@ namespace CharacterShowcase.Tests
             float near = rig.Position.z + rig.Radius + 0.1f;
             rig.PushableBox(new Vector3(0f, 0.75f, near + 0.75f), Vector3.one * 1.5f);
             yield return ExpectState("Push", 1f, step => CharacterTestRig.Grab(step, Vector3.forward));
+        }
+
+        [UnityTest]
+        public IEnumerator ClimbingAClimbableWall_PlaysWallClimb_WithTheHandsOnTheWall()
+        {
+            yield return Spawn();
+            rig.Floor();
+            float face = rig.Position.z + rig.Radius + 0.3f;
+            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
+            yield return ExpectState("Wall Climb", 1.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(rig.InState(CharacterState.WallClimbing), Is.True, "Test setup: the character should be climbing.");
+
+            // Climbing up, the hands reach up the wall and hold onto it: on its face (as the library's climbs are made,
+            // for a wall just in front of the body), not pushed into it or reaching at the air in front of it.
+            float size = rig.Controller.Scale.y;
+            Transform left = animator.GetBoneTransform(HumanBodyBones.LeftHand), right = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+            float nearest = float.PositiveInfinity, farthest = float.NegativeInfinity, highest = float.NegativeInfinity;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                foreach (Transform hand in new[] { left, right })
+                {
+                    float fromWall = face - hand.position.z;
+                    nearest = Mathf.Min(nearest, fromWall);
+                    farthest = Mathf.Max(farthest, fromWall);
+                    highest = Mathf.Max(highest, hand.position.y - head.position.y);
+                }
+            });
+            Assert.That(rig.InState(CharacterState.WallClimbing), Is.True);
+            Assert.That(nearest, Is.GreaterThan(-0.01f * size), "The hands shouldn't go into the wall.");
+            Assert.That(nearest, Is.LessThan(0.06f * size), "A hand should be on the wall, holding on.");
+            Assert.That(farthest, Is.LessThan(0.25f * size), "The hands should be on the wall, not reaching at the air in front of it.");
+            Assert.That(highest, Is.GreaterThan(0f), "Climbing up, a hand should reach up above the head.");
+        }
+
+        [UnityTest]
+        public IEnumerator TakingHoldFromTheGround_PlaysClimbEnter_AndSteppingOffPlaysClimbExit()
+        {
+            yield return Spawn();
+            rig.Floor();
+            float face = rig.Position.z + rig.Radius + 0.3f;
+            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
+            yield return ExpectState("Climb Enter", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState("Wall Climb", 1f, _ => CharacterTestRig.Idle());
+            yield return ExpectState("Climb Exit", 0.4f, _ => CharacterTestRig.Move(Vector3.back));
+            yield return ExpectState("Locomotion", 1.2f, _ => CharacterTestRig.Idle());
+        }
+
+        [UnityTest]
+        public IEnumerator LandingFromAHighFallWhileMoving_PlaysRoll()
+        {
+            yield return Spawn();
+            float fall = 1.2f * rig.MovementSetting<float>("landingRollMinFall") * rig.StandingHeight;
+            rig.Floor();
+            rig.Body.position = new Vector3(0f, fall, 0f);
+            yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
+            yield return ExpectState("Roll", 2f, _ => CharacterTestRig.Move(Vector3.right));
+        }
+
+        [UnityTest]
+        public IEnumerator ClimbingALadder_PlaysLadder_WithTheHandsAndFeetOnTheRungs()
+        {
+            yield return Spawn();
+            rig.Floor();
+            float face = rig.Position.z + rig.Radius + 0.3f;
+            Level.Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, 0f, face + 0.03f), 12f);
+            yield return ExpectState("Ladder", 2f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(0.8f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
+            // Holding still, every hand and foot on a rung.
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
+            Assert.That(rig.Movement.wallClimb.ladder, Is.SameAs(ladder), "Test setup: the character should be on the ladder.");
+            float size = rig.Controller.Scale.y;
+            float NearestRung(Transform bone)
+            {
+                float up = ladder.HeightOf(bone.position) / ladder.RungSpacing - 1f;
+                float k = Mathf.Clamp(Mathf.Round(up), 0f, ladder.RungCount - 1);
+                return Mathf.Abs(ladder.HeightOf(bone.position) - ladder.RungHeight((int)k));
+            }
+            foreach (HumanBodyBones hand in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+            {
+                Transform bone = animator.GetBoneTransform(hand);
+                Assert.That(NearestRung(bone), Is.LessThan(0.08f * size), $"The {hand} should hold a rung.");
+                Assert.That(ladder.InFrontOf(bone.position), Is.InRange(-0.02f, 0.12f * size), $"The {hand} should be at the ladder's front.");
+            }
+            foreach (HumanBodyBones foot in new[] { HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot })
+            {
+                Transform bone = animator.GetBoneTransform(foot);
+                Assert.That(NearestRung(bone), Is.LessThan(0.15f * size), $"The {foot} should stand on a rung.");
+                Assert.That(ladder.InFrontOf(bone.position), Is.InRange(-0.02f, 0.2f * size), $"The {foot} should be at the ladder's front.");
+            }
+            // The hands on different rungs, and the feet: a climbing pose, not hanging square.
+            float left = ladder.HeightOf(animator.GetBoneTransform(HumanBodyBones.LeftHand).position);
+            float right = ladder.HeightOf(animator.GetBoneTransform(HumanBodyBones.RightHand).position);
+            Assert.That(Mathf.Abs(left - right), Is.GreaterThan(0.5f * ladder.RungSpacing), "The hands should hold different rungs.");
+        }
+
+        [UnityTest]
+        public IEnumerator RollingFromACrouch_BlendsIntoTheCrouch_WithoutStandingUp()
+        {
+            yield return Spawn();
+            rig.Floor();
+            yield return ExpectState("Crouch", 0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            int rollSteps = CharacterTestRig.StepsFor(rig.Mode<RollMode>().rollDuration * rig.Movement.DurationScale);
+            bool rolled = false, stood = false;
+            yield return rig.Run(rollSteps + CharacterTestRig.StepsFor(0.6f),
+                step => step == 0 ? CharacterTestRig.Roll(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
+                {
+                    StepAnimator(step);
+                    rolled |= InAnimatorState("Roll");
+                    stood |= InAnimatorState("Locomotion");
+                });
+            Assert.That(rolled, Is.True, "Test setup: the roll should play.");
+            Assert.That(rig.InState(CharacterState.Crouching), Is.True, "Test setup: the roll should end crouched.");
+            Assert.That(stood, Is.False, $"A roll from a crouch shouldn't stand up before crouching again (the Animator is in '{CurrentAnimatorState()}').");
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Crouch"), Is.True, "The roll should end in the crouch.");
         }
     }
 }

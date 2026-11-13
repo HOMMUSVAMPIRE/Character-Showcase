@@ -21,6 +21,13 @@ namespace Character
         public const string DefaultRollingParameter = "Rolling";
         public const string DefaultWallRunningParameter = "WallRunning";
         public const string DefaultWallSlidingParameter = "WallSliding";
+        public const string DefaultWallClimbingParameter = "WallClimbing";
+        public const string DefaultClimbRightParameter = "ClimbRight";
+        public const string DefaultClimbUpParameter = "ClimbUp";
+        public const string DefaultClimbEnteringParameter = "ClimbEntering";
+        public const string DefaultOnLadderParameter = "OnLadder";
+        public const string DefaultClimbExitingParameter = "ClimbExiting";
+        public const string DefaultClimbStepProgressParameter = "ClimbStepProgress";
         public const string DefaultWallSideParameter = "WallSide";
         public const string DefaultHangingParameter = "Hanging";
         public const string DefaultClimbingParameter = "Climbing";
@@ -58,6 +65,12 @@ namespace Character
         [SerializeField] private string wallSideParameter = DefaultWallSideParameter;
         [Tooltip("While holding an object: speed in m/s toward it (positive pushing, negative pulling); 0 otherwise")]
         [SerializeField] private string grabSpeedParameter = DefaultGrabSpeedParameter;
+        [Tooltip("While climbing a climbable surface: speed in m/s to the right across it, as the model would climb at its authored size; 0 otherwise")]
+        [SerializeField] private string climbRightParameter = DefaultClimbRightParameter;
+        [Tooltip("While climbing a climbable surface: speed in m/s up it (negative climbing down), as the model would climb at its authored size; 0 otherwise")]
+        [SerializeField] private string climbUpParameter = DefaultClimbUpParameter;
+        [Tooltip("How far through stepping onto a climbable surface from the ground, or off its bottom onto the ground (0 to 1), for animations timed to it")]
+        [SerializeField] private string climbStepProgressParameter = DefaultClimbStepProgressParameter;
         [Tooltip("How far through a roll (0 to 1), for a roll animation timed to it")]
         [SerializeField] private string rollProgressParameter = DefaultRollProgressParameter;
         [Tooltip("How far through a climb onto a ledge (0 to 1), for a climbing animation timed to it")]
@@ -77,6 +90,15 @@ namespace Character
         [SerializeField] private string wallRunningParameter = DefaultWallRunningParameter;
         [Tooltip("Sliding down a wall")]
         [SerializeField] private string wallSlidingParameter = DefaultWallSlidingParameter;
+        [Tooltip("Climbing a climbable surface (the forward and sideways speed parameters, if set, give the climb's " +
+                 "speed up the surface and to the right)")]
+        [SerializeField] private string wallClimbingParameter = DefaultWallClimbingParameter;
+        [Tooltip("Climbing a ladder (WallClimbing is set too)")]
+        [SerializeField] private string onLadderParameter = DefaultOnLadderParameter;
+        [Tooltip("Stepping onto a climbable surface from standing on the ground")]
+        [SerializeField] private string climbEnteringParameter = DefaultClimbEnteringParameter;
+        [Tooltip("Stepping off the bottom of a climbable surface onto the ground")]
+        [SerializeField] private string climbExitingParameter = DefaultClimbExitingParameter;
         [Tooltip("Hanging from a ledge")]
         [SerializeField] private string hangingParameter = DefaultHangingParameter;
         [Tooltip("Climbing up from a ledge onto it")]
@@ -96,9 +118,9 @@ namespace Character
         private sealed class Driver : ICharacterAnimationDriver
         {
             // Parameter hashes, or 0 for parameters to skip
-            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress;
+            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
             private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, hanging, climbing, vaulting, grabbing;
+            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -133,11 +155,18 @@ namespace Character
                 rollProgress = Find(settings.rollProgressParameter, AnimatorControllerParameterType.Float);
                 climbProgress = Find(settings.climbProgressParameter, AnimatorControllerParameterType.Float);
                 vaultProgress = Find(settings.vaultProgressParameter, AnimatorControllerParameterType.Float);
+                climbRight = Find(settings.climbRightParameter, AnimatorControllerParameterType.Float);
+                climbUp = Find(settings.climbUpParameter, AnimatorControllerParameterType.Float);
+                climbStepProgress = Find(settings.climbStepProgressParameter, AnimatorControllerParameterType.Float);
                 crouching = Find(settings.crouchingParameter, AnimatorControllerParameterType.Bool);
                 sliding = Find(settings.slidingParameter, AnimatorControllerParameterType.Bool);
                 rolling = Find(settings.rollingParameter, AnimatorControllerParameterType.Bool);
                 wallRunning = Find(settings.wallRunningParameter, AnimatorControllerParameterType.Bool);
                 wallSliding = Find(settings.wallSlidingParameter, AnimatorControllerParameterType.Bool);
+                wallClimbing = Find(settings.wallClimbingParameter, AnimatorControllerParameterType.Bool);
+                climbEntering = Find(settings.climbEnteringParameter, AnimatorControllerParameterType.Bool);
+                onLadder = Find(settings.onLadderParameter, AnimatorControllerParameterType.Bool);
+                climbExiting = Find(settings.climbExitingParameter, AnimatorControllerParameterType.Bool);
                 hanging = Find(settings.hangingParameter, AnimatorControllerParameterType.Bool);
                 climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
                 vaulting = Find(settings.vaultingParameter, AnimatorControllerParameterType.Bool);
@@ -174,11 +203,20 @@ namespace Character
                 if (rollProgress != 0) { animator.SetFloat(rollProgress, state.rollProgress); }
                 if (climbProgress != 0) { animator.SetFloat(climbProgress, state.climbProgress); }
                 if (vaultProgress != 0) { animator.SetFloat(vaultProgress, state.vaultProgress); }
+                // Climbing, the character faces the surface, so its velocity relative to its facing is the climb: x to the
+                // right, y up. As the authored model would climb (see speed, above), so its hands keep their holds.
+                if (climbRight != 0) { animator.SetFloat(climbRight, state.wallClimbing ? state.localVelocity.x / scale.x : 0f, speedDampTime, deltaTime); }
+                if (climbUp != 0) { animator.SetFloat(climbUp, state.wallClimbing ? state.localVelocity.y / scale.y : 0f, speedDampTime, deltaTime); }
                 if (crouching != 0) { animator.SetBool(crouching, state.crouching); }
                 if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
                 if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
                 if (wallRunning != 0) { animator.SetBool(wallRunning, state.wallRunning); }
                 if (wallSliding != 0) { animator.SetBool(wallSliding, state.wallSliding); }
+                if (wallClimbing != 0) { animator.SetBool(wallClimbing, state.wallClimbing); }
+                if (climbEntering != 0) { animator.SetBool(climbEntering, state.climbEntering); }
+                if (onLadder != 0) { animator.SetBool(onLadder, state.onLadder); }
+                if (climbExiting != 0) { animator.SetBool(climbExiting, state.climbExiting); }
+                if (climbStepProgress != 0) { animator.SetFloat(climbStepProgress, state.climbStepProgress); }
                 if (hanging != 0) { animator.SetBool(hanging, state.hanging); }
                 if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
                 if (vaulting != 0) { animator.SetBool(vaulting, state.vaulting); }

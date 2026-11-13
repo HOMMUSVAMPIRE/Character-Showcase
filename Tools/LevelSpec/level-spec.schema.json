@@ -843,6 +843,35 @@
       "required": ["piece", "parent", "name", "centre", "size", "y0", "y1"],
       "additionalProperties": false
     },
+    "piece.Ladder": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Ladder"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "facing": {
+          "$ref": "#/$defs/point2"
+        },
+        "width": {
+          "type": "number",
+          "default": 0.6
+        }
+      },
+      "required": ["piece", "parent", "at", "floor", "height", "facing"],
+      "additionalProperties": false
+    },
     "piece.Lawns": {
       "type": "object",
       "properties": {
@@ -1793,6 +1822,9 @@
         },
         {
           "$ref": "#/$defs/piece.IBeamColumn"
+        },
+        {
+          "$ref": "#/$defs/piece.Ladder"
         },
         {
           "$ref": "#/$defs/piece.Lawns"

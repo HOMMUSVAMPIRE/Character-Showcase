@@ -75,7 +75,7 @@ namespace Character
         /// Moves the held object with the character, by however far the character moved toward or away from it this step
         /// (it may have been blocked; the object goes no further than it can either).
         /// </summary>
-        public override void AfterMovementResolved(MovementData movementData, MovementController controller)
+        private static void AfterPushPullResolved(MovementData movementData, MovementController controller)
         {
             GrabState grab = controller.grab;
             if (!grab.IsGrabbing || !movementData.state.HasFlag(CharacterState.Grabbing)) { return; }

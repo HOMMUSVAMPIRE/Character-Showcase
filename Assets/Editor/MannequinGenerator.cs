@@ -54,6 +54,13 @@ namespace CharacterShowcase.EditorTools
         private const string RollingParameter = AnimatorParameterTranslator.DefaultRollingParameter;
         private const string WallRunningParameter = AnimatorParameterTranslator.DefaultWallRunningParameter;
         private const string WallSlidingParameter = AnimatorParameterTranslator.DefaultWallSlidingParameter;
+        private const string WallClimbingParameter = AnimatorParameterTranslator.DefaultWallClimbingParameter;
+        private const string ClimbRightParameter = AnimatorParameterTranslator.DefaultClimbRightParameter;
+        private const string ClimbUpParameter = AnimatorParameterTranslator.DefaultClimbUpParameter;
+        private const string ClimbEnteringParameter = AnimatorParameterTranslator.DefaultClimbEnteringParameter;
+        private const string OnLadderParameter = AnimatorParameterTranslator.DefaultOnLadderParameter;
+        private const string ClimbExitingParameter = AnimatorParameterTranslator.DefaultClimbExitingParameter;
+        private const string ClimbStepProgressParameter = AnimatorParameterTranslator.DefaultClimbStepProgressParameter;
         private const string HangingParameter = AnimatorParameterTranslator.DefaultHangingParameter;
         private const string ClimbingParameter = AnimatorParameterTranslator.DefaultClimbingParameter;
         private const string GrabbingParameter = AnimatorParameterTranslator.DefaultGrabbingParameter;
@@ -73,11 +80,17 @@ namespace CharacterShowcase.EditorTools
         // The libraries' clips for the movement abilities, each used where it's installed (the mannequin's own fallback
         // otherwise; see BuildAbilityStates). Of them, those standing on the floor are raised onto the mannequin's, as
         // the locomotion clips are (see StandLibraryOnMannequinsFloor).
-        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop" };
+        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop",
+            "Climb_Idle_Loop", "Climb_Up_Loop", "Climb_Down_Loop", "Climb_Left_Loop", "Climb_Right_Loop", "Climb_Enter", "Climb_Exit", "ClimbLedge" };
         private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
         // The top of the Crouch blend tree, in m/s: well above BasicMovementMode's crouch speed (2 m/s). Past the crouch
         // walk's own speed, it plays sped up to reach it.
         private const float CrouchTopSpeed = 3f;
+        // The edge of the Wall Climb blend tree, in m/s each way: well above BasicMovementMode's climbing speed (2.5 m/s,
+        // and up to twice that on a quick surface). Past each climbing loop's own speed, it plays sped up to reach it.
+        private const float ClimbTopSpeed = 6f;
+        // A climbing loop's speed (m/s) if it can't be measured on the mannequin (see MotionCaptureLocomotion.ClimbSpeed).
+        private const float ClimbLoopFallbackSpeed = 1f;
         // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
         // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
         private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;
@@ -572,11 +585,11 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
-            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
             {
                 controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
             }
-            foreach (string value in new[] { GrabSpeedParameter, RollProgressParameter, ClimbProgressParameter, VaultProgressParameter, WallSideParameter })
+            foreach (string value in new[] { GrabSpeedParameter, RollProgressParameter, ClimbProgressParameter, VaultProgressParameter, WallSideParameter, ClimbRightParameter, ClimbUpParameter, ClimbStepProgressParameter })
             {
                 controller.AddParameter(value, AnimatorControllerParameterType.Float);
             }
@@ -758,7 +771,9 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// The states for the movement abilities: Crouch (standing still and crouch-walking, by Speed), Slide, Roll
         /// (timed by RollProgress), Wall Run (the library's wall run for a wall on that side, by WallSide, or the sprint;
-        /// at the run's speed), Wall Slide, Hang, Climb (timed by ClimbProgress), Vault (timed by VaultProgress) and
+        /// at the run's speed), Wall Slide, Wall Climb (the library's climbing loops, by ClimbRight and ClimbUp), Ladder (posed
+        /// by LadderIK), Climb Enter and Exit, Hang, Climb
+        /// (timed by ClimbProgress), Vault (timed by VaultProgress) and
         /// Push (pushing, or played backward pulling, by GrabSpeed). Each is entered from any state while its
         /// parameter is set, and left for Locomotion, Crouch or Airborne, whichever matches the character, once it's
         /// cleared. The Quaternius libraries' crouch, slide, roll, climb, vault, push and wall runs are used where they're installed, and
@@ -830,8 +845,61 @@ namespace CharacterShowcase.EditorTools
             AnimatorState wallSlide = stateMachine.AddState("Wall Slide");
             wallSlide.motion = clips["Wall Slide"];
 
+            // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
+            // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at
+            // the speed its holding hands are made for, sped up past it, and the climbing idle in the middle. Without them,
+            // the mannequin's hang, held still.
+            AnimatorState wallClimb = stateMachine.AddState("Wall Climb");
+            AnimationClip climbIdle = Library("Climb_Idle_Loop", null);
+            var climbLoops = new (AnimationClip clip, Vector2 direction)[]
+            {
+                (Library("Climb_Up_Loop", null), Vector2.up), (Library("Climb_Down_Loop", null), Vector2.down),
+                (Library("Climb_Left_Loop", null), Vector2.left), (Library("Climb_Right_Loop", null), Vector2.right),
+            };
+            if (climbIdle != null && climbLoops.All(l => l.clip != null))
+            {
+                var children = new List<(Motion, Vector2, float)> { (climbIdle, Vector2.zero, 1f) };
+                var measured = new List<string>();
+                foreach (var (clip, direction) in climbLoops)
+                {
+                    float loopSpeed = MotionCaptureLocomotion.ClimbSpeed(measuringModel, clip, new Vector3(direction.x, direction.y, 0f));
+                    if (!float.IsFinite(loopSpeed) || loopSpeed < 0.05f) { loopSpeed = ClimbLoopFallbackSpeed; }
+                    loopSpeed = Mathf.Min(loopSpeed, ClimbTopSpeed);
+                    children.Add((clip, direction * loopSpeed, 1f));
+                    children.Add((clip, direction * ClimbTopSpeed, ClimbTopSpeed / loopSpeed));
+                    measured.Add($"{clip.name} {loopSpeed:0.00} m/s");
+                }
+                wallClimb.motion = CreateBlendTree2D(controller, "Wall Climb", ClimbRightParameter, ClimbUpParameter, children.ToArray());
+                Debug.Log($"[MannequinGenerator] Climbing loops' speeds: {string.Join(", ", measured)}.");
+            }
+            else { wallClimb.motion = clips["Hang"]; }
+
+            // Climbing a ladder: the library's climbing idle (or the mannequin's hang) as the pose, which LadderIK puts the
+            // hands and feet of on the rungs, moving them rung to rung as the character climbs.
+            AnimatorState ladderState = stateMachine.AddState("Ladder");
+            ladderState.motion = climbIdle != null ? climbIdle : clips["Hang"];
+
+            // Stepping onto a climbable surface from standing on the ground, and off its bottom onto the ground: the
+            // library's climbing enter and exit (on the spot: the feet step onto the wall, or back down), played through
+            // once over however long it's tuned to take. Without them, none: straight into the climb, or out of it.
+            AnimationClip climbEnterClip = Library("Climb_Enter", null), climbExitClip = Library("Climb_Exit", null);
+            AnimatorState climbEnter = null, climbExit = null;
+            if (climbEnterClip != null && climbExitClip != null)
+            {
+                climbEnter = stateMachine.AddState("Climb Enter");
+                climbEnter.motion = climbEnterClip;
+                climbEnter.timeParameterActive = true;
+                climbEnter.timeParameter = ClimbStepProgressParameter;
+                climbExit = stateMachine.AddState("Climb Exit");
+                climbExit.motion = climbExitClip;
+                climbExit.timeParameterActive = true;
+                climbExit.timeParameter = ClimbStepProgressParameter;
+            }
+
+            // Climbing up onto a ledge, from hanging or from climbing a wall below it: the library's climb onto a ledge
+            // (from a climbing pose, as the hang's), or else its 1 m climb, or the mannequin's rise.
             AnimatorState climb = stateMachine.AddState("Climb");
-            climb.motion = Library("ClimbUp_1m", clips["Rise"]);
+            climb.motion = Library("ClimbLedge", Library("ClimbUp_1m", clips["Rise"]));
             climb.timeParameterActive = true;
             climb.timeParameter = ClimbProgressParameter;
 
@@ -851,12 +919,19 @@ namespace CharacterShowcase.EditorTools
             pushPull.speedParameter = GrabSpeedParameter;
             pushPull.speed = pushStrides > 0f ? 1f / pushStrides : 1f;
 
-            foreach (var (state, parameter, enter) in new[]
+            var abilityStates = new List<(AnimatorState state, string parameter, float enter)>
             {
                 (crouch, CrouchingParameter, 0.15f), (slide, SlidingParameter, 0.1f), (roll, RollingParameter, 0.05f),
-                (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
+                (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (wallClimb, WallClimbingParameter, 0.15f), (ladderState, OnLadderParameter, 0.15f),
+                (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
                 (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
-            })
+            };
+            if (climbEnter != null)
+            {
+                abilityStates.Add((climbEnter, ClimbEnteringParameter, 0.1f));
+                abilityStates.Add((climbExit, ClimbExitingParameter, 0.1f));
+            }
+            foreach (var (state, parameter, enter) in abilityStates)
             {
                 AnimatorStateTransition start = stateMachine.AddAnyStateTransition(state);
                 start.hasExitTime = false;
@@ -865,12 +940,21 @@ namespace CharacterShowcase.EditorTools
                 start.AddCondition(AnimatorConditionMode.If, 0f, parameter);
                 // Not back into the roll from walking on out of the end of one (see below), while it's still rolling.
                 if (state == roll) { start.AddCondition(AnimatorConditionMode.Less, 0.5f, RollProgressParameter); }
+                // Still climbing while stepping on or off, so the climb waits for them. Once stepped on, it takes over at
+                // once (Any State transitions come first), rather than the step's own way back to the ground.
+                if ((state == wallClimb || state == ladderState) && climbEnter != null)
+                {
+                    start.AddCondition(AnimatorConditionMode.IfNot, 0f, ClimbEnteringParameter);
+                    start.AddCondition(AnimatorConditionMode.IfNot, 0f, ClimbExitingParameter);
+                }
+                // A ladder has a state of its own.
+                if (state == wallClimb) { start.AddCondition(AnimatorConditionMode.IfNot, 0f, OnLadderParameter); }
                 if (state == crouch)
                 {
                     // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
                     // falling): that shows instead, or two Any State transitions would keep swapping the states.
                     start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
-                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
                     {
                         start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
                     }
@@ -895,6 +979,16 @@ namespace CharacterShowcase.EditorTools
                     walkOn.AddCondition(AnimatorConditionMode.Greater, MoveOnFromLanding, SpeedParameter);
                     walkOn.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
                     walkOn.AddCondition(AnimatorConditionMode.IfNot, 0f, CrouchingParameter);
+
+                    // A roll from a crouch ends crouched: blend into the crouch over its end in the same way, rather
+                    // than standing up out of it and crouching again.
+                    AnimatorStateTransition crouchOn = state.AddTransition(crouch);
+                    crouchOn.hasExitTime = false;
+                    crouchOn.hasFixedDuration = true;
+                    crouchOn.duration = RollBlendOutTime;
+                    crouchOn.AddCondition(AnimatorConditionMode.Greater, RollBlendOutAt, RollProgressParameter);
+                    crouchOn.AddCondition(AnimatorConditionMode.If, 0f, CrouchingParameter);
+                    crouchOn.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
                 }
 
                 // A crouched character falling (walked off an edge crouched) shows the air too.
@@ -929,6 +1023,26 @@ namespace CharacterShowcase.EditorTools
             controller.layers = System.Array.Empty<AnimatorControllerLayer>();
             controller.AddLayer("Base Layer");
             return controller;
+        }
+
+        /// <summary>A 2D blend tree (freeform directional) over two parameters, each child at a position and playback speed.</summary>
+        private static BlendTree CreateBlendTree2D(AnimatorController controller, string name, string parameterX, string parameterY,
+            params (Motion motion, Vector2 position, float timeScale)[] children)
+        {
+            var tree = new BlendTree
+            {
+                name = name,
+                blendType = BlendTreeType.FreeformDirectional2D,
+                blendParameter = parameterX,
+                blendParameterY = parameterY,
+                hideFlags = HideFlags.HideInHierarchy,
+            };
+            foreach (var (motion, position, _) in children) { tree.AddChild(motion, position); }
+            ChildMotion[] motions = tree.children;
+            for (int i = 0; i < motions.Length; i++) { motions[i].timeScale = children[i].timeScale; }
+            tree.children = motions;
+            AssetDatabase.AddObjectToAsset(tree, controller);
+            return tree;
         }
 
         private static BlendTree CreateBlendTree(AnimatorController controller, string name, string parameter,

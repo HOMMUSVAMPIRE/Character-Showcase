@@ -143,6 +143,7 @@
         {"piece": "Group", "parent": "", "name": "Mechanics"},
         {"piece": "MovingPlatform", "parent": "Mechanics", "label": "Lift", "top": [-34, 0.05, -48], "size": [4, 0.5, 4], "travel": [0, 4, 0], "period": 6, "pause": 1.5},
         {"piece": "Platform", "parent": "Mechanics", "name": "Lift Landing (+4)", "x0": -32, "x1": -28, "z0": -50, "z1": -46, "y0": 0, "top": 4, "coping": "Accent"},
+        {"piece": "Ladder", "parent": "Mechanics", "at": [-28, -48], "floor": 0, "height": 4, "facing": [1, 0]},
         {"piece": "LowBeam", "parent": "Mechanics", "name": "Slide Gate", "a": [-20, -51], "b": [-20, -45], "floor": 0, "clear": 1.2},
         {"piece": "FloorLabel", "parent": "Mechanics", "text": "1.2 m", "at": [-22.5, -48], "height": 0, "facing": [1, 0]},
         {"piece": "TimingGate", "parent": "Mechanics", "course": "Playground", "role": "start", "a": [-12, -51], "b": [-12, -45], "floor": 0, "approach": [1, 0], "distance": 20},

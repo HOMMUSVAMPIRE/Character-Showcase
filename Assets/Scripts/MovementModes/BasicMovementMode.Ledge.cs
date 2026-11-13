@@ -111,9 +111,28 @@ namespace Character
                 return false;
             }
 
-            Vector3 hang = edge + wallNormal * (controller.Radius + 2f * controller.Skin);
-            hang.y = edge.y - ledgeHangHeight * height;
+            Vector3 hang = HangPosition(controller, wallNormal, edge);
             if (!controller.CanFitAt(hang, 1f)) { return false; }
+            HoldLedge(controller, top, wallNormal, edge, hang);
+            if (controller.wallSlide.IsWallSliding) { EndWallSlide(controller); }
+            return true;
+        }
+
+        /// <summary>Where the character's feet hang from a ledge with the given edge and wall normal below it.</summary>
+        private Vector3 HangPosition(MovementController controller, Vector3 wallNormal, Vector3 edge)
+        {
+            Vector3 hang = edge + wallNormal * (controller.Radius + 2f * controller.Skin);
+            hang.y = edge.y - ledgeHangHeight * controller.StandingHeight;
+            return hang;
+        }
+
+        /// <summary>
+        /// Takes hold of a ledge found by FindLedge (its top's hit, the wall's normal below it, the point on its edge),
+        /// hanging with the feet at hang: from here on the ledge has the character.
+        /// </summary>
+        private void HoldLedge(MovementController controller, RaycastHit top, Vector3 wallNormal, Vector3 edge, Vector3 hang)
+        {
+            LedgeState ledge = controller.ledge;
             Vector3 climbTarget = edge - wallNormal * (controller.Radius + ledgeClimbInset * controller.HeightScale);
             climbTarget.y = edge.y + controller.Skin;
 
@@ -126,10 +145,52 @@ namespace Character
             ledge.localEdge = toLedgeSpace * (edge - ledgePosition);
             ledge.localWallNormal = toLedgeSpace * wallNormal;
             ledge.phase = LedgeState.Phase.Hanging;
-            if (controller.wallSlide.IsWallSliding) { EndWallSlide(controller); }
+            // Holding onto a ledge counts as touching the ground: the character's jumps and air dashes come back.
+            GiveBackAirMoves(controller);
             // Hanging is done standing up: a character crouched in the air (walked off an edge crouched) stands to grab.
             controller.crouch.IsCrouched = false;
             controller.crouch.wantsToStand = false;
+        }
+
+        /// <summary>
+        /// Climbs up over the top of a surface the character is climbing (see ProcessMovementDataForWallClimb), if it has
+        /// a walkable top heading toward it, with room to stand or crouch on it: withinReach, a top in the window a ledge
+        /// is grabbed in (its hands reaching it, as hanging: the ledge climb's animation starts from there); otherwise
+        /// any top from low on the body up (once the grip has climbed past it). With requireFloor, only where there's
+        /// something to stand on where the climb ends (off a ladder's top). The ledge climb carries on from where the
+        /// character is, as from hanging, and this step is its first. Without room on top
+        /// to stand or crouch, the character hangs from the edge instead, holding still this step. Returns whether the
+        /// ledge has the character (climbing or hanging).
+        /// </summary>
+        private bool TryClimbOverTop(ref MovementData movementData, MovementController controller, Vector3 heading, bool withinReach, bool requireFloor = false)
+        {
+            if (ledgeClimbDuration <= 0f) { return false; }
+            Vector3 feet = movementData.initialPosition;
+            float height = controller.StandingHeight;
+            // From low on the body (the wall is there, as the character is climbing it), or the lowest a ledge is grabbed
+            // at, to as high as the hands reach.
+            float low = (withinReach ? ledgeGrabMinHeight : 0.25f) * height;
+            if (!FindLedge(controller, feet, heading, low, ledgeGrabMaxHeight * height,
+                    controller.Radius + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
+            {
+                return false;
+            }
+            if (requireFloor)
+            {
+                // Something to stand on where the climb ends (see HoldLedge and TryDropOntoLedge), not open air behind.
+                Vector3 target = edge - wallNormal * (controller.Radius + ledgeClimbInset * controller.HeightScale);
+                target.y = edge.y + controller.Skin;
+                if (!TryDropOntoLedge(controller, target, out _)) { return false; }
+            }
+            HoldLedge(controller, top, wallNormal, edge, HangPosition(controller, wallNormal, edge));
+            LedgeState ledge = controller.ledge;
+            MovementController.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
+            TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
+            movementData.directMovementVector = Vector3.zero;
+            movementData.targetRotation = Quaternion.LookRotation(-wallNormal, Vector3.up);
+            if (ledge.IsClimbing) { return Climb(ref movementData, controller, ledgePosition, ledgeRotation); }
+            movementData.velocityOverride = Vector3.zero;
+            movementData.state |= CharacterState.LedgeHanging;
             return true;
         }
 

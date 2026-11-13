@@ -251,5 +251,28 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.4f, _ => CharacterTestRig.Move(steer), _ => ran |= WallRunning);
             Assert.That(ran, Is.False, "A wall run needs steering mostly along the wall.");
         }
+
+        [UnityTest]
+        public IEnumerator AWallRun_GivesBackAirDashesAndJumps_AsLandingDoes()
+        {
+            yield return SetUpWall();
+            int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
+            if (maxAirDashes < 1) { Assert.Ignore("The character has no air dashes."); }
+            // An air dash along the wall, which carries on into a wall run once it's over.
+            int dashesUsed = 0;
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
+                _ => dashesUsed = Mathf.Max(dashesUsed, rig.Movement.dash.airDashesUsed));
+            Assert.That(dashesUsed, Is.EqualTo(1), "Test setup: the character should have used an air dash.");
+            Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
+            Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "A wall run should give back the character's air dashes.");
+            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps), "A wall run should give back the character's jumps.");
+
+            // Dropping off the wall, the character can dash again in mid-air.
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0, Vector3.forward));
+            Assert.That(WallRunning, Is.False, "Test setup: Crouch should drop off the wall.");
+            bool dashed = false;
+            yield return rig.Run(0.5f, step => CharacterTestRig.Dash(step, Vector3.left), _ => dashed |= rig.Dashing);
+            Assert.That(dashed, Is.True, "Having dropped off a wall run, the character should be able to air dash again.");
+        }
     }
 }

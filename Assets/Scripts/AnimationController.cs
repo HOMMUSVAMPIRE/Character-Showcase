@@ -209,6 +209,19 @@ namespace Character
                 movementController.vault.TryGetEdge(out ledgeEdge, out ledgeNormal);
             }
             bool wallSliding = movementData.state.HasFlag(CharacterState.WallSliding) && movementController != null;
+            bool wallClimbing = movementData.state.HasFlag(CharacterState.WallClimbing) && movementController != null;
+            Vector3 wallPoint = Vector3.zero, wallNormal = Vector3.zero;
+            if (wallSliding)
+            {
+                wallPoint = movementController.wallSlide.wallPoint;
+                wallNormal = movementController.wallSlide.wallNormal;
+            }
+            else if (wallClimbing)
+            {
+                wallPoint = movementController.wallClimb.point;
+                Vector3 climbed = movementController.wallClimb.normal;
+                wallNormal = new Vector3(climbed.x, 0f, climbed.z).normalized;
+            }
             return new CharacterAnimationState
             {
                 velocity = velocity,
@@ -227,7 +240,9 @@ namespace Character
                 moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
                 dashing = movementData.state.HasFlag(CharacterState.Dashing),
-                crouching = movementData.state.HasFlag(CharacterState.Crouching),
+                // A roll from a crouch ends crouched: shown as crouching through it, so it blends into the crouch.
+                crouching = movementData.state.HasFlag(CharacterState.Crouching)
+                            || (movementData.state.HasFlag(CharacterState.Rolling) && movementController != null && movementController.crouch.IsCrouched),
                 sliding = movementData.state.HasFlag(CharacterState.Sliding),
                 rolling = movementData.state.HasFlag(CharacterState.Rolling),
                 wallRunning = movementData.state.HasFlag(CharacterState.WallRunning),
@@ -244,11 +259,29 @@ namespace Character
                 ledgeEdge = ledgeEdge,
                 ledgeNormal = ledgeNormal,
                 wallSliding = wallSliding,
-                wallPoint = wallSliding ? movementController.wallSlide.wallPoint : Vector3.zero,
-                wallNormal = wallSliding ? movementController.wallSlide.wallNormal : Vector3.zero,
+                wallClimbing = wallClimbing,
+                climbEntering = wallClimbing && movementController.wallClimb.IsEntering,
+                climbExiting = wallClimbing && movementController.wallClimb.IsExiting,
+                climbStepProgress = wallClimbing ? movementController.wallClimb.StepProgress : 0f,
+                onLadder = wallClimbing && movementController.wallClimb.ladder != null,
+                ladder = wallClimbing ? LadderPoseOf(movementController.wallClimb.ladder) : default,
+                wallPoint = wallPoint,
+                wallNormal = wallNormal,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
                     ? modelHost.ModelParent.localScale : Vector3.one,
                 speedScale = speedScale,
+            };
+        }
+
+        /// <summary>The ladder's geometry as animation needs it (see LadderPose); empty without one.</summary>
+        private static LadderPose LadderPoseOf(Level.Ladder ladder)
+        {
+            if (ladder == null) { return default; }
+            return new LadderPose
+            {
+                frontBottom = ladder.FrontBottom, up = ladder.Up, right = ladder.Right, forward = ladder.Forward,
+                height = ladder.Height, width = ladder.Width, rungSpacing = ladder.RungSpacing, rungSize = ladder.RungSize,
+                depth = ladder.Depth, rungCount = ladder.RungCount,
             };
         }
 
@@ -282,7 +315,7 @@ namespace Character
             visualYaw += groundRotation.eulerAngles.y;
 
             // Turn: a critically damped spring, so a turn eases in and out, limited to a turn rate that slows with speed.
-            bool abilityFacing = state.dashing || state.rolling || state.sliding || state.wallRunning || state.wallSliding
+            bool abilityFacing = state.dashing || state.rolling || state.sliding || state.wallRunning || state.wallSliding || state.wallClimbing
                                  || state.hanging || state.climbing || state.grabbing;
             float speedScale = state.speedScale > 0f ? state.speedScale : 1f;
             float authoredSpeed = state.horizontalSpeed / speedScale;

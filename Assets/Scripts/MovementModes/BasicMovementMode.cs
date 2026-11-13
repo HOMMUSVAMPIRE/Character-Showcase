@@ -5,13 +5,13 @@ namespace Character
 {
     /// <summary>
     /// A Scriptable Object type which defines a very standard character movement scheme: walking, sprinting, jumping and
-    /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, vaulting, and pushing and pulling
-    /// objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
+    /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, vaulting,
+    /// climbing climbable surfaces, and pushing and pulling objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
     /// header in the inspector.
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
     public partial class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode,
-        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, VaultMode, PushPullMode
+        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, VaultMode, WallClimbMode, PushPullMode
     {
         [Header("Speed")]
         [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
@@ -126,6 +126,8 @@ namespace Character
             bool abilityHasCharacter = ProcessMovementDataForLedge(ref movementData, inputs, controller)
                 || ProcessMovementDataForVault(ref movementData, inputs, controller)
                 || ProcessMovementDataForPushPull(ref movementData, inputs, controller)
+                // Before wall-running and wall sliding: a climbable surface is climbed instead.
+                || ProcessMovementDataForWallClimb(ref movementData, inputs, controller)
                 || ProcessMovementDataForWallRun(ref movementData, inputs, controller)
                 || ProcessMovementDataForWallSlide(ref movementData, inputs, controller)
                 || ProcessMovementDataForRoll(ref movementData, inputs, controller)
@@ -149,6 +151,16 @@ namespace Character
             // The collider is lowered while crouched, sliding or rolling, and raised again where there's room.
             UpdatePosture(ref movementData, controller);
             ClampFallSpeed(ref movementData, controller);
+        }
+
+        /// <summary>
+        /// Once the step's movement is resolved: moves a held object along with the character, and remembers where the
+        /// character is on a surface it's climbing (see MovementMode.AfterMovementResolved).
+        /// </summary>
+        public override void AfterMovementResolved(MovementData movementData, MovementController controller)
+        {
+            AfterPushPullResolved(movementData, controller);
+            AfterWallClimbResolved(movementData, controller);
         }
 
         /// <summary>
@@ -195,10 +207,12 @@ namespace Character
             controller.crouch.press.Track(inputs.crouch);
             controller.roll.press.Track(inputs.roll);
             controller.roll.cooldownRemaining = Mathf.Max(0f, controller.roll.cooldownRemaining - deltaTime);
+            TrackFall(movementData, controller);
             controller.wallRun.cooldownRemaining = Mathf.Max(0f, controller.wallRun.cooldownRemaining - deltaTime);
             if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; controller.wallSlide.jumpsUsed = 0; controller.wallSlide.hasLastWall = false; }
             controller.wallSlide.cooldownRemaining = Mathf.Max(0f, controller.wallSlide.cooldownRemaining - deltaTime);
             controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - deltaTime);
+            controller.wallClimb.regrabCooldown = Mathf.Max(0f, controller.wallClimb.regrabCooldown - deltaTime);
             // Air steering comes back after a wall jump, and is all back on the ground.
             controller.wallJump.elapsed += deltaTime;
             if (movementData.initialGrounded) { controller.wallJump.recovering = false; controller.wallJump.hasLastWall = false; }
@@ -211,7 +225,18 @@ namespace Character
         private static bool AbilityInProgress(MovementController controller, bool exceptWallSlide = false) =>
             controller.dash.IsDashing || controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing
             || controller.wallRun.IsWallRunning || (controller.wallSlide.IsWallSliding && !exceptWallSlide)
-            || controller.roll.IsRolling || controller.slide.IsSliding;
+            || controller.roll.IsRolling || controller.slide.IsSliding || controller.wallClimb.IsClimbing;
+
+        /// <summary>
+        /// Gives back the character's jumps and air dashes, as touching the ground does. For the abilities that count as
+        /// touching it (starting a wall run, taking hold of a climbable surface or a ledge, vaulting), and for a kick off a wall slid down that
+        /// gives them back (off a different wall from the last one jumped off).
+        /// </summary>
+        private static void GiveBackAirMoves(MovementController controller)
+        {
+            controller.ResetJumps();
+            controller.dash.airDashesUsed = 0;
+        }
 
         /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
         private static Vector3 InputDirection(MovementData movementData, Inputs inputs)

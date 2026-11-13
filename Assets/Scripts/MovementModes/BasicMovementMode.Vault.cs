@@ -211,6 +211,8 @@ namespace Character
             Quaternion toObstacleSpace = Quaternion.Inverse(obstacleRotation);
             vault.localEdge = toObstacleSpace * (edge - obstaclePosition);
             vault.localWallNormal = toObstacleSpace * wallNormal;
+            // A hand planted on the top counts as touching the ground: the character's jumps and air dashes come back.
+            GiveBackAirMoves(controller);
 
             if (deep && edge.y - feet.y <= vaultStepUpHeight * controller.StandingHeight)
             {

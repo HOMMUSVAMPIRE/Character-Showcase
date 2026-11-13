@@ -309,5 +309,27 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
             Assert.That(rig.Movement.jumpsRemaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");
         }
+
+        [UnityTest]
+        public IEnumerator KickingOffAWall_GivesBackAirDashes_ButNotOffTheSameWallAgain()
+        {
+            yield return SetUpWall();
+            int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
+            if (maxAirDashes < 1) { Assert.Ignore("The character has no air dashes."); }
+            // Kicking straight up, so each jump comes back to the same wall to slide on again.
+            rig.SetMovementSetting("wallSlideJumpAwaySpeed", 0f);
+            yield return SlideDown();
+            rig.Movement.dash.airDashesUsed = maxAirDashes; // As if they'd been used.
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "The first kick off a wall should give back the character's air dashes.");
+
+            rig.Movement.dash.airDashesUsed = maxAirDashes;
+            bool slidAgain = false;
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => slidAgain |= Sliding);
+            Assert.That(slidAgain, Is.True, "Test setup: the character should slide down the wall again.");
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(maxAirDashes),
+                "A kick off the same wall again shouldn't give back air dashes, as it doesn't give back jumps.");
+        }
     }
 }

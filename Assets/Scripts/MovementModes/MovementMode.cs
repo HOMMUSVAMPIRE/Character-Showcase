@@ -188,6 +188,19 @@ namespace Character
     }
 
     /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle climbing: running or jumping into a
+    /// climbable surface (see Level.ClimbableSurface) takes hold of it, and movement input then moves the character over
+    /// it, up, down and sideways, round corners onto connected climbable surfaces, but never off the climbable area.
+    /// </summary>
+    public interface WallClimbMode
+    {
+        /// <summary>How fast (m/s) the character climbs at full input, at its authored size. 0 turns climbing off.</summary>
+        public abstract float wallClimbSpeed { get; set; }
+
+        public abstract bool ProcessMovementDataForWallClimb(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
     /// An interface defining the functions necessary for a deriving class to handle grabbing large objects (see
     /// Level.PushableObject) and pushing and pulling them along the ground.
     /// </summary>

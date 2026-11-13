@@ -112,6 +112,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 374b92a67f214429285ec9ea4dbbad4f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4539399989110004822}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 374b92a67f214429285ec9ea4dbbad4f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7070302434643500455}
   m_SourcePrefab: {fileID: 100100000, guid: 374b92a67f214429285ec9ea4dbbad4f, type: 3}
 --- !u!1 &7830656118592399884 stripped
 GameObject:
@@ -205,6 +208,8 @@ MonoBehaviour:
   maxPelvisDrop: 0.4
   pelvisSmoothTime: 0.1
   groundedFadeTime: 0.12
+  stepUpTuckReach: 0.3
+  stepUpFadeTime: 0.05
   drawGizmos: 1
 --- !u!114 &501649545562244326
 MonoBehaviour:
@@ -227,6 +232,8 @@ MonoBehaviour:
   maxBodyShift: 0.4
   climbReleaseAt: 0.8
   handRotationWeight: 0.8
+  vaultHandPlacement: {x: 0.12, y: 0.12}
+  vaultPlantedBetween: {x: 0.05, y: 0.75}
 --- !u!114 &4539399989110004822
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -244,3 +251,29 @@ MonoBehaviour:
   bodyFromWall: 0.18
   wristFromWall: 0.03
   handRotationWeight: 0.8
+  climbSmoothTime: 0.2
+  climbHandFromWall: 0.1
+--- !u!114 &7070302434643500455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7830656118592399884}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11ec519661b948ea8d44a30d11a52c26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CharacterShowcase::Character.LadderIK
+  weight: 1
+  fadeTime: 0.15
+  handReach: 1.75
+  footReach: 0.55
+  handInset: 0.1
+  footSpread: 0.12
+  wristOut: 0.04
+  ankleAboveAndOut: {x: 0.08, y: 0.07}
+  bodyFromLadder: 0.32
+  swingShare: 0.4
+  swingLift: 0.08
+  rotationWeight: 0.7

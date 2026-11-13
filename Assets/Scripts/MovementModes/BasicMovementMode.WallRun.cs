@@ -177,6 +177,9 @@ namespace Character
 
             run.IsWallRunning = true;
             run.elapsed = 0f;
+            // Running on a wall counts as touching the ground: the character's jumps and air dashes come back. (The same
+            // wall can't be run along twice before landing, so this can't be repeated on one wall.)
+            GiveBackAirMoves(controller);
             run.releaseTime = 0f;
             run.wallNormal = normal;
             // A rising jump is cut down, and a fall caught.

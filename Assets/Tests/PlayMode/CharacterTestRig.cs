@@ -159,6 +159,30 @@ namespace CharacterShowcase.Tests
             return box;
         }
 
+        /// <summary>A box the character can climb (a ClimbableSurface), of the given climbing speed multiplier.</summary>
+        public ClimbableSurface ClimbableBox(string name, Vector3 center, Vector3 size, Quaternion? rotation = null, float speedMultiplier = 1f)
+        {
+            var surface = Box(name, center, size, rotation).AddComponent<ClimbableSurface>();
+            surface.SpeedMultiplier = speedMultiplier;
+            return surface;
+        }
+
+        /// <summary>
+        /// A ladder of the given height standing at bottom (the middle of its foot), facing -Z (climbed from that side,
+        /// toward +Z, as the test camera looks), unless turned otherwise. It builds its own mesh and collider.
+        /// </summary>
+        public Ladder Ladder(Vector3 bottom, float height, Quaternion? rotation = null, float width = 0.6f)
+        {
+            var obj = new GameObject("Ladder");
+            created.Add(obj);
+            obj.transform.SetPositionAndRotation(bottom, rotation ?? Quaternion.Euler(0f, 180f, 0f));
+            var ladder = obj.AddComponent<Ladder>();
+            ladder.Height = height;
+            ladder.Width = width;
+            ladder.Rebuild();
+            return ladder;
+        }
+
         /// <summary>A large flat floor whose top surface is at the given height, 100 m across unless given a width.</summary>
         public GameObject Floor(float topHeight = 0f, float width = 100f) =>
             Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));

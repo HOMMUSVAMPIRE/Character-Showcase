@@ -20,6 +20,9 @@ MonoBehaviour:
   turnSpeedParameter: 
   wallSideParameter: WallSide
   grabSpeedParameter: GrabSpeed
+  climbRightParameter: ClimbRight
+  climbUpParameter: ClimbUp
+  climbStepProgressParameter: ClimbStepProgress
   rollProgressParameter: RollProgress
   climbProgressParameter: ClimbProgress
   vaultProgressParameter: VaultProgress
@@ -32,6 +35,10 @@ MonoBehaviour:
   rollingParameter: Rolling
   wallRunningParameter: WallRunning
   wallSlidingParameter: WallSliding
+  wallClimbingParameter: WallClimbing
+  onLadderParameter: OnLadder
+  climbEnteringParameter: ClimbEntering
+  climbExitingParameter: ClimbExiting
   hangingParameter: Hanging
   climbingParameter: Climbing
   vaultingParameter: Vaulting

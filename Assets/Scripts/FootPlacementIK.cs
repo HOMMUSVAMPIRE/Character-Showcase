@@ -172,8 +172,8 @@ namespace Character
             CharacterAnimationState state = stateSource?.AnimationState ?? new CharacterAnimationState { grounded = true };
             bool grounded = state.grounded;
             // Not while dashing, sliding or rolling either: their poses trail or tuck the legs, which planting the feet
-            // would undo.
-            bool posed = state.dashing || state.sliding || state.rolling || state.vaulting;
+            // would undo. Nor climbing a wall, whose feet are on the wall, even at its foot with the floor under them.
+            bool posed = state.dashing || state.sliding || state.rolling || state.vaulting || state.wallClimbing;
             float goal = grounded && !posed ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
 

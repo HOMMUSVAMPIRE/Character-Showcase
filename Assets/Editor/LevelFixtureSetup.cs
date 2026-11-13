@@ -23,6 +23,8 @@ namespace CharacterShowcase.EditorTools
     /// <item>"Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, timed
     /// by a CourseTimer for its course, made under the game setup and told who the racer is by the spawner.</item>
     /// <item>"Timing Display | course=name" (a TextMeshPro) shows that course's times.</item>
+    /// <item>"Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder that keeps the level's mesh (its
+    /// rungs where the level put them). Only names starting "Ladder |": "Ladder (future): …" markers aren't ladders.</item>
     /// </list>
     /// The names' starts must match the level builders' (Graybox), which can't reference these.
     /// </summary>
@@ -32,6 +34,7 @@ namespace CharacterShowcase.EditorTools
         public const string PushablePrefix = "Pushable Crate";
         public const string TimingGatePrefix = "Timing Gate";
         public const string TimingDisplayPrefix = "Timing Display";
+        public const string LadderPrefix = "Ladder";
         public const string CoursesName = "Course Timers";
 
         /// <summary>Whether name is a fixture's: the prefix alone, or followed by a space ("Moving Platform (Lift) | …").</summary>
@@ -99,6 +102,24 @@ namespace CharacterShowcase.EditorTools
             return pushable;
         }
 
+        /// <summary>Whether name is a ladder's: "Ladder | …" (not a "Ladder (future)" marker).</summary>
+        public static bool IsLadder(string name) => name.StartsWith(LadderPrefix + " |", StringComparison.Ordinal);
+
+        /// <summary>Sets a ladder up from its name's settings (adding what it needs), keeping the level's mesh.</summary>
+        public static Ladder SetUpLadder(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            Ladder ladder = Need<Ladder>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(ladder, "Set Up Scene"); }
+            ladder.BuildsMesh = false;
+            ladder.Height = Float(p, "height", 4f);
+            ladder.Width = Float(p, "width", 0.6f);
+            ladder.RungSpacing = Float(p, "spacing", 0.3f);
+            ladder.Depth = Float(p, "rail", 0.06f);
+            ladder.RungSize = Float(p, "rung", 0.035f);
+            return ladder;
+        }
+
         /// <summary>The role a timing gate's settings give it.</summary>
         public static TimingGateRole Role(Dictionary<string, string> p) =>
             p.TryGetValue("role", out string role) ? role switch { "start" => TimingGateRole.Start, "finish" => TimingGateRole.Finish, _ => TimingGateRole.StartAndFinish }
@@ -116,6 +137,8 @@ namespace CharacterShowcase.EditorTools
             int platforms = 0, pushables = 0;
             foreach (Transform t in all.Where(t => IsNamed(t.name, MovingPlatformPrefix))) { SetUpMovingPlatform(t.gameObject, withUndo); platforms++; }
             foreach (Transform t in all.Where(t => IsNamed(t.name, PushablePrefix))) { SetUpPushable(t.gameObject, withUndo); pushables++; }
+            int ladders = 0;
+            foreach (Transform t in all.Where(t => IsLadder(t.name))) { SetUpLadder(t.gameObject, withUndo); ladders++; }
 
             // A timer for each course its gates name, under the game setup.
             var timers = new Dictionary<string, CourseTimer>();
@@ -169,6 +192,7 @@ namespace CharacterShowcase.EditorTools
             var parts = new List<string>();
             if (platforms > 0) { parts.Add($"{platforms} moving platform{(platforms == 1 ? "" : "s")}"); }
             if (pushables > 0) { parts.Add($"{pushables} pushable crate{(pushables == 1 ? "" : "s")}"); }
+            if (ladders > 0) { parts.Add($"{ladders} ladder{(ladders == 1 ? "" : "s")}"); }
             if (gates > 0) { parts.Add($"{gates} timing gate{(gates == 1 ? "" : "s")} on {timers.Count} course{(timers.Count == 1 ? "" : "s")} with {displays} display{(displays == 1 ? "" : "s")}"); }
             return string.Join(", ", parts);
         }

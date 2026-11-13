@@ -182,5 +182,135 @@ namespace CharacterShowcase.Tests
 
             Assert.That(doubled, Is.EqualTo(2f * normal).Within(0.05f * normal), "A roll should scale with the character's size.");
         }
+
+        private float LandingRollMinFall => rig.MovementSetting<float>("landingRollMinFall") * rig.StandingHeight;
+
+        /// <summary>A floor, and the character in mid-air above it, its feet the given share of the landing roll's fall above the floor.</summary>
+        private IEnumerator SpawnAbove(float shareOfLandingRollFall)
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(new Vector3(0f, 30f, 0f), settleSeconds: 0f);
+            rig.Body.position = new Vector3(0f, shareOfLandingRollFall * LandingRollMinFall, 0f);
+            yield return null;
+        }
+
+        /// <summary>
+        /// Drops the character from the given share of the landing roll's fall, launched along +X at speed with the given
+        /// steering, and records whether it rolled, which way, and how many steps after touching down it started.
+        /// </summary>
+        private IEnumerator DropOnto(float shareOfLandingRollFall, float speed, Vector3 steer, LandingRecord record)
+        {
+            yield return SpawnAbove(shareOfLandingRollFall);
+            yield return rig.Launch(Vector3.right * speed, CharacterTestRig.Move(steer));
+            int sinceLanding = -1;
+            yield return rig.Run(2f, _ => CharacterTestRig.Move(steer), _ =>
+            {
+                if (sinceLanding < 0 && rig.Grounded) { sinceLanding = 0; }
+                else if (sinceLanding >= 0) { sinceLanding++; }
+                if (Rolling && record.stepsAfterLanding < 0)
+                {
+                    record.stepsAfterLanding = Mathf.Max(0, sinceLanding);
+                    record.direction = rig.Movement.roll.direction;
+                }
+            });
+        }
+
+        private class LandingRecord
+        {
+            public int stepsAfterLanding = -1;
+            public Vector3 direction;
+            public bool Rolled => stepsAfterLanding >= 0;
+        }
+
+        [UnityTest]
+        public IEnumerator LandingFromAHighFall_WhileMoving_RollsOnImpact_TheWayItsGoing()
+        {
+            var record = new LandingRecord();
+            yield return DropOnto(1.2f, 5f, Vector3.right, record);
+            Assert.That(record.Rolled, Is.True, "Landing from a high fall while moving should roll.");
+            Assert.That(record.stepsAfterLanding, Is.LessThanOrEqualTo(1), "The roll should start on impact.");
+            Assert.That(Vector3.Angle(record.direction, Vector3.right), Is.LessThan(5f), "The roll should go the way the character was moving.");
+        }
+
+        [UnityTest]
+        public IEnumerator LandingFromAHighFall_StandingStill_DoesNotRoll()
+        {
+            var record = new LandingRecord();
+            yield return DropOnto(1.2f, 0f, Vector3.zero, record);
+            Assert.That(record.Rolled, Is.False, "Landing from a fall without moving shouldn't roll.");
+        }
+
+        [UnityTest]
+        public IEnumerator LandingFromALowFall_WhileMoving_DoesNotRoll()
+        {
+            var record = new LandingRecord();
+            yield return DropOnto(0.6f, 5f, Vector3.right, record);
+            Assert.That(record.Rolled, Is.False, "Landing from a fall lower than the landing roll's shouldn't roll.");
+        }
+
+        [UnityTest]
+        public IEnumerator LandingFromAHighFall_WithAJumpPressed_JumpsRatherThanRolling()
+        {
+            yield return SpawnAbove(1.2f);
+            yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
+            var events = new System.Collections.Generic.List<MovementEvents>();
+            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            // Fall, pressing Jump just before landing (within its buffer), and holding it.
+            bool rolled = false;
+            int held = -1;
+            yield return rig.Run(2f, _ =>
+            {
+                if (held >= 0 || rig.Position.y < 0.3f) { held++; return CharacterTestRig.Jump(held, Vector3.right); }
+                return CharacterTestRig.Move(Vector3.right);
+            }, _ => rolled |= Rolling);
+            Assert.That(events.Contains(MovementEvents.Jumped), Is.True, "Test setup: the character should have jumped on landing.");
+            Assert.That(rolled, Is.False, "A jump pressed for the landing should jump, not roll.");
+        }
+
+        [UnityTest]
+        public IEnumerator AJumpOnFlatGround_DoesNotRollOnLanding()
+        {
+            yield return Stand();
+            bool rolled = false;
+            yield return rig.Run(2f, step => CharacterTestRig.Jump(step, Vector3.right), _ => rolled |= Rolling);
+            Assert.That(rolled, Is.False, "Landing from an ordinary jump on flat ground shouldn't roll.");
+        }
+
+        [UnityTest]
+        public IEnumerator ADashJustBeforeLanding_StartsTheFallAgain_SoTheLandingDoesNotRoll()
+        {
+            yield return SpawnAbove(1.5f);
+            bool rolled = false, dashed = false;
+            int dashStep = -1;
+            yield return rig.Run(3f, step =>
+            {
+                // An air dash along +X once the feet are a third of the landing roll's fall above the floor.
+                if (dashStep < 0 && rig.Position.y < LandingRollMinFall / 3f) { dashStep = step; }
+                return dashStep == step ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Move(Vector3.right);
+            }, _ => { rolled |= Rolling; dashed |= rig.Dashing; });
+            Assert.That(dashed, Is.True, "Test setup: the character should have dashed.");
+            Assert.That(rolled, Is.False, "A dash just before landing should start the fall again from it, too low to roll.");
+        }
+
+        [UnityTest]
+        public IEnumerator AnAirJumpJustBeforeLanding_StartsTheFallAgain_SoTheLandingDoesNotRoll()
+        {
+            yield return SpawnAbove(1.5f);
+            if (rig.Movement.maxJumps < 1) { Assert.Ignore("The character has no jumps."); }
+            yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
+            rig.Movement.jumpsRemaining = rig.Movement.maxJumps; // Never on the ground yet: as if it had walked off a ledge.
+            var events = new System.Collections.Generic.List<MovementEvents>();
+            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            bool rolled = false;
+            int jumpStep = -1;
+            yield return rig.Run(3f, step =>
+            {
+                // A tap of an air jump half a metre above the floor.
+                if (jumpStep < 0 && rig.Position.y < 0.5f && !rig.Grounded) { jumpStep = step; }
+                return jumpStep == step ? CharacterTestRig.Jump(0, Vector3.right) : CharacterTestRig.Move(Vector3.right);
+            }, _ => rolled |= Rolling);
+            Assert.That(events.Contains(MovementEvents.AirJumped), Is.True, "Test setup: the character should have air jumped.");
+            Assert.That(rolled, Is.False, "A jump just before landing should start the fall again from its top, too low to roll.");
+        }
     }
 }

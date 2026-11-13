@@ -253,5 +253,18 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => hung |= Hanging);
             Assert.That(hung, Is.False);
         }
+
+        [UnityTest]
+        public IEnumerator GrabbingALedge_GivesBackAirDashesAndJumps_AsLandingDoes()
+        {
+            yield return SetUpLedge();
+            int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
+            // Never on the ground yet (no jumps), and as if its air dashes had been used.
+            rig.Movement.dash.airDashesUsed = maxAirDashes;
+            rig.Movement.jumpsRemaining = 0;
+            yield return GrabAndHang();
+            Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "Grabbing a ledge should give back the character's air dashes.");
+            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps), "Grabbing a ledge should give back the character's jumps.");
+        }
     }
 }

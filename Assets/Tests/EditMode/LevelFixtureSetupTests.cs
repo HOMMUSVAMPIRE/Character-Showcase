@@ -74,6 +74,32 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         [Test]
+        public void SetUp_MakesLaddersFromTheirNames_KeepingTheLevelsMesh_ButNotFutureLadderMarkers()
+        {
+            GameObject ladder = Add("Ladder | height=5.5 | width=0.7 | spacing=0.25 | rail=0.05 | rung=0.03");
+            var levelMesh = new Mesh { name = "The Level's Ladder" };
+            ladder.AddComponent<MeshFilter>().sharedMesh = levelMesh;
+            ladder.AddComponent<BoxCollider>();
+            GameObject marker = Add("Ladder (future): up the shaft");
+            Transform setup = Add("Game Setup").transform;
+
+            string summary = LevelFixtureSetup.SetUp(scene, setup, null, withUndo: false);
+
+            var climbable = ladder.GetComponent<Ladder>();
+            Assert.IsNotNull(climbable);
+            Assert.IsFalse(climbable.BuildsMesh, "A level's ladder should keep the level's mesh.");
+            Assert.AreSame(levelMesh, ladder.GetComponent<MeshFilter>().sharedMesh);
+            Assert.AreEqual(5.5f, climbable.Height, 1e-5f);
+            Assert.AreEqual(0.7f, climbable.Width, 1e-5f);
+            Assert.AreEqual(0.25f, climbable.RungSpacing, 1e-5f);
+            Assert.AreEqual(0.05f, climbable.Depth, 1e-5f);
+            Assert.AreEqual(0.03f, climbable.RungSize, 1e-5f);
+            Assert.IsNull(marker.GetComponent<Ladder>(), "A future ladder's marker isn't a ladder.");
+            StringAssert.Contains("1 ladder", summary);
+            Object.DestroyImmediate(levelMesh);
+        }
+
+        [Test]
         public void SetUp_GivesEachCourseATimer_AndWiresItsGatesAndDisplays()
         {
             Transform gates = Add("Gates").transform;

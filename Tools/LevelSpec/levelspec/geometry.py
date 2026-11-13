@@ -240,6 +240,12 @@ def _shapes(piece, f, state):
         a, s = g("at"), g("size")
         return [("mechanics", "poly", _rect(a[0] - s / 2, a[0] + s / 2, a[1] - s / 2, a[1] + s / 2), g("floor"), g("floor") + s,
                  {"label": "Pushable Crate" + ("" if g("canPull", True) else " (push only)")})]
+    if name == "Ladder":
+        a, f, w = g("at"), g("facing"), g("width", 0.6)
+        length = math.hypot(f[0], f[1]) or 1.0
+        across = (-f[1] / length * w / 2, f[0] / length * w / 2)
+        return [("mechanics", "line", [(a[0] - across[0], a[1] - across[1]), (a[0] + across[0], a[1] + across[1])], g("floor"),
+                 g("floor") + g("height"), {"label": f"Ladder ({_n(g('height'))} m)"})]
     if name == "TimingGate":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("floor"), g("floor") + 4.2,
                  {"label": f"Timing Gate: {g('course')} ({g('role')})" + (f", {_n(g('distance'))} m" if g("distance") else "")})]

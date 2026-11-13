@@ -414,5 +414,37 @@ namespace CharacterShowcase.EditorTools
             speeds.Sort();
             return speeds[speeds.Count / 2];
         }
+
+        /// <summary>
+        /// How fast (m/s) a looping climbing clip climbs, played on the model, in a direction in the model's space (up, say,
+        /// or to its right, facing the wall): as StrideSpeed is for a walk's feet, how fast its holding hands move the other
+        /// way under the body, which is the speed the character must climb at for them to stay on their holds. A hand
+        /// moving back against the climb is holding on (one moving with it is reaching for the next hold); measured over
+        /// two loops, the median of how fast the hands move back while they do, among the faster half (a hand only easing
+        /// back as it takes hold isn't yet pulling).
+        /// </summary>
+        public static float ClimbSpeed(GameObject model, AnimationClip clip, Vector3 direction)
+        {
+            const int samples = 240;
+            direction.Normalize();
+            float dt = 2f * clip.length / samples;
+            Vector3[][] hands = SampleBones(model, clip, Enumerable.Range(0, samples + 1).Select(i => i * dt).ToArray(),
+                HumanBodyBones.LeftHand, HumanBodyBones.RightHand);
+            if (hands == null) { return 0f; }
+            var speeds = new List<float>();
+            for (int hand = 0; hand < 2; hand++)
+            {
+                for (int i = 0; i < samples; i++)
+                {
+                    float t = i * dt % clip.length;
+                    if (t > clip.length - dt) { continue; } // Not across the loop's join.
+                    float back = -Vector3.Dot(hands[hand][i + 1] - hands[hand][i], direction) / dt;
+                    if (back > 0.05f) { speeds.Add(back); }
+                }
+            }
+            if (speeds.Count == 0) { return 0f; }
+            speeds.Sort();
+            return speeds[speeds.Count * 3 / 4];
+        }
     }
 }

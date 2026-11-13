@@ -319,6 +319,12 @@ namespace CharacterShowcase.EditorTools.Level
             public float gateTextHeight = 0.32f;
             [Tooltip("Low beams to slide under: how deep the beam is along the way under it (m).")]
             public float lowBeamDepth = 0.5f;
+            [Tooltip("Ladders: how far apart their rungs are (m).")]
+            public float ladderRungSpacing = 0.3f;
+            [Tooltip("Ladders: how thick their rails are, each way (m): the ladder's depth.")]
+            public float ladderRail = 0.06f;
+            [Tooltip("Ladders: how thick their rungs are (m).")]
+            public float ladderRung = 0.035f;
         }
 
         [Serializable]

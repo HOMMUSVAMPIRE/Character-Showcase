@@ -754,6 +754,8 @@ namespace CharacterShowcase.EditorTools.Level
             box.transform.SetParent(parent, false);
             box.transform.SetLocalPositionAndRotation(localCentre, Quaternion.Euler(0f, yaw, 0f));
             box.transform.localScale = size;
+            // Unity's cube with a UV2, so things can be painted onto one face of it (see GrayboxUV2).
+            box.GetComponent<MeshFilter>().sharedMesh = GrayboxUV2.Cube;
             box.GetComponent<MeshRenderer>().sharedMaterial = For(surface);
             MakeStatic(box);
             return box;
@@ -827,6 +829,10 @@ namespace CharacterShowcase.EditorTools.Level
             var mesh = new Mesh { name = name };
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
+            // A UV2 chart for each triangle (each has its own vertices).
+            var faces = new List<List<int>>(vertices.Count / 3);
+            for (int i = 0; i + 2 < vertices.Count; i += 3) { faces.Add(new List<int> { i, i + 1, i + 2 }); }
+            mesh.SetUVs(1, GrayboxUV2.Pack(vertices, faces));
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();
 
