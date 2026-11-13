@@ -22,7 +22,7 @@ namespace CharacterShowcase.EditorTools.Level
         public const string ScenePath = "Assets/Scenes/ProvingGround/ProvingGround.unity";
 
         // ---- What the character can do (from the tuning, measured: revise with it) ----
-        // A sprint jump crosses 6.8 m, with an air dash 9.7 m; a double jump 11.8 m, with an air dash 14.5 m. A jump rises
+        // A sprint jump crosses 6.2 m (6.8 m before jumps were set by height), with an air dash 9.7 m; a double jump 11.8 m, with an air dash 14.5 m. A jump rises
         // 2.2 m, a double 3.9 m. A ledge is caught 1.4 to 2.6 m above the feet: 4.8 m up from a jump, 6.5 m from a double.
         // A slide goes 5.7 m, a roll 3.7 m, both under 1.1 m; a wall run 11 m, falling 3.7 m.
 

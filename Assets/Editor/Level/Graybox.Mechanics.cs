@@ -1,11 +1,12 @@
 using System.Globalization;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 
 namespace CharacterShowcase.EditorTools.Level
 {
-    // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders), and
-    // low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
+    // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders, ropes,
+    // ziplines, bounce pads), and low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
     // with its settings after the name ("Moving Platform (Lift) | travel=0,8,0 | period=5"); the scene's game setup
     // (SceneGameSetup, LevelFixtureSetup) turns it into the real thing. The names' starts must match LevelFixtureSetup's.
     // Fixtures that move are never static.
@@ -15,8 +16,12 @@ namespace CharacterShowcase.EditorTools.Level
         public const string PushablePrefix = "Pushable Crate";
         public const string TimingGatePrefix = "Timing Gate";
         public const string TimingDisplayPrefix = "Timing Display";
-        // A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders.
+        // A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders. The same goes for ropes ("Rope
+        // Anchor" placeholders and "Rope Swing (future)" markers aren't ropes), ziplines and bounce pads.
         public const string LadderPrefix = "Ladder";
+        public const string RopePrefix = "Rope";
+        public const string ZiplinePrefix = "Zipline";
+        public const string BouncePadPrefix = "Bounce Pad";
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
         private static string F(Vector3 v) => $"{F(v.x)},{F(v.y)},{F(v.z)}";
@@ -104,6 +109,107 @@ namespace CharacterShowcase.EditorTools.Level
             collider.size = new Vector3(width, height, rail);
             MakeStatic(ladder, occluder: false);
             return ladder;
+        }
+
+        /// <summary>
+        /// A rope to swing on, hanging length metres from anchor (where it's tied), from a small graphite bracket above
+        /// it, which has to hang from something (a gantry's beam, say: the builder's). The rope is orange, hanging
+        /// straight down; the game setup makes it swing (see LevelFixtureSetup), drawing it as it swings. No colliders:
+        /// nothing collides with a rope. Not static: it moves.
+        /// </summary>
+        [Piece]
+        public static GameObject Rope(Transform parent, Vector3 anchor, float length)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Rope), parent, anchor, length);
+            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            float b = m.ropeBracket / 2f, t = m.ropeThickness / 2f;
+            var bracket = new GameObject("Rope Bracket");
+            bracket.transform.SetParent(parent, false);
+            bracket.transform.localPosition = anchor;
+            var bracketMesh = new GrayboxMesh();
+            bracketMesh.Box(Surface.Graphite, new Vector3(-b, 0f, -b), new Vector3(b, 2f * b, b));
+            bracketMesh.AddTo(bracket, bracket.name);
+            MakeStatic(bracket, occluder: false);
+
+            var rope = new GameObject($"{RopePrefix} | length={F(length)} | thickness={F(m.ropeThickness)}");
+            rope.transform.SetParent(parent, false);
+            rope.transform.localPosition = anchor;
+            var mesh = new GrayboxMesh();
+            mesh.Box(Surface.Accent, new Vector3(-t, -length, -t), new Vector3(t, 0f, t), top: false);
+            mesh.AddTo(rope, rope.name, uv2: false);
+            return rope;
+        }
+
+        /// <summary>
+        /// A zipline: a steel cable from start to end (start the higher, for a ride down it), on a graphite post at each
+        /// end standing on the floor below it there (startFloor, endFloor), just beyond the cable's end. Characters ride it
+        /// at up to speed (m/s). The game setup makes it rideable (see LevelFixtureSetup). The posts have box colliders;
+        /// the cable none (characters hang from it).
+        /// </summary>
+        [Piece]
+        public static GameObject Zipline(Transform parent, Vector3 start, Vector3 end, float startFloor, float endFloor, float speed = 16f)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Zipline), parent, start, end, startFloor, endFloor, speed);
+            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            Vector3 along = end - start;
+            float length = along.magnitude;
+            Vector3 direction = length > 1e-4f ? along / length : Vector3.forward;
+            Vector2 flat = new Vector2(direction.x, direction.z);
+            flat = flat.sqrMagnitude > 1e-6f ? flat.normalized : Vector2.up;
+
+            // Laid out in its own space: from its origin (the start) along +Z to the end.
+            var line = new GameObject($"{ZiplinePrefix} | length={F(length)} | speed={F(speed)}");
+            line.transform.SetParent(parent, false);
+            line.transform.SetLocalPositionAndRotation(start, Quaternion.LookRotation(direction, Vector3.up));
+            float c = m.cableThickness / 2f;
+            var mesh = new GrayboxMesh();
+            mesh.Box(Surface.Steel, new Vector3(-c, -c, 0f), new Vector3(c, c, length));
+            mesh.AddTo(line, line.name, uv2: false);
+            MakeStatic(line, occluder: false);
+
+            // A post just beyond each end, up to just above the cable.
+            float p = m.ziplinePost, reachOver = 0.2f;
+            Transform posts = Group(parent, "Zipline Posts");
+            foreach ((Vector3 at, Vector2 outward, float floor) in new[] { (start, -flat, startFloor), (end, flat, endFloor) })
+            {
+                Vector2 centre = new Vector2(at.x, at.z) + outward * (p / 2f + 0.05f);
+                BoxXZ(posts, "Zipline Post", centre, new Vector2(p, p), floor, at.y + reachOver, Mathf.Atan2(flat.x, flat.y) * Mathf.Rad2Deg, Surface.Graphite);
+            }
+            return line;
+        }
+
+        /// <summary>
+        /// A bounce pad, size each way, standing on a floor at floor at "at": a steel base with a cyan springy top, which
+        /// launches characters height metres up (see LevelFixtureSetup). A box collider round the whole pad; the top
+        /// isn't static (it squashes when the pad launches someone).
+        /// </summary>
+        [Piece]
+        public static GameObject BouncePad(Transform parent, Vector2 at, float floor, float size, float height)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(BouncePad), parent, at, floor, size, height);
+            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            float h = size / 2f, tall = m.bouncePad.x, top = Mathf.Min(m.bouncePad.y, tall * 0.8f), inset = 0.1f;
+            var pad = new GameObject($"{BouncePadPrefix} | height={F(height)}");
+            pad.transform.SetParent(parent, false);
+            pad.transform.localPosition = new Vector3(at.x, floor, at.y);
+            var mesh = new GrayboxMesh();
+            mesh.Box(Surface.Steel, new Vector3(-h, 0f, -h), new Vector3(h, tall - top, h), bottom: false);
+            mesh.Box(Surface.Accent, new Vector3(-h - 0.01f, 0f, -h - 0.01f), new Vector3(h + 0.01f, Settings.mechanics.edgeBand, h + 0.01f), top: false, bottom: false);
+            mesh.AddTo(pad, pad.name);
+            var collider = pad.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, tall / 2f, 0f);
+            collider.size = new Vector3(size, tall, size);
+            MakeStatic(pad);
+
+            // Its springy top, its origin at its bottom, so it squashes down onto the base.
+            var spring = new GameObject("Spring");
+            spring.transform.SetParent(pad.transform, false);
+            spring.transform.localPosition = new Vector3(0f, tall - top, 0f);
+            var springMesh = new GrayboxMesh();
+            springMesh.Box(Surface.Cyan, new Vector3(-h + inset, 0f, -h + inset), new Vector3(h - inset, top, h - inset), bottom: false);
+            springMesh.AddTo(spring, spring.name);
+            GameObjectUtility.SetStaticEditorFlags(spring, 0);
+            return pad;
         }
 
         /// <summary>

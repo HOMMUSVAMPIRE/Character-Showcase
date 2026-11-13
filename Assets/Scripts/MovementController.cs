@@ -40,7 +40,7 @@ namespace Character
 
         [Tooltip("A multiplier on the character's movement speed")]
         public float movementSpeedMultiplier;
-        [Tooltip("A multiplier on the character's jump speed")]
+        [Tooltip("A multiplier on the character's jump launch speed (jump heights scale with its square)")]
         public float jumpStrengthModifier;
 
         [Tooltip("The radius of the sphere cast used to determine whether the character is standing on the ground")]
@@ -317,6 +317,9 @@ namespace Character
         public VaultState vault { get; } = new VaultState();
         public GrabState grab { get; } = new GrabState();
         public WallClimbState wallClimb { get; } = new WallClimbState();
+        public RopeSwingState ropeSwing { get; } = new RopeSwingState();
+        public ZiplineState zipline { get; } = new ZiplineState();
+        public BounceState bounce { get; } = new BounceState();
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
 
@@ -326,6 +329,9 @@ namespace Character
 
         // The time at which the character last started a jump (negative infinity if they never have)
         [System.NonSerialized] public float lastJumpTime = float.NegativeInfinity;
+
+        // How high the character's feet were when it last started a jump (for cutting a jump short: see BasicMovementMode)
+        [System.NonSerialized] public float jumpStartHeight;
 
         // Whether the current press of the jump button has already started a jump, so one press never starts two
         // (for example when a jump ends early against a ceiling while the press is still within the jump buffer)
@@ -465,16 +471,18 @@ namespace Character
             (CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
             (CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
             (CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
+            (CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
+            (CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
         };
 
         private void RaiseEvents(MovementData data)
         {
             if (data.events == MovementEvents.None || MovementEventRaised == null) { return; }
-            // Every bit of the enum, by count rather than while the bit is no more than the events: with the top bit in
-            // use (1 << 30), shifting on past it goes negative and then to 0, and a loop on bit <= events never ends.
-            for (int shift = 0; shift < 31; shift++)
+            // Every bit of the enum, by count rather than while the bit is no more than the events: once the top bit is
+            // in use, shifting on past it goes negative and then to 0, and a loop on bit <= events never ends.
+            for (int shift = 0; shift < 63; shift++)
             {
-                var single = (MovementEvents)(1 << shift);
+                var single = (MovementEvents)(1L << shift);
                 if ((data.events & single) != 0) { MovementEventRaised(single, data); }
             }
         }

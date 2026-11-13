@@ -246,6 +246,18 @@ def _shapes(piece, f, state):
         across = (-f[1] / length * w / 2, f[0] / length * w / 2)
         return [("mechanics", "line", [(a[0] - across[0], a[1] - across[1]), (a[0] + across[0], a[1] + across[1])], g("floor"),
                  g("floor") + g("height"), {"label": f"Ladder ({_n(g('height'))} m)"})]
+    if name == "Rope":
+        a = g("anchor")
+        return [("mechanics", "point", [(a[0], a[2])], a[1] - g("length"), a[1], {"label": f"Rope ({_n(g('length'))} m)"})]
+    if name == "Zipline":
+        s, e = g("start"), g("end")
+        length = math.dist(s, e)
+        return [("mechanics", "line", [(s[0], s[2]), (e[0], e[2])], min(s[1], e[1]), max(s[1], e[1]),
+                 {"label": f"Zipline ({length:.1f} m)", "arrow": ((s[0], s[2]), (e[0], e[2]))})]
+    if name == "BouncePad":
+        a, s = g("at"), g("size")
+        return [("mechanics", "poly", _rect(a[0] - s / 2, a[0] + s / 2, a[1] - s / 2, a[1] + s / 2), g("floor"), g("floor") + 0.3,
+                 {"label": f"Bounce Pad ({_n(g('height'))} m)"})]
     if name == "TimingGate":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("floor"), g("floor") + 4.2,
                  {"label": f"Timing Gate: {g('course')} ({g('role')})" + (f", {_n(g('distance'))} m" if g("distance") else "")})]

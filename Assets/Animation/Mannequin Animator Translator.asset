@@ -43,6 +43,8 @@ MonoBehaviour:
   climbingParameter: Climbing
   vaultingParameter: Vaulting
   grabbingParameter: Grabbing
+  ropeSwingingParameter: RopeSwinging
+  zipliningParameter: Ziplining
   eventTriggers:
-  - events: 65539
+  - events: 34359803907
     trigger: Jump

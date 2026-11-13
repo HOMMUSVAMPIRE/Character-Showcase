@@ -310,6 +310,31 @@
       "required": ["piece", "parent", "shape", "floor"],
       "additionalProperties": false
     },
+    "piece.BouncePad": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "BouncePad"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "size": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "at", "floor", "size", "height"],
+      "additionalProperties": false
+    },
     "piece.Box": {
       "type": "object",
       "properties": {
@@ -1298,6 +1323,25 @@
       "required": ["piece", "parent", "name", "start", "direction", "width", "length", "y0", "y1"],
       "additionalProperties": false
     },
+    "piece.Rope": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Rope"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "anchor": {
+          "$ref": "#/$defs/point3"
+        },
+        "length": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "anchor", "length"],
+      "additionalProperties": false
+    },
     "piece.Ruler": {
       "type": "object",
       "properties": {
@@ -1743,6 +1787,35 @@
       "required": ["piece", "parent", "name", "a", "b", "y0", "y1", "thickness"],
       "additionalProperties": false
     },
+    "piece.Zipline": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Zipline"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "start": {
+          "$ref": "#/$defs/point3"
+        },
+        "end": {
+          "$ref": "#/$defs/point3"
+        },
+        "startFloor": {
+          "type": "number"
+        },
+        "endFloor": {
+          "type": "number"
+        },
+        "speed": {
+          "type": "number",
+          "default": 16
+        }
+      },
+      "required": ["piece", "parent", "start", "end", "startFloor", "endFloor"],
+      "additionalProperties": false
+    },
     "piece": {
       "oneOf": [
         {
@@ -1765,6 +1838,9 @@
         },
         {
           "$ref": "#/$defs/piece.Bollards"
+        },
+        {
+          "$ref": "#/$defs/piece.BouncePad"
         },
         {
           "$ref": "#/$defs/piece.Box"
@@ -1866,6 +1942,9 @@
           "$ref": "#/$defs/piece.Ramp"
         },
         {
+          "$ref": "#/$defs/piece.Rope"
+        },
+        {
           "$ref": "#/$defs/piece.Ruler"
         },
         {
@@ -1906,6 +1985,9 @@
         },
         {
           "$ref": "#/$defs/piece.Wall"
+        },
+        {
+          "$ref": "#/$defs/piece.Zipline"
         }
       ]
     },

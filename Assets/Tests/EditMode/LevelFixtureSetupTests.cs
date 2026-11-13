@@ -131,5 +131,48 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.AreSame(text, trap.OnDisplay.GetPersistentTarget(0));
             Assert.AreEqual("set_text", trap.OnDisplay.GetPersistentMethodName(0));
         }
+
+        [Test]
+        public void SetUp_MakesRopesZiplinesAndBouncePads_FromTheirNames_ButNotPlaceholdersNamedForThem()
+        {
+            GameObject rope = Add("Rope | length=9 | thickness=0.08");
+            GameObject anchor = Add("Rope Anchor (+24)");
+            GameObject marker = Add("Rope Swing (future): across the gap");
+            GameObject line = Add("Zipline | length=30.5 | speed=12");
+            line.transform.rotation = Quaternion.Euler(10f, 90f, 0f);
+            var levelCable = new Mesh { name = "The Level's Cable" };
+            line.AddComponent<MeshFilter>().sharedMesh = levelCable;
+            GameObject pad = Add("Bounce Pad | height=7.5");
+            pad.AddComponent<BoxCollider>();
+            GameObject spring = Add("Spring", pad.transform);
+            Transform setup = Add("Game Setup").transform;
+
+            string summary = LevelFixtureSetup.SetUp(scene, setup, null, withUndo: false);
+
+            var swing = rope.GetComponent<Rope>();
+            Assert.IsNotNull(swing);
+            Assert.IsTrue(swing.BuildsMesh, "A rope draws itself as it swings.");
+            Assert.AreEqual(9f, swing.Length, 1e-5f);
+            Assert.AreEqual(0.08f, swing.Thickness, 1e-5f);
+            Assert.IsNull(anchor.GetComponent<Rope>(), "A rope's anchor placeholder isn't a rope.");
+            Assert.IsNull(marker.GetComponent<Rope>(), "A future rope swing's marker isn't a rope.");
+
+            var zipline = line.GetComponent<Zipline>();
+            Assert.IsNotNull(zipline);
+            Assert.IsFalse(zipline.BuildsMesh, "A level's zipline should keep the level's cable.");
+            Assert.AreSame(levelCable, line.GetComponent<MeshFilter>().sharedMesh);
+            Assert.AreEqual(30.5f, zipline.Length, 1e-3f);
+            Assert.AreEqual(12f, zipline.MaxSpeed, 1e-5f);
+            Assert.That(Vector3.Angle(zipline.Direction, line.transform.forward), Is.LessThan(0.01f), "The cable runs along the zipline's +Z.");
+
+            var bounce = pad.GetComponent<BouncePad>();
+            Assert.IsNotNull(bounce);
+            Assert.AreEqual(7.5f, bounce.LaunchHeight, 1e-5f);
+            Assert.AreSame(spring.transform, bounce.Spring);
+            StringAssert.Contains("1 rope", summary);
+            StringAssert.Contains("1 zipline", summary);
+            StringAssert.Contains("1 bounce pad", summary);
+            Object.DestroyImmediate(levelCable);
+        }
     }
 }

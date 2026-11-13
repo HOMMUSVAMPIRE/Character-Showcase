@@ -109,10 +109,11 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y + GripHeight, Is.GreaterThan(height - 0.3f), "The character should have climbed to the ladder's top.");
         }
 
+        // Of all heights: the climb off the top once missed the floor there by float rounding at some heights (3, 8, 10
+        // and 12 m among them; see TryDropOntoLedge), leaving the character stuck at the top.
         [UnityTest]
-        public IEnumerator ALadderUpToAPlatform_IsClimbedOffOntoIt()
+        public IEnumerator ALadderUpToAPlatform_IsClimbedOffOntoIt([Values(2f, 2.7f, 3f, 4f, 5f, 6f, 7.3f, 8f, 10f, 12f, 16f)] float height)
         {
-            const float height = 4f;
             yield return SetUpLadder(height, sideways: 0f);
             // A platform behind the ladder, its top level with the ladder's (deep, so walking on doesn't walk off it).
             rig.Box("Platform", new Vector3(0f, height / 2f, face + 0.06f + 15f), new Vector3(6f, height, 30f));

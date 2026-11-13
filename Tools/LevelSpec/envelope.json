@@ -5,8 +5,8 @@
   "crouchHeight": 1.1,
   "standHeight": 2.0,
   "jumps": [
-    {"distance": 3.38, "move": "jump"},
-    {"distance": 6.76, "move": "sprint jump"},
+    {"distance": 3.1, "move": "jump"},
+    {"distance": 6.2, "move": "sprint jump"},
     {"distance": 9.69, "move": "sprint jump and air dash"},
     {"distance": 11.76, "move": "double jump"},
     {"distance": 14.49, "move": "double jump and air dash"}

@@ -25,6 +25,11 @@ namespace CharacterShowcase.EditorTools
     /// <item>"Timing Display | course=name" (a TextMeshPro) shows that course's times.</item>
     /// <item>"Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder that keeps the level's mesh (its
     /// rungs where the level put them). Only names starting "Ladder |": "Ladder (future): …" markers aren't ladders.</item>
+    /// <item>"Rope | length=m | thickness=m" (at its anchor) gets a Rope, which draws itself as it swings, in the level's
+    /// material. Only names starting "Rope |": "Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes.</item>
+    /// <item>"Zipline | length=m | speed=m/s" (at the cable's start, its +Z along the cable) gets a Zipline that keeps
+    /// the level's cable.</item>
+    /// <item>"Bounce Pad | height=m | keep=f" gets a BouncePad, squashing its "Spring" child when it launches someone.</item>
     /// </list>
     /// The names' starts must match the level builders' (Graybox), which can't reference these.
     /// </summary>
@@ -35,6 +40,10 @@ namespace CharacterShowcase.EditorTools
         public const string TimingGatePrefix = "Timing Gate";
         public const string TimingDisplayPrefix = "Timing Display";
         public const string LadderPrefix = "Ladder";
+        public const string RopePrefix = "Rope";
+        public const string ZiplinePrefix = "Zipline";
+        public const string BouncePadPrefix = "Bounce Pad";
+        public const string BouncePadSpringName = "Spring";
         public const string CoursesName = "Course Timers";
 
         /// <summary>Whether name is a fixture's: the prefix alone, or followed by a space ("Moving Platform (Lift) | …").</summary>
@@ -120,6 +129,52 @@ namespace CharacterShowcase.EditorTools
             return ladder;
         }
 
+        /// <summary>Whether name is a fixture's with settings: the prefix followed by " |" (not a placeholder or marker named for it).</summary>
+        public static bool IsFixture(string name, string prefix) => name.StartsWith(prefix + " |", StringComparison.Ordinal);
+
+        /// <summary>Sets a rope up from its name's settings (adding what it needs): it draws itself, in the level's material, as it swings.</summary>
+        public static Rope SetUpRope(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            GameObjectUtility.SetStaticEditorFlags(obj, 0);
+            Rope rope = Need<Rope>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(rope, "Set Up Scene"); }
+            rope.Length = Float(p, "length", 8f);
+            rope.Thickness = Float(p, "thickness", 0.07f);
+            if (obj.TryGetComponent(out MeshRenderer renderer) && renderer.sharedMaterial != null) { rope.Material = renderer.sharedMaterial; }
+            rope.BuildsMesh = true;
+            return rope;
+        }
+
+        /// <summary>Sets a zipline up from its name's settings (adding what it needs), keeping the level's cable.</summary>
+        public static Zipline SetUpZipline(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            Zipline line = Need<Zipline>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(line, "Set Up Scene"); }
+            line.BuildsMesh = false;
+            line.LocalEnd = Vector3.forward * Mathf.Max(0.1f, Float(p, "length", 10f));
+            line.MaxSpeed = Float(p, "speed", 16f);
+            return line;
+        }
+
+        /// <summary>Sets a bounce pad up from its name's settings (adding what it needs), its "Spring" child squashing on launches.</summary>
+        public static BouncePad SetUpBouncePad(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            BouncePad pad = Need<BouncePad>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(pad, "Set Up Scene"); }
+            pad.LaunchHeight = Float(p, "height", 6f);
+            pad.KeepMomentum = Float(p, "keep", 1f);
+            Transform spring = obj.transform.Find(BouncePadSpringName);
+            if (spring != null)
+            {
+                GameObjectUtility.SetStaticEditorFlags(spring.gameObject, 0);
+                pad.Spring = spring;
+            }
+            return pad;
+        }
+
         /// <summary>The role a timing gate's settings give it.</summary>
         public static TimingGateRole Role(Dictionary<string, string> p) =>
             p.TryGetValue("role", out string role) ? role switch { "start" => TimingGateRole.Start, "finish" => TimingGateRole.Finish, _ => TimingGateRole.StartAndFinish }
@@ -139,6 +194,10 @@ namespace CharacterShowcase.EditorTools
             foreach (Transform t in all.Where(t => IsNamed(t.name, PushablePrefix))) { SetUpPushable(t.gameObject, withUndo); pushables++; }
             int ladders = 0;
             foreach (Transform t in all.Where(t => IsLadder(t.name))) { SetUpLadder(t.gameObject, withUndo); ladders++; }
+            int ropes = 0, ziplines = 0, pads = 0;
+            foreach (Transform t in all.Where(t => IsFixture(t.name, RopePrefix))) { SetUpRope(t.gameObject, withUndo); ropes++; }
+            foreach (Transform t in all.Where(t => IsFixture(t.name, ZiplinePrefix))) { SetUpZipline(t.gameObject, withUndo); ziplines++; }
+            foreach (Transform t in all.Where(t => IsFixture(t.name, BouncePadPrefix))) { SetUpBouncePad(t.gameObject, withUndo); pads++; }
 
             // A timer for each course its gates name, under the game setup.
             var timers = new Dictionary<string, CourseTimer>();
@@ -193,6 +252,9 @@ namespace CharacterShowcase.EditorTools
             if (platforms > 0) { parts.Add($"{platforms} moving platform{(platforms == 1 ? "" : "s")}"); }
             if (pushables > 0) { parts.Add($"{pushables} pushable crate{(pushables == 1 ? "" : "s")}"); }
             if (ladders > 0) { parts.Add($"{ladders} ladder{(ladders == 1 ? "" : "s")}"); }
+            if (ropes > 0) { parts.Add($"{ropes} rope{(ropes == 1 ? "" : "s")}"); }
+            if (ziplines > 0) { parts.Add($"{ziplines} zipline{(ziplines == 1 ? "" : "s")}"); }
+            if (pads > 0) { parts.Add($"{pads} bounce pad{(pads == 1 ? "" : "s")}"); }
             if (gates > 0) { parts.Add($"{gates} timing gate{(gates == 1 ? "" : "s")} on {timers.Count} course{(timers.Count == 1 ? "" : "s")} with {displays} display{(displays == 1 ? "" : "s")}"); }
             return string.Join(", ", parts);
         }

@@ -81,7 +81,7 @@ describes what the project does; this file describes how to change it safely.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects implementing capability interfaces** (`WalkRunMode`, `JumpMode`,
-  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `VaultMode`, `WallClimbMode`, `PushPullMode` in
+  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `VaultMode`, `WallClimbMode`, `PushPullMode`, `RopeSwingMode`, `ZiplineMode`, `BounceMode` in
   `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability, implemented by
   `BasicMovementMode`, with tunables as serialized fields on the asset. `BasicMovementMode` is a partial class: walking,
   jumping and dashing are in `BasicMovementMode.cs`, and each other ability in `BasicMovementMode.<Ability>.cs` with
@@ -121,7 +121,7 @@ own each of these files at a time; others should wait or work elsewhere.
   silently drops its saved value in every asset, prefab and scene. If a rename is really needed, add
   `[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`.
 - The tests read and set these `BasicMovementMode` fields **by name through reflection**, so renaming them compiles
-  fine but fails at runtime: `walkSpeed`, `runSpeed`, `gravityStrength`, `maxFallSpeed`, `coyoteTime`, `maxJumps`,
+  fine but fails at runtime: `walkSpeed`, `runSpeed`, `minJumpHeight`, `maxJumpHeight`, `gravityStrength`, `maxFallSpeed`, `coyoteTime`, `maxJumps`,
   `jumpInputBuffer`, `dashSpeed`, `dashDuration`, `dashSpeedCurve`, `dashEndSpeedRetention`, `dashCooldown`,
   `dashInputBuffer`, `dashJumpSpeedRetention`, `maxAirDashes`, `holdToCrouch`, `slideMinStartSpeed`,
   `slideMaxDuration`, `rollSpeedCurve`, `rollCooldown`, `rollInputBuffer`, `wallRunMaxDuration`, `wallRunMinHeight`,
@@ -130,7 +130,9 @@ own each of these files at a time; others should wait or work elsewhere.
   `wallSlideJumpAwaySpeed`, `ledgeGrabMinHeight`, `vaultRiseDuration`, `vaultSpeedRetention`, `vaultMinSpeed`, `vaultFromGround`, `vaultGroundMaxAngle`, `vaultStepUpHeight`, `wallRunFootHeight`, `wallRunReleaseDelay`, `wallSlideReleaseDelay`,
   `wallJumpSteeringRecovery`, `wallSlideMaxStartRiseSpeed`, `wallRunMaxSteerAngle`, `wallClimbSpeed`, `wallClimbStartMaxAngle`,
   `wallClimbGripHeight`, `wallClimbJumpUpSpeed`, `wallClimbJumpAwaySpeed`, `wallClimbRegrabDelay`, `wallClimbEnterDuration`,
-  `wallClimbExitDuration`, `landingRollMinFall`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
+  `wallClimbExitDuration`, `landingRollMinFall`, `ropeGrabReach`, `ropeGripHeight`, `ropeSwingAcceleration`, `ropeMaxSwingAngle`,
+  `ropeJumpUpSpeed`, `ropeRegrabDelay`, `ziplineGrabReach`, `ziplineHangHeight`, `ziplineMinSpeed`, `ziplineJumpUpSpeed`,
+  `bounceHeightMultiplier`, `bounceJumpBoost`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -204,7 +206,9 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
 - **Known couplings that block NPCs:** `MovementController.cameraTransform` uses `Camera.main`, and
   `ACCharacterController` reads `ACInputManager.instance`. `ACCharacterController.Setup` and `UpdateCaches` are empty
   placeholders.
-- **New movement events** go in the `MovementEvents` flags enum. Movement modes report events they cause;
+- **New movement events** go in the `MovementEvents` flags enum, which is 64 bits wide (a `long`): Unity silently
+  drops serialized enum fields wider than 32 bits, so a saved set of events is a `long` field (see
+  `AnimatorParameterTranslator.EventTrigger` and its `EventTriggerDrawer`), and `MovementData.events` isn't serialized. Movement modes report events they cause;
   `MovementController.DetectEvents` detects the ones every mode shares, including each ability's start and end, from
   its `CharacterState` flag (`StateEvents`).
 - **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `OverlapSphere`,
@@ -230,6 +234,12 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
   the ledge climb (from hanging or a wall climb) plays ClimbLedge. Ladders (`Level.Ladder`) are climbed by the same
   ability (its contact carries the ladder: up and down only, on its middle, from its front) and animated procedurally
   by `LadderIK` (on every model prefab, added by `CharacterModelImporter`) over the Animator's Ladder state.
+- **Ropes, ziplines and bounce pads** (`BasicMovementMode.RopeSwing.cs`, `.Zipline.cs`, `.Bounce.cs`): ropes and
+  ziplines have no colliders; abilities find them through `Level.Rope.All` and `Level.Zipline.All`, catching the
+  nearest within reach of the hands' path over the step. A rope simulates its own swing in `FixedUpdate` when let go,
+  and is drawn interpolated between physics steps (`Rope.RenderDirection`), as the character is, so `LineGripIK`
+  (on every model prefab) keeps the hands on it. A bounce pad is any collider under a `Level.BouncePad`; its launch
+  speed is solved for the stepped physics (`LaunchSpeedFor`), so tests can expect the pad's exact height.
 - **Ability animations** are Animator states built by `MannequinGenerator.BuildAbilityStates`, driven by the
   translator's Bool parameters (`Crouching`, `Sliding`, ...) and `GrabSpeed`, `RollProgress`, `ClimbProgress`; the
   `Crouch`, `Hang` and `Wall Slide` clips are the mannequin's own (`mannequin_animations.py`), their hand spread and
@@ -242,11 +252,12 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
   `Graybox.SpawnMarkerPrefix`; the level assembly can't reference it). Rebuilding the level removes its game setup:
   set it up again afterwards.
 - **Level mechanics are fixtures** the same way: `Graybox.Mechanics` builds a moving platform, pushable crate,
-  ladder or timing gate (and its display) as geometry named "Moving Platform (…) | key=value | …", "Pushable Crate | …",
-  "Ladder | height=… | …", "Timing Gate | course=… | role=… | distance=…" and "Timing Display | course=…", and
+  ladder, rope, zipline, bounce pad or timing gate (and its display) as geometry named "Moving Platform (…) | key=value | …", "Pushable Crate | …",
+  "Ladder | height=… | …", "Rope | length=… | …", "Zipline | length=… | speed=…", "Bounce Pad | height=…", "Timing Gate | course=… | role=… | distance=…" and "Timing Display | course=…", and
   `LevelFixtureSetup` (run by `SceneGameSetup`) adds `Level.MovingPlatform`, `Level.PushableObject`, `Level.Ladder`
-  (keeping the level's mesh), `Level.TimingGate` and a `Level.CourseTimer` per course from them. Ladders match only
-  "Ladder |", since "Ladder (future): …" markers exist; a ladder's rung layout is `Ladder.RungCountFor`'s in both. The prefixes in `Graybox` and `LevelFixtureSetup` must match. A new mechanic is a fixture
+  (keeping the level's mesh), `Level.Rope` (drawing itself as it swings), `Level.Zipline` (keeping the level's cable),
+  `Level.BouncePad`, `Level.TimingGate` and a `Level.CourseTimer` per course from them. Ladders, ropes, ziplines and
+  bounce pads match only "Ladder |" (and so on), since "Ladder (future): …" markers and "Rope Anchor" placeholders exist; a ladder's rung layout is `Ladder.RungCountFor`'s in both. The prefixes in `Graybox` and `LevelFixtureSetup` must match. A new mechanic is a fixture
   builder in `Graybox.Mechanics`, a set-up step in `LevelFixtureSetup`, an example in the Level Playground and a
   `LevelFixtureSetupTests` case. Displays are wired through their `text` setter by reflection, so the editor
   assembly needn't reference TextMeshPro.

@@ -8,8 +8,9 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Checks that the movement abilities show on the character's own model, through the shared Animator Controller
-    /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting and pushing each play their
-    /// state, a crouched model fits its lowered collider, and a hanging model's hands reach up to the ledge. In the
+    /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting, pushing, swinging on a
+    /// rope and riding a zipline each play their state, a crouched model fits its lowered collider, and a hanging model's
+    /// hands reach up to the ledge, the rope or the cable. In the
     /// SampleContent category, as they check the package's own controller and model.
     /// </summary>
     [Category("SampleContent")]
@@ -21,7 +22,7 @@ namespace CharacterShowcase.Tests
 
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push" })
+            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline" })
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -446,6 +447,56 @@ namespace CharacterShowcase.Tests
             float left = ladder.HeightOf(animator.GetBoneTransform(HumanBodyBones.LeftHand).position);
             float right = ladder.HeightOf(animator.GetBoneTransform(HumanBodyBones.RightHand).position);
             Assert.That(Mathf.Abs(left - right), Is.GreaterThan(0.5f * ladder.RungSpacing), "The hands should hold different rungs.");
+        }
+
+        /// <summary>How far a point is from the line between two points (the segment between them).</summary>
+        private static float DistanceToSegment(Vector3 point, Vector3 from, Vector3 to)
+        {
+            Vector3 along = to - from;
+            float t = Mathf.Clamp01(Vector3.Dot(point - from, along) / Mathf.Max(along.sqrMagnitude, 1e-8f));
+            return Vector3.Distance(point, from + along * t);
+        }
+
+        [UnityTest]
+        public IEnumerator SwingingOnARope_PlaysRopeSwing_WithTheHandsOnTheRope()
+        {
+            yield return Spawn();
+            Level.Rope rope = rig.Rope(new Vector3(0f, 10f, 0f), 8f);
+            float grip = rig.MovementSetting<float>("ropeGripHeight") * rig.StandingHeight;
+            rig.Teleport(new Vector3(0f, 6f - grip, -0.2f));
+            yield return ExpectState("Rope Swing", 0.6f, _ => CharacterTestRig.Idle());
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
+            Assert.That(rig.InState(CharacterState.RopeSwinging), Is.True, "Test setup: the character should be on the rope.");
+
+            float size = rig.Controller.Scale.y;
+            Vector3 tip = rope.Anchor + rope.Direction * rope.Length;
+            foreach (HumanBodyBones bone in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+            {
+                Transform hand = animator.GetBoneTransform(bone);
+                Assert.That(DistanceToSegment(hand.position, rope.Anchor, tip), Is.LessThan(0.1f * size), $"The {bone} should hold the rope.");
+            }
+            float right = Vector3.Dot(animator.GetBoneTransform(HumanBodyBones.RightHand).position - rope.Anchor, -rope.Direction);
+            float left = Vector3.Dot(animator.GetBoneTransform(HumanBodyBones.LeftHand).position - rope.Anchor, -rope.Direction);
+            Assert.That(right - left, Is.GreaterThan(0.1f * size), "The right hand should hold the rope above the left.");
+        }
+
+        [UnityTest]
+        public IEnumerator RidingAZipline_PlaysZipline_WithBothHandsOnTheCable()
+        {
+            yield return Spawn();
+            Level.Zipline line = rig.Zipline(new Vector3(0f, 9f, 0f), new Vector3(0f, 5f, 40f));
+            float hang = rig.MovementSetting<float>("ziplineHangHeight") * rig.StandingHeight;
+            rig.Teleport(line.PointAt(2f) - Vector3.up * (hang - 0.15f));
+            yield return ExpectState("Zipline", 0.6f, _ => CharacterTestRig.Idle());
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
+            Assert.That(rig.InState(CharacterState.Ziplining), Is.True, "Test setup: the character should be on the zipline.");
+
+            float size = rig.Controller.Scale.y;
+            foreach (HumanBodyBones bone in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+            {
+                Transform hand = animator.GetBoneTransform(bone);
+                Assert.That(DistanceToSegment(hand.position, line.Start, line.End), Is.LessThan(0.1f * size), $"The {bone} should hold the cable.");
+            }
         }
 
         [UnityTest]

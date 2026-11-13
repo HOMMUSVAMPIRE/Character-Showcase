@@ -183,6 +183,41 @@ namespace CharacterShowcase.Tests
             return ladder;
         }
 
+        /// <summary>A bounce pad: a box of the given size whose top is at topCenter, launching characters the given height.</summary>
+        public BouncePad BouncePad(Vector3 topCenter, Vector3 size, float launchHeight, Quaternion? rotation = null)
+        {
+            Quaternion turn = rotation ?? Quaternion.identity;
+            GameObject box = Box("Bounce Pad", topCenter - turn * Vector3.up * (size.y / 2f), size, turn);
+            var pad = box.AddComponent<BouncePad>();
+            pad.LaunchHeight = launchHeight;
+            return pad;
+        }
+
+        /// <summary>A zipline from start to end (world space), drawing its own cable, with the given top speed.</summary>
+        public Zipline Zipline(Vector3 start, Vector3 end, float maxSpeed = 16f)
+        {
+            var obj = new GameObject("Zipline");
+            created.Add(obj);
+            obj.transform.position = start;
+            var line = obj.AddComponent<Zipline>();
+            line.End = end;
+            line.MaxSpeed = maxSpeed;
+            line.Rebuild();
+            return line;
+        }
+
+        /// <summary>A rope hanging from anchor, the given length, drawing itself.</summary>
+        public Rope Rope(Vector3 anchor, float length)
+        {
+            var obj = new GameObject("Rope");
+            created.Add(obj);
+            obj.transform.position = anchor;
+            var rope = obj.AddComponent<Rope>();
+            rope.Length = length;
+            rope.Rebuild();
+            return rope;
+        }
+
         /// <summary>A large flat floor whose top surface is at the given height, 100 m across unless given a width.</summary>
         public GameObject Floor(float topHeight = 0f, float width = 100f) =>
             Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));
@@ -322,6 +357,17 @@ namespace CharacterShowcase.Tests
             SpawnCharacter(position);
             yield return WaitForModel();
             if (settleSeconds > 0f) { yield return Run(settleSeconds, _ => Idle()); }
+        }
+
+        /// <summary>
+        /// Moves the character's feet to the given position at once, between steps (for placing it where its own size
+        /// decides, which isn't known until it's spawned and its model has loaded).
+        /// </summary>
+        public void Teleport(Vector3 feet)
+        {
+            Body.position = feet;
+            Character.transform.position = feet;
+            Physics.SyncTransforms();
         }
 
         /// <summary>Sets the character moving at the given velocity (for one step, before its movement takes over), with the given input.</summary>

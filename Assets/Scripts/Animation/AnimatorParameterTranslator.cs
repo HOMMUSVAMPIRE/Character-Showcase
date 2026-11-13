@@ -37,15 +37,29 @@ namespace Character
         public const string DefaultClimbProgressParameter = "ClimbProgress";
         public const string DefaultVaultingParameter = "Vaulting";
         public const string DefaultVaultProgressParameter = "VaultProgress";
+        public const string DefaultRopeSwingingParameter = "RopeSwinging";
+        public const string DefaultZipliningParameter = "Ziplining";
 
         /// <summary>A trigger to fire when any of the given movement events happens.</summary>
         [Serializable]
         public struct EventTrigger
         {
+            // The events, as a long: MovementEvents is 64 bits wide, and Unity doesn't save enum fields that wide (it drops
+            // them, silently). Shown in the inspector as the events, by EventTriggerDrawer. Saved as an int before it
+            // outgrew 32 bits, under the same name, which loads as is.
             [Tooltip("The movement events that fire the trigger")]
-            public MovementEvents events;
+            [SerializeField] private long events;
             [Tooltip("The name of the Animator trigger parameter to fire")]
             public string trigger;
+
+            /// <summary>The movement events that fire the trigger.</summary>
+            public MovementEvents Events { get => (MovementEvents)events; set => events = (long)value; }
+
+            public EventTrigger(MovementEvents events, string trigger)
+            {
+                this.events = (long)events;
+                this.trigger = trigger;
+            }
         }
 
         [Header("Float parameters")]
@@ -107,6 +121,10 @@ namespace Character
         [SerializeField] private string vaultingParameter = DefaultVaultingParameter;
         [Tooltip("Holding an object to push or pull")]
         [SerializeField] private string grabbingParameter = DefaultGrabbingParameter;
+        [Tooltip("Swinging on a rope")]
+        [SerializeField] private string ropeSwingingParameter = DefaultRopeSwingingParameter;
+        [Tooltip("Riding a zipline")]
+        [SerializeField] private string zipliningParameter = DefaultZipliningParameter;
 
         [Header("Triggers")]
         [Tooltip("Animator triggers fired by movement events, such as a landing or jump animation")]
@@ -120,7 +138,7 @@ namespace Character
             // Parameter hashes, or 0 for parameters to skip
             private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
             private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing;
+            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing, ropeSwinging, ziplining;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -171,12 +189,14 @@ namespace Character
                 climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
                 vaulting = Find(settings.vaultingParameter, AnimatorControllerParameterType.Bool);
                 grabbing = Find(settings.grabbingParameter, AnimatorControllerParameterType.Bool);
+                ropeSwinging = Find(settings.ropeSwingingParameter, AnimatorControllerParameterType.Bool);
+                ziplining = Find(settings.zipliningParameter, AnimatorControllerParameterType.Bool);
 
                 triggers = new (MovementEvents, int)[settings.eventTriggers.Length];
                 for (int i = 0; i < triggers.Length; i++)
                 {
                     EventTrigger binding = settings.eventTriggers[i];
-                    triggers[i] = (binding.events, Find(binding.trigger, AnimatorControllerParameterType.Trigger));
+                    triggers[i] = (binding.Events, Find(binding.trigger, AnimatorControllerParameterType.Trigger));
                 }
             }
 
@@ -221,6 +241,8 @@ namespace Character
                 if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
                 if (vaulting != 0) { animator.SetBool(vaulting, state.vaulting); }
                 if (grabbing != 0) { animator.SetBool(grabbing, state.grabbing); }
+                if (ropeSwinging != 0) { animator.SetBool(ropeSwinging, state.swinging); }
+                if (ziplining != 0) { animator.SetBool(ziplining, state.ziplining); }
             }
 
             public void HandleMovementEvent(MovementEvents movementEvent, in CharacterAnimationState state)

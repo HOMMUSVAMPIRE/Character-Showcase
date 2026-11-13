@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Character
 {
     // Per-character state for the movement abilities (crouching, sliding, rolling, wall-running, ledges, vaulting,
-    // climbing, pushing and pulling), which persists between physics steps. Like DashState, it lives on the MovementController (one per
+    // climbing, pushing and pulling, ropes, ziplines and bounce pads), which persists between physics steps. Like DashState, it lives on the MovementController (one per
     // character), since movement modes are shared assets.
 
     /// <summary>
@@ -293,6 +293,83 @@ namespace Character
         public bool IsExiting => IsClimbing && phase == Phase.Exiting;
         /// <summary>How far through stepping onto the surface or off it the character is: 0 at its start, 1 at its end (0 otherwise).</summary>
         public float StepProgress => (IsEntering || IsExiting) && stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
+    }
+
+    /// <summary>
+    /// A rope being swung on, and the delay before the last rope let go of can be caught again. The swing is a pendulum
+    /// about the rope's anchor: the character's grip (where its hands hold the rope) stays the grip distance from it.
+    /// </summary>
+    public class RopeSwingState
+    {
+        // The rope held (null when not swinging)
+        public Level.Rope rope;
+        // How far (m) down the rope from its anchor the hands hold it
+        public float gripDistance;
+        // Where the grip is, from the anchor (gripDistance long), and how fast it's moving (m/s, across the rope)
+        public Vector3 offset;
+        public Vector3 velocity;
+        // Seconds since catching hold
+        public float elapsed;
+        // The rope last let go of, and seconds until it can be caught again (others can be caught at once, so the
+        // character can swing from rope to rope)
+        public Level.Rope lastRope;
+        public float regrabCooldown;
+
+        public bool IsSwinging => rope != null;
+
+        /// <summary>
+        /// Where the hands hold the rope now, and the way up the rope from there (unit length), from the rope's rendered
+        /// pose: for placing the hands on it. False when not swinging.
+        /// </summary>
+        public bool TryGetGrip(out Vector3 point, out Vector3 upTheRope)
+        {
+            point = upTheRope = Vector3.zero;
+            if (rope == null) { return false; }
+            Vector3 down = rope.RenderDirection;
+            point = rope.Anchor + down * gripDistance;
+            upTheRope = -down;
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// A zipline being ridden, and the delay before the last one let go of can be caught again. The character hangs from
+    /// a point on the cable, the given distance along it from its start, moving along it at speed (m/s, positive toward
+    /// its end).
+    /// </summary>
+    public class ZiplineState
+    {
+        // The zipline ridden (null when not riding one)
+        public Level.Zipline line;
+        public float along;
+        public float speed;
+        // Seconds since catching hold
+        public float elapsed;
+        // The zipline last let go of, and seconds until it can be caught again
+        public Level.Zipline lastLine;
+        public float regrabCooldown;
+
+        public bool IsRiding => line != null;
+
+        /// <summary>
+        /// Where the hands hold the cable for a character whose feet are at feet (its rendered pose: the cable doesn't
+        /// move, but the character's rendered position lags its physics one): the point straight above them. And the way
+        /// it's riding along the cable (unit length). False when not riding.
+        /// </summary>
+        public bool TryGetGrip(Vector3 feet, out Vector3 point, out Vector3 travel)
+        {
+            point = travel = Vector3.zero;
+            if (line == null) { return false; }
+            point = line.PointAbove(feet);
+            travel = line.Direction * (speed < 0f ? -1f : 1f);
+            return true;
+        }
+    }
+
+    /// <summary>The delay before a bounce pad can launch the character again, so it doesn't launch twice off one landing.</summary>
+    public class BounceState
+    {
+        public float cooldownRemaining;
     }
 
     /// <summary>An object held to push or pull.</summary>

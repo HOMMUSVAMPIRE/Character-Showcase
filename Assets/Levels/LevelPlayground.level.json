@@ -58,9 +58,7 @@
         {"piece": "RailAround", "rails": "Towers and Bridges (+8)/Guardrails", "shape": [[0, 48.24264], [-1.7573593, 50], [-4.2426405, 50], [-6, 48.24264], [-6, 45.75736], [-4.2426415, 44], [-1.7573588, 44], [2.3841858e-07, 45.75736]], "height": 8, "gaps": [[[-3, 44], 2.4852815]]},
         {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Floodlight"},
         {"piece": "Floodlight", "parent": "Towers and Bridges (+8)/Floodlight", "at": [-3, 30], "floor": 8, "facing": [-1, 0]},
-        {"piece": "Banner", "parent": "Towers and Bridges (+8)", "wallPoint": [-3, 28], "outward": [0, -1], "top": 6.5, "length": 4},
-        {"piece": "BoxXZ", "parent": "Towers and Bridges (+8)/Future Mechanics", "name": "Rope Anchor (+8)", "centre": [-39, 30], "size": [1, 1], "y0": 8, "y1": 12, "surface": "Graphite"},
-        {"piece": "Marker", "parent": "Towers and Bridges (+8)/Future Mechanics", "name": "Rope Swing (future): from the West Tower's anchor", "at": [-33, 30], "height": 8}
+        {"piece": "Banner", "parent": "Towers and Bridges (+8)", "wallPoint": [-3, 28], "outward": [0, -1], "top": 6.5, "length": 4}
       ]
     },
     {
@@ -148,6 +146,28 @@
         {"piece": "FloorLabel", "parent": "Mechanics", "text": "1.2 m", "at": [-22.5, -48], "height": 0, "facing": [1, 0]},
         {"piece": "TimingGate", "parent": "Mechanics", "course": "Playground", "role": "start", "a": [-12, -51], "b": [-12, -45], "floor": 0, "approach": [1, 0], "distance": 20},
         {"piece": "TimingGate", "parent": "Mechanics", "course": "Playground", "role": "finish", "a": [8, -51], "b": [8, -45], "floor": 0, "approach": [1, 0], "distance": 20, "display": true}
+      ]
+    },
+    {
+      "name": "the ropes, ziplines and bounce pads",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Air Mechanics"},
+        {"piece": "Group", "parent": "Air Mechanics", "name": "Zipline Tower (+8)"},
+        {"piece": "Platform", "parent": "Air Mechanics/Zipline Tower (+8)", "name": "Zipline Tower (+8)", "x0": -54, "x1": -50, "z0": 12, "z1": 16, "y0": 0, "top": 8, "coping": "Accent"},
+        {"piece": "Ladder", "parent": "Air Mechanics/Zipline Tower (+8)", "at": [-53, 16], "floor": 0, "height": 8, "facing": [0, 1]},
+        {"piece": "BouncePad", "parent": "Air Mechanics", "at": [-48.2, 14], "floor": 0, "size": 2.5, "height": 9},
+        {"piece": "Zipline", "parent": "Air Mechanics", "start": [-52, 11.1, 15.6], "end": [-52, 3.4, -16], "startFloor": 8, "endFloor": 0, "speed": 14},
+        {"piece": "Group", "parent": "Air Mechanics", "name": "Rope Swing (+4)"},
+        {"piece": "Platform", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Rope Platform (North, +4)", "x0": -47, "x1": -43, "z0": 2, "z1": 6, "y0": 0, "top": 4, "coping": "Accent"},
+        {"piece": "Platform", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Rope Platform (South, +4)", "x0": -47, "x1": -43, "z0": -12, "z1": -8, "y0": 0, "top": 4, "coping": "Accent"},
+        {"piece": "Flight", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Stair (to the Rope Platform)", "basePoint": [-45, 11.6], "direction": [0, -1], "width": 3, "y0": 0, "y1": 4},
+        {"piece": "Flight", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Stair (from the Rope Platform)", "basePoint": [-45, -17.6], "direction": [0, 1], "width": 3, "y0": 0, "y1": 4},
+        {"piece": "Group", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Gantry"},
+        {"piece": "Block", "parent": "Air Mechanics/Rope Swing (+4)/Gantry", "name": "Gantry Post (West)", "x0": -48.3, "x1": -47.7, "z0": -3.3, "z1": -2.7, "y0": 0, "y1": 14.4, "surface": "Graphite"},
+        {"piece": "Block", "parent": "Air Mechanics/Rope Swing (+4)/Gantry", "name": "Gantry Post (East)", "x0": -42.3, "x1": -41.7, "z0": -3.3, "z1": -2.7, "y0": 0, "y1": 14.4, "surface": "Graphite"},
+        {"piece": "Block", "parent": "Air Mechanics/Rope Swing (+4)/Gantry", "name": "Gantry Beam", "x0": -47.7, "x1": -42.3, "z0": -3.3, "z1": -2.7, "y0": 14, "y1": 14.4, "surface": "Graphite"},
+        {"piece": "Rope", "parent": "Air Mechanics/Rope Swing (+4)", "anchor": [-45, 13.7, -3], "length": 9},
+        {"piece": "FloorLabel", "parent": "Air Mechanics/Rope Swing (+4)", "text": "10 m", "at": [-45, 0.5], "height": 0, "facing": [0, -1]}
       ]
     },
     {

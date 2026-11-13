@@ -325,6 +325,16 @@ namespace CharacterShowcase.EditorTools.Level
             public float ladderRail = 0.06f;
             [Tooltip("Ladders: how thick their rungs are (m).")]
             public float ladderRung = 0.035f;
+            [Tooltip("Ropes: how thick they're drawn (m).")]
+            public float ropeThickness = 0.07f;
+            [Tooltip("Ropes: the bracket they hang from, its size each way (m).")]
+            public float ropeBracket = 0.3f;
+            [Tooltip("Ziplines: how thick the cable is drawn (m).")]
+            public float cableThickness = 0.04f;
+            [Tooltip("Ziplines: how thick the posts at the cable's ends are, each way (m).")]
+            public float ziplinePost = 0.3f;
+            [Tooltip("Bounce pads: how high the pad stands on the floor (m), and how thick its springy top is of that.")]
+            public Vector2 bouncePad = new(0.3f, 0.12f);
         }
 
         [Serializable]

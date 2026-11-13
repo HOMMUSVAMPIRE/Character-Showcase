@@ -6,12 +6,14 @@ namespace Character
     /// <summary>
     /// A Scriptable Object type which defines a very standard character movement scheme: walking, sprinting, jumping and
     /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, vaulting,
-    /// climbing climbable surfaces, and pushing and pulling objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
+    /// climbing climbable surfaces, pushing and pulling objects, swinging on ropes, riding ziplines and bouncing off
+    /// bounce pads, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
     /// header in the inspector.
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
     public partial class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode,
-        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, VaultMode, WallClimbMode, PushPullMode
+        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, VaultMode, WallClimbMode, PushPullMode,
+        RopeSwingMode, ZiplineMode, BounceMode
     {
         [Header("Speed")]
         [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
@@ -20,11 +22,13 @@ namespace Character
         [SerializeField] private float runSpeed;
 
         [Header("Jumping")]
-        // TODO: Replace these with a jump height and calculations to determine needed velocity from height
-        [Tooltip("A multiplier for how fast the player moves in a jump")]
-        [SerializeField] private float jumpStrength;
-        [Tooltip("A curve which determines the impact of holding down the jump button on continued upwards momentum")]
-        [SerializeField] private AnimationCurve jumpStrengthCurve = new();
+        [Tooltip("How high (m) the character's feet rise on the shortest jump, a tap of Jump, at its authored size (it scales " +
+                 "with size). Letting go of Jump partway up cuts the rise short, but never below this")]
+        [Min(0f)] [SerializeField] private float minJumpHeight = 0.63f;
+        [Tooltip("How high (m) the character's feet rise with Jump held to the top of the jump, at its authored size (it scales " +
+                 "with size). 0 turns jumping off")]
+        [Min(0f)] [SerializeField] private float maxJumpHeight = 1.81f;
+        [Tooltip("How many jumps the character can make before landing again: 1 jumps from the ground only, 2 adds a jump in mid-air")]
         [SerializeField] private int maxJumps;
         [Tooltip("A jump starts if the button was pressed at most this many seconds ago, so a press just before landing still jumps. Holding the button doesn't start new jumps.")]
         [SerializeField] private float jumpInputBuffer = 0.1f;
@@ -74,7 +78,8 @@ namespace Character
         // Mandatory Interaface Variables
         float WalkRunMode.walkSpeed { get => walkSpeed; set => walkSpeed = value; }
         float WalkRunMode.runSpeed { get => runSpeed; set => runSpeed = value; }
-        float JumpMode.jumpStrength { get => jumpStrength; set => jumpStrength = value; }
+        float JumpMode.minJumpHeight { get => minJumpHeight; set => minJumpHeight = value; }
+        float JumpMode.maxJumpHeight { get => maxJumpHeight; set => maxJumpHeight = value; }
         int JumpMode.maxJumps { get => maxJumps; set => maxJumps = value; }
         float DashMode.dashSpeed { get => dashSpeed; set => dashSpeed = value; }
         float DashMode.dashDuration { get => dashDuration; set => dashDuration = value; }
@@ -123,7 +128,12 @@ namespace Character
             // The abilities that take over the character's movement while they last, most committed first: each carries
             // on if it's under way, or starts if its inputs and surroundings call for it, and returns whether it has the
             // character this step. Otherwise the character walks, dashes and jumps (crouched or not).
-            bool abilityHasCharacter = ProcessMovementDataForLedge(ref movementData, inputs, controller)
+            // A bounce pad first: it launches whatever the character is doing on it (rolling, sliding, dashing). Then what
+            // the character hangs from (a zipline, a rope), as they hold it over everything below.
+            bool abilityHasCharacter = ProcessMovementDataForBounce(ref movementData, inputs, controller)
+                || ProcessMovementDataForZipline(ref movementData, inputs, controller)
+                || ProcessMovementDataForRopeSwing(ref movementData, inputs, controller)
+                || ProcessMovementDataForLedge(ref movementData, inputs, controller)
                 || ProcessMovementDataForVault(ref movementData, inputs, controller)
                 || ProcessMovementDataForPushPull(ref movementData, inputs, controller)
                 // Before wall-running and wall sliding: a climbable surface is climbed instead.
@@ -154,13 +164,15 @@ namespace Character
         }
 
         /// <summary>
-        /// Once the step's movement is resolved: moves a held object along with the character, and remembers where the
-        /// character is on a surface it's climbing (see MovementMode.AfterMovementResolved).
+        /// Once the step's movement is resolved: moves a held object along with the character, remembers where the
+        /// character is on a surface it's climbing, and swings a rope it's on to where it got to (see
+        /// MovementMode.AfterMovementResolved).
         /// </summary>
         public override void AfterMovementResolved(MovementData movementData, MovementController controller)
         {
             AfterPushPullResolved(movementData, controller);
             AfterWallClimbResolved(movementData, controller);
+            AfterRopeSwingResolved(movementData, controller);
         }
 
         /// <summary>
@@ -182,11 +194,9 @@ namespace Character
             // If we are on the ground, limit the downward velocity - we do want some, so that we stick to the ground, but not too much
             if (movementData.initialGrounded)
             {
-                // Note: g is an acceleration used as a speed here, and a jump replaces this velocity rather than the
-                // (clamped) inertia below, so every jump's first frame gets g as extra launch speed: part of the jump's
-                // tuned feel (0.4 m of a 3 m jump). As a speed it scales with height, not as g does (see
-                // AccelerationScale), which keeps jump height proportional to the character's size under any size
-                // scaling. At the authored size it's unchanged.
+                // Note: g is an acceleration used as a speed here. As a speed it scales with height, not as g does (see
+                // AccelerationScale). A jump sets its launch speed outright (see ProcessMovementDataForJump), so this
+                // doesn't add to it. (It once did, giving every jump's first frame g as extra launch speed.)
                 float groundedSpeed = g / controller.AccelerationScale * controller.HeightScale;
                 movementData.initialVelocity = new Vector3(movementData.initialVelocity.x, -groundedSpeed, movementData.initialVelocity.z);
                 // Inertia is what actually drives movement. Without this, gravity piles up in inertia.y every grounded
@@ -213,6 +223,9 @@ namespace Character
             controller.wallSlide.cooldownRemaining = Mathf.Max(0f, controller.wallSlide.cooldownRemaining - deltaTime);
             controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - deltaTime);
             controller.wallClimb.regrabCooldown = Mathf.Max(0f, controller.wallClimb.regrabCooldown - deltaTime);
+            controller.ropeSwing.regrabCooldown = Mathf.Max(0f, controller.ropeSwing.regrabCooldown - deltaTime);
+            controller.zipline.regrabCooldown = Mathf.Max(0f, controller.zipline.regrabCooldown - deltaTime);
+            controller.bounce.cooldownRemaining = Mathf.Max(0f, controller.bounce.cooldownRemaining - deltaTime);
             // Air steering comes back after a wall jump, and is all back on the ground.
             controller.wallJump.elapsed += deltaTime;
             if (movementData.initialGrounded) { controller.wallJump.recovering = false; controller.wallJump.hasLastWall = false; }
@@ -220,16 +233,17 @@ namespace Character
 
         /// <summary>
         /// Whether a dash or one of the abilities has the character, so no other ability may start (leaving out a slide
-        /// down a wall, if asked, for an ability that may take over from one).
+        /// down a wall, or a dash, if asked, for an ability that may take over from one).
         /// </summary>
-        private static bool AbilityInProgress(MovementController controller, bool exceptWallSlide = false) =>
-            controller.dash.IsDashing || controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing
+        private static bool AbilityInProgress(MovementController controller, bool exceptWallSlide = false, bool exceptDash = false) =>
+            (controller.dash.IsDashing && !exceptDash) || controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing
             || controller.wallRun.IsWallRunning || (controller.wallSlide.IsWallSliding && !exceptWallSlide)
-            || controller.roll.IsRolling || controller.slide.IsSliding || controller.wallClimb.IsClimbing;
+            || controller.roll.IsRolling || controller.slide.IsSliding || controller.wallClimb.IsClimbing
+            || controller.ropeSwing.IsSwinging || controller.zipline.IsRiding;
 
         /// <summary>
         /// Gives back the character's jumps and air dashes, as touching the ground does. For the abilities that count as
-        /// touching it (starting a wall run, taking hold of a climbable surface or a ledge, vaulting), and for a kick off a wall slid down that
+        /// touching it (starting a wall run, taking hold of a climbable surface, a ledge, a rope or a zipline, vaulting), and for a kick off a wall slid down that
         /// gives them back (off a different wall from the last one jumped off).
         /// </summary>
         private static void GiveBackAirMoves(MovementController controller)
@@ -391,11 +405,29 @@ namespace Character
                 return;
             }
 
-            // if there is any input and we can move, Move the character at their walking speed in the direction of their input, relative to the camera. Face the direction they are moving.
+            // With movement input, move the way it points (relative to the camera) at walking speed (or running, while
+            // sprinting), facing that way. Walking only makes up the difference between the momentum the character is
+            // carrying that way (from a landing, say) and that speed: it moves at whichever is faster, momentum or
+            // walking, and the momentum fades with the friction above. Walking used to be added on top: just after a
+            // landing the character moved at its air speed plus its walking speed, and leaving the ground again before
+            // the friction had taken the momentum away (a jump right after landing, or touching a ledge's lip for a step
+            // or two) carried both into the air, where air steering keeps speed beyond walking. Every short touch of the
+            // ground then added walking speed again, and hopping or clipping ledges built up to several times it.
             if (inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0)
             {
-                movementData.directMovementVector = movementData.cameraLookFlat * inputs.movementVector * steeringEffectiveness * MoveSpeed(inputs, controller) * controller.SpeedScale * Time.fixedDeltaTime;
-                movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(movementData.directMovementVector.sqrMagnitude > 0 ? movementData.directMovementVector : movementData.initialRotation * Vector3.forward, Vector3.up), steeringEffectiveness);
+                Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
+                steer.y = 0f;
+                float stick = Mathf.Min(steer.magnitude, 1f);
+                float walking = stick * steeringEffectiveness * MoveSpeed(inputs, controller) * controller.SpeedScale;
+                // No speed to walk at (a speed of 0), no walking: nor turning to face the input.
+                if (stick > 1e-4f && walking > 1e-6f)
+                {
+                    Vector3 direction = steer.normalized;
+                    Vector3 carried = movementData.initialInertia;
+                    float carriedAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(carried.x, 0f, carried.z), direction));
+                    movementData.directMovementVector = direction * (Mathf.Max(0f, walking - carriedAlong) * movementData.deltaTime);
+                    movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(direction, Vector3.up), steeringEffectiveness);
+                }
             }
 
             // Affect the character's state
@@ -444,11 +476,15 @@ namespace Character
         }
 
         /// <summary>
-        /// Reads jump button input and translates that into satisfying jumps
+        /// Jumps: a fresh press of Jump, on the ground (or just after walking off it: coyote time) or with a jump left in
+        /// mid-air, launches the character straight up fast enough that its feet would rise the max jump height, under
+        /// its gravity (worked out for the physics steps, so the height is exact; see LaunchSpeedFor). Held, the jump
+        /// rises all the way; let go of while rising, it's cut short, to what's left of the min jump height above where it
+        /// started (or straight to falling, if it's already past that), so a tap rises the min jump height and a press
+        /// held longer anything up to the max. Bumping a ceiling ends the rise (the collision takes its momentum).
+        /// Heights scale with the character's size, and with the square of the MovementController's jump strength
+        /// modifier (a multiplier on the launch speed).
         /// </summary>
-        /// <param name="movementData"></param>
-        /// <param name="inputs"></param>
-        /// <param name="controller"></param>
         public void ProcessMovementDataForJump(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
@@ -460,43 +496,51 @@ namespace Character
                 controller.ResetJumps();
             }
 
-            // Figure out what our velocity would be this frame of a jump
-            // TODO: As noted before, this should ideally be calculated based on a jump height, but for now, this is based on a velocity curve
-            // Scaled for the character's size: launch speed with SpeedScale and how long the button can be held to jump
-            // higher with DurationScale, so with gravity scaled too (AccelerationScale), jump height follows height.
-            float jumpVelocity = controller.jumpStrengthModifier * controller.SpeedScale
-                * jumpStrengthCurve.Evaluate(inputs.jump.holdDuration / controller.DurationScale) * jumpStrength;
-            // Continue a jump while the button is held, until the character bumps their head, or start one on a fresh
-            // press if a jump is left. Check the jump has force first, since starting one uses up a jump.
-            bool continuingJump = movementData.previousState.HasFlag(CharacterState.Jumping) && inputs.jump.value
-                && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
+            float g = gravityStrength * controller.AccelerationScale;
+            float heightScale = controller.HeightScale * controller.jumpStrengthModifier * controller.jumpStrengthModifier;
             // A jump from the ground or within coyote time, rather than in mid-air (checked before the jump is used)
             bool fromGround = movementData.initialGrounded || (movementData.timeSinceGrounded <= coyoteTime && !controller.HasJumpedSinceGrounded);
-            bool startingJump = !continuingJump && jumpVelocity > 0 && IsNewJumpPress(inputs, controller) && controller.TryUseJump();
-            if ((continuingJump && jumpVelocity > 0) || startingJump)
+            // Check the jump has height first, since starting one uses up a jump.
+            bool startingJump = maxJumpHeight > 0f && IsNewJumpPress(inputs, controller) && controller.TryUseJump();
+            Vector3 inertia = movementData.initialInertia;
+            if (startingJump)
             {
-                if (startingJump)
-                {
-                    controller.jumpPressConsumed = true;
-                    movementData.events |= fromGround ? MovementEvents.Jumped : MovementEvents.AirJumped;
-                }
-
-                // Stop downwards momentum that previously applied to the character
-                movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Max(movementData.initialInertia.y, 0), movementData.initialInertia.z);
-                // Add vertical velocity using the jump velocity calculated above. (Horizontal momentum is carried into the
-                // air by the movement controller when the character leaves the ground.)
-                movementData.velocityChange = new Vector3(movementData.velocityChange.x, jumpVelocity - movementData.initialVelocity.y, movementData.velocityChange.z);
-
-                // Affect the character's state for animation implementation at a later date
-                movementData.state = movementData.state | CharacterState.Jumping;
-                movementData.state = movementData.state & (~CharacterState.Grounded);
+                controller.jumpPressConsumed = true;
+                controller.jumpStartHeight = movementData.initialPosition.y;
+                movementData.events |= fromGround ? MovementEvents.Jumped : MovementEvents.AirJumped;
+                // The launch speed outright, replacing whatever the character was rising or falling at (horizontal
+                // momentum is carried into the air by the movement controller as it leaves the ground).
+                float launch = JumpSpeedFor(maxJumpHeight * heightScale, g, movementData.deltaTime);
+                movementData.velocityChange = new Vector3(movementData.velocityChange.x, launch - inertia.y, movementData.velocityChange.z);
+                movementData.state = (movementData.state | CharacterState.Jumping) & ~CharacterState.Grounded;
+                return;
             }
 
-            // If a jump just ended, severely dampen vertical momentum to make the end of a jump feel responsive
-            if (movementData.previousState.HasFlag(CharacterState.Jumping) && !movementData.state.HasFlag(CharacterState.Jumping))
+            // Still rising from a jump (not stopped by a ceiling): it carries on, under gravity (applied already).
+            bool rising = movementData.previousState.HasFlag(CharacterState.Jumping) && inertia.y > 0f
+                          && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
+            if (!rising) { return; }
+            movementData.state |= CharacterState.Jumping;
+            if (inputs.jump != null && inputs.jump.value) { return; }
+
+            // Let go of: no faster than it takes to rise the rest of the min jump height. Once cut, the rise under
+            // gravity keeps to that from step to step on its own (see LaunchSpeedFor), so this changes it only once.
+            float risen = movementData.initialPosition.y - controller.jumpStartHeight;
+            float remaining = minJumpHeight * heightScale - risen;
+            float cut = remaining > 0f ? JumpSpeedFor(remaining, g, movementData.deltaTime) : 0f;
+            float rise = inertia.y + movementData.velocityChange.y;
+            if (rise > cut)
             {
-                movementData.initialInertia = new Vector3(movementData.initialInertia.x, Mathf.Lerp(movementData.initialVelocity.y, Mathf.Min(movementData.initialVelocity.y, 0f), 0.9f), movementData.initialInertia.z);
+                movementData.velocityChange = new Vector3(movementData.velocityChange.x, cut - inertia.y, movementData.velocityChange.z);
+                if (cut <= 0f) { movementData.state &= ~CharacterState.Jumping; }
             }
         }
+
+        /// <summary>
+        /// The launch speed that rises height metres under gravity g in physics steps (see LaunchSpeedFor). Without
+        /// gravity no speed reaches a height, so a jump then launches as it would under Earth's, and drifts on.
+        /// </summary>
+        private static float JumpSpeedFor(float height, float g, float deltaTime) =>
+            g > 0f ? LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * 9.81f * Mathf.Max(0f, height));
     }
 }

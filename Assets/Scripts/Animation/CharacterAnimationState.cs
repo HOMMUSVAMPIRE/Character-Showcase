@@ -76,6 +76,13 @@ namespace Character
         public Vector3 wallNormal;
         // Holding an object to push or pull (localVelocity.z is then positive pushing, negative pulling)
         public bool grabbing;
+        // Swinging on a rope, and riding a zipline. While doing either: where the hands hold the line (the rope or the
+        // cable; as it's drawn this frame), and the line's direction there (unit length): up the rope, or along the cable
+        // the way the character rides. Zero otherwise.
+        public bool swinging;
+        public bool ziplining;
+        public Vector3 gripPoint;
+        public Vector3 gripDirection;
         /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>
         public Vector3 scale;
         /// <summary>

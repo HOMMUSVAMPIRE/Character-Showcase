@@ -80,7 +80,6 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
-    events: 0
   currentMovementData:
     lastGroundedTime: 0
     timeSinceGrounded: 0
@@ -90,7 +89,6 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
-    events: 0
   pendingVelocityChange: {x: 0, y: 0, z: 0}
   movementSpeedMultiplier: 1
   jumpStrengthModifier: 1

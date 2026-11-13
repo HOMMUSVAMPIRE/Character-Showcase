@@ -104,17 +104,23 @@ namespace Character
         SteppingUp = 32768,
         // Climbing a climbable surface (see Level.ClimbableSurface), moving over it in any direction
         WallClimbing = 65536,
+        // Hanging from a rope (see Level.Rope) and swinging on it
+        RopeSwinging = 131072,
+        // Hanging from a zipline's cable (see Level.Zipline) and riding down it
+        Ziplining = 262144,
     }
 
     /// <summary>
     /// Things that can happen to a character during a physics step, for animation, effects and sound to react to.
     /// Movement modes report the ones they cause (jumps and dashes); the MovementController detects the rest.
+    /// 64 bits wide, as the first 31 ran out. Unity doesn't save fields of enums wider than 32 bits (it drops them
+    /// silently), so a serialized set of these is kept as a long (see AnimatorParameterTranslator.EventTrigger).
     /// </summary>
     [System.Flags]
-    public enum MovementEvents
+    public enum MovementEvents : long
     {
         None = 0,
-        // A jump from the ground, or just after walking off it (coyote time)
+        // A jump from the ground, or just after walking off it (coyote time), or off a rope or a zipline
         Jumped = 1,
         // A jump in mid-air (a double jump)
         AirJumped = 2,
@@ -165,6 +171,14 @@ namespace Character
         // onto a ledge is a LedgeClimbStarted)
         WallClimbStarted = 536870912,
         WallClimbEnded = 1073741824,
+        // Caught hold of a rope, and let go of it (jumping off one is a Jumped too)
+        RopeGrabbed = 1L << 31,
+        RopeReleased = 1L << 32,
+        // Caught hold of a zipline's cable, and let go of it (at its end, or jumping off: a Jumped too)
+        ZiplineStarted = 1L << 33,
+        ZiplineEnded = 1L << 34,
+        // Launched by a bounce pad (see Level.BouncePad), reported by the movement mode
+        Bounced = 1L << 35,
     }
 
     /// <summary>How a character's speeds change with its size. See MovementController.</summary>
@@ -318,8 +332,9 @@ namespace Character
         public CollisionFlags collisions;
         public CollisionFlags previousCollisions;
 
-        // What happened to the character this frame. Raised by the MovementController once the frame's movement is done
-        public MovementEvents events;
+        // What happened to the character this frame. Raised by the MovementController once the frame's movement is done.
+        // Not saved (Unity can't save an enum this wide, and it's only this step's).
+        [System.NonSerialized] public MovementEvents events;
 
         // Calculates the final state of the character based on the starting data and the intended motion data
         public void ComputeResults()

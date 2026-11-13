@@ -53,15 +53,19 @@ namespace Character
     public interface JumpMode
     {
         public abstract int maxJumps { get; set; }
-        public abstract float jumpStrength {get; set;}
+        /// <summary>How high (m) the shortest jump (a tap) rises, at the character's authored size.</summary>
+        public abstract float minJumpHeight { get; set; }
+        /// <summary>How high (m) a jump held to its top rises, at the character's authored size.</summary>
+        public abstract float maxJumpHeight { get; set; }
 
         public abstract bool CanJump(MovementData data, MovementController controller);
 
+        /// <summary>A plain jump, for modes without their own: launched to the max jump height under Unity's gravity.</summary>
         public virtual void ProcessMovementDataForJump(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (CanJump(movementData, controller) && inputs.jump.value)
             {
-                movementData.velocityChange += Vector3.up * jumpStrength;
+                movementData.velocityChange += Vector3.up * Mathf.Sqrt(2f * Physics.gravity.magnitude * Mathf.Max(0f, maxJumpHeight));
                 movementData.state = movementData.state | CharacterState.Jumping;
             }
         }
@@ -210,5 +214,42 @@ namespace Character
         public abstract float pushPullSpeed { get; set; }
 
         public abstract bool ProcessMovementDataForPushPull(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle ropes (see Level.Rope): reaching one
+    /// in mid-air catches hold of it, and the character swings on it as a pendulum, pumping the swing with movement
+    /// input, until it jumps or lets go.
+    /// </summary>
+    public interface RopeSwingMode
+    {
+        /// <summary>How far (m) from the character's hands a rope can be to catch hold of it, at its authored size. 0 turns rope swinging off.</summary>
+        public abstract float ropeGrabReach { get; set; }
+
+        public abstract bool ProcessMovementDataForRopeSwing(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle ziplines (see Level.Zipline):
+    /// reaching a zipline's cable in mid-air catches hold of it, and the character rides along it, downhill, to its end.
+    /// </summary>
+    public interface ZiplineMode
+    {
+        /// <summary>How far (m) from the character's hands a cable can be to catch hold of it, at its authored size. 0 turns ziplines off.</summary>
+        public abstract float ziplineGrabReach { get; set; }
+
+        public abstract bool ProcessMovementDataForZipline(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle bounce pads (see Level.BouncePad):
+    /// standing on one launches the character into the air, to the height the pad is set to.
+    /// </summary>
+    public interface BounceMode
+    {
+        /// <summary>What every bounce pad's launch height is multiplied by for this character. 0 turns bounce pads off.</summary>
+        public abstract float bounceHeightMultiplier { get; set; }
+
+        public abstract bool ProcessMovementDataForBounce(ref MovementData movementData, Inputs inputs, MovementController controller);
     }
 }

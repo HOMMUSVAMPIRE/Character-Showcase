@@ -18,7 +18,7 @@ namespace CharacterShowcase.EditorTools
     ///   model's soles stand from its origin as it stands idle: so its feet rest on the ground at any size, even when
     ///   the character is stretched on one axis only
     /// - saves a model prefab next to it ("[name] Model.prefab"): the model with an Animator using the shared Animator
-    ///   Controller, CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK and LadderIK
+    ///   Controller, CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK, LadderIK and LineGripIK
     /// - saves a DirectCharacterModelSource next to it ("[name].asset") naming the prefab and the shared translator,
     ///   which the Character Model window (or a CharacterModelHost) can then use
     /// Each subfolder can hold one model, or several (variants of one model with different materials, say); each model
@@ -743,7 +743,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Saves the model as a prefab (a variant of the model file, so it follows changes to the file) with its Animator,
-        /// CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK and LadderIK. IK settings come from an earlier run if there was one, otherwise from the
+        /// CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK, LadderIK and LineGripIK. IK settings come from an earlier run if there was one, otherwise from the
         /// mannequin's model prefab, so tuning done there carries over to new models.
         /// </summary>
         private static GameObject SaveModelPrefab(GameObject modelAsset, Avatar avatar, AnimatorController controller, string prefabPath)
@@ -755,6 +755,7 @@ namespace CharacterShowcase.EditorTools
             string ledgeHandSettings = SettingsOf<LedgeHandIK>(existing) ?? SettingsOf<LedgeHandIK>(mannequin);
             string wallSlideSettings = SettingsOf<WallSlideIK>(existing) ?? SettingsOf<WallSlideIK>(mannequin);
             string ladderSettings = SettingsOf<LadderIK>(existing) ?? SettingsOf<LadderIK>(mannequin);
+            string lineGripSettings = SettingsOf<LineGripIK>(existing) ?? SettingsOf<LineGripIK>(mannequin);
 
             var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
             try
@@ -787,6 +788,9 @@ namespace CharacterShowcase.EditorTools
                 // Hands and feet on the rungs while climbing a ladder.
                 if (!model.TryGetComponent(out LadderIK ladder)) { ladder = model.AddComponent<LadderIK>(); }
                 if (ladderSettings != null) { EditorJsonUtility.FromJsonOverwrite(ladderSettings, ladder); }
+                // Hands on the rope or the zipline's cable while swinging on one or riding the other.
+                if (!model.TryGetComponent(out LineGripIK lineGrip)) { lineGrip = model.AddComponent<LineGripIK>(); }
+                if (lineGripSettings != null) { EditorJsonUtility.FromJsonOverwrite(lineGripSettings, lineGrip); }
 
                 return PrefabUtility.SaveAsPrefabAsset(model, prefabPath);
             }

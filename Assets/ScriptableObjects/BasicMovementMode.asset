@@ -12,6 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ca1e81fede9c8646be9df210767311d, type: 3}
   m_Name: BasicMovementMode
   m_EditorClassIdentifier: 
+  bounceHeightMultiplier: 1
+  bounceJumpBoost: 1.5
   crouchSpeed: 3
   crouchHeight: 0.55
   holdToCrouch: 0
@@ -59,6 +61,15 @@ MonoBehaviour:
   rollInputBuffer: 0.15
   landingRollMinFall: 2
   landingRollMinSpeed: 2
+  ropeGrabReach: 0.5
+  ropeGripHeight: 1.05
+  ropeMinGripDistance: 1
+  ropeSwingAcceleration: 6
+  ropeSwingDamping: 0.15
+  ropeMaxSwingAngle: 70
+  ropeMaxSwingSpeed: 14
+  ropeJumpUpSpeed: 8
+  ropeRegrabDelay: 0.6
   slideMinStartSpeed: 4.5
   slideStartSpeed: 12
   slideDeceleration: 5
@@ -90,7 +101,7 @@ MonoBehaviour:
   wallRunMaxDuration: 1.2
   wallRunGravity: 5
   wallRunMaxRiseSpeed: 4
-  wallRunMaxSteerAngle: 50
+  wallRunMaxSteerAngle: 60
   wallRunCheckDistance: 0.3
   wallRunMinHeight: 0.75
   wallRunMaxWallTilt: 45
@@ -113,33 +124,17 @@ MonoBehaviour:
   wallSlideReleaseDelay: 0.25
   wallSlideMinApproachSpeed: 1
   wallSlideMaxStartRiseSpeed: 3
+  ziplineGrabReach: 0.6
+  ziplineHangHeight: 1.15
+  ziplineMinSpeed: 3
+  ziplineDrag: 0.1
+  ziplineSnapSpeed: 6
+  ziplineJumpUpSpeed: 8
+  ziplineRegrabDelay: 0.5
   walkSpeed: 5
   runSpeed: 10
-  jumpStrength: 8
-  jumpStrengthCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.27871528
-    - serializedVersion: 3
-      time: 0.333
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.072274625
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
+  minJumpHeight: 0.5
+  maxJumpHeight: 2
   maxJumps: 1
   jumpInputBuffer: 0.1
   gravityStrength: 40

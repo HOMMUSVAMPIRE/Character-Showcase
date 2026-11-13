@@ -1,5 +1,6 @@
 """
-Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch, Hang and Wall Slide.
+Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch, Hang, Wall Slide,
+Rope Swing and Zipline.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -439,6 +440,35 @@ def wall_slide(p):
     return pose
 
 
+def rope_swing(p):
+    """Hanging from a rope in front of the chest: the right hand high on it above the head, the left lower, at the
+    face, the elbows bent a little to hold the body close, looking up the rope, the knees drawn up and together with the
+    feet pointed, as if gripping the rope between them, swaying a little. (LineGripIK puts the hands on the rope, hangs
+    the body behind it and leans it with the swing.)"""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=4.0 + 1.5 * w, spine_lean=-3.0, chest_lean=-2.0, head_lean=-16.0)
+    legs(pose, "Left", thigh=-38.0 + 2.0 * w, knee=62.0, foot=38.0)
+    legs(pose, "Right", thigh=-30.0 + 2.0 * w, knee=70.0, foot=40.0)
+    arms(pose, "Right", lower=86.0, swing=-170.0 - 1.0 * w, elbow=14.0, shoulder_lift=12.0)
+    arms(pose, "Left", lower=82.0, swing=-138.0 + 1.0 * w, elbow=38.0, shoulder_lift=6.0)
+    return pose
+
+
+def zipline(p):
+    """Riding a zipline: hanging from the cable by both hands close together straight overhead, the shoulders shrugged up
+    with the weight, the legs together and a little forward, knees soft, the feet pointed, swaying a little as the
+    cable carries it. (LineGripIK puts the hands on the cable.)"""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    torso(pose, hips_lean=-4.0 + 2.0 * w, spine_lean=-2.0, chest_lean=-1.0, head_lean=-6.0)
+    legs(pose, "Left", thigh=-30.0 + 3.0 * w, knee=38.0, foot=32.0)
+    legs(pose, "Right", thigh=-24.0 + 3.0 * w, knee=42.0, foot=34.0)
+    arms(pose, "Left", lower=88.0, swing=-176.0 + 0.5 * w, elbow=8.0, shoulder_lift=16.0)
+    arms(pose, "Right", lower=88.0, swing=-176.0 - 0.5 * w, elbow=8.0, shoulder_lift=16.0)
+    return pose
+
+
 # name -> (pose function, duration in seconds). Walk, Run and Sprint take their durations from their ground speeds, so
 # their planted feet don't slide at those speeds. Of them, the Animator's blend tree uses only Sprint, at the speed its
 # strides measure in Unity (MannequinGenerator); the walk and run there are the motion capture's.
@@ -455,6 +485,8 @@ CLIPS = {
     "Crouch": (crouch, 3.0),
     "Hang": (hang, 2.0),
     "Wall Slide": (wall_slide, 1.5),
+    "Rope Swing": (rope_swing, 2.0),
+    "Zipline": (zipline, 2.0),
 }
 
 # Keys per second of animation. One per frame: a running foot is planted for only a few frames, and keys any

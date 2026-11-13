@@ -70,9 +70,12 @@ namespace CharacterShowcase.EditorTools
         private const string ClimbProgressParameter = AnimatorParameterTranslator.DefaultClimbProgressParameter;
         private const string VaultingParameter = AnimatorParameterTranslator.DefaultVaultingParameter;
         private const string VaultProgressParameter = AnimatorParameterTranslator.DefaultVaultProgressParameter;
-        // Fired by the translator on every jump, from the ground, in the air or off a wall (with the Quaternius libraries' jump).
+        private const string RopeSwingingParameter = AnimatorParameterTranslator.DefaultRopeSwingingParameter;
+        private const string ZipliningParameter = AnimatorParameterTranslator.DefaultZipliningParameter;
+        // Fired by the translator on every jump, from the ground, in the air, off a wall or a rope or a zipline, and on
+        // every launch off a bounce pad (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
-        private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped;
+        private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped | MovementEvents.Bounced;
         // The libraries' landing plays this far (normalized) before handing back, or until the character moves faster than this (m/s).
         private const float LandingLength = 0.45f, MoveOnFromLanding = 0.5f;
         // The Quaternius libraries' clips used, where they're installed.
@@ -207,18 +210,20 @@ namespace CharacterShowcase.EditorTools
             {
                 SerializedProperty existing = triggers.GetArrayElementAtIndex(i);
                 if (existing.FindPropertyRelative("trigger").stringValue != JumpTrigger) { continue; }
-                // Bound by an earlier version, before wall jumps: they're jumps too.
+                // Bound by an earlier version, before wall jumps or bounce pads: they're jumps too. (Saved as a long: see
+                // AnimatorParameterTranslator.EventTrigger.)
                 SerializedProperty events = existing.FindPropertyRelative("events");
-                if ((events.intValue & (int)MovementEvents.Jumped) != 0 && (events.intValue & (int)MovementEvents.WallJumped) == 0)
+                var bound = (MovementEvents)events.longValue;
+                if ((bound & MovementEvents.Jumped) != 0 && (bound & JumpEvents) != JumpEvents)
                 {
-                    events.intValue |= (int)MovementEvents.WallJumped;
+                    events.longValue = (long)(bound | JumpEvents);
                     settings.ApplyModifiedPropertiesWithoutUndo();
                 }
                 return;
             }
             triggers.arraySize++;
             SerializedProperty binding = triggers.GetArrayElementAtIndex(triggers.arraySize - 1);
-            binding.FindPropertyRelative("events").intValue = (int)JumpEvents;
+            binding.FindPropertyRelative("events").longValue = (long)JumpEvents;
             binding.FindPropertyRelative("trigger").stringValue = JumpTrigger;
             settings.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -548,7 +553,7 @@ namespace CharacterShowcase.EditorTools
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash", "Crouch", "Hang", "Wall Slide" };
+            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash", "Crouch", "Hang", "Wall Slide", "Rope Swing", "Zipline" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -585,7 +590,7 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
-            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter })
             {
                 controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
             }
@@ -778,7 +783,8 @@ namespace CharacterShowcase.EditorTools
         /// parameter is set, and left for Locomotion, Crouch or Airborne, whichever matches the character, once it's
         /// cleared. The Quaternius libraries' crouch, slide, roll, climb, vault, push and wall runs are used where they're installed, and
         /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
-        /// rise for the climb and the vault, and its walk for the push). Hanging and sliding down a wall are always the mannequin's own.
+        /// rise for the climb and the vault, and its walk for the push). Hanging, sliding down a wall, swinging on a rope
+        /// (Rope Swing) and riding a zipline (Zipline) are always the mannequin's own.
         /// </summary>
         private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
             AnimatorState locomotion, AnimatorState airborne, Dictionary<string, AnimationClip> clips, AnimationClip sprint,
@@ -844,6 +850,13 @@ namespace CharacterShowcase.EditorTools
 
             AnimatorState wallSlide = stateMachine.AddState("Wall Slide");
             wallSlide.motion = clips["Wall Slide"];
+
+            // Swinging on a rope and riding a zipline: the mannequin's own hangs (the libraries have neither), which
+            // LineGripIK puts the hands of on the rope or the cable.
+            AnimatorState ropeSwing = stateMachine.AddState("Rope Swing");
+            ropeSwing.motion = clips["Rope Swing"];
+            AnimatorState zipline = stateMachine.AddState("Zipline");
+            zipline.motion = clips["Zipline"];
 
             // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
             // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at
@@ -925,6 +938,7 @@ namespace CharacterShowcase.EditorTools
                 (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (wallClimb, WallClimbingParameter, 0.15f), (ladderState, OnLadderParameter, 0.15f),
                 (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
                 (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
+                (ropeSwing, RopeSwingingParameter, 0.1f), (zipline, ZipliningParameter, 0.1f),
             };
             if (climbEnter != null)
             {
@@ -954,7 +968,7 @@ namespace CharacterShowcase.EditorTools
                     // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
                     // falling): that shows instead, or two Any State transitions would keep swapping the states.
                     start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
-                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter })
                     {
                         start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
                     }

@@ -222,6 +222,12 @@ namespace Character
                 Vector3 climbed = movementController.wallClimb.normal;
                 wallNormal = new Vector3(climbed.x, 0f, climbed.z).normalized;
             }
+            bool swinging = movementData.state.HasFlag(CharacterState.RopeSwinging) && movementController != null;
+            bool ziplining = movementData.state.HasFlag(CharacterState.Ziplining) && movementController != null;
+            Vector3 gripPoint = Vector3.zero, gripDirection = Vector3.zero;
+            if (swinging) { movementController.ropeSwing.TryGetGrip(out gripPoint, out gripDirection); }
+            // The cable straight above the character as it's drawn (its transform's interpolated pose).
+            else if (ziplining) { movementController.zipline.TryGetGrip(transform.position, out gripPoint, out gripDirection); }
             return new CharacterAnimationState
             {
                 velocity = velocity,
@@ -267,6 +273,10 @@ namespace Character
                 ladder = wallClimbing ? LadderPoseOf(movementController.wallClimb.ladder) : default,
                 wallPoint = wallPoint,
                 wallNormal = wallNormal,
+                swinging = swinging,
+                ziplining = ziplining,
+                gripPoint = gripPoint,
+                gripDirection = gripDirection,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
                     ? modelHost.ModelParent.localScale : Vector3.one,
                 speedScale = speedScale,
@@ -316,7 +326,7 @@ namespace Character
 
             // Turn: a critically damped spring, so a turn eases in and out, limited to a turn rate that slows with speed.
             bool abilityFacing = state.dashing || state.rolling || state.sliding || state.wallRunning || state.wallSliding || state.wallClimbing
-                                 || state.hanging || state.climbing || state.grabbing;
+                                 || state.hanging || state.climbing || state.grabbing || state.swinging || state.ziplining;
             float speedScale = state.speedScale > 0f ? state.speedScale : 1f;
             float authoredSpeed = state.horizontalSpeed / speedScale;
             float maxTurnSpeed = abilityFacing ? float.PositiveInfinity

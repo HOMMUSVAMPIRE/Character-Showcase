@@ -32,6 +32,9 @@ namespace CharacterShowcase.EditorTools.Level
     /// - south, one of each mechanic: a lift (a moving platform) to a landing with a ladder up its side, a slide gate,
     ///   and a timed 20 m run between two timing gates, and in the building a crate to push (fixtures Set Up Scene makes
     ///   work);
+    /// - far west, the mechanics in the air: a tower at +8, up a ladder or a bounce pad, with a zipline from its top south
+    ///   down to the ground, and a rope on a gantry to swing on across a 10 m gap between two platforms at +4 (too far to
+    ///   jump, even with a dash);
     /// - placeholders and markers for mechanics to come, as the complex has them.
     /// </summary>
     public static class LevelPlaygroundBuilder
@@ -55,6 +58,7 @@ namespace CharacterShowcase.EditorTools.Level
             ("the underground", BuildUnderground),
             ("the movement tests", BuildMovementTests),
             ("the mechanics", BuildMechanics),
+            ("the ropes, ziplines and bounce pads", BuildAirMechanics),
             ("the ground", (root, material) => { Begin(material); Ground(root, GroundHalf, GroundOpenings); }),
             ("the trees", BuildTrees));
 
@@ -179,9 +183,6 @@ namespace CharacterShowcase.EditorTools.Level
             }
             Floodlight(Group(towers, "Floodlight"), east.Centre, Towers, (to - east.Centre).normalized);
             Banner(towers, east.Centre + Vector2.down * (east.Apothem / 4f), Vector2.down, Towers - Deck - 0.5f, 4f);
-
-            BoxXZ(future, "Rope Anchor (+8)", west.Centre + Vector2.left * (west.Apothem - 2f), new Vector2(1f, 1f), Towers, Towers + 4f, 0f, Surface.Graphite);
-            Marker(future, "Rope Swing (future): from the West Tower's anchor", west.Centre, Towers);
         }
 
         // ---- South-east: the building ----
@@ -313,6 +314,36 @@ namespace CharacterShowcase.EditorTools.Level
             // A 20 m timed run east, its times on the finish gate.
             TimingGate(mechanics, "Playground", "start", new Vector2(-12f, -51f), new Vector2(-12f, -45f), 0f, Vector2.right, distance: 20f);
             TimingGate(mechanics, "Playground", "finish", new Vector2(8f, -51f), new Vector2(8f, -45f), 0f, Vector2.right, distance: 20f, display: true);
+        }
+
+        // ---- Far west: ropes, ziplines and bounce pads (fixtures too) ----
+
+        private static void BuildAirMechanics(Transform root, Material material)
+        {
+            Transform air = Section(root, material, "Air Mechanics");
+
+            // A tower at +8, up a ladder on its north face or a bounce pad beside its east face (9 m up, then steered
+            // onto it), with a zipline from over its deck south down to the ground: walking off its south edge catches it.
+            Transform tower = Group(air, "Zipline Tower (+8)");
+            Platform(tower, "Zipline Tower (+8)", -54f, -50f, 12f, 16f, 0f, Towers, coping: Surface.Accent);
+            Ladder(tower, new Vector2(-53f, 16f), 0f, Towers, Vector2.up);
+            BouncePad(air, new Vector2(-48.2f, 14f), 0f, 2.5f, 9f);
+            Zipline(air, new Vector3(-52f, Towers + 3.1f, 15.6f), new Vector3(-52f, 3.4f, -16f), Towers, 0f, speed: 14f);
+
+            // A rope on a gantry, over the middle of a 10 m gap between two platforms at +4: up a stair to the north one,
+            // swing across to the south one, and down its stair.
+            Transform swing = Group(air, "Rope Swing (+4)");
+            Platform(swing, "Rope Platform (North, +4)", -47f, -43f, 2f, 6f, 0f, Terrace, coping: Surface.Accent);
+            Platform(swing, "Rope Platform (South, +4)", -47f, -43f, -12f, -8f, 0f, Terrace, coping: Surface.Accent);
+            Flight(swing, "Stair (to the Rope Platform)", new Vector2(-45f, 6f + FlightLength(0f, Terrace)), Vector2.down, 3f, 0f, Terrace);
+            Flight(swing, "Stair (from the Rope Platform)", new Vector2(-45f, -12f - FlightLength(0f, Terrace)), Vector2.up, 3f, 0f, Terrace);
+            const float beam = 14f;
+            Transform gantry = Group(swing, "Gantry");
+            Block(gantry, "Gantry Post (West)", -48.3f, -47.7f, -3.3f, -2.7f, 0f, beam + 0.4f, Surface.Graphite);
+            Block(gantry, "Gantry Post (East)", -42.3f, -41.7f, -3.3f, -2.7f, 0f, beam + 0.4f, Surface.Graphite);
+            Block(gantry, "Gantry Beam", -47.7f, -42.3f, -3.3f, -2.7f, beam, beam + 0.4f, Surface.Graphite);
+            Rope(swing, new Vector3(-45f, beam - Settings.mechanics.ropeBracket, -3f), 9f);
+            FloorLabel(swing, "10 m", new Vector2(-45f, 0.5f), 0f, Vector2.down);
         }
     }
 }
