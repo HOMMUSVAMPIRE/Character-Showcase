@@ -56,8 +56,7 @@ namespace CharacterShowcase.EditorTools.Level
             Transform hall = Group(complex, "04 Fabrication Hall");
             BuildApproaches(Group(hall, "Approaches"));
 
-            Transform building = Group(hall, "Hall");
-            building.localPosition = HallCentre;
+            Transform building = Placed(hall, "Hall", HallCentre);
             Transform rooms = Group(building, "Rooms");
             Transform stairs = Group(building, "Stairs and Ramps");
             Transform catwalks = Group(building, "Catwalks (+12)");

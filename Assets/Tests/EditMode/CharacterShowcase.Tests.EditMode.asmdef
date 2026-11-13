@@ -4,6 +4,7 @@
     "references": [
         "CharacterShowcase",
         "CharacterShowcase.Editor",
+        "CharacterShowcase.Level.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

@@ -305,6 +305,23 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         [Serializable]
+        public sealed class MechanicsSettings
+        {
+            [Tooltip("How deep the orange band round a moving platform's or crate's edge is (m).")]
+            public float edgeBand = 0.15f;
+            [Tooltip("Timing gates: how wide their posts are (m), and how high their beam is (m).")]
+            public float gatePost = 0.3f;
+            [Tooltip("Timing gates: how high the beam's underside is above the floor (m).")]
+            public float gateHeight = 4.2f;
+            [Tooltip("Timing gates: the sign on the beam showing the course's times, width and height (m).")]
+            public Vector2 gatePanel = new(3.6f, 1.1f);
+            [Tooltip("Timing gates: how tall the sign's lettering is at most (m); long lines are shrunk to fit.")]
+            public float gateTextHeight = 0.32f;
+            [Tooltip("Low beams to slide under: how deep the beam is along the way under it (m).")]
+            public float lowBeamDepth = 0.5f;
+        }
+
+        [Serializable]
         public sealed class CullingSettings
         {
             [Tooltip("Whether building a level bakes its occlusion culling data (after the lighting), so cameras skip what's hidden behind walls, terraces and the ground, not only what's out of view.")]
@@ -347,6 +364,7 @@ namespace CharacterShowcase.EditorTools.Level
         [Header("Dressing")] public DressingSettings dressing = new();
         [Header("Foliage")] public FoliageSettings foliage = new();
         [Header("Culling")] public CullingSettings culling = new();
+        [Header("Mechanics")] public MechanicsSettings mechanics = new();
         [Header("Environment")] public EnvironmentSettings environment = new();
 
         /// <summary>The settings asset, made with the defaults if there isn't one yet.</summary>

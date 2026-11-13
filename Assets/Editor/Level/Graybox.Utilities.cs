@@ -13,8 +13,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// an orange second pipe beside it along its length, near its south or west wall, held up on hangers. The sizes
         /// are the settings' (Utilities). Stairwells and shafts, open to the sky, have none.
         /// </summary>
+        [Piece]
         public static void CellUtilities(Transform parent, IEnumerable<Cell> cells)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CellUtilities), parent, cells);
             GrayboxSettings.UtilitySettings u = Settings.utilities;
             foreach (Cell cell in cells)
             {
@@ -58,8 +60,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// orange band (with a box collider), a graphite conduit up from it, and a vent with steel slats at its top. The
         /// sizes are the settings' (Utilities).
         /// </summary>
+        [Piece]
         public static GameObject UtilityStation(Transform parent, Vector2 wallPoint, Vector2 outward, float floor)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(UtilityStation), parent, wallPoint, outward, floor);
             GrayboxSettings.UtilitySettings u = Settings.utilities;
             var station = new GameObject("Utility Station");
             station.transform.SetParent(parent, false);

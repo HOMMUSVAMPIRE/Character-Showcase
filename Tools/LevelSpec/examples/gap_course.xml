@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A small level written by hand: a start pad, a run of platforms at +4 over gaps graded to the jumps, a ledge to climb,
+  a lift back down, and a timed run. Pieces inside a Group are put in it. Values are text: numbers, points "x, z",
+  lists "x, z; x, z". See Tools/LevelSpec/levelspec/formats.py for the rules, and "levelspec pieces" for every piece.
+
+  Try:  python3 Tools/LevelSpec/levelspec check Tools/LevelSpec/examples/gap_course.xml
+  and the build command (see the README, Level Specs) to have Unity build it.
+-->
+<level name="Gap Course" scene="Assets/Scenes/GapCourse/GapCourse.unity">
+  <part name="Start">
+    <Group name="Start">
+      <Prism name="Pad" shape="6, 0; 0, 6; -6, 0; 0, -6" y0="-0.5" y1="0.05"/>
+      <SpawnMarker name="Start" at="0, -2" height="0.1" yaw="0"/>
+      <AreaSign at="-5, 4" bottom="1.2" facing="1, 0" number="G1" name="Gap Course" freeStanding="true"/>
+      <TimingGate course="Course" role="start" a="-3, 8" b="3, 8" floor="0" approach="0, 1"/>
+    </Group>
+  </part>
+  <part name="Gaps">
+    <Group name="Gaps">
+      <Ramp name="Ramp (1:4)" start="0, 10" direction="0, 1" width="6" length="16" y0="0" y1="4"/>
+      <Platform name="A (+4)" x0="-4" x1="4" z0="26" z1="36" y0="0" top="4" coping="Accent"/>
+      <Platform name="B (+4)" x0="-4" x1="4" z0="41" z1="49" y0="0" top="4" coping="Accent"/>
+      <Platform name="C (+4)" x0="-4" x1="4" z0="58" z1="66" y0="0" top="4" coping="Accent"/>
+      <Platform name="D (+4)" x0="-4" x1="4" z0="77" z1="87" y0="0" top="4" coping="Accent"/>
+      <FloorLabel text="5 m" at="0, 42.5" height="4" facing="0, 1"/>
+      <FloorLabel text="9 m" at="0, 59.5" height="4" facing="0, 1"/>
+      <FloorLabel text="11 m" at="0, 78.5" height="4" facing="0, 1"/>
+      <HazardStripes a="-4, 36" b="4, 36" inward="0, -1" height="4"/>
+      <HazardStripes a="-4, 49" b="4, 49" inward="0, -1" height="4"/>
+      <HazardStripes a="-4, 66" b="4, 66" inward="0, -1" height="4"/>
+      <!-- A ledge 4.5 m up from D: a jump catches it. -->
+      <Platform name="Ledge (+8.5)" x0="-4" x1="4" z0="87" z1="95" y0="0" top="8.5" coping="Accent"/>
+      <TimingGate course="Course" role="finish" a="-3, 92" b="3, 92" floor="8.5" approach="0, 1" display="true"/>
+      <!-- Steeper, shallower steps for the way down. -->
+      <State stepRise="0.25" stepRun="0.45"/>
+      <Flight name="Stair Down" basePoint="8, 72.7" direction="0, 1" width="3" y0="0" y1="8.5"/>
+      <Block name="Landing" x0="4" x1="11.5" z0="88" z1="92" y0="0" y1="8.5"/>
+    </Group>
+  </part>
+  <part name="Lift">
+    <Group name="Lift">
+      <MovingPlatform label="Lift" top="-8, 0.05, 92" size="5, 0.5, 5" travel="0, 8.45, 0" period="7" pause="1.5"/>
+    </Group>
+  </part>
+  <part name="Ground">
+    <Ground half="80" openings="[]"/>
+    <Lawns area="20, 0, 60, 60" floors="0" salt="1"/>
+    <ScatterTrees area="20, 0, 60, 60" floor="0" salt="2"/>
+  </part>
+</level>

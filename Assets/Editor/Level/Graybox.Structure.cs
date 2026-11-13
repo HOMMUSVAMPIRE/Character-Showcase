@@ -12,8 +12,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// flanges across the ends of its footprint, its web between. Its collider is the plain box of its footprint, as
         /// a box column's was.
         /// </summary>
+        [Piece]
         public static GameObject IBeamColumn(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(IBeamColumn), parent, name, centre, size, y0, y1, yaw);
             var column = new GameObject(name);
             column.transform.SetParent(parent, false);
             column.transform.SetLocalPositionAndRotation(new Vector3(centre.x, y0, centre.y), Quaternion.Euler(0f, yaw, 0f));
@@ -37,8 +39,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// posts dividing it into roughly square bays, and a diagonal across each, leaning alternately (a Warren truss).
         /// Its top is left open, for a truss under a deck. One box collider round the whole of it.
         /// </summary>
+        [Piece]
         public static GameObject Truss(Transform parent, string name, Vector2 a, Vector2 b, float y0, float y1)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Truss), parent, name, a, b, y0, y1);
             float thickness = Settings.structure.trussThickness, chord = Settings.structure.trussChord;
             float length = Vector2.Distance(a, b), half = length / 2f, t = thickness / 2f;
             Vector2 dir = (b - a) / length, middle = (a + b) / 2f;
@@ -77,8 +81,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// beam across their tops (its top left open, for a frame under a deck), and cross bracing between them. One box
         /// collider round the whole of it, the slice of space it closes off.
         /// </summary>
+        [Piece]
         public static GameObject BracedFrame(Transform parent, string name, Vector2 a, Vector2 b, float y0, float y1)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(BracedFrame), parent, name, a, b, y0, y1);
             float post = Settings.structure.framePost, brace = Settings.structure.frameBrace;
             float length = Vector2.Distance(a, b), half = length / 2f, p = post / 2f;
             Vector2 dir = (b - a) / length, middle = (a + b) / 2f;
@@ -105,8 +111,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// A steel knee bracket under something held out from a wall: a plate on the wall face at wallPoint, and a strut
         /// from low on it out to the underside, the settings' bracket size along outward. To see only: no collider.
         /// </summary>
+        [Piece]
         public static void Bracket(Transform parent, Vector2 wallPoint, Vector2 outward, float underside)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Bracket), parent, wallPoint, outward, underside);
             float size = Settings.structure.bracketSize;
             var bracket = new GameObject("Bracket");
             bracket.transform.SetParent(parent, false);

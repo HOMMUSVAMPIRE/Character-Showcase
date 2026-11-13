@@ -14,8 +14,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// the settings' width, cut to a swallowtail at the bottom, with the Meridian mark (three white slashes) and, if
         /// given, a number under it. Hung from a graphite bar a little off the face. To see only.
         /// </summary>
+        [Piece]
         public static void Banner(Transform parent, Vector2 wallPoint, Vector2 outward, float top, float length, string number = null)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Banner), parent, wallPoint, outward, top, length, number);
             GrayboxSettings.DressingSettings d = Settings.dressing;
             var banner = new GameObject($"Banner{(number != null ? $" ({number})" : "")}");
             banner.transform.SetParent(parent, false);
@@ -51,8 +53,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// A painted guide line on a floor at height through points (closed back to the first if asked for), the
         /// settings' width, in a surface (orange or white, the concept art's path lines). To see only.
         /// </summary>
+        [Piece]
         public static void GuideLine(Transform parent, string name, Vector2[] points, float height, Surface surface, bool closed = false)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(GuideLine), parent, name, points, height, surface, closed);
             float w = Settings.dressing.guideLineWidth, t = Settings.markings.thickness;
             var mesh = new GrayboxMesh();
             int segments = closed ? points.Length : points.Length - 1;
@@ -148,7 +152,7 @@ namespace CharacterShowcase.EditorTools.Level
         private static bool FloorUnder(Transform parent, Vector2 at, float height, out float floor)
         {
             Vector3 origin = parent.TransformPoint(new Vector3(at.x, height + 0.5f, at.y));
-            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1.5f))
+            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit, 1.5f, ~0, QueryTriggerInteraction.Ignore))
             {
                 floor = parent.InverseTransformPoint(hit.point).y;
                 return true;
@@ -160,10 +164,12 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>
         /// A ruler painted on a floor at height from start along direction for length: a white baseline, a tick every
         /// so far (longer every metre, to one side), and the distance from the start every few metres, reading the way
-        /// along it. The decals sheet's measuring scale. To see only.
+        /// along it (every labelEvery metres, if given, else the settings'). The decals sheet's measuring scale. To see only.
         /// </summary>
-        public static void Ruler(Transform parent, string name, Vector2 start, Vector2 direction, float length, float height)
+        [Piece]
+        public static void Ruler(Transform parent, string name, Vector2 start, Vector2 direction, float length, float height, float labelEvery = 0f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ruler), parent, name, start, direction, length, height, labelEvery);
             GrayboxSettings.DressingSettings d = Settings.dressing;
             float t = Settings.markings.thickness, y = height + t / 2f;
             Vector2 side = new(direction.y, -direction.x);
@@ -180,7 +186,7 @@ namespace CharacterShowcase.EditorTools.Level
             ruler.transform.SetParent(parent, false);
             mesh.AddTo(ruler, name);
             MakeStatic(ruler, occluder: false);
-            for (float u = 0f; u <= length + 1e-3f; u += d.rulerTicks.y)
+            for (float u = 0f; u <= length + 1e-3f; u += labelEvery > 0f ? labelEvery : d.rulerTicks.y)
             {
                 FloorLabel(ruler.transform, $"{u:0}", start + direction * u + side * 0.8f, height, direction);
             }
@@ -190,8 +196,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// Orange bands up the faces of a tall axis-aligned mass (x from x0 to x1, z from z0 to z1), from y0 to y1, centred
         /// on each face whose outward direction is listed: the concept art's accent stripes up the Ascension Spire. To see only.
         /// </summary>
+        [Piece]
         public static void TowerBands(Transform parent, float x0, float x1, float z0, float z1, float y0, float y1, params Vector2[] faces)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(TowerBands), parent, x0, x1, z0, z1, y0, y1, faces);
             Vector2 band = Settings.dressing.towerBand;
             var mesh = new GrayboxMesh();
             foreach (Vector2 f in faces)
@@ -218,8 +226,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// railTop): an orange girder on graphite end trucks, a trolley at its middle, and a hook block hanging below on
         /// its cables, its bottom at hookBottom. Box colliders round the girder and trucks and the hook block.
         /// </summary>
+        [Piece]
         public static void OverheadCrane(Transform parent, Vector2 a, Vector2 b, float railTop, float hookBottom)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(OverheadCrane), parent, a, b, railTop, hookBottom);
             float length = Vector2.Distance(a, b), half = length / 2f;
             Vector2 dir = (b - a) / length, middle = (a + b) / 2f;
             var crane = new GameObject("Overhead Crane");

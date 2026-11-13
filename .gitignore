@@ -109,3 +109,6 @@ TestResults*.xml
 
 # Local reference material (images, documents, assets) for working on the project: never committed
 /ReferenceAssets/
+
+# Schematics the levelspec tool writes by default (python3 Tools/LevelSpec/levelspec build)
+/Schematics/

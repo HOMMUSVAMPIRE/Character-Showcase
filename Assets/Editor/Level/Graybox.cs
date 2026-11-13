@@ -65,21 +65,33 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         public static void UsePalette(Material[] materials) => palette = materials;
 
-        private static readonly List<System.Action> deferred = new();
+        private static readonly List<(object owner, System.Action place)> deferred = new();
+
+        /// <summary>
+        /// Whose deferred placements are being put off (see Defer): the level editor's preview sets it to the piece being
+        /// built, so it knows what each piece's finishing touches made, and can make them again with the piece.
+        /// </summary>
+        public static object DeferOwner;
 
         /// <summary>
         /// Puts off placing something until the whole level's built (RunDeferred, which GrayboxScene calls after every
         /// part): for what has to find the floor under it, or room round it, among everything else.
         /// </summary>
-        public static void Defer(System.Action place) => deferred.Add(place);
+        public static void Defer(System.Action place) => deferred.Add((DeferOwner, place));
 
-        /// <summary>Places everything put off (see Defer), now that the level's colliders are all where they'll be.</summary>
-        public static void RunDeferred()
+        /// <summary>
+        /// Places everything put off (see Defer), now that the level's colliders are all where they'll be; each through
+        /// around (if given), with the DeferOwner it was put off under.
+        /// </summary>
+        public static void RunDeferred(System.Action<object, System.Action> around = null)
         {
             Physics.SyncTransforms();
-            System.Action[] places = deferred.ToArray();
+            (object owner, System.Action place)[] places = deferred.ToArray();
             deferred.Clear();
-            foreach (System.Action place in places) { place(); }
+            foreach ((object owner, System.Action place) in places)
+            {
+                if (around != null) { around(owner, place); } else { place(); }
+            }
         }
 
         /// <summary>Forgets anything put off by a build that didn't finish.</summary>
@@ -122,9 +134,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// It's one object: one mesh of the whole flight (see FlightMesh) and a box collider per step. Returns its
         /// length along the direction.
         /// </summary>
+        [Piece]
         public static float Flight(Transform parent, string name, Vector2 basePoint, Vector2 direction, float width, float y0, float y1,
             float floor = 0f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Flight), parent, name, basePoint, direction, width, y0, y1, floor);
             int steps = Mathf.CeilToInt((y1 - y0) / StepRise - 1e-4f);
             float rise = (y1 - y0) / steps;
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
@@ -205,8 +219,10 @@ namespace CharacterShowcase.EditorTools.Level
         public static float FlightLength(float y0, float y1) => Mathf.CeilToInt(Mathf.Abs(y1 - y0) / StepRise - 1e-4f) * StepRun;
 
         /// <summary>A ramp from start along direction, falling (or rising) from y0 to y1 over its length: a tilted slab, with a support under its high end.</summary>
+        [Piece]
         public static void Ramp(Transform parent, string name, Vector2 start, Vector2 direction, float width, float length, float y0, float y1)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ramp), parent, name, start, direction, width, length, y0, y1);
             Transform ramp = Group(parent, name);
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
             float slope = Mathf.Atan2(y0 - y1, length) * Mathf.Rad2Deg;
@@ -236,9 +252,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// its deck, so the way from one area to another reads from a distance, and a sign gantry over its start naming
         /// where it goes (when its name says: "To [place] (...)").
         /// </summary>
+        [Piece]
         public static void Bridge(Transform bridges, Transform rails, Transform connections, string name, Vector2 start, Vector2 direction,
             float width, float height)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Bridge), bridges, rails, connections, name, start, direction, width, height);
             Transform bridge = Group(bridges, name.Replace("To ", "Bridge to ").Replace("Future Connection", "Bridge"));
             Vector2 end = Walkway(bridge, rails, start, direction, BridgeLength, width, height);
             Marker(connections, name, end, height);
@@ -259,9 +277,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// I-beam columns down to the ground; or, if it's suspended (hung between the things at its ends), a truss
         /// under each side instead. Returns its far end.
         /// </summary>
+        [Piece]
         public static Vector2 Walkway(Transform parent, Transform rails, Vector2 start, Vector2 direction, float length, float width,
             float height, bool suspended = false)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Walkway), parent, rails, start, direction, length, width, height, suspended);
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
             Vector2 end = start + direction * length, side = new Vector2(direction.y, -direction.x) * (width / 2f);
             BoxXZ(parent, "Deck", start + direction * (length / 2f), new Vector2(width, length), height - Deck, height, yaw);
@@ -297,9 +317,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// on the line, width, and the opening's bottom and top: the wall's filled in below and above each), pilasters
         /// along it and frames round its openings (see WallDetail).
         /// </summary>
+        [Piece]
         public static void Wall(Transform parent, string name, Vector2 a, Vector2 b, float y0, float y1, float thickness,
             params (Vector2 centre, float width, float bottom, float top)[] openings)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Wall), parent, name, a, b, y0, y1, thickness, openings);
             float length = Vector2.Distance(a, b);
             if (length < 0.05f) { return; }
             Vector2 dir = (b - a) / length;
@@ -329,8 +351,10 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>Guardrails along every edge of a shape at the given height, leaving gaps (centre, width) where routes go through.</summary>
+        [Piece]
         public static void RailAround(Transform rails, Vector2[] shape, float height, params (Vector2 centre, float width)[] gaps)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(RailAround), rails, shape, height, gaps);
             for (int i = 0; i < shape.Length; i++) { Rail(rails, shape[i], shape[(i + 1) % shape.Length], height, gaps); }
         }
 
@@ -338,8 +362,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// A guardrail from a to b on a surface at the given height, leaving gaps (centre, width) that lie along it: one
         /// object for each run between gaps (see GuardrailRun).
         /// </summary>
+        [Piece]
         public static void Rail(Transform rails, Vector2 a, Vector2 b, float height, params (Vector2 centre, float width)[] gaps)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Rail), rails, a, b, height, gaps);
             float length = Vector2.Distance(a, b);
             if (length < 0.05f) { return; }
             Vector2 dir = (b - a) / length;
@@ -409,8 +435,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// An empty marker where a route leaves for another area (where that area's geometry joins this one), or where a
         /// mechanic to come will be: one named "[Mechanic] (future): …" is marked on the floor under it (see FutureMark).
         /// </summary>
+        [Piece]
         public static void Marker(Transform parent, string name, Vector2 at, float height)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Marker), parent, name, at, height);
             var marker = new GameObject(name);
             marker.transform.SetParent(parent, false);
             marker.transform.localPosition = new Vector3(at.x, height, at.y);
@@ -427,8 +455,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// An empty marker where a character can start: its feet at the given height, facing yaw degrees clockwise from
         /// north, with a spawn pad on the floor under it (see SpawnPad). Only a place: the game setup puts what spawns there.
         /// </summary>
+        [Piece]
         public static void SpawnMarker(Transform parent, string name, Vector2 at, float height, float yaw)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(SpawnMarker), parent, name, at, height, yaw);
             var marker = new GameObject($"{SpawnMarkerPrefix} ({name})");
             marker.transform.SetParent(parent, false);
             marker.transform.localPosition = new Vector3(at.x, height, at.y);
@@ -440,9 +470,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// A level slab over an axis-aligned area (a Rect's x is x, its y is z), from y0 to y1, with axis-aligned holes
         /// cut through it: built as the fewest boxes the holes leave, band by band.
         /// </summary>
+        [Piece]
         public static void SlabWithHoles(Transform parent, string name, UnityEngine.Rect area, IEnumerable<UnityEngine.Rect> holes,
             float y0, float y1, Surface surface = Surface.Concrete)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(SlabWithHoles), parent, name, area, holes, y0, y1, surface);
             var cuts = new List<UnityEngine.Rect>();
             foreach (UnityEngine.Rect hole in holes) { if (hole.Overlaps(area)) { cuts.Add(hole); } }
             var zs = new SortedSet<float> { area.yMin, area.yMax };
@@ -490,8 +522,12 @@ namespace CharacterShowcase.EditorTools.Level
         /// A placeholder ground at ±0 (a 1 m slab under it, in large paving slabs) over a square half across from the parent's origin, open
         /// where anything goes below it (stairwells, shafts, basements).
         /// </summary>
-        public static void Ground(Transform parent, float half, IEnumerable<UnityEngine.Rect> openings) =>
+        [Piece]
+        public static void Ground(Transform parent, float half, IEnumerable<UnityEngine.Rect> openings)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ground), parent, half, openings);
             SlabWithHoles(Group(parent, "Ground (placeholder)"), "Ground", UnityEngine.Rect.MinMaxRect(-half, -half, half, half), openings, -1f, 0f, Surface.Ground);
+        }
 
         private static bool SameSpans(List<(float x0, float x1)> a, List<(float x0, float x1)> b)
         {
@@ -532,8 +568,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// cell meets a portal (a doorway into something built separately). Open cells' walls rise to openTop. Where a
         /// taller cell meets a lower one, a header closes the wall above the opening.
         /// </summary>
+        [Piece]
         public static void Cells(Transform parent, IList<Cell> cells, IList<UnityEngine.Rect> portals, float openTop, float thickness = 0.5f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Cells), parent, cells, portals, openTop, thickness);
             const float slab = 0.5f, eps = 0.01f;
             bool Inside(Vector2 p)
             {
@@ -615,8 +653,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// Walls round an axis-aligned opening (x from x0 to x1, z from z0 to z1), from y0 to y1, outside it: a shaft's
         /// chimney above the ground. The north and south walls run across the corners.
         /// </summary>
+        [Piece]
         public static void ShaftWalls(Transform parent, string name, float x0, float z0, float x1, float z1, float y0, float y1, float thickness = 0.5f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(ShaftWalls), parent, name, x0, z0, x1, z1, y0, y1, thickness);
             Transform shaft = Group(parent, name);
             float t = thickness;
             Block(shaft, "Wall (North)", x0 - t, x1 + t, z1, z1 + t, y0, y1, Surface.Panel);
@@ -673,23 +713,42 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- Objects ----
 
+        [Piece]
         public static Transform Group(Transform parent, string name)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Group), parent, name);
             var group = new GameObject(name).transform;
             group.SetParent(parent, false);
             return group;
         }
 
         /// <summary>A group turned about the vertical axis through the origin, so its contents can be laid out facing north.</summary>
+        [Piece]
         public static Transform Turned(Transform parent, string name, float yaw)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Turned), parent, name, yaw);
             Transform group = Group(parent, name);
             group.localRotation = Quaternion.Euler(0f, yaw, 0f);
             return group;
         }
 
+        /// <summary>
+        /// A group placed at position (and turned yaw about the vertical), so its contents can be laid out in its own
+        /// coordinates, from its origin. Builders place groups with this, not by moving them, so a level spec records it.
+        /// </summary>
+        [Piece]
+        public static Transform Placed(Transform parent, string name, Vector3 position, float yaw = 0f)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Placed), parent, name, position, yaw);
+            Transform group = Group(parent, name);
+            group.SetLocalPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
+            return group;
+        }
+
+        [Piece]
         public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f, Surface surface = Surface.Concrete)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Box), parent, name, localCentre, size, yaw, surface);
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
             box.name = name;
             box.transform.SetParent(parent, false);
@@ -701,13 +760,19 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>A box over a footprint on the ground plane (centre and size in the parent's x and z), from y0 to y1.</summary>
+        [Piece]
         public static GameObject BoxXZ(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f,
-            Surface surface = Surface.Concrete) =>
-            Box(parent, name, new Vector3(centre.x, (y0 + y1) / 2f, centre.y), new Vector3(size.x, y1 - y0, size.y), yaw, surface);
+            Surface surface = Surface.Concrete)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(BoxXZ), parent, name, centre, size, y0, y1, yaw, surface);
+            return Box(parent, name, new Vector3(centre.x, (y0 + y1) / 2f, centre.y), new Vector3(size.x, y1 - y0, size.y), yaw, surface);
+        }
 
         /// <summary>A box as BoxXZ makes it, but only to see: no collider, for trims too small to matter to movement.</summary>
+        [Piece]
         public static GameObject Trim(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw, Surface surface)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Trim), parent, name, centre, size, y0, y1, yaw, surface);
             GameObject trim = BoxXZ(parent, name, centre, size, y0, y1, yaw, surface);
             Object.DestroyImmediate(trim.GetComponent<BoxCollider>());
             MakeStatic(trim, occluder: false);
@@ -715,16 +780,22 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>An axis-aligned box over x from x0 to x1 and z from z0 to z1 (in the parent's x and z), from y0 to y1.</summary>
+        [Piece]
         public static GameObject Block(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float y1,
-            Surface surface = Surface.Concrete) =>
-            BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1, 0f, surface);
+            Surface surface = Surface.Concrete)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Block), parent, name, x0, x1, z0, z1, y0, y1, surface);
+            return BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1, 0f, surface);
+        }
 
         /// <summary>
         /// A solid with the given convex footprint (in the parent's x and z), from y0 to y1: a mesh to see, and box
         /// colliders to stand on (see FootprintBoxes), on child objects named "Collider".
         /// </summary>
+        [Piece]
         public static GameObject Prism(Transform parent, string name, Vector2[] shape, float y0, float y1, Surface surface = Surface.Concrete)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Prism), parent, name, shape, y0, y1, surface);
             var vertices = new List<Vector3>();
             var triangles = new List<int>();
             Vector3 centroid = Vector3.zero;

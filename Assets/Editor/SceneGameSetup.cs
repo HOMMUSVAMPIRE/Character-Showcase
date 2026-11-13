@@ -16,7 +16,9 @@ namespace CharacterShowcase.EditorTools
     /// with another model and movement mode, and hands it to a camera to follow (with its eye point and size). The
     /// camera and input manager are the scene's own if it has them (a CameraRig, an ACInputManager), or else copies of
     /// the demo scene's, so they're set up and tuned the same. Characters placed in the scene can be replaced by spawn
-    /// points where they stood. Used by the Scene Setup window (the open scene) and from the command line.
+    /// points where they stood. The level's fixtures (moving platforms, pushable crates, timing gates) are set up from
+    /// the markers it builds (see LevelFixtureSetup). Used by the Scene Setup window (the open scene) and from the
+    /// command line.
     /// </summary>
     public static class SceneGameSetup
     {
@@ -194,6 +196,8 @@ namespace CharacterShowcase.EditorTools
             spawner.SpawnPoints.Clear();
             spawner.SpawnPoints.AddRange(spawnPoints);
             UnityEventTools.AddPersistentListener(spawner.OnCameraTargetSpawned, rig.Follow);
+            // The level's fixtures: moving platforms, pushable crates and timing gates, from the markers the level builds.
+            string fixtures = LevelFixtureSetup.SetUp(scene, setup, spawner, withUndo);
             if (withUndo)
             {
                 Undo.RegisterCreatedObjectUndo(setup.gameObject, "Set Up Scene");
@@ -207,7 +211,8 @@ namespace CharacterShowcase.EditorTools
                       $", at {Count(spawnPoints.Count, "spawn point")}, followed by '{rig.name}'." +
                       (placed.Count > 0 ? $" Replaced the placed {(placed.Count == 1 ? "character" : "characters")}: {placedNames}." : "") +
                       (keepInputManager ? " The scene's own input manager is kept." : "") +
-                      (otherCameras.Count > 0 ? $" Turned off the scene's other cameras: {string.Join(", ", otherCameras.Select(c => c.name))}." : ""));
+                      (otherCameras.Count > 0 ? $" Turned off the scene's other cameras: {string.Join(", ", otherCameras.Select(c => c.name))}." : "") +
+                      (fixtures.Length > 0 ? $" Set up the level's {fixtures}." : ""));
             return true;
         }
 

@@ -42,8 +42,7 @@ namespace CharacterShowcase.EditorTools.Level
             Transform spire = Group(complex, "03 Ascension Spire");
             BuildSkyway(Group(spire, "Skyway (from the Concourse, +16)"));
 
-            Transform s = Group(spire, "Spire");
-            s.localPosition = SpireCentre;
+            Transform s = Placed(spire, "Spire", SpireCentre);
             Transform masses = Group(s, "Core and Platforms"), stairs = Group(s, "Stairs"), rails = Group(s, "Guardrails");
             Transform connections = Group(s, "Connections"), future = Group(s, "Future Mechanics"), landmarks = Group(s, "Landmarks");
 

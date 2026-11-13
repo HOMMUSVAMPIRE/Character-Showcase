@@ -1,0 +1,25 @@
+{
+  "about": "What the character can do, from the movement mode as it's tuned (BasicMovementMode), measured with the real movement code: the limits the movement checks hold a level's gaps, climbs, stairs, ramps and clearances to. Revise them with the tuning.",
+  "stepHeight": 0.35,
+  "maxRampGradient": 0.25,
+  "crouchHeight": 1.1,
+  "standHeight": 2.0,
+  "jumps": [
+    {"distance": 3.38, "move": "jump"},
+    {"distance": 6.76, "move": "sprint jump"},
+    {"distance": 9.69, "move": "sprint jump and air dash"},
+    {"distance": 11.76, "move": "double jump"},
+    {"distance": 14.49, "move": "double jump and air dash"}
+  ],
+  "climbs": [
+    {"height": 0.35, "move": "step up"},
+    {"height": 2.17, "move": "jump up"},
+    {"height": 3.91, "move": "double jump up"},
+    {"height": 4.77, "move": "jump to the ledge"},
+    {"height": 6.51, "move": "double jump to the ledge"}
+  ],
+  "slideLength": 5.66,
+  "rollLength": 3.69,
+  "wallRunLength": 10.98,
+  "wallRunDrop": 3.66
+}

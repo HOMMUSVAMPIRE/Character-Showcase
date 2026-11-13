@@ -162,6 +162,10 @@ These are produced by tools. Edit the generator instead and regenerate:
 | The Game Setup object in a scene (a `CharacterSpawner` wired to the camera, and copies of SampleScene's InputManager and Main Camera if the scene has none), including the character, model and movement mode the scene spawns, and the replacement of characters placed in it | `SceneGameSetup` (Tools > Character Showcase > Set Up Scene…, or `-executeMethod CharacterShowcase.EditorTools.SceneGameSetup.SetUpFromCommandLine -scene <path>`) |
 | `Assets/Scenes/MeridianComplex/MeridianComplex.unity`, its `Environment/` assets (sky, post-processing, lighting settings) and its baked `MeridianComplex/` lighting data | `MeridianComplexBuilder` (Tools > Character Showcase > Level > Build Meridian Complex), which calls one builder per area in `Assets/Editor/Level` |
 | `Assets/Scenes/LevelPlayground/LevelPlayground.unity`, its `Environment/` assets and baked `LevelPlayground/` lighting data | `LevelPlaygroundBuilder` (Tools > Character Showcase > Level > Build Level Playground) |
+| `Assets/Scenes/ProvingGround/ProvingGround.unity`, its `Environment/` assets and baked `ProvingGround/` lighting data | `ProvingGroundBuilder` (Tools > Character Showcase > Level > Build Proving Ground) |
+| `Tools/LevelSpec/level-spec.schema.json` | `LevelSpecTools` (Tools > Character Showcase > Level > Specs > Write Spec Schema, and every export), from the `[Piece]` methods |
+| `Assets/Levels/[scene].level.json` (level specs) for levels with builders | `LevelSpecTools` (Export Level Specs), recorded from the builders. Specs are also edited in the Level Editor (`LevelEditorWindow`) or written by the levelspec tool: those edits live in the spec, not a builder, so don't re-export over them without asking |
+| A level's moving platforms, pushable crates and timing gates made to work (components, course timers under the Game Setup, displays wired) | `LevelFixtureSetup`, run by `SceneGameSetup` from the fixtures' names |
 
 The tools keep IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset` and
 the model sources. New Animator parameters or states belong in `MannequinGenerator.cs`; new animation clips belong
@@ -213,6 +217,36 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
   facing their forward. `SceneGameSetup` turns them into the spawner's spawn points (`SpawnMarkerPrefix` must match
   `Graybox.SpawnMarkerPrefix`; the level assembly can't reference it). Rebuilding the level removes its game setup:
   set it up again afterwards.
+- **Level mechanics are fixtures** the same way: `Graybox.Mechanics` builds a moving platform, pushable crate or
+  timing gate (and its display) as geometry named "Moving Platform (…) | key=value | …", "Pushable Crate | …",
+  "Timing Gate | course=… | role=… | distance=…" and "Timing Display | course=…", and `LevelFixtureSetup` (run by
+  `SceneGameSetup`) adds `Level.MovingPlatform`, `Level.PushableObject`, `Level.TimingGate` and a `Level.CourseTimer`
+  per course from them. The prefixes in `Graybox` and `LevelFixtureSetup` must match. A new mechanic is a fixture
+  builder in `Graybox.Mechanics`, a set-up step in `LevelFixtureSetup`, an example in the Level Playground and a
+  `LevelFixtureSetupTests` case. Displays are wired through their `text` setter by reflection, so the editor
+  assembly needn't reference TextMeshPro.
+- **Level specs record the builders' piece calls.** Every `Graybox` piece a builder can call is marked `[Piece]`
+  and starts with `using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Piece), arg1, arg2, …);`,
+  its arguments in parameter order (pieces it calls itself aren't recorded). A new piece needs both, and parameters
+  of types `LevelSpec.Encode`/`Decode` handle (add a type there and in `LevelSpecTools.Schema` if needed). Builders
+  must make everything through pieces: no moving, renaming or deleting what a piece made afterwards (place a group
+  with `Graybox.Placed` or `Turned`, not by setting its position), no `System.Random` other than what `Tree`/`Planter`
+  seed from, and no names with `/` or `#` on groups used as parents. Changes to the stair or deck dimensions
+  (`Graybox.StepRise` etc.) are recorded as "State" entries; a new such field goes in `LevelSpec.StateFields`.
+  After changing a builder, re-export the specs (`LevelSpecTools.ExportFromCommandLine -force`, which fails if a
+  spec doesn't rebuild its level exactly; without `-force` it keeps specs changed since they were exported, which
+  may hold Level Editor edits: ask before replacing those); `LevelSpecTests` check each level round-trips. Pieces
+  that look at what's round them (floors, room for trees and lawns) must do so in deferred placements
+  (`Graybox.Defer`): the Level Editor's preview redoes those after every edit, which is what keeps a one-piece
+  rebuild the same as a full build (`LevelEditorTests`).
+- **The levelspec tool** (`Tools/LevelSpec`, Python 3 standard library only, so CI's hygiene job can run its tests)
+  reads the schema Unity writes, so new pieces are known to it once the schema's rewritten. What it knows of each
+  piece's meaning is in `levelspec/geometry.py` (each piece's outline, for schematics and the movement checks): give a
+  new piece an outline there. The movement limits are `Tools/LevelSpec/envelope.json`, measured with the movement
+  code: revise them when the tuning changes. Its tests: `python3 -m unittest discover -s Tools/LevelSpec/tests`.
+- **The Proving Ground's layout is graded to the movement's tuning** (gap widths, ledge heights, wall-run lengths,
+  low clearances: see the notes in `ProvingGroundBuilder`). If a change to the movement or its tuning moves those
+  limits, say so and revise the layout with it.
 - **The level** is rebuilt with `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`
   (Unity closed; it also bakes the environment lighting, a few seconds: level geometry isn't Contribute GI, which
   made the baker pack lightmaps for every piece and took about seven minutes). The menu item builds the same steps

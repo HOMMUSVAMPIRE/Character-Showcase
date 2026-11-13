@@ -1,0 +1,1897 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Character Showcase level spec",
+  "description": "A level as the Graybox pieces it's built from, in order (see LevelSpec). Written by LevelSpecTools from the pieces' parameters: regenerate it, don't edit it.",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "character-showcase-level"
+    },
+    "version": {
+      "type": "integer",
+      "maximum": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scene": {
+      "type": "string",
+      "pattern": "^Assets/.+\\.unity$"
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/part"
+      }
+    }
+  },
+  "required": ["format", "name", "scene", "parts"],
+  "additionalProperties": false,
+  "$defs": {
+    "point2": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "A point on the ground plane: [x, z], metres, +z north."
+    },
+    "point3": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "A point or size: [x, y, z], metres."
+    },
+    "area": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "An area on the ground plane: [xMin, zMin, xMax, zMax], metres."
+    },
+    "path": {
+      "type": "string",
+      "description": "A parent: its path under the level's root, names separated by '/' ('' is the root), '#n' after the nth (from 2) child with the same name."
+    },
+    "random": {
+      "type": "object",
+      "properties": {
+        "seed": {
+          "type": "integer"
+        }
+      },
+      "required": ["seed"],
+      "additionalProperties": false,
+      "description": "A random number generator, by its seed."
+    },
+    "cell": {
+      "type": "object",
+      "description": "A room or passage of an enclosed network (Graybox.Cells): its area, floor and ceiling heights, and whether it's open above.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "x0": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "ceiling": {
+          "type": "number"
+        },
+        "open": {
+          "type": "boolean"
+        }
+      },
+      "required": ["x0", "z0", "x1", "z1", "floor", "ceiling"],
+      "additionalProperties": false
+    },
+    "surface": {
+      "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass"]
+    },
+    "piece.State": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "State"
+        },
+        "stepRise": {
+          "type": "number"
+        },
+        "stepRun": {
+          "type": "number"
+        },
+        "bridgeLength": {
+          "type": "number"
+        },
+        "deck": {
+          "type": "number"
+        },
+        "railHeight": {
+          "type": "number"
+        },
+        "railThickness": {
+          "type": "number"
+        }
+      },
+      "required": ["piece"],
+      "additionalProperties": false,
+      "description": "Sets the stairs' step size and the decks' and rails' dimensions for the pieces after it in its part."
+    },
+    "piece.AccentPost": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "AccentPost"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "at", "height"],
+      "additionalProperties": false
+    },
+    "piece.AreaSign": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "AreaSign"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "bottom": {
+          "type": "number"
+        },
+        "facing": {
+          "$ref": "#/$defs/point2"
+        },
+        "number": {
+          "type": ["string", "null"]
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "freeStanding": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["piece", "parent", "at", "bottom", "facing", "number", "name"],
+      "additionalProperties": false
+    },
+    "piece.Banner": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Banner"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "wallPoint": {
+          "$ref": "#/$defs/point2"
+        },
+        "outward": {
+          "$ref": "#/$defs/point2"
+        },
+        "top": {
+          "type": "number"
+        },
+        "length": {
+          "type": "number"
+        },
+        "number": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      },
+      "required": ["piece", "parent", "wallPoint", "outward", "top", "length"],
+      "additionalProperties": false
+    },
+    "piece.Block": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Block"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "x0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        }
+      },
+      "required": ["piece", "parent", "name", "x0", "x1", "z0", "z1", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Bollard": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Bollard"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "at", "floor"],
+      "additionalProperties": false
+    },
+    "piece.Bollards": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Bollards"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        },
+        "floor": {
+          "type": "number"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/point2"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "required": ["piece", "parent", "shape", "floor"],
+      "additionalProperties": false
+    },
+    "piece.Box": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Box"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "localCentre": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        }
+      },
+      "required": ["piece", "parent", "name", "localCentre", "size"],
+      "additionalProperties": false
+    },
+    "piece.BoxXZ": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "BoxXZ"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.BracedFrame": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "BracedFrame"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "a", "b", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Bracket": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Bracket"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "wallPoint": {
+          "$ref": "#/$defs/point2"
+        },
+        "outward": {
+          "$ref": "#/$defs/point2"
+        },
+        "underside": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "wallPoint", "outward", "underside"],
+      "additionalProperties": false
+    },
+    "piece.Bridge": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Bridge"
+        },
+        "bridges": {
+          "$ref": "#/$defs/path"
+        },
+        "rails": {
+          "$ref": "#/$defs/path"
+        },
+        "connections": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "start": {
+          "$ref": "#/$defs/point2"
+        },
+        "direction": {
+          "$ref": "#/$defs/point2"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "bridges", "rails", "connections", "name", "start", "direction", "width", "height"],
+      "additionalProperties": false
+    },
+    "piece.CellLighting": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "CellLighting"
+        },
+        "lighting": {
+          "$ref": "#/$defs/path"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cell"
+          }
+        }
+      },
+      "required": ["piece", "lighting", "cells"],
+      "additionalProperties": false
+    },
+    "piece.CellUtilities": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "CellUtilities"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cell"
+          }
+        }
+      },
+      "required": ["piece", "parent", "cells"],
+      "additionalProperties": false
+    },
+    "piece.Cells": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Cells"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cell"
+          }
+        },
+        "portals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/area"
+          }
+        },
+        "openTop": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number",
+          "default": 0.5
+        }
+      },
+      "required": ["piece", "parent", "cells", "portals", "openTop"],
+      "additionalProperties": false
+    },
+    "piece.Column": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Column"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Steel"
+        },
+        "accent": {
+          "type": "boolean",
+          "default": false
+        },
+        "capped": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Coping": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Coping"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        },
+        "top": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Graphite"
+        }
+      },
+      "required": ["piece", "parent", "name", "shape", "top", "height"],
+      "additionalProperties": false
+    },
+    "piece.CornerBrackets": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "CornerBrackets"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "x0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "x0", "x1", "z0", "z1", "height"],
+      "additionalProperties": false
+    },
+    "piece.Flight": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Flight"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "basePoint": {
+          "$ref": "#/$defs/point2"
+        },
+        "direction": {
+          "$ref": "#/$defs/point2"
+        },
+        "width": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "floor": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "name", "basePoint", "direction", "width", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Floodlight": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Floodlight"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "facing": {
+          "$ref": "#/$defs/point2"
+        }
+      },
+      "required": ["piece", "parent", "at", "floor", "facing"],
+      "additionalProperties": false
+    },
+    "piece.FloorLabel": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "FloorLabel"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "text": {
+          "type": ["string", "null"]
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        },
+        "facing": {
+          "$ref": "#/$defs/point2"
+        }
+      },
+      "required": ["piece", "parent", "text", "at", "height", "facing"],
+      "additionalProperties": false
+    },
+    "piece.Ground": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Ground"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "half": {
+          "type": "number"
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/area"
+          }
+        }
+      },
+      "required": ["piece", "parent", "half", "openings"],
+      "additionalProperties": false
+    },
+    "piece.Group": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Group"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": ["piece", "parent", "name"],
+      "additionalProperties": false
+    },
+    "piece.GuideLine": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "GuideLine"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        },
+        "height": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface"
+        },
+        "closed": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["piece", "parent", "name", "points", "height", "surface"],
+      "additionalProperties": false
+    },
+    "piece.HazardStripes": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "HazardStripes"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "inward": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "a", "b", "inward", "height"],
+      "additionalProperties": false
+    },
+    "piece.IBeamColumn": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "IBeamColumn"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Lawns": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Lawns"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "area": {
+          "$ref": "#/$defs/area"
+        },
+        "floors": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "salt": {
+          "type": "integer"
+        },
+        "spacing": {
+          "type": "number",
+          "default": 1
+        },
+        "density": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": ["piece", "parent", "area", "floors", "salt"],
+      "additionalProperties": false
+    },
+    "piece.LowBeam": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "LowBeam"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "clear": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "a", "b", "floor", "clear"],
+      "additionalProperties": false
+    },
+    "piece.Marker": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Marker"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "at", "height"],
+      "additionalProperties": false
+    },
+    "piece.MovingPlatform": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "MovingPlatform"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "label": {
+          "type": ["string", "null"]
+        },
+        "top": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "travel": {
+          "$ref": "#/$defs/point3"
+        },
+        "period": {
+          "type": "number"
+        },
+        "pause": {
+          "type": "number",
+          "default": 0.75
+        },
+        "spin": {
+          "$ref": "#/$defs/point3",
+          "default": [0, 0, 0]
+        },
+        "phase": {
+          "type": "number",
+          "default": 0
+        },
+        "smooth": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "required": ["piece", "parent", "label", "top", "size", "travel", "period"],
+      "additionalProperties": false
+    },
+    "piece.OverheadCrane": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "OverheadCrane"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "railTop": {
+          "type": "number"
+        },
+        "hookBottom": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "a", "b", "railTop", "hookBottom"],
+      "additionalProperties": false
+    },
+    "piece.Placed": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Placed"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "position": {
+          "$ref": "#/$defs/point3"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "name", "position"],
+      "additionalProperties": false
+    },
+    "piece.Planter": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Planter"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "x0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "tree": {
+          "type": "boolean"
+        },
+        "random": {
+          "$ref": "#/$defs/random"
+        }
+      },
+      "required": ["piece", "parent", "name", "x0", "x1", "z0", "z1", "floor", "tree", "random"],
+      "additionalProperties": false
+    },
+    "piece.Platform": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Platform"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "x0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "top": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        },
+        "coping": {
+          "$ref": "#/$defs/surface",
+          "default": "Graphite"
+        }
+      },
+      "required": ["piece", "parent", "name", "x0", "x1", "z0", "z1", "y0", "top"],
+      "additionalProperties": false
+    },
+    "piece.Prism": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Prism"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        }
+      },
+      "required": ["piece", "parent", "name", "shape", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.PushableCrate": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "PushableCrate"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "size": {
+          "type": "number"
+        },
+        "canPull": {
+          "type": "boolean",
+          "default": true
+        },
+        "speed": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": ["piece", "parent", "at", "floor", "size"],
+      "additionalProperties": false
+    },
+    "piece.Rail": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Rail"
+        },
+        "rails": {
+          "$ref": "#/$defs/path"
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/point2"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "required": ["piece", "rails", "a", "b", "height"],
+      "additionalProperties": false
+    },
+    "piece.RailAround": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "RailAround"
+        },
+        "rails": {
+          "$ref": "#/$defs/path"
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        },
+        "height": {
+          "type": "number"
+        },
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/point2"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      },
+      "required": ["piece", "rails", "shape", "height"],
+      "additionalProperties": false
+    },
+    "piece.Ramp": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Ramp"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "start": {
+          "$ref": "#/$defs/point2"
+        },
+        "direction": {
+          "$ref": "#/$defs/point2"
+        },
+        "width": {
+          "type": "number"
+        },
+        "length": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "start", "direction", "width", "length", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Ruler": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Ruler"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "start": {
+          "$ref": "#/$defs/point2"
+        },
+        "direction": {
+          "$ref": "#/$defs/point2"
+        },
+        "length": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "labelEvery": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "name", "start", "direction", "length", "height"],
+      "additionalProperties": false
+    },
+    "piece.ScatterTrees": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "ScatterTrees"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "area": {
+          "$ref": "#/$defs/area"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "salt": {
+          "type": "integer"
+        },
+        "spread": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": ["piece", "parent", "area", "floor", "salt"],
+      "additionalProperties": false
+    },
+    "piece.ShaftWalls": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "ShaftWalls"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "x0": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number",
+          "default": 0.5
+        }
+      },
+      "required": ["piece", "parent", "name", "x0", "z0", "x1", "z1", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.SlabWithHoles": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "SlabWithHoles"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "area": {
+          "$ref": "#/$defs/area"
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/area"
+          }
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface",
+          "default": "Concrete"
+        }
+      },
+      "required": ["piece", "parent", "name", "area", "holes", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.SpawnMarker": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "SpawnMarker"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "height": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "at", "height", "yaw"],
+      "additionalProperties": false
+    },
+    "piece.TimingGate": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "TimingGate"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "course": {
+          "type": ["string", "null"]
+        },
+        "role": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "approach": {
+          "$ref": "#/$defs/point2"
+        },
+        "distance": {
+          "type": "number",
+          "default": 0
+        },
+        "display": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["piece", "parent", "course", "role", "a", "b", "floor", "approach"],
+      "additionalProperties": false
+    },
+    "piece.TowerBands": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "TowerBands"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "x0": {
+          "type": "number"
+        },
+        "x1": {
+          "type": "number"
+        },
+        "z0": {
+          "type": "number"
+        },
+        "z1": {
+          "type": "number"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "faces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/point2"
+          }
+        }
+      },
+      "required": ["piece", "parent", "x0", "x1", "z0", "z1", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Tree": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Tree"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "at": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        },
+        "random": {
+          "$ref": "#/$defs/random"
+        }
+      },
+      "required": ["piece", "parent", "at", "floor", "random"],
+      "additionalProperties": false
+    },
+    "piece.Trim": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Trim"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number"
+        },
+        "surface": {
+          "$ref": "#/$defs/surface"
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size", "y0", "y1", "yaw", "surface"],
+      "additionalProperties": false
+    },
+    "piece.Truss": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Truss"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "a", "b", "y0", "y1"],
+      "additionalProperties": false
+    },
+    "piece.Turned": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Turned"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "yaw": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "name", "yaw"],
+      "additionalProperties": false
+    },
+    "piece.UtilityStation": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "UtilityStation"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "wallPoint": {
+          "$ref": "#/$defs/point2"
+        },
+        "outward": {
+          "$ref": "#/$defs/point2"
+        },
+        "floor": {
+          "type": "number"
+        }
+      },
+      "required": ["piece", "parent", "wallPoint", "outward", "floor"],
+      "additionalProperties": false
+    },
+    "piece.Walkway": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Walkway"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "rails": {
+          "$ref": "#/$defs/path"
+        },
+        "start": {
+          "$ref": "#/$defs/point2"
+        },
+        "direction": {
+          "$ref": "#/$defs/point2"
+        },
+        "length": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "suspended": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["piece", "parent", "rails", "start", "direction", "length", "width", "height"],
+      "additionalProperties": false
+    },
+    "piece.Wall": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Wall"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number"
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/point2"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "minItems": 4,
+            "maxItems": 4
+          }
+        }
+      },
+      "required": ["piece", "parent", "name", "a", "b", "y0", "y1", "thickness"],
+      "additionalProperties": false
+    },
+    "piece": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/piece.State"
+        },
+        {
+          "$ref": "#/$defs/piece.AccentPost"
+        },
+        {
+          "$ref": "#/$defs/piece.AreaSign"
+        },
+        {
+          "$ref": "#/$defs/piece.Banner"
+        },
+        {
+          "$ref": "#/$defs/piece.Block"
+        },
+        {
+          "$ref": "#/$defs/piece.Bollard"
+        },
+        {
+          "$ref": "#/$defs/piece.Bollards"
+        },
+        {
+          "$ref": "#/$defs/piece.Box"
+        },
+        {
+          "$ref": "#/$defs/piece.BoxXZ"
+        },
+        {
+          "$ref": "#/$defs/piece.BracedFrame"
+        },
+        {
+          "$ref": "#/$defs/piece.Bracket"
+        },
+        {
+          "$ref": "#/$defs/piece.Bridge"
+        },
+        {
+          "$ref": "#/$defs/piece.CellLighting"
+        },
+        {
+          "$ref": "#/$defs/piece.CellUtilities"
+        },
+        {
+          "$ref": "#/$defs/piece.Cells"
+        },
+        {
+          "$ref": "#/$defs/piece.Column"
+        },
+        {
+          "$ref": "#/$defs/piece.Coping"
+        },
+        {
+          "$ref": "#/$defs/piece.CornerBrackets"
+        },
+        {
+          "$ref": "#/$defs/piece.Flight"
+        },
+        {
+          "$ref": "#/$defs/piece.Floodlight"
+        },
+        {
+          "$ref": "#/$defs/piece.FloorLabel"
+        },
+        {
+          "$ref": "#/$defs/piece.Ground"
+        },
+        {
+          "$ref": "#/$defs/piece.Group"
+        },
+        {
+          "$ref": "#/$defs/piece.GuideLine"
+        },
+        {
+          "$ref": "#/$defs/piece.HazardStripes"
+        },
+        {
+          "$ref": "#/$defs/piece.IBeamColumn"
+        },
+        {
+          "$ref": "#/$defs/piece.Lawns"
+        },
+        {
+          "$ref": "#/$defs/piece.LowBeam"
+        },
+        {
+          "$ref": "#/$defs/piece.Marker"
+        },
+        {
+          "$ref": "#/$defs/piece.MovingPlatform"
+        },
+        {
+          "$ref": "#/$defs/piece.OverheadCrane"
+        },
+        {
+          "$ref": "#/$defs/piece.Placed"
+        },
+        {
+          "$ref": "#/$defs/piece.Planter"
+        },
+        {
+          "$ref": "#/$defs/piece.Platform"
+        },
+        {
+          "$ref": "#/$defs/piece.Prism"
+        },
+        {
+          "$ref": "#/$defs/piece.PushableCrate"
+        },
+        {
+          "$ref": "#/$defs/piece.Rail"
+        },
+        {
+          "$ref": "#/$defs/piece.RailAround"
+        },
+        {
+          "$ref": "#/$defs/piece.Ramp"
+        },
+        {
+          "$ref": "#/$defs/piece.Ruler"
+        },
+        {
+          "$ref": "#/$defs/piece.ScatterTrees"
+        },
+        {
+          "$ref": "#/$defs/piece.ShaftWalls"
+        },
+        {
+          "$ref": "#/$defs/piece.SlabWithHoles"
+        },
+        {
+          "$ref": "#/$defs/piece.SpawnMarker"
+        },
+        {
+          "$ref": "#/$defs/piece.TimingGate"
+        },
+        {
+          "$ref": "#/$defs/piece.TowerBands"
+        },
+        {
+          "$ref": "#/$defs/piece.Tree"
+        },
+        {
+          "$ref": "#/$defs/piece.Trim"
+        },
+        {
+          "$ref": "#/$defs/piece.Truss"
+        },
+        {
+          "$ref": "#/$defs/piece.Turned"
+        },
+        {
+          "$ref": "#/$defs/piece.UtilityStation"
+        },
+        {
+          "$ref": "#/$defs/piece.Walkway"
+        },
+        {
+          "$ref": "#/$defs/piece.Wall"
+        }
+      ]
+    },
+    "part": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "pieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/piece"
+          }
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    }
+  }
+}

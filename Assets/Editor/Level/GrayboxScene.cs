@@ -98,6 +98,9 @@ namespace CharacterShowcase.EditorTools.Level
 
         private string EnvironmentFolder => Path.GetDirectoryName(skyPath);
 
+        /// <summary>Its parts, in order: what a level spec records (see LevelSpecTools).</summary>
+        internal IReadOnlyList<(string name, Action<Transform, Material> build)> Parts => parts;
+
         /// <summary>Builds the scene and bakes its lighting in one go, which holds up the editor until it's done.</summary>
         public void Build()
         {

@@ -1,0 +1,170 @@
+{
+  "format": "character-showcase-level",
+  "version": 1,
+  "name": "Level Playground",
+  "scene": "Assets/Scenes/LevelPlayground/LevelPlayground.unity",
+  "parts": [
+    {
+      "name": "the start",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Start"},
+        {"piece": "Group", "parent": "Start", "name": "Spawn Points"},
+        {"piece": "SpawnMarker", "parent": "Start/Spawn Points", "name": "Start", "at": [0, -10], "height": 0.05, "yaw": 0},
+        {"piece": "Prism", "parent": "Start", "name": "Dais (+0.6)", "shape": [[11, -2.7573593], [9.2426405, -1], [6.7573595, -0.99999976], [5, -2.757359], [5, -5.2426405], [6.7573586, -7], [9.242641, -7], [11, -5.2426405]], "y0": 0, "y1": 0.6},
+        {"piece": "Bollards", "parent": "Start", "shape": [[13, -1.928932], [10.071068, 1], [5.928932, 1.0000005], [3, -1.928932], [3, -6.071068], [5.928931, -9], [10.071069, -9], [13, -6.071068]], "floor": 0},
+        {"piece": "GuideLine", "parent": "Start", "name": "Guide Ring (Orange)", "points": [[12.2, -2.260303], [9.7396965, 0.19999981], [6.2603035, 0.20000029], [3.8000002, -2.2603028], [3.8000002, -5.739697], [6.2603025, -8.2], [9.739697, -8.2], [12.200001, -5.739697]], "height": 0, "surface": "Accent", "closed": true},
+        {"piece": "Planter", "parent": "Start", "name": "Planter", "x0": -5, "x1": -2.6, "z0": -7, "z1": -4.6, "floor": 0, "tree": true, "random": {"seed": 857019877}},
+        {"piece": "Column", "parent": "Start", "name": "Column (Turned 45°)", "centre": [4, 8], "size": [2, 2], "y0": 0, "y1": 4, "yaw": 45, "accent": true}
+      ]
+    },
+    {
+      "name": "the terrace and ramp",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Terrace (+4)"},
+        {"piece": "Prism", "parent": "Terrace (+4)", "name": "Terrace (+4)", "shape": [[-38, -10], [-24, -10], [-24, 6], [-28, 10], [-38, 10]], "y0": 0, "y1": 4},
+        {"piece": "Ramp", "parent": "Terrace (+4)", "name": "Ramp (1:4, ±0 to +4)", "start": [-8, -4], "direction": [-1, 0], "width": 8, "length": 16, "y0": 0, "y1": 4},
+        {"piece": "Group", "parent": "Terrace (+4)", "name": "Guardrails"},
+        {"piece": "RailAround", "rails": "Terrace (+4)/Guardrails", "shape": [[-38, -10], [-24, -10], [-24, 6], [-28, 10], [-38, 10]], "height": 4, "gaps": [[[-24, -4], 8], [[-33, 10], 6]]}
+      ]
+    },
+    {
+      "name": "the towers and bridges",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Towers and Bridges (+8)"},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Guardrails"},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Connections"},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Future Mechanics"},
+        {"piece": "State", "stepRise": 0.3, "stepRun": 0.4, "bridgeLength": 12, "deck": 1, "railHeight": 1.1, "railThickness": 0.15},
+        {"piece": "Flight", "parent": "Towers and Bridges (+8)", "name": "Stair (+4 to +8)", "basePoint": [-33, 10], "direction": [0, 1], "width": 6, "y0": 4, "y1": 8},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Walkway (+8)"},
+        {"piece": "Walkway", "parent": "Towers and Bridges (+8)/Walkway (+8)", "rails": "Towers and Bridges (+8)/Guardrails", "start": [-33, 15.6], "direction": [0, 1], "length": 6.3999996, "width": 6, "height": 8},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Suspended Walkway (+8)"},
+        {"piece": "Walkway", "parent": "Towers and Bridges (+8)/Suspended Walkway (+8)", "rails": "Towers and Bridges (+8)/Guardrails", "start": [-25, 30], "direction": [1, 0], "length": 14, "width": 6, "height": 8, "suspended": true},
+        {"piece": "Marker", "parent": "Towers and Bridges (+8)/Future Mechanics", "name": "Gap (6 m, +8): East Tower to Jump Platform", "at": [-3, 41], "height": 8},
+        {"piece": "HazardStripes", "parent": "Towers and Bridges (+8)/Future Mechanics", "a": [-6.3137083, 38], "b": [0.31370854, 38], "inward": [0, -1], "height": 8},
+        {"piece": "HazardStripes", "parent": "Towers and Bridges (+8)/Future Mechanics", "a": [-4.2426405, 44], "b": [-1.7573593, 44], "inward": [0, 1], "height": 8},
+        {"piece": "Bridge", "bridges": "Towers and Bridges (+8)", "rails": "Towers and Bridges (+8)/Guardrails", "connections": "Towers and Bridges (+8)/Connections", "name": "To Next Area (NE, +8)", "start": [2.6568542, 35.656853], "direction": [0.70710677, 0.70710677], "width": 6, "height": 8},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "West Tower (+8)"},
+        {"piece": "Prism", "parent": "Towers and Bridges (+8)/West Tower (+8)", "name": "Deck", "shape": [[-25, 33.31371], [-29.68629, 38], [-36.31371, 38], [-41, 33.31371], [-41, 26.68629], [-36.31371, 22], [-29.68629, 22], [-25, 26.68629]], "y0": 7, "y1": 8},
+        {"piece": "Column", "parent": "Towers and Bridges (+8)/West Tower (+8)", "name": "Column", "centre": [-33, 30], "size": [4, 4], "y0": 0, "y1": 7, "accent": true, "capped": false},
+        {"piece": "RailAround", "rails": "Towers and Bridges (+8)/Guardrails", "shape": [[-25, 33.31371], [-29.68629, 38], [-36.31371, 38], [-41, 33.31371], [-41, 26.68629], [-36.31371, 22], [-29.68629, 22], [-25, 26.68629]], "height": 8, "gaps": [[[-33, 22], 6], [[-25, 30], 6]]},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "East Tower (+8)"},
+        {"piece": "Prism", "parent": "Towers and Bridges (+8)/East Tower (+8)", "name": "Deck", "shape": [[5, 33.31371], [0.31370854, 38], [-6.3137083, 38], [-11, 33.31371], [-11, 26.68629], [-6.3137097, 22], [0.31370997, 22], [5, 26.68629]], "y0": 7, "y1": 8},
+        {"piece": "Column", "parent": "Towers and Bridges (+8)/East Tower (+8)", "name": "Column", "centre": [-3, 30], "size": [4, 4], "y0": 0, "y1": 7, "accent": true, "capped": false},
+        {"piece": "RailAround", "rails": "Towers and Bridges (+8)/Guardrails", "shape": [[5, 33.31371], [0.31370854, 38], [-6.3137083, 38], [-11, 33.31371], [-11, 26.68629], [-6.3137097, 22], [0.31370997, 22], [5, 26.68629]], "height": 8, "gaps": [[[-11, 30], 6], [[-3, 38], 6.627417], [[2.6568542, 35.656853], 6]]},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Jump Platform (+8)"},
+        {"piece": "Prism", "parent": "Towers and Bridges (+8)/Jump Platform (+8)", "name": "Deck", "shape": [[0, 48.24264], [-1.7573593, 50], [-4.2426405, 50], [-6, 48.24264], [-6, 45.75736], [-4.2426415, 44], [-1.7573588, 44], [2.3841858e-07, 45.75736]], "y0": 7, "y1": 8},
+        {"piece": "Column", "parent": "Towers and Bridges (+8)/Jump Platform (+8)", "name": "Column", "centre": [-3, 47], "size": [1.5, 1.5], "y0": 0, "y1": 7, "accent": true, "capped": false},
+        {"piece": "RailAround", "rails": "Towers and Bridges (+8)/Guardrails", "shape": [[0, 48.24264], [-1.7573593, 50], [-4.2426405, 50], [-6, 48.24264], [-6, 45.75736], [-4.2426415, 44], [-1.7573588, 44], [2.3841858e-07, 45.75736]], "height": 8, "gaps": [[[-3, 44], 2.4852815]]},
+        {"piece": "Group", "parent": "Towers and Bridges (+8)", "name": "Floodlight"},
+        {"piece": "Floodlight", "parent": "Towers and Bridges (+8)/Floodlight", "at": [-3, 30], "floor": 8, "facing": [-1, 0]},
+        {"piece": "Banner", "parent": "Towers and Bridges (+8)", "wallPoint": [-3, 28], "outward": [0, -1], "top": 6.5, "length": 4},
+        {"piece": "BoxXZ", "parent": "Towers and Bridges (+8)/Future Mechanics", "name": "Rope Anchor (+8)", "centre": [-39, 30], "size": [1, 1], "y0": 8, "y1": 12, "surface": "Graphite"},
+        {"piece": "Marker", "parent": "Towers and Bridges (+8)/Future Mechanics", "name": "Rope Swing (future): from the West Tower's anchor", "at": [-33, 30], "height": 8}
+      ]
+    },
+    {
+      "name": "the building",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Building"},
+        {"piece": "Group", "parent": "Building", "name": "Walls"},
+        {"piece": "Group", "parent": "Building", "name": "Objects"},
+        {"piece": "Wall", "parent": "Building/Walls", "name": "Wall (West)", "a": [14, -36.5], "b": [14, -15.5], "y0": 0, "y1": 6, "thickness": 1, "openings": [[[14, -26], 4, 0, 3]]},
+        {"piece": "Wall", "parent": "Building/Walls", "name": "Wall (East)", "a": [34, -36.5], "b": [34, -15.5], "y0": 0, "y1": 6, "thickness": 1},
+        {"piece": "Wall", "parent": "Building/Walls", "name": "Wall (North)", "a": [14.5, -16], "b": [33.5, -16], "y0": 0, "y1": 6, "thickness": 1, "openings": [[[24, -16], 4, 1.5, 3.5]]},
+        {"piece": "Wall", "parent": "Building/Walls", "name": "Wall (South)", "a": [14.5, -36], "b": [33.5, -36], "y0": 0, "y1": 6, "thickness": 1},
+        {"piece": "Group", "parent": "Building", "name": "Catwalk (+4)"},
+        {"piece": "Block", "parent": "Building/Catwalk (+4)", "name": "Catwalk Deck (+4)", "x0": 14.5, "x1": 33.5, "z0": -35.5, "z1": -32.5, "y0": 3, "y1": 4, "surface": "Steel"},
+        {"piece": "Flight", "parent": "Building/Catwalk (+4)", "name": "Stair (to the Catwalk)", "basePoint": [32.25, -26.9], "direction": [0, -1], "width": 2.5, "y0": 0, "y1": 4},
+        {"piece": "Group", "parent": "Building/Catwalk (+4)", "name": "Guardrails"},
+        {"piece": "Rail", "rails": "Building/Catwalk (+4)/Guardrails", "a": [14.5, -32.5], "b": [33.5, -32.5], "height": 4, "gaps": [[[32.25, -32.5], 2.5]]},
+        {"piece": "BracedFrame", "parent": "Building/Catwalk (+4)", "name": "Braced Frame", "a": [28, -35.5], "b": [28, -32.5], "y0": 0, "y1": 3},
+        {"piece": "Bracket", "parent": "Building/Catwalk (+4)", "wallPoint": [20, -35.5], "outward": [0, 1], "underside": 3},
+        {"piece": "Bracket", "parent": "Building/Catwalk (+4)", "wallPoint": [31, -35.5], "outward": [0, 1], "underside": 3},
+        {"piece": "PushableCrate", "parent": "Building/Objects", "at": [28, -28], "floor": 0, "size": 2},
+        {"piece": "UtilityStation", "parent": "Building/Objects", "wallPoint": [33.5, -22], "outward": [-1, 0], "floor": 0},
+        {"piece": "Block", "parent": "Building/Objects", "name": "Shelf", "x0": 17, "x1": 23, "z0": -34.5, "z1": -33, "y0": 0, "y1": 2.5, "surface": "Graphite"},
+        {"piece": "AreaSign", "parent": "Building", "at": [13.5, -30.5], "bottom": 1.2, "facing": [-1, 0], "number": "00", "name": "Level Playground"},
+        {"piece": "Banner", "parent": "Building", "wallPoint": [19.5, -15.5], "outward": [0, 1], "top": 5.6, "length": 3.6, "number": "00"}
+      ]
+    },
+    {
+      "name": "the underground",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Underground (-6)"},
+        {"piece": "Group", "parent": "Underground (-6)", "name": "Rooms and Passages"},
+        {"piece": "Cells", "parent": "Underground (-6)/Rooms and Passages", "cells": [{"name": "Stairwell", "x0": 20, "z0": 14, "x1": 26, "z1": 22, "floor": -6, "ceiling": 0, "open": true}, {"name": "Passage", "x0": 20, "z0": 6, "x1": 26, "z1": 14, "floor": -6, "ceiling": -2}, {"name": "Room", "x0": 16, "z0": -6, "x1": 30, "z1": 6, "floor": -6, "ceiling": -1.5}, {"name": "Ventilation Shaft", "x0": 30, "z0": -3, "x1": 36, "z1": 3, "floor": -6, "ceiling": 0, "open": true}], "portals": [], "openTop": -1},
+        {"piece": "Group", "parent": "Underground (-6)", "name": "Lighting"},
+        {"piece": "CellLighting", "lighting": "Underground (-6)/Lighting", "cells": [{"name": "Stairwell", "x0": 20, "z0": 14, "x1": 26, "z1": 22, "floor": -6, "ceiling": 0, "open": true}, {"name": "Passage", "x0": 20, "z0": 6, "x1": 26, "z1": 14, "floor": -6, "ceiling": -2}, {"name": "Room", "x0": 16, "z0": -6, "x1": 30, "z1": 6, "floor": -6, "ceiling": -1.5}, {"name": "Ventilation Shaft", "x0": 30, "z0": -3, "x1": 36, "z1": 3, "floor": -6, "ceiling": 0, "open": true}]},
+        {"piece": "Group", "parent": "Underground (-6)", "name": "Utilities"},
+        {"piece": "CellUtilities", "parent": "Underground (-6)/Utilities", "cells": [{"name": "Stairwell", "x0": 20, "z0": 14, "x1": 26, "z1": 22, "floor": -6, "ceiling": 0, "open": true}, {"name": "Passage", "x0": 20, "z0": 6, "x1": 26, "z1": 14, "floor": -6, "ceiling": -2}, {"name": "Room", "x0": 16, "z0": -6, "x1": 30, "z1": 6, "floor": -6, "ceiling": -1.5}, {"name": "Ventilation Shaft", "x0": 30, "z0": -3, "x1": 36, "z1": 3, "floor": -6, "ceiling": 0, "open": true}]},
+        {"piece": "UtilityStation", "parent": "Underground (-6)/Utilities", "wallPoint": [18, 6], "outward": [0, -1], "floor": -6},
+        {"piece": "Flight", "parent": "Underground (-6)", "name": "Stair (-6 to ±0)", "basePoint": [23, 14], "direction": [0, 1], "width": 6, "y0": -6, "y1": 0, "floor": -6},
+        {"piece": "Group", "parent": "Underground (-6)", "name": "Guardrails"},
+        {"piece": "RailAround", "rails": "Underground (-6)/Guardrails", "shape": [[20, 14], [26, 14], [26, 22], [20, 22]], "height": 0, "gaps": [[[23, 22], 6]]},
+        {"piece": "ShaftWalls", "parent": "Underground (-6)", "name": "Ventilation Shaft (to +6)", "x0": 30, "z0": -3, "x1": 36, "z1": 3, "y0": -1, "y1": 6},
+        {"piece": "Group", "parent": "Underground (-6)", "name": "Future Mechanics"},
+        {"piece": "Marker", "parent": "Underground (-6)/Future Mechanics", "name": "Ladder (future): up the ventilation shaft", "at": [33, 0], "height": -6}
+      ]
+    },
+    {
+      "name": "the movement tests",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Movement Tests"},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Step 0.30 m", "x0": -40, "x1": -36, "z0": -24, "z1": -21, "y0": 0, "y1": 0.3},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Step 0.40 m", "x0": -34, "x1": -30, "z0": -24, "z1": -21, "y0": 0, "y1": 0.4},
+        {"piece": "Platform", "parent": "Movement Tests", "name": "Ledge 2.0 m", "x0": -28, "x1": -24, "z0": -24, "z1": -20, "y0": 0, "top": 2},
+        {"piece": "CornerBrackets", "parent": "Movement Tests", "x0": -40, "x1": -36, "z0": -24, "z1": -21, "height": 0},
+        {"piece": "FloorLabel", "parent": "Movement Tests", "text": "0.30 m", "at": [-38, -25.6], "height": 0, "facing": [0, 1]},
+        {"piece": "CornerBrackets", "parent": "Movement Tests", "x0": -34, "x1": -30, "z0": -24, "z1": -21, "height": 0},
+        {"piece": "FloorLabel", "parent": "Movement Tests", "text": "0.40 m", "at": [-32, -25.6], "height": 0, "facing": [0, 1]},
+        {"piece": "CornerBrackets", "parent": "Movement Tests", "x0": -28, "x1": -24, "z0": -24, "z1": -20, "height": 0},
+        {"piece": "FloorLabel", "parent": "Movement Tests", "text": "2.0 m", "at": [-26, -25.6], "height": 0, "facing": [0, 1]},
+        {"piece": "Platform", "parent": "Movement Tests", "name": "Slope Test Deck (+3)", "x0": -20, "x1": -16, "z0": -32, "z1": -26, "y0": 0, "top": 3},
+        {"piece": "Ramp", "parent": "Movement Tests", "name": "Slope 40°", "start": [-18, -22.42474], "direction": [0, -1], "width": 4, "length": 3.5752609, "y0": 0, "y1": 3},
+        {"piece": "FloorLabel", "parent": "Movement Tests", "text": "40°", "at": [-18, -21.024738], "height": 0, "facing": [0, -1]},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Tunnel Wall (South)", "x0": -14, "x1": -8, "z0": -24.5, "z1": -24, "y0": 0, "y1": 1.5},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Tunnel Wall (North)", "x0": -14, "x1": -8, "z0": -21, "z1": -20.5, "y0": 0, "y1": 1.5},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Tunnel Ceiling (1.5 m clear)", "x0": -14, "x1": -8, "z0": -24.5, "z1": -20.5, "y0": 1.5, "y1": 2},
+        {"piece": "FloorLabel", "parent": "Movement Tests", "text": "1.5 m", "at": [-15.4, -22.5], "height": 0, "facing": [1, 0]},
+        {"piece": "Platform", "parent": "Movement Tests", "name": "Beam Start (+4)", "x0": -38, "x1": -34, "z0": -40, "z1": -36, "y0": 0, "top": 4},
+        {"piece": "Platform", "parent": "Movement Tests", "name": "Beam End (+4)", "x0": -24, "x1": -20, "z0": -40, "z1": -36, "y0": 0, "top": 4},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Narrow Beam (1 m, +4)", "x0": -34, "x1": -24, "z0": -38.5, "z1": -37.5, "y0": 3, "y1": 4, "surface": "Steel"},
+        {"piece": "HazardStripes", "parent": "Movement Tests", "a": [-34, -40], "b": [-34, -36], "inward": [-1, 0], "height": 4},
+        {"piece": "HazardStripes", "parent": "Movement Tests", "a": [-24, -40], "b": [-24, -36], "inward": [1, 0], "height": 4},
+        {"piece": "Flight", "parent": "Movement Tests", "name": "Stair (Beam Start)", "basePoint": [-36, -30.4], "direction": [0, -1], "width": 4, "y0": 0, "y1": 4},
+        {"piece": "Ruler", "parent": "Movement Tests", "name": "Ruler (Beam)", "start": [-33.5, -35.2], "direction": [1, 0], "length": 9, "height": 0},
+        {"piece": "Block", "parent": "Movement Tests", "name": "Wall-Run Wall (+8)", "x0": -33, "x1": -23, "z0": -33, "z1": -32, "y0": 0, "y1": 8, "surface": "Panel"}
+      ]
+    },
+    {
+      "name": "the mechanics",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Mechanics"},
+        {"piece": "MovingPlatform", "parent": "Mechanics", "label": "Lift", "top": [-34, 0.05, -48], "size": [4, 0.5, 4], "travel": [0, 4, 0], "period": 6, "pause": 1.5},
+        {"piece": "Platform", "parent": "Mechanics", "name": "Lift Landing (+4)", "x0": -32, "x1": -28, "z0": -50, "z1": -46, "y0": 0, "top": 4, "coping": "Accent"},
+        {"piece": "LowBeam", "parent": "Mechanics", "name": "Slide Gate", "a": [-20, -51], "b": [-20, -45], "floor": 0, "clear": 1.2},
+        {"piece": "FloorLabel", "parent": "Mechanics", "text": "1.2 m", "at": [-22.5, -48], "height": 0, "facing": [1, 0]},
+        {"piece": "TimingGate", "parent": "Mechanics", "course": "Playground", "role": "start", "a": [-12, -51], "b": [-12, -45], "floor": 0, "approach": [1, 0], "distance": 20},
+        {"piece": "TimingGate", "parent": "Mechanics", "course": "Playground", "role": "finish", "a": [8, -51], "b": [8, -45], "floor": 0, "approach": [1, 0], "distance": 20, "display": true}
+      ]
+    },
+    {
+      "name": "the ground",
+      "pieces": [
+        {"piece": "Ground", "parent": "", "half": 55, "openings": [[20, 14, 26, 22], [30, -3, 36, 3]]}
+      ]
+    },
+    {
+      "name": "the trees",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Lawns and Trees"},
+        {"piece": "Lawns", "parent": "Lawns and Trees", "area": [38, -52, 54, 52], "floors": [0], "salt": 0},
+        {"piece": "Lawns", "parent": "Lawns and Trees", "area": [-52, 40, 38, 54], "floors": [0], "salt": 1},
+        {"piece": "Lawns", "parent": "Lawns and Trees", "area": [-40, -12, -22, 12], "floors": [4], "salt": 2},
+        {"piece": "ScatterTrees", "parent": "Lawns and Trees", "area": [38, -52, 54, 52], "floor": 0, "salt": 0},
+        {"piece": "ScatterTrees", "parent": "Lawns and Trees", "area": [-52, 40, 38, 54], "floor": 0, "salt": 1}
+      ]
+    }
+  ]
+}

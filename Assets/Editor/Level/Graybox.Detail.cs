@@ -105,9 +105,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// A platform: a block (x from x0 to x1, z from z0 to z1, from y0 to top) with a coping round its top edge (see
         /// Coping). For platforms without guardrails; a guardrail's own fascia marks the edge it stands on.
         /// </summary>
+        [Piece]
         public static GameObject Platform(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float top,
             Surface surface = Surface.Concrete, Surface coping = Surface.Graphite)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Platform), parent, name, x0, x1, z0, z1, y0, top, surface, coping);
             GameObject block = Block(parent, name, x0, x1, z0, z1, y0, top, surface);
             Coping(parent, $"{name} (Coping)", Rect(x0, z0, x1, z1), top, Mathf.Min(Settings.platforms.copingHeight, (top - y0) / 4f), coping);
             return block;
@@ -118,8 +120,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// under its top, standing a few centimetres proud of its sides, so the edge reads from a distance (and a ledge to catch
         /// is easy to see). The bands run on past each corner to close it. One object, with no collider.
         /// </summary>
+        [Piece]
         public static void Coping(Transform parent, string name, Vector2[] shape, float top, float height, Surface surface = Surface.Graphite)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Coping), parent, name, shape, top, height, surface);
             float CopingDepth = Settings.platforms.copingDepth, CopingGap = Settings.platforms.copingGap;
             if (height < 2f * CopingGap) { return; }
             var mesh = new GrayboxMesh();
@@ -148,9 +152,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// top left open where something stands on it; with accent, an orange strip up the middle of each face, the
         /// style sheet's column. Its collider is the plain box of its footprint, as a box column's was.
         /// </summary>
+        [Piece]
         public static GameObject Column(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f,
             Surface surface = Surface.Steel, bool accent = false, bool capped = true)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Column), parent, name, centre, size, y0, y1, yaw, surface, accent, capped);
             var column = new GameObject(name);
             column.transform.SetParent(parent, false);
             column.transform.SetLocalPositionAndRotation(new Vector3(centre.x, y0, centre.y), Quaternion.Euler(0f, yaw, 0f));

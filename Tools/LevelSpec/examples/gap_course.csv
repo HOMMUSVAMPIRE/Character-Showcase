@@ -1,0 +1,10 @@
+part,piece,parent,name,x0,x1,z0,z1,y0,top,coping,at,height,yaw,text,facing,start,direction,width,length,y1,scene,half,openings
+# A level as a spreadsheet: a row a piece, a column a setting (blank: left out). The Level row names the level and its scene.
+,Level,,Gap Course (CSV),,,,,,,,,,,,,,,,,,Assets/Scenes/GapCourseCsv/GapCourseCsv.unity,,
+Course,Group,,Course,,,,,,,,,,,,,,,,,,,,
+,SpawnMarker,Course,Start,,,,,,,,"0, -4",0.1,0,,,,,,,,,,
+,Ramp,Course,Ramp (1:4),,,,,0,,,,,,,,"0, -2","0, 1",6,16,4,,,
+,Platform,Course,Start (+4),-4,4,14,24,0,4,Accent,,,,,,,,,,,,,
+,Platform,Course,Landing (+4),-4,4,30.5,40,0,4,Accent,,,,,,,,,,,,,
+,FloorLabel,Course,,,,,,,,,"0, 32",4,,6.5 m,"0, 1",,,,,,,,
+Ground,Ground,,,,,,,,,,,,,,,,,,,,,60,[]

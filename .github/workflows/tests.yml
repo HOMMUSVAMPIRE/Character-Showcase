@@ -42,6 +42,9 @@ jobs:
       # The runner image already has Python 3, which is all the hygiene check needs.
       - name: Check .meta files, GUIDs, assembly boundaries and reflected test fields
         run: python3 Tools/CI/check_project_hygiene.py
+      # The levelspec tool (Tools/LevelSpec) needs only Python 3 too: its specs, formats, checks and schematics.
+      - name: Test the level spec tool
+        run: python3 -m unittest discover -s Tools/LevelSpec/tests
 
   unity-tests:
     name: EditMode and PlayMode tests

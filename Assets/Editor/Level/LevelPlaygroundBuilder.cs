@@ -29,6 +29,8 @@ namespace CharacterShowcase.EditorTools.Level
     ///   slope past the slope limit, a tunnel to crouch through, and a narrow beam beside a wall-run wall (the
     ///   platforms with copings round their edges, the lanes marked out with corner brackets and their measures, the
     ///   edges to jump from with hazard stripes);
+    /// - south, one of each mechanic: a lift (a moving platform), a slide gate, and a timed 20 m run between two
+    ///   timing gates, and in the building a crate to push (fixtures Set Up Scene makes work);
     /// - placeholders and markers for mechanics to come, as the complex has them.
     /// </summary>
     public static class LevelPlaygroundBuilder
@@ -51,6 +53,7 @@ namespace CharacterShowcase.EditorTools.Level
             ("the building", BuildBuilding),
             ("the underground", BuildUnderground),
             ("the movement tests", BuildMovementTests),
+            ("the mechanics", BuildMechanics),
             ("the ground", (root, material) => { Begin(material); Ground(root, GroundHalf, GroundOpenings); }),
             ("the trees", BuildTrees));
 
@@ -185,7 +188,7 @@ namespace CharacterShowcase.EditorTools.Level
         private static void BuildBuilding(Transform root, Material material)
         {
             Transform building = Section(root, material, "Building");
-            Transform walls = Group(building, "Walls"), objects = Group(building, "Objects"), future = Group(building, "Future Mechanics");
+            Transform walls = Group(building, "Walls"), objects = Group(building, "Objects");
             const float x0 = 14f, x1 = 34f, z0 = -36f, z1 = -16f, top = 6f, t = 1f, h = t / 2f;
             // The west and east walls run the full length, the north and south between them, so none overlap.
             Wall(walls, "Wall (West)", new Vector2(x0, z0 - h), new Vector2(x0, z1 + h), 0f, top, t,
@@ -205,10 +208,9 @@ namespace CharacterShowcase.EditorTools.Level
             BracedFrame(catwalk, "Braced Frame", new Vector2(28f, walkZ0), new Vector2(28f, walkZ1), 0f, walk - Deck);
             foreach (float x in new[] { 20f, 31f }) { Bracket(catwalk, new Vector2(x, walkZ0), Vector2.up, walk - Deck); }
 
-            BoxXZ(objects, "Crate", new Vector2(28f, -30f), new Vector2(4f, 4f), 0f, 4f, 0f, Surface.Steel);
+            PushableCrate(objects, new Vector2(28f, -28f), 0f, 2f);
             UtilityStation(objects, new Vector2(x1 - h, -22f), Vector2.left, 0f); // On the east wall, between its pilasters.
             Block(objects, "Shelf", 17f, 23f, -34.5f, -33f, 0f, 2.5f, Surface.Graphite);
-            Marker(future, "Pushable Crate (future): the crate", new Vector2(28f, -30f), 4f);
             AreaSign(building, new Vector2(x0 - h, -30.5f), 1.2f, Vector2.left, "00", "Level Playground"); // Beside the door.
             Banner(building, new Vector2(19.5f, z1 + h), Vector2.up, top - 0.4f, 3.6f, "00"); // On the north wall, beside the window.
         }
@@ -292,6 +294,22 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(tests, "Stair (Beam Start)", new Vector2(-36f, -36f + FlightLength(0f, 4f)), Vector2.down, 4f, 0f, 4f);
             Ruler(tests, "Ruler (Beam)", new Vector2(-33.5f, -35.2f), Vector2.right, 9f, 0f);
             Block(tests, "Wall-Run Wall (+8)", -33f, -23f, -33f, -32f, 0f, 8f, Surface.Panel);
+        }
+
+        // ---- South: one of each mechanic (fixtures the scene's game setup makes work: see Graybox.Mechanics) ----
+
+        private static void BuildMechanics(Transform root, Material material)
+        {
+            Transform mechanics = Section(root, material, "Mechanics");
+            // A lift up to a landing at +4.
+            MovingPlatform(mechanics, "Lift", new Vector3(-34f, 0.05f, -48f), new Vector3(4f, 0.5f, 4f), new Vector3(0f, 4f, 0f), 6f, pause: 1.5f);
+            Platform(mechanics, "Lift Landing (+4)", -32f, -28f, -50f, -46f, 0f, 4f, coping: Surface.Accent);
+            // A low beam to slide or crouch under.
+            LowBeam(mechanics, "Slide Gate", new Vector2(-20f, -51f), new Vector2(-20f, -45f), 0f, 1.2f);
+            FloorLabel(mechanics, "1.2 m", new Vector2(-22.5f, -48f), 0f, Vector2.right);
+            // A 20 m timed run east, its times on the finish gate.
+            TimingGate(mechanics, "Playground", "start", new Vector2(-12f, -51f), new Vector2(-12f, -45f), 0f, Vector2.right, distance: 20f);
+            TimingGate(mechanics, "Playground", "finish", new Vector2(8f, -51f), new Vector2(8f, -45f), 0f, Vector2.right, distance: 20f, display: true);
         }
     }
 }

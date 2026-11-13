@@ -12,8 +12,12 @@ namespace CharacterShowcase.EditorTools.Level
         /// A tree standing on a floor at "at", floor: a trunk and a canopy of three faceted tiers, its sizes and turn
         /// picked by random (within the settings' ranges). Its trunk has a box collider.
         /// </summary>
+        [Piece]
         public static void Tree(Transform parent, Vector2 at, float floor, System.Random random)
         {
+            // A seed of its own, drawn from the random it was given, so a level spec can record it (see SeededRandom).
+            if (random is not SeededRandom) { random = new SeededRandom(random.Next()); }
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Tree), parent, at, floor, random);
             GrayboxSettings.FoliageSettings f = Settings.foliage;
             float Range(Vector2 range) => Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
             float trunk = Range(f.trunkHeight), radius = Range(f.canopyRadius), turn = (float)random.NextDouble() * 360f;
@@ -44,8 +48,12 @@ namespace CharacterShowcase.EditorTools.Level
         /// orange band round its foot, soil inside, shrubs along it, and a tree in the middle if asked for. One box
         /// collider round the planter (it's too high to step onto), and the tree's trunk.
         /// </summary>
+        [Piece]
         public static void Planter(Transform parent, string name, float x0, float x1, float z0, float z1, float floor, bool tree, System.Random random)
         {
+            // A seed of its own, drawn from the random it was given, so a level spec can record it (see SeededRandom).
+            if (random is not SeededRandom) { random = new SeededRandom(random.Next()); }
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Planter), parent, name, x0, x1, z0, z1, floor, tree, random);
             float h = Settings.foliage.planterHeight, rim = 0.15f, soil = h - 0.12f;
             var planter = new GameObject(name);
             planter.transform.SetParent(parent, false);
@@ -79,8 +87,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// settings' clearance (from just above the floor to above head height), so they never crowd a route, a stair or
         /// a platform. Placed once the level's built (see Defer), seeded from the settings' seed and salt.
         /// </summary>
+        [Piece]
         public static void ScatterTrees(Transform parent, UnityEngine.Rect area, float floor, int salt, float spread = 1f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(ScatterTrees), parent, area, floor, salt, spread);
             Defer(() =>
             {
                 GrayboxSettings.FoliageSettings f = Settings.foliage;
@@ -94,7 +104,7 @@ namespace CharacterShowcase.EditorTools.Level
                         Vector2 at = new(x + ((float)random.NextDouble() - 0.5f) * 0.6f * spacing, z + ((float)random.NextDouble() - 0.5f) * 0.6f * spacing);
                         if (!FloorUnder(parent, at, floor, out float under) || Mathf.Abs(under - floor) > 0.1f) { continue; }
                         Vector3 centre = parent.TransformPoint(new Vector3(at.x, floor + 0.3f + 2.5f, at.y));
-                        if (Physics.CheckBox(centre, new Vector3(c, 2.5f, c), parent.rotation)) { continue; }
+                        if (Physics.CheckBox(centre, new Vector3(c, 2.5f, c), parent.rotation, ~0, QueryTriggerInteraction.Ignore)) { continue; }
                         Tree(trees, at, floor, random);
                     }
                 }
@@ -111,8 +121,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// mesh stays small and is culled on its own. spacing scales the cells (bigger for wide, sparse ground) and
         /// density the tufts.
         /// </summary>
+        [Piece]
         public static void Lawns(Transform parent, UnityEngine.Rect area, float[] floors, int salt, float spacing = 1f, float density = 1f)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Lawns), parent, area, floors, salt, spacing, density);
             Defer(() =>
             {
                 GrayboxSettings.FoliageSettings f = Settings.foliage;
@@ -134,7 +146,7 @@ namespace CharacterShowcase.EditorTools.Level
                             if (!FloorAt(x - reach, z - reach, floor) || !FloorAt(x + reach, z - reach, floor) ||
                                 !FloorAt(x - reach, z + reach, floor) || !FloorAt(x + reach, z + reach, floor)) { continue; }
                             Vector3 centre = parent.TransformPoint(new Vector3(x, floor + 0.08f + 1.2f, z));
-                            if (Physics.CheckBox(centre, new Vector3(half + clear, 1.2f, half + clear), parent.rotation)) { continue; }
+                            if (Physics.CheckBox(centre, new Vector3(half + clear, 1.2f, half + clear), parent.rotation, ~0, QueryTriggerInteraction.Ignore)) { continue; }
                             grass[i, j] = true;
                         }
                     }

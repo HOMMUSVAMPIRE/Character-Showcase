@@ -14,8 +14,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// onto the surface) the settings' width: diagonal bands, orange and graphite in turn, cut square at the ends.
         /// One object, with no collider.
         /// </summary>
+        [Piece]
         public static void HazardStripes(Transform parent, Vector2 a, Vector2 b, Vector2 inward, float height)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(HazardStripes), parent, a, b, inward, height);
             GrayboxSettings.MarkingSettings m = Settings.markings;
             float length = Vector2.Distance(a, b), width = m.hazardWidth, stripe = m.stripeWidth;
             if (length < 0.1f) { return; }
@@ -42,8 +44,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// Orange corner brackets on the floor at height round an axis-aligned footprint (x from x0 to x1, z from z0 to
         /// z1), the settings' gap out from it: the style sheet's "[ ]" marking a test lane. One object, with no collider.
         /// </summary>
+        [Piece]
         public static void CornerBrackets(Transform parent, float x0, float x1, float z0, float z1, float height)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CornerBrackets), parent, x0, x1, z0, z1, height);
             GrayboxSettings.MarkingSettings m = Settings.markings;
             float arm = m.cornerBracket.x, w = m.cornerBracket.y, g = m.cornerGap, y1 = height + m.thickness;
             var mesh = new GrayboxMesh();
@@ -69,8 +73,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// Lettering painted on the floor at height (centred at "at"), reading the right way up for someone standing on
         /// the side away from "facing" and looking along it (yaw: facing north reads from the south).
         /// </summary>
+        [Piece]
         public static TextMeshPro FloorLabel(Transform parent, string text, Vector2 at, float height, Vector2 facing)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(FloorLabel), parent, text, at, height, facing);
             float yaw = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg;
             float lift = Settings.markings.thickness;
             return Text(parent, $"Label ({text})", text, new Vector3(at.x, height + lift, at.y), Quaternion.Euler(90f, yaw, 0f),
@@ -162,8 +168,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// on two legs from bottom - the settings' lift. Facing along facing (it reads from the side facing points to).
         /// The panel (and legs) have box colliders.
         /// </summary>
+        [Piece]
         public static void AreaSign(Transform parent, Vector2 at, float bottom, Vector2 facing, string number, string name, bool freeStanding = false)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(AreaSign), parent, at, bottom, facing, number, name, freeStanding);
             GrayboxSettings.SignSettings s = Settings.signs;
             float yaw = Mathf.Atan2(-facing.x, -facing.y) * Mathf.Rad2Deg;
             var sign = new GameObject($"Area Sign ({number} {name})");

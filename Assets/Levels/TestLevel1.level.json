@@ -1,0 +1,16 @@
+{
+  "format": "character-showcase-level",
+  "version": 1,
+  "name": "Test Level 1",
+  "scene": "Assets/Scenes/TestLevel1/TestLevel1.unity",
+  "parts": [
+    {
+      "name": "Main",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Main"},
+        {"piece": "SpawnMarker", "parent": "Main", "name": "Start", "at": [0, -4], "height": 0.1, "yaw": 0},
+        {"piece": "Ground", "parent": "", "half": 50, "openings": []}
+      ]
+    }
+  ]
+}

@@ -17,8 +17,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// baked reflection probe, so it reflects itself instead of the sky above. Open cells (stairwells and shafts)
         /// are lit from above.
         /// </summary>
+        [Piece]
         public static void CellLighting(Transform lighting, IEnumerable<Cell> cells)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CellLighting), lighting, cells);
             GrayboxSettings.LightSettings lights = Settings.lights;
             GrayboxSettings.FixtureSettings fixtures = Settings.fixtures;
             foreach (Cell cell in cells)
@@ -119,8 +121,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// Bollards along each edge of a shape on the ground at floor, at most the settings' bollard spacing apart and
         /// spread evenly along it, leaving gaps (centre, width) clear where routes go through.
         /// </summary>
+        [Piece]
         public static void Bollards(Transform parent, Vector2[] shape, float floor, params (Vector2 centre, float width)[] gaps)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Bollards), parent, shape, floor, gaps);
             Transform group = Group(parent, "Bollards");
             for (int i = 0; i < shape.Length; i++)
             {
@@ -138,8 +142,10 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>A bollard standing at floor: an octagonal graphite post with a glowing band near its top, and a box collider.</summary>
+        [Piece]
         public static GameObject Bollard(Transform parent, Vector2 at, float floor)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Bollard), parent, at, floor);
             var bollard = new GameObject("Bollard");
             bollard.transform.SetParent(parent, false);
             bollard.transform.localPosition = new Vector3(at.x, floor, at.y);
@@ -163,8 +169,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// A floodlight on a mast standing at floor, its head facing along facing: a graphite mast (with a box collider)
         /// and head, the head's glowing face to the front.
         /// </summary>
+        [Piece]
         public static GameObject Floodlight(Transform parent, Vector2 at, float floor, Vector2 facing)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Floodlight), parent, at, floor, facing);
             float yaw = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg;
             var flood = new GameObject("Floodlight");
             flood.transform.SetParent(parent, false);
@@ -190,8 +198,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// A cyan accent post standing at the given height (on a guardrail's line), rising the settings' height above
         /// the rail: the style sheet's accent light. To see only: no collider (the guardrail's covers it).
         /// </summary>
+        [Piece]
         public static void AccentPost(Transform parent, Vector2 at, float height)
         {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(AccentPost), parent, at, height);
             var post = new GameObject("Accent Post (Cyan)");
             post.transform.SetParent(parent, false);
             post.transform.localPosition = new Vector3(at.x, height, at.y);

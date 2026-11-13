@@ -49,8 +49,7 @@ namespace CharacterShowcase.EditorTools.Level
             StepRun = Run;
 
             Transform gardens = Group(complex, "02 Kinetic Gardens");
-            Transform district = Group(gardens, "District");
-            district.localPosition = PlanToWorld;
+            Transform district = Placed(gardens, "District", PlanToWorld);
             BuildBoundary(Group(district, "District Boundary"));
             Transform platforms = Group(district, "Platforms");
             Transform stairs = Group(district, "Stairs and Ramps");
