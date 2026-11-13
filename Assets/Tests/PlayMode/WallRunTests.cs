@@ -10,8 +10,10 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Tests of wall-running: moving fast along a wall in mid-air while steering along it runs along the wall, falling
-    /// slowly, until the run lasts its longest, the wall ends, or steering stops; jumping jumps off the wall and gives
-    /// back air jumps; and no wall run starts without steering, heading into the wall, or close to the ground. The
+    /// slowly, until the run lasts its longest, the wall ends (or the feet drop below its bottom edge), or steering has
+    /// stopped for the release delay (not just for a moment); jumping jumps off the wall and gives back air jumps; and
+    /// no wall run starts without steering mostly along the wall, heading into the wall, close to the ground, or beside a wall that doesn't
+    /// reach down to the feet. The
     /// character is launched in mid-air beside a long wall on its right. Expected values are read from the movement mode.
     /// </summary>
     public class WallRunTests
@@ -183,6 +185,71 @@ namespace CharacterShowcase.Tests
             bool ran = false;
             yield return rig.Run(0.4f, _ => CharacterTestRig.Move(Vector3.forward), _ => ran |= WallRunning);
             Assert.That(ran, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator SteeringAwayForAMoment_KeepsRunning_UntilTheReleaseDelay()
+        {
+            yield return SetUpWall();
+            yield return LaunchAlongWall();
+            yield return rig.Run(0.15f, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
+            float delay = rig.MovementSetting<float>("wallRunReleaseDelay");
+            Vector3 away = new Vector3(-1f, 0f, 0.3f).normalized; // The wall is on the right (+X).
+            yield return rig.Run(0.5f * delay, _ => CharacterTestRig.Move(away));
+            Assert.That(WallRunning, Is.True, "Steering away for a moment shouldn't drop the character off the wall.");
+            yield return rig.Run(delay + 0.05f, _ => CharacterTestRig.Move(away));
+            Assert.That(WallRunning, Is.False, "Steering away for the release delay should let go of the wall.");
+        }
+
+        [UnityTest]
+        public IEnumerator WhenTheFeetDropBelowTheWallsBottomEdge_TheWallRunEnds()
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(new Vector3(0f, 12f, -25f), settleSeconds: 0f);
+            wallFace = rig.Radius + 0.1f;
+            // A wall hanging in the air, its bottom edge a little below the character's feet.
+            float bottom = rig.Position.y - 0.4f;
+            rig.Box("Hanging Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));
+            float footHeight = rig.MovementSetting<float>("wallRunFootHeight") * rig.StandingHeight;
+            yield return LaunchAlongWall();
+            bool ran = false, ranBelow = false;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                ran |= WallRunning;
+                if (WallRunning && rig.Position.y + footHeight < bottom - 0.05f) { ranBelow = true; }
+            });
+            Assert.That(ran, Is.True, "Test setup: the character should run along the wall at first.");
+            Assert.That(ranBelow, Is.False, "The wall run should end once the feet are below the wall's bottom edge.");
+            Assert.That(WallRunning, Is.False, "The wall run should have ended.");
+        }
+
+        [UnityTest]
+        public IEnumerator AWallAboveTheFeet_IsNotRunAlong()
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(new Vector3(0f, 12f, -25f), settleSeconds: 0f);
+            wallFace = rig.Radius + 0.1f;
+            // Beside the character's upper body only: its bottom edge at the character's waist.
+            float bottom = rig.Position.y + 0.5f * rig.StandingHeight;
+            rig.Box("High Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));
+            yield return LaunchAlongWall();
+            bool ran = false;
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => ran |= WallRunning);
+            Assert.That(ran, Is.False, "A wall that doesn't reach down to the character's feet shouldn't be run along.");
+        }
+
+        [UnityTest]
+        public IEnumerator SteeringIntoTheWallAtAnAngle_NoWallRunStarts()
+        {
+            yield return SetUpWall();
+            // Moving along the wall, but steering well into it (the wall is on the right, +X).
+            float angle = rig.MovementSetting<float>("wallRunMaxSteerAngle") + 15f;
+            Vector3 steer = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+            yield return rig.Launch(Vector3.forward * WallRunSpeed, CharacterTestRig.Move(steer));
+            bool ran = false;
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Move(steer), _ => ran |= WallRunning);
+            Assert.That(ran, Is.False, "A wall run needs steering mostly along the wall.");
         }
     }
 }

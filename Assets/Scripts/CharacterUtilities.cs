@@ -98,6 +98,10 @@ namespace Character
         Grabbing = 4096,
         // Sliding slowly down a wall it ran into head-on
         WallSliding = 8192,
+        // Vaulting over something too low to grab and too high to step onto, caught in mid-air
+        Vaulting = 16384,
+        // Stepping up onto the top of something low and deep, reached from mid-air or sprinting (see Vaulting)
+        SteppingUp = 32768,
     }
 
     /// <summary>
@@ -149,6 +153,12 @@ namespace Character
         // Started or stopped sliding down a wall (jumping off one is a WallJumped)
         WallSlideStarted = 8388608,
         WallSlideEnded = 16777216,
+        // Started or finished vaulting over something
+        VaultStarted = 33554432,
+        VaultEnded = 67108864,
+        // Started or finished stepping up onto something low and deep
+        StepUpStarted = 134217728,
+        StepUpEnded = 268435456,
     }
 
     /// <summary>How a character's speeds change with its size. See MovementController.</summary>

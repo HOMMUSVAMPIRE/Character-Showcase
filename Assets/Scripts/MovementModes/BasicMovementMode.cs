@@ -5,13 +5,13 @@ namespace Character
 {
     /// <summary>
     /// A Scriptable Object type which defines a very standard character movement scheme: walking, sprinting, jumping and
-    /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, and pushing and pulling
+    /// dashing (here), and crouching, sliding, rolling, wall-running, wall sliding, ledge grabbing and climbing, vaulting, and pushing and pulling
     /// objects, each in a file of its own (BasicMovementMode.Crouch.cs and so on), with its settings under its own
     /// header in the inspector.
     /// </summary>
     [CreateAssetMenu(fileName = "BasicMovementMode", menuName = "Scriptable Objects/MovementModes/Basic")] [System.Serializable]
     public partial class BasicMovementMode : MovementMode, WalkRunMode, JumpMode, DashMode,
-        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, PushPullMode
+        CrouchMode, SlideMode, RollMode, WallRunningMode, WallSlideMode, LedgeMode, VaultMode, PushPullMode
     {
         [Header("Speed")]
         [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
@@ -124,6 +124,7 @@ namespace Character
             // on if it's under way, or starts if its inputs and surroundings call for it, and returns whether it has the
             // character this step. Otherwise the character walks, dashes and jumps (crouched or not).
             bool abilityHasCharacter = ProcessMovementDataForLedge(ref movementData, inputs, controller)
+                || ProcessMovementDataForVault(ref movementData, inputs, controller)
                 || ProcessMovementDataForPushPull(ref movementData, inputs, controller)
                 || ProcessMovementDataForWallRun(ref movementData, inputs, controller)
                 || ProcessMovementDataForWallSlide(ref movementData, inputs, controller)
@@ -198,12 +199,19 @@ namespace Character
             if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; controller.wallSlide.jumpsUsed = 0; controller.wallSlide.hasLastWall = false; }
             controller.wallSlide.cooldownRemaining = Mathf.Max(0f, controller.wallSlide.cooldownRemaining - deltaTime);
             controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - deltaTime);
+            // Air steering comes back after a wall jump, and is all back on the ground.
+            controller.wallJump.elapsed += deltaTime;
+            if (movementData.initialGrounded) { controller.wallJump.recovering = false; controller.wallJump.hasLastWall = false; }
         }
 
-        /// <summary>Whether a dash or one of the abilities has the character, so no other ability may start.</summary>
-        private static bool AbilityInProgress(MovementController controller) =>
-            controller.dash.IsDashing || controller.ledge.IsActive || controller.grab.IsGrabbing
-            || controller.wallRun.IsWallRunning || controller.wallSlide.IsWallSliding || controller.roll.IsRolling || controller.slide.IsSliding;
+        /// <summary>
+        /// Whether a dash or one of the abilities has the character, so no other ability may start (leaving out a slide
+        /// down a wall, if asked, for an ability that may take over from one).
+        /// </summary>
+        private static bool AbilityInProgress(MovementController controller, bool exceptWallSlide = false) =>
+            controller.dash.IsDashing || controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing
+            || controller.wallRun.IsWallRunning || (controller.wallSlide.IsWallSliding && !exceptWallSlide)
+            || controller.roll.IsRolling || controller.slide.IsSliding;
 
         /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
         private static Vector3 InputDirection(MovementData movementData, Inputs inputs)
@@ -351,7 +359,8 @@ namespace Character
             else
             {
                 // We are not grounded, so determine the extent to which we are able to move
-                steeringEffectiveness *= airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength;
+                steeringEffectiveness *= airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength
+                                         * WallJumpSteering(controller);
                 SteerInAir(ref movementData, inputs, controller, steeringEffectiveness);
                 movementData.state = movementData.state | CharacterState.Moving;
                 return;

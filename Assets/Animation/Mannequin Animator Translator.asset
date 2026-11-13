@@ -22,6 +22,7 @@ MonoBehaviour:
   grabSpeedParameter: GrabSpeed
   rollProgressParameter: RollProgress
   climbProgressParameter: ClimbProgress
+  vaultProgressParameter: VaultProgress
   groundedParameter: Grounded
   jumpingParameter: 
   dashingParameter: Dashing
@@ -33,6 +34,7 @@ MonoBehaviour:
   wallSlidingParameter: WallSliding
   hangingParameter: Hanging
   climbingParameter: Climbing
+  vaultingParameter: Vaulting
   grabbingParameter: Grabbing
   eventTriggers:
   - events: 65539

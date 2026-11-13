@@ -10,6 +10,11 @@ namespace Character
     /// floor (keeping the animation's own foot lift, so swinging feet still clear the ground), and tilts planted
     /// feet to match the slope. The pelvis is lowered so the lower foot can actually reach its ground.
     ///
+    /// Stepping up onto something (from mid-air or a sprint), the model eases up after the character's quick rise (see
+    /// AnimationController), and this tucks the feet up onto the top meanwhile: any foot over it, or about to reach its
+    /// edge, is lifted to stand on it at least, so the knees bend up rather than the feet sinking into it, and they
+    /// straighten as the body catches up. Ordinary placement takes over again once it has.
+    ///
     /// Feeds CharacterIK's procedural channel, so goals set manually on CharacterIK still take priority.
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
@@ -75,6 +80,13 @@ namespace Character
         [Tooltip("Seconds to fade foot placement in on landing and out on leaving the ground.")]
         [Min(0f)] [SerializeField] private float groundedFadeTime = 0.12f;
 
+        [Header("Stepping up")]
+        [Tooltip("Stepping up onto something, how far (meters, for a model of average size) in front of its edge a foot is " +
+                 "already lifted to its top, so the feet are tucked up as they reach it rather than catching on it.")]
+        [Min(0f)] [SerializeField] private float stepUpTuckReach = 0.3f;
+        [Tooltip("Seconds to ease the step up's tuck in, and out once the model has caught up with the character.")]
+        [Min(0f)] [SerializeField] private float stepUpFadeTime = 0.05f;
+
         [Header("Debug")]
         [SerializeField] private bool drawGizmos = true;
 
@@ -100,6 +112,9 @@ namespace Character
         private FootState left, right;
         private float pelvisOffset, pelvisVelocity;
         private float activeWeight;
+        // The step up's tuck: how far it's eased in, and the edge stepped up onto (kept while easing out).
+        private float stepUpWeight;
+        private Vector3 stepUpEdge, stepUpNormal;
         private readonly RaycastHit[] hits = new RaycastHit[8];
 
         /// <summary>How far the pelvis is currently lowered, in meters (negative = lower).</summary>
@@ -158,7 +173,7 @@ namespace Character
             bool grounded = state.grounded;
             // Not while dashing, sliding or rolling either: their poses trail or tuck the legs, which planting the feet
             // would undo.
-            bool posed = state.dashing || state.sliding || state.rolling;
+            bool posed = state.dashing || state.sliding || state.rolling || state.vaulting;
             float goal = grounded && !posed ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
 
@@ -167,8 +182,27 @@ namespace Character
             // animation, the body and the foot goals are moved by that share of the difference, so the soles still rest
             // on the floor. (Blended at weight w, a foot is w of the way from the animated foot, moved with the body, to
             // its goal: moving both by (1 - w) of the difference puts it on the floor.)
+            // Stepping up, the feet are tucked onto the top instead (see SolveStepUp), until the model has caught up.
+            bool steppingUp = (state.steppingUp || state.stepUpLag < 0f) && state.ledgeNormal != Vector3.zero;
+            if (steppingUp)
+            {
+                stepUpEdge = state.ledgeEdge;
+                stepUpNormal = state.ledgeNormal;
+            }
+            float stepUpGoal = steppingUp || state.stepUpLag < 0f ? weight : 0f;
+            stepUpWeight = stepUpFadeTime > 0f ? Mathf.MoveTowards(stepUpWeight, stepUpGoal, dt / stepUpFadeTime) : stepUpGoal;
+            if (stepUpWeight > 0f && stepUpNormal != Vector3.zero) { activeWeight = 0f; }
+
             float animationLift = (1f - activeWeight) * (floorOffset - animatedFloorOffset) * VerticalScale;
             if (animationLift != 0f) { animator.bodyPosition += Vector3.up * animationLift; }
+            if (stepUpWeight > 0f && stepUpNormal != Vector3.zero)
+            {
+                SolveStepUp(animator, animationLift);
+                pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
+                left.locked = right.locked = false;
+                left.lockWeight = right.lockWeight = 0f;
+                return;
+            }
             if (activeWeight <= 0f)
             {
                 pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
@@ -200,6 +234,28 @@ namespace Character
             rightTarget += Vector3.up * animationLift;
             ik.SetProceduralGoal(IKLimb.LeftFoot, leftTarget, leftRotation, activeWeight, leftRotationWeight * activeWeight);
             ik.SetProceduralGoal(IKLimb.RightFoot, rightTarget, rightRotation, activeWeight, rightRotationWeight * activeWeight);
+        }
+
+        /// <summary>
+        /// Tucks the feet up onto the top stepped up onto: a foot over it, or within stepUpTuckReach of its edge, is
+        /// lifted (if it's lower) so its sole is on the top, and the leg's knee bends to reach; feet further back are
+        /// left as animated, hanging in front of the wall.
+        /// </summary>
+        private void SolveStepUp(Animator animator, float animationLift)
+        {
+            float size = animator.isHuman && animator.humanScale > 0f ? animator.humanScale * transform.lossyScale.y : 1f;
+            Vector3 TuckedFoot(AvatarIKGoal goal, float soleHeight)
+            {
+                Vector3 foot = CharacterUtilities.AnimatedIKGoalPosition(animator, goal) + Vector3.up * animationLift;
+                float ahead = Vector3.Dot(foot - stepUpEdge, -stepUpNormal); // Positive over the top.
+                float onTop = stepUpEdge.y + soleHeight * VerticalScale;
+                if (ahead > -stepUpTuckReach * size && foot.y < onTop) { foot.y = onTop; }
+                return foot;
+            }
+            Vector3 leftFoot = TuckedFoot(AvatarIKGoal.LeftFoot, animator.leftFeetBottomHeight);
+            Vector3 rightFoot = TuckedFoot(AvatarIKGoal.RightFoot, animator.rightFeetBottomHeight);
+            ik.SetProceduralGoal(IKLimb.LeftFoot, leftFoot, animator.GetIKRotation(AvatarIKGoal.LeftFoot), stepUpWeight, 0f);
+            ik.SetProceduralGoal(IKLimb.RightFoot, rightFoot, animator.GetIKRotation(AvatarIKGoal.RightFoot), stepUpWeight, 0f);
         }
 
         private Vector3 PlaceFoot(Animator animator, AvatarIKGoal goal, float soleHeight, float floorHeight, ref FootState foot,

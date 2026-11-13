@@ -81,7 +81,7 @@ describes what the project does; this file describes how to change it safely.
   Animation reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code must not
   touch Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects implementing capability interfaces** (`WalkRunMode`, `JumpMode`,
-  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `PushPullMode` in
+  `DashMode`, `CrouchMode`, `SlideMode`, `RollMode`, `WallRunningMode`, `WallSlideMode`, `LedgeMode`, `VaultMode`, `PushPullMode` in
   `MovementMode.cs`). New movement abilities follow the same pattern: an interface for the capability, implemented by
   `BasicMovementMode`, with tunables as serialized fields on the asset. `BasicMovementMode` is a partial class: walking,
   jumping and dashing are in `BasicMovementMode.cs`, and each other ability in `BasicMovementMode.<Ability>.cs` with
@@ -127,7 +127,8 @@ own each of these files at a time; others should wait or work elsewhere.
   `slideMaxDuration`, `rollSpeedCurve`, `rollCooldown`, `rollInputBuffer`, `wallRunMaxDuration`, `wallRunMinHeight`,
   `wallJumpAwaySpeed`, `wallJumpUpSpeed`, `ledgeClimbDuration`, `ledgeHangHeight`, `ledgeGrabMaxHeight`,
   `ledgeMaxGrabRiseSpeed`, `wallSlideBraking`, `wallSlideMaxAngle`, `wallSlideMaxJumps`, `wallSlideJumpUpSpeed`,
-  `wallSlideJumpAwaySpeed`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
+  `wallSlideJumpAwaySpeed`, `ledgeGrabMinHeight`, `vaultRiseDuration`, `vaultSpeedRetention`, `vaultMinSpeed`, `vaultFromGround`, `vaultGroundMaxAngle`, `vaultStepUpHeight`, `wallRunFootHeight`, `wallRunReleaseDelay`, `wallSlideReleaseDelay`,
+  `wallJumpSteeringRecovery`, `wallSlideMaxStartRiseSpeed`, `wallRunMaxSteerAngle`. The hygiene check (which reads every `BasicMovementMode*.cs`) catches a missing one.
 
 ### Unity asset files (.meta, .prefab, .unity, .asset, .controller)
 
@@ -209,7 +210,7 @@ scenes) are the exception: `GrayboxScene` makes each only if it's missing, so th
 - **Ability animations** are Animator states built by `MannequinGenerator.BuildAbilityStates`, driven by the
   translator's Bool parameters (`Crouching`, `Sliding`, ...) and `GrabSpeed`, `RollProgress`, `ClimbProgress`; the
   `Crouch`, `Hang` and `Wall Slide` clips are the mannequin's own (`mannequin_animations.py`), their hand spread and
-  height checked against the Quaternius climbs (the libraries have no hang or wall slide). Hands on a ledge are `LedgeHandIK`, and on a wall slid down
+  height checked against the Quaternius climbs (the libraries have no hang or wall slide). Hands on a ledge (and the planted hand of a vault) are `LedgeHandIK`, and on a wall slid down
   `WallSlideIK` (both on every model prefab, added by `CharacterModelImporter` like `FootPlacementIK`), placed from
   `CharacterAnimationState.ledgeEdge` / `ledgeNormal` and `wallPoint` / `wallNormal`. `AnimatorParameterTranslator` can fire
   Animator triggers on them.

@@ -1,6 +1,6 @@
 ﻿<Solution>
-  <Project Path="CharacterShowcase.Tests.PlayMode.csproj" />
   <Project Path="CharacterShowcase.csproj" />
+  <Project Path="CharacterShowcase.Tests.PlayMode.csproj" />
   <Project Path="CharacterShowcase.Level.Editor.csproj" />
   <Project Path="CameraSystem.csproj" />
   <Project Path="CharacterShowcase.Editor.csproj" />

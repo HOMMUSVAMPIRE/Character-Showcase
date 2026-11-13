@@ -28,6 +28,8 @@ namespace Character
         public const string DefaultGrabSpeedParameter = "GrabSpeed";
         public const string DefaultRollProgressParameter = "RollProgress";
         public const string DefaultClimbProgressParameter = "ClimbProgress";
+        public const string DefaultVaultingParameter = "Vaulting";
+        public const string DefaultVaultProgressParameter = "VaultProgress";
 
         /// <summary>A trigger to fire when any of the given movement events happens.</summary>
         [Serializable]
@@ -60,6 +62,8 @@ namespace Character
         [SerializeField] private string rollProgressParameter = DefaultRollProgressParameter;
         [Tooltip("How far through a climb onto a ledge (0 to 1), for a climbing animation timed to it")]
         [SerializeField] private string climbProgressParameter = DefaultClimbProgressParameter;
+        [Tooltip("About how far through a vault over something low (0 to 1), for a vaulting animation timed to it")]
+        [SerializeField] private string vaultProgressParameter = DefaultVaultProgressParameter;
 
         [Header("Bool parameters")]
         [Tooltip("Whether the character should be animated as on the ground")]
@@ -77,6 +81,8 @@ namespace Character
         [SerializeField] private string hangingParameter = DefaultHangingParameter;
         [Tooltip("Climbing up from a ledge onto it")]
         [SerializeField] private string climbingParameter = DefaultClimbingParameter;
+        [Tooltip("Vaulting over something low")]
+        [SerializeField] private string vaultingParameter = DefaultVaultingParameter;
         [Tooltip("Holding an object to push or pull")]
         [SerializeField] private string grabbingParameter = DefaultGrabbingParameter;
 
@@ -90,9 +96,9 @@ namespace Character
         private sealed class Driver : ICharacterAnimationDriver
         {
             // Parameter hashes, or 0 for parameters to skip
-            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress;
+            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress;
             private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, hanging, climbing, grabbing;
+            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, hanging, climbing, vaulting, grabbing;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -126,6 +132,7 @@ namespace Character
                 grabSpeed = Find(settings.grabSpeedParameter, AnimatorControllerParameterType.Float);
                 rollProgress = Find(settings.rollProgressParameter, AnimatorControllerParameterType.Float);
                 climbProgress = Find(settings.climbProgressParameter, AnimatorControllerParameterType.Float);
+                vaultProgress = Find(settings.vaultProgressParameter, AnimatorControllerParameterType.Float);
                 crouching = Find(settings.crouchingParameter, AnimatorControllerParameterType.Bool);
                 sliding = Find(settings.slidingParameter, AnimatorControllerParameterType.Bool);
                 rolling = Find(settings.rollingParameter, AnimatorControllerParameterType.Bool);
@@ -133,6 +140,7 @@ namespace Character
                 wallSliding = Find(settings.wallSlidingParameter, AnimatorControllerParameterType.Bool);
                 hanging = Find(settings.hangingParameter, AnimatorControllerParameterType.Bool);
                 climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
+                vaulting = Find(settings.vaultingParameter, AnimatorControllerParameterType.Bool);
                 grabbing = Find(settings.grabbingParameter, AnimatorControllerParameterType.Bool);
 
                 triggers = new (MovementEvents, int)[settings.eventTriggers.Length];
@@ -165,6 +173,7 @@ namespace Character
                 if (grabSpeed != 0) { animator.SetFloat(grabSpeed, state.grabbing ? state.localVelocity.z / scale.z : 0f, speedDampTime, deltaTime); }
                 if (rollProgress != 0) { animator.SetFloat(rollProgress, state.rollProgress); }
                 if (climbProgress != 0) { animator.SetFloat(climbProgress, state.climbProgress); }
+                if (vaultProgress != 0) { animator.SetFloat(vaultProgress, state.vaultProgress); }
                 if (crouching != 0) { animator.SetBool(crouching, state.crouching); }
                 if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
                 if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
@@ -172,6 +181,7 @@ namespace Character
                 if (wallSliding != 0) { animator.SetBool(wallSliding, state.wallSliding); }
                 if (hanging != 0) { animator.SetBool(hanging, state.hanging); }
                 if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
+                if (vaulting != 0) { animator.SetBool(vaulting, state.vaulting); }
                 if (grabbing != 0) { animator.SetBool(grabbing, state.grabbing); }
             }
 

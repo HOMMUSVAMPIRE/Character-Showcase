@@ -61,6 +61,8 @@ namespace CharacterShowcase.EditorTools
         private const string WallSideParameter = AnimatorParameterTranslator.DefaultWallSideParameter;
         private const string RollProgressParameter = AnimatorParameterTranslator.DefaultRollProgressParameter;
         private const string ClimbProgressParameter = AnimatorParameterTranslator.DefaultClimbProgressParameter;
+        private const string VaultingParameter = AnimatorParameterTranslator.DefaultVaultingParameter;
+        private const string VaultProgressParameter = AnimatorParameterTranslator.DefaultVaultProgressParameter;
         // Fired by the translator on every jump, from the ground, in the air or off a wall (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
         private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped;
@@ -71,7 +73,7 @@ namespace CharacterShowcase.EditorTools
         // The libraries' clips for the movement abilities, each used where it's installed (the mannequin's own fallback
         // otherwise; see BuildAbilityStates). Of them, those standing on the floor are raised onto the mannequin's, as
         // the locomotion clips are (see StandLibraryOnMannequinsFloor).
-        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "WallRun_L_Loop", "WallRun_R_Loop" };
+        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop" };
         private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
         // The top of the Crouch blend tree, in m/s: well above BasicMovementMode's crouch speed (2 m/s). Past the crouch
         // walk's own speed, it plays sped up to reach it.
@@ -570,11 +572,11 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
-            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, GrabbingParameter })
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
             {
                 controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
             }
-            foreach (string value in new[] { GrabSpeedParameter, RollProgressParameter, ClimbProgressParameter, WallSideParameter })
+            foreach (string value in new[] { GrabSpeedParameter, RollProgressParameter, ClimbProgressParameter, VaultProgressParameter, WallSideParameter })
             {
                 controller.AddParameter(value, AnimatorControllerParameterType.Float);
             }
@@ -756,12 +758,12 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// The states for the movement abilities: Crouch (standing still and crouch-walking, by Speed), Slide, Roll
         /// (timed by RollProgress), Wall Run (the library's wall run for a wall on that side, by WallSide, or the sprint;
-        /// at the run's speed), Wall Slide, Hang, Climb (timed by ClimbProgress) and
+        /// at the run's speed), Wall Slide, Hang, Climb (timed by ClimbProgress), Vault (timed by VaultProgress) and
         /// Push (pushing, or played backward pulling, by GrabSpeed). Each is entered from any state while its
         /// parameter is set, and left for Locomotion, Crouch or Airborne, whichever matches the character, once it's
-        /// cleared. The Quaternius libraries' crouch, slide, roll, climb, push and wall runs are used where they're installed, and
+        /// cleared. The Quaternius libraries' crouch, slide, roll, climb, vault, push and wall runs are used where they're installed, and
         /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
-        /// rise for the climb and its walk for the push). Hanging and sliding down a wall are always the mannequin's own.
+        /// rise for the climb and the vault, and its walk for the push). Hanging and sliding down a wall are always the mannequin's own.
         /// </summary>
         private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
             AnimatorState locomotion, AnimatorState airborne, Dictionary<string, AnimationClip> clips, AnimationClip sprint,
@@ -833,6 +835,13 @@ namespace CharacterShowcase.EditorTools
             climb.timeParameterActive = true;
             climb.timeParameter = ClimbProgressParameter;
 
+            // Vaulting over something low: the library's safety vault (a hand on the top, the legs swung over beside
+            // it), or else the mannequin's rise, played through once over the vault.
+            AnimatorState vault = stateMachine.AddState("Vault");
+            vault.motion = Library("SafetyVault", clips["Rise"]);
+            vault.timeParameterActive = true;
+            vault.timeParameter = VaultProgressParameter;
+
             // Pushing at the speed the push's strides are made for, and pulling the same played backward; standing
             // still holding the object, held still.
             AnimatorState pushPull = stateMachine.AddState("Push");
@@ -846,7 +855,7 @@ namespace CharacterShowcase.EditorTools
             {
                 (crouch, CrouchingParameter, 0.15f), (slide, SlidingParameter, 0.1f), (roll, RollingParameter, 0.05f),
                 (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
-                (pushPull, GrabbingParameter, 0.15f),
+                (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
             })
             {
                 AnimatorStateTransition start = stateMachine.AddAnyStateTransition(state);
@@ -861,7 +870,7 @@ namespace CharacterShowcase.EditorTools
                     // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
                     // falling): that shows instead, or two Any State transitions would keep swapping the states.
                     start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
-                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, GrabbingParameter })
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter })
                     {
                         start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
                     }

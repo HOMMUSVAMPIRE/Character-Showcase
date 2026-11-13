@@ -10,9 +10,9 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Tests of sliding down walls: falling into a wall head-on slides slowly down it, a fast fall braked to the slide
-    /// speed; jumping kicks off it upward, gaining height and giving back air jumps, only so many times before landing;
-    /// no slide while rising, close to the ground, or glancing along the wall; and steering away, Crouch, landing or the
-    /// slide's longest time end it. The character is in mid-air facing a tall wall just in front of it. Expected values
+    /// speed; jumping kicks off it upward and away, gaining height and giving back air jumps (but not off the same wall twice in a row), only so many times before landing, hops alone not climbing it, air steering coming back only gradually;
+    /// no slide while rising fast, close to the ground, or glancing along the wall, but one on hitting a wall whatever the steering; a chimney climbed by kicking between its walls; and steering away (for the release delay, not
+    /// just a moment), Crouch, landing or the slide's longest time end it. The character is in mid-air facing a tall wall just in front of it. Expected values
     /// are read from the movement mode's settings.
     /// </summary>
     public class WallSlideTests
@@ -119,6 +119,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator HoppingUpAWall_OnlyJumpsOffItSoManyTimes_BeforeLanding()
         {
             yield return SetUpWall();
+            // Kicking straight up, so each jump comes back to the wall to slide on again.
+            rig.SetMovementSetting("wallSlideJumpAwaySpeed", 0f);
             int maxJumps = rig.MovementSetting<int>("wallSlideMaxJumps");
             int wallJumps = 0;
             rig.Movement.MovementEventRaised += (movementEvent, _) => { if (movementEvent == MovementEvents.WallJumped) { wallJumps++; } };
@@ -133,18 +135,63 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator RisingIntoAWall_DoesNotSlideDownIt_UntilFalling()
+        public IEnumerator RisingFastIntoAWall_DoesNotSlideDownIt_UntilNearTheTopOfTheRise()
         {
             yield return SetUpWall();
             yield return rig.Launch(Vector3.up * 8f, CharacterTestRig.Move(Vector3.forward));
-            bool slidWhileRising = false, slid = false;
+            float maxRise = rig.MovementSetting<float>("wallSlideMaxStartRiseSpeed") * rig.Movement.SpeedScale;
+            bool startedRisingFast = false, slid = false;
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
             {
-                if (Sliding && rig.Movement.lastFrameMovementData.initialInertia.y > 0f) { slidWhileRising = true; }
+                if (Sliding && !slid && rig.Movement.lastFrameMovementData.initialInertia.y > maxRise + 0.01f) { startedRisingFast = true; }
                 slid |= Sliding;
             });
-            Assert.That(slidWhileRising, Is.False, "Rising into a wall shouldn't slide down it.");
-            Assert.That(slid, Is.True, "Once falling, the character should slide down the wall.");
+            Assert.That(startedRisingFast, Is.False, "Rising fast into a wall shouldn't slide down it.");
+            Assert.That(slid, Is.True, "Near the top of the rise, the character should slide down the wall.");
+        }
+
+        [UnityTest]
+        public IEnumerator HittingAWallMovingIntoIt_SlidesDownIt_WhateverTheSteering()
+        {
+            yield return SetUpWall();
+            // Just short of the wall, so the character hits it before steering bends its path. Steering further from
+            // head-on than a slide allows: hitting the wall head-on is what starts it.
+            rig.Body.position += Vector3.back * 0.15f;
+            Vector3 steer = Quaternion.Euler(0f, rig.MovementSetting<float>("wallSlideMaxAngle") + 15f, 0f) * Vector3.forward;
+            yield return rig.Launch(Vector3.forward * 6f, CharacterTestRig.Move(steer));
+            bool slid = false;
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(steer), _ => slid |= Sliding);
+            Assert.That(slid, Is.True, "Hitting a wall moving into it should slide down it, whatever the steering.");
+        }
+
+        [UnityTest]
+        public IEnumerator AChimney_CanBeClimbedByKickingBetweenItsWalls()
+        {
+            // As the Proving Ground's: a slot 2.5 m wide, 10.5 m deep from its floor to its top.
+            const float width = 2.5f, depth = 10.5f;
+            rig.Floor();
+            rig.Box("Chimney (West)", new Vector3(-width / 2f - 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f));
+            rig.Box("Chimney (East)", new Vector3(width / 2f + 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f));
+            yield return rig.SpawnSettled(new Vector3(0f, 1.5f, 0f), settleSeconds: 0f);
+            float start = rig.Position.y, highest = start;
+
+            // Into the west wall; each time a slide takes hold, kick off toward the other wall, steering at it.
+            Vector3 steer = Vector3.left;
+            int slidingSteps = 0;
+            yield return rig.Run(8f, _ =>
+            {
+                if (slidingSteps >= 2)
+                {
+                    steer = rig.Movement.wallSlide.wallNormal;
+                    return CharacterTestRig.Jump(0, steer);
+                }
+                return CharacterTestRig.Move(steer);
+            }, _ =>
+            {
+                slidingSteps = Sliding ? slidingSteps + 1 : 0;
+                highest = Mathf.Max(highest, rig.Position.y);
+            });
+            Assert.That(highest - start, Is.GreaterThan(depth), "Kicking between a chimney's walls should climb it.");
         }
 
         [UnityTest]
@@ -172,8 +219,12 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpWall();
             yield return SlideDown();
-            yield return rig.Run(2, _ => CharacterTestRig.Move(Vector3.back));
-            Assert.That(Sliding, Is.False, "Steering away from the wall should let go of it.");
+            float delay = rig.MovementSetting<float>("wallSlideReleaseDelay");
+            yield return rig.Run(0.5f * delay, _ => CharacterTestRig.Move(Vector3.back));
+            Assert.That(Sliding, Is.True, "Steering away for a moment shouldn't let go of the wall yet.");
+            yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(delay + 0.05f, _ => CharacterTestRig.Move(Vector3.back));
+            Assert.That(Sliding, Is.False, "Steering away from the wall for the release delay should let go of it.");
 
             yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding again.");
@@ -205,6 +256,58 @@ namespace CharacterShowcase.Tests
             bool slid = false;
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => slid |= Sliding);
             Assert.That(slid, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator HoppingUpAWall_WithoutJumpsOfItsOwn_DoesNotClimbIt()
+        {
+            yield return SetUpWall(height: 20f);
+            // Keep steering into the wall, pressing Jump again and again: each kick carries the character away, and with
+            // no jumps of its own given back, it comes back to the wall lower each time.
+            var kickHeights = new List<float>();
+            rig.Movement.MovementEventRaised += (movementEvent, _) => { if (movementEvent == MovementEvents.WallJumped) { kickHeights.Add(rig.Position.y); } };
+            yield return rig.Run(4f, step =>
+            {
+                Inputs inputs = CharacterTestRig.Move(Vector3.forward);
+                if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(0); }
+                return inputs;
+            });
+            Assert.That(kickHeights.Count, Is.GreaterThan(0), "Test setup: the character should jump off the wall.");
+            for (int i = 1; i < kickHeights.Count; i++)
+            {
+                Assert.That(kickHeights[i], Is.LessThan(kickHeights[i - 1]), "Each jump off the wall should be lower than the last: hops alone shouldn't climb it.");
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator AfterJumpingOff_AirSteeringComesBackGradually()
+        {
+            yield return SetUpWall();
+            yield return SlideDown();
+            float away = rig.MovementSetting<float>("wallSlideJumpAwaySpeed") * rig.Movement.SpeedScale;
+            // Jump, then steer straight back into the wall.
+            yield return rig.Run(0.15f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Move(Vector3.forward));
+            Assert.That(-Velocity.z, Is.GreaterThan(0.8f * away), "Steering back right after jumping off shouldn't undo the push away from the wall.");
+            float recovery = rig.MovementSetting<float>("wallJumpSteeringRecovery") * rig.Movement.DurationScale;
+            yield return rig.Run(recovery, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(Velocity.z, Is.GreaterThan(-0.3f * away), "Once air steering has come back, steering should turn the character back.");
+        }
+
+        [UnityTest]
+        public IEnumerator JumpingOffTheSameWallAgain_DoesNotGiveBackJumps()
+        {
+            yield return SetUpWall();
+            // Kicking straight up, so the character comes back to the same wall.
+            rig.SetMovementSetting("wallSlideJumpAwaySpeed", 0f);
+            yield return SlideDown();
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps - 1), "Test setup: the first jump off the wall should give back jumps.");
+            // Use an air jump, then slide down the same wall again and jump off it.
+            rig.Movement.jumpsRemaining = 0;
+            yield return rig.Run(1.2f, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(Sliding, Is.True, "Test setup: the character should be sliding down the wall again.");
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            Assert.That(rig.Movement.jumpsRemaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");
         }
     }
 }

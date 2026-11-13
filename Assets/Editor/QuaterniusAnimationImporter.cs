@@ -143,9 +143,15 @@ namespace CharacterShowcase.EditorTools
         /// <summary>The clip's name from its take's: "Armature|Armature|Walk_Loop" is "Walk_Loop".</summary>
         public static string ClipName(string takeName) => takeName.Split('|').Last();
 
+        // Clips whose rise and fall is left out of the pose (as root motion, which the character never applies), as the
+        // character's own movement does the rising: the safety vault hops its body 0.74 m up and back down, which on
+        // top of a vault lifting the character onto what it vaults over put the body that much too high.
+        private static readonly string[] HeightFromMovementClips = { "SafetyVault" };
+
         private static ModelImporterClipAnimation Clip(ModelImporterClipAnimation take, float heightOffset)
         {
             string name = ClipName(take.takeName);
+            bool heightInPose = !HeightFromMovementClips.Contains(name);
             return new ModelImporterClipAnimation
             {
                 name = name,
@@ -157,7 +163,7 @@ namespace CharacterShowcase.EditorTools
                 // they share its floor: based on the feet instead, they stood 4 cm lower): these are the in-place versions.
                 lockRootRotation = true,
                 keepOriginalOrientation = true,
-                lockRootHeightY = true,
+                lockRootHeightY = heightInPose,
                 keepOriginalPositionY = true,
                 heightFromFeet = false,
                 heightOffset = heightOffset,

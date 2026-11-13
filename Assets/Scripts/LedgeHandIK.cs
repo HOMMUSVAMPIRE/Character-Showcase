@@ -10,6 +10,10 @@ namespace Character
     /// ledge, then pulls each hand onto the ledge's top at its edge, shoulder width apart along it, palm down with the
     /// fingers over the edge. It eases in as the character catches hold, and out partway up a climb.
     ///
+    /// Vaulting, it plants the hand the vault animation puts down (the right, in the Quaternius library's safety vault)
+    /// on the top being vaulted over, and lowers the body (never raises it) so that hand reaches it: unaided, the body
+    /// rode the character's collider, held clear of the top, and floated over it.
+    ///
     /// The ledge comes from the character's animation state (CharacterAnimationState.ledgeEdge and ledgeNormal), found
     /// in the model's parents, as FootPlacementIK finds it; hands are placed through CharacterIK's procedural goals.
     /// </summary>
@@ -37,6 +41,12 @@ namespace Character
         [Range(0.5f, 1f)] [SerializeField] private float climbReleaseAt = 0.8f;
         [Tooltip("How strongly the hands are turned palm down on the ledge (0 = as the animation holds them).")]
         [Range(0f, 1f)] [SerializeField] private float handRotationWeight = 0.8f;
+        [Tooltip("Vaulting: how far (m, at the character's authored size) back from the edge, on the top, the planted hand goes, " +
+                 "and how far to the character's right.")]
+        [SerializeField] private Vector2 vaultHandPlacement = new Vector2(0.12f, 0.12f);
+        [Tooltip("Vaulting: the share of the vault (its progress, 0 to 1) over which the hand is planted, easing on at the " +
+                 "start of this and off at the end.")]
+        [SerializeField] private Vector2 vaultPlantedBetween = new Vector2(0.05f, 0.75f);
 
         private CharacterIK ik;
         private ICharacterAnimationStateSource stateSource;
@@ -61,6 +71,11 @@ namespace Character
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
+            if (state.vaulting || vaultWeight > 0f)
+            {
+                SolveVault(animator, state);
+                if (state.vaulting) { activeWeight = 0f; return; }
+            }
             bool holding = (state.hanging || state.climbing) && state.ledgeNormal != Vector3.zero;
             if (holding)
             {
@@ -113,6 +128,50 @@ namespace Character
             // World positions: CharacterIK corrects them for a stretched model.
             ik.SetProceduralGoal(IKLimb.LeftHand, leftHand, leftRotation, activeWeight, rotationWeight);
             ik.SetProceduralGoal(IKLimb.RightHand, rightHand, rightRotation, activeWeight, rotationWeight);
+        }
+
+        // How far the vault's hand placement is eased in now, and the last edge vaulted over (kept while easing out).
+        private float vaultWeight;
+        private Vector3 vaultEdge, vaultNormal;
+
+        /// <summary>
+        /// Plants the vault animation's planted hand (the right) on the top being vaulted over, just back from the edge
+        /// and to the character's right, palm down with the fingers pointing on over it, and lowers the body so the hand
+        /// reaches: through the middle of the vault (vaultPlantedBetween), easing on and off with its progress.
+        /// </summary>
+        private void SolveVault(Animator animator, in CharacterAnimationState state)
+        {
+            if (state.vaulting && state.ledgeNormal != Vector3.zero)
+            {
+                vaultEdge = state.ledgeEdge;
+                vaultNormal = state.ledgeNormal;
+            }
+            float goal = 0f;
+            if (state.vaulting)
+            {
+                float start = vaultPlantedBetween.x, end = vaultPlantedBetween.y, ease = 0.15f;
+                float p = state.vaultProgress;
+                goal = weight * Mathf.InverseLerp(start, start + ease, p) * (1f - Mathf.InverseLerp(end - ease, end, p));
+            }
+            // Along with the progress while vaulting; eased off quickly once it's over.
+            vaultWeight = state.vaulting ? goal
+                : fadeTime > 0f ? Mathf.MoveTowards(vaultWeight, 0f, Time.deltaTime / fadeTime) : 0f;
+            if (vaultWeight <= 0f || vaultNormal == Vector3.zero) { return; }
+
+            float size = state.scale.y > 0f ? state.scale.y : 1f;
+            Vector3 over = -vaultNormal; // The way the character vaults.
+            Vector3 right = Vector3.Cross(Vector3.up, over);
+            Vector3 plant = vaultEdge + Vector3.up * (wristAboveLedge * size) + over * (vaultHandPlacement.x * size)
+                            + right * (vaultHandPlacement.y * size);
+
+            // Lower the body (never raise it: the collider keeps the character clear of the top) as far as the hand,
+            // as animated, is above where it's planted, within reason.
+            Vector3 animatedHand = animator.GetIKPosition(AvatarIKGoal.RightHand);
+            float drop = Mathf.Clamp(plant.y - animatedHand.y, -maxBodyShift * size, 0f);
+            animator.bodyPosition += Vector3.up * (drop * vaultWeight);
+
+            Quaternion rotation = Quaternion.LookRotation(over, Vector3.up) * Quaternion.Euler(0f, -90f, 0f);
+            ik.SetProceduralGoal(IKLimb.RightHand, plant, rotation, vaultWeight, handRotationWeight * vaultWeight);
         }
 
         /// <summary>

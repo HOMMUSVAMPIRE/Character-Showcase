@@ -96,15 +96,21 @@ namespace Character
         private bool TryGrabLedge(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             LedgeState ledge = controller.ledge;
-            if (ledgeClimbDuration <= 0f || movementData.initialGrounded || ledge.regrabCooldown > 0f || AbilityInProgress(controller)) { return false; }
+            // A wall being slid down doesn't stop its top being grabbed, once the slide has brought it within reach.
+            if (ledgeClimbDuration <= 0f || movementData.initialGrounded || ledge.regrabCooldown > 0f
+                || AbilityInProgress(controller, exceptWallSlide: true)) { return false; }
             if (movementData.initialVelocity.y > ledgeMaxGrabRiseSpeed * controller.SpeedScale) { return false; }
 
             Vector3 heading = InputDirection(movementData, inputs);
             heading = heading.sqrMagnitude > 0.01f ? heading.normalized : Facing(movementData);
             Vector3 feet = movementData.initialPosition;
-            if (!FindLedge(controller, feet, heading, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)) { return false; }
-
             float height = controller.StandingHeight;
+            if (!FindLedge(controller, feet, heading, ledgeGrabMinHeight * height, ledgeGrabMaxHeight * height,
+                    controller.Radius + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
+            {
+                return false;
+            }
+
             Vector3 hang = edge + wallNormal * (controller.Radius + 2f * controller.Skin);
             hang.y = edge.y - ledgeHangHeight * height;
             if (!controller.CanFitAt(hang, 1f)) { return false; }
@@ -120,6 +126,7 @@ namespace Character
             ledge.localEdge = toLedgeSpace * (edge - ledgePosition);
             ledge.localWallNormal = toLedgeSpace * wallNormal;
             ledge.phase = LedgeState.Phase.Hanging;
+            if (controller.wallSlide.IsWallSliding) { EndWallSlide(controller); }
             // Hanging is done standing up: a character crouched in the air (walked off an edge crouched) stands to grab.
             controller.crouch.IsCrouched = false;
             controller.crouch.wantsToStand = false;
@@ -127,20 +134,17 @@ namespace Character
         }
 
         /// <summary>
-        /// Looks for a ledge in front of the character: a wall within reach at the bottom of the grab window (between
-        /// the lowest and highest ledge heights above its feet), open space above it at the top of the window, and a
-        /// walkable top between the two. Gives the top's hit, the wall's normal (flattened, pointing toward the
-        /// character), and the point on the ledge's edge in front of the character.
+        /// Looks for a ledge in front of the character: a wall within reach (of its axis) at the bottom of a window of
+        /// heights above its feet (low to high: for grabbing, the lowest and highest ledge heights), open space above it
+        /// at the top of the window, and a walkable top between the two. Gives the top's hit, the wall's normal
+        /// (flattened, pointing toward the character), and the point on the ledge's edge in front of the character.
         /// </summary>
-        private bool FindLedge(MovementController controller, Vector3 feet, Vector3 heading,
+        private bool FindLedge(MovementController controller, Vector3 feet, Vector3 heading, float low, float high, float reach,
             out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)
         {
             top = default;
             wallNormal = Vector3.zero;
             edge = Vector3.zero;
-            float height = controller.StandingHeight;
-            float low = ledgeGrabMinHeight * height, high = ledgeGrabMaxHeight * height;
-            float reach = controller.Radius + ledgeGrabReach * controller.HeightScale;
             if (high <= low) { return false; }
 
             // A wall in front, low in the window, facing the character.

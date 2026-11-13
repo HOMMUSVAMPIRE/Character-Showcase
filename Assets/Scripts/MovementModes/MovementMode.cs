@@ -175,6 +175,19 @@ namespace Character
     }
 
     /// <summary>
+    /// An interface defining the functions necessary for a deriving class to handle vaulting: heading into something
+    /// whose top is too low to grab as a ledge but too high to step onto (in mid-air, or sprinting at it), the character
+    /// puts a hand on the top and swings itself over; onto something low and deep, it steps up instead.
+    /// </summary>
+    public interface VaultMode
+    {
+        /// <summary>Seconds a vault spends getting a hand onto the top and rising to it, at the character's authored size. 0 turns vaulting off.</summary>
+        public abstract float vaultRiseDuration { get; set; }
+
+        public abstract bool ProcessMovementDataForVault(ref MovementData movementData, Inputs inputs, MovementController controller);
+    }
+
+    /// <summary>
     /// An interface defining the functions necessary for a deriving class to handle grabbing large objects (see
     /// Level.PushableObject) and pushing and pulling them along the ground.
     /// </summary>

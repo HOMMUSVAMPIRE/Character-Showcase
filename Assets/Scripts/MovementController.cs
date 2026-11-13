@@ -312,7 +312,9 @@ namespace Character
         public RollState roll { get; } = new RollState();
         public WallRunState wallRun { get; } = new WallRunState();
         public WallSlideState wallSlide { get; } = new WallSlideState();
+        public WallJumpState wallJump { get; } = new WallJumpState();
         public LedgeState ledge { get; } = new LedgeState();
+        public VaultState vault { get; } = new VaultState();
         public GrabState grab { get; } = new GrabState();
         // The maximum number of jumps the character can perform in succession
         public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
@@ -459,6 +461,8 @@ namespace Character
             (CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
             (CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
             (CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
+            (CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
+            (CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
         };
 
         private void RaiseEvents(MovementData data)

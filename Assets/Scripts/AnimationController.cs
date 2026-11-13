@@ -6,7 +6,7 @@ namespace Character
     /// <summary>
     /// The character's link between movement and animation. It turns each frame's movement into a
     /// CharacterAnimationState, passes that state and the movement events to the model's animation translator, and
-    /// turns the model smoothly to face the character's direction.
+    /// turns the model smoothly to face the character's direction (and eases it up after a step up).
     ///
     /// Nothing here depends on a particular model, how it's stored, its Animator Controller or animation system: the
     /// model comes from the CharacterModelHost, and how it's animated from the translator its source names, so a model
@@ -62,6 +62,16 @@ namespace Character
         [SerializeField] [Tooltip("Seconds over which leaning eases in and out")]
         [Min(0.01f)] private float leanSmoothTime = 0.12f;
 
+        [Header("Stepping Up")]
+        [SerializeField] [Tooltip("Seconds over which the model eases up after the character steps up onto something from " +
+                                  "mid-air or a sprint (a quick rise, for feel): the model lags behind and catches up, its " +
+                                  "feet tucked onto the top by foot placement, rather than popping up with the collider. " +
+                                  "0 = the model rises with the character.")]
+        [Min(0f)] private float stepUpSmoothTime = 0.08f;
+        [SerializeField] [Tooltip("The furthest (m, at the character's authored size) the model lags below the character as it " +
+                                  "eases up after a step up, so its knees never fold up past its chest")]
+        [Min(0f)] private float stepUpMaxLag = 0.35f;
+
         // Gravity (m/s²) leans are balanced against, at the character's authored size.
         private const float LeanGravity = 9.81f;
 
@@ -81,6 +91,12 @@ namespace Character
         private float airTime;
         private Quaternion lastFacing = Quaternion.identity;
         private bool hasLastFacing;
+
+        // Easing the model up after a step up: how far it's held below the character now (m, 0 or negative), its height
+        // easing up and how fast, the character's height last frame, and the model parent's own position without it.
+        private float stepUpLag, easedHeight, easedHeightVelocity, lastRootHeight;
+        private bool hasLastRootHeight;
+        private Vector3 modelParentLocalPosition;
 
         private ICharacterAnimationDriver driver;
         // The driver of a model being replaced, which the new model's driver carries on from.
@@ -187,6 +203,11 @@ namespace Character
             Vector3 ledgeEdge = Vector3.zero, ledgeNormal = Vector3.zero;
             bool onLedge = movementData.state.HasFlag(CharacterState.LedgeHanging) || movementData.state.HasFlag(CharacterState.LedgeClimbing);
             if (onLedge && movementController != null) { movementController.ledge.TryGetEdge(out ledgeEdge, out ledgeNormal); }
+            else if ((movementData.state.HasFlag(CharacterState.Vaulting) || movementData.state.HasFlag(CharacterState.SteppingUp))
+                     && movementController != null)
+            {
+                movementController.vault.TryGetEdge(out ledgeEdge, out ledgeNormal);
+            }
             bool wallSliding = movementData.state.HasFlag(CharacterState.WallSliding) && movementController != null;
             return new CharacterAnimationState
             {
@@ -215,6 +236,10 @@ namespace Character
                 climbProgress = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing) ? movementController.ledge.ClimbProgress : 0f,
                 hanging = movementData.state.HasFlag(CharacterState.LedgeHanging),
                 climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing),
+                vaulting = movementData.state.HasFlag(CharacterState.Vaulting),
+                vaultProgress = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) ? movementController.vault.Progress : 0f,
+                steppingUp = movementData.state.HasFlag(CharacterState.SteppingUp),
+                stepUpLag = stepUpLag,
                 grabbing = movementData.state.HasFlag(CharacterState.Grabbing),
                 ledgeEdge = ledgeEdge,
                 ledgeNormal = ledgeNormal,
@@ -307,6 +332,49 @@ namespace Character
             // The model parent pivots at the character's feet, so leaning tilts the body over them. (Banking right is a
             // turn about the forward axis toward -z.)
             modelParent.rotation = Quaternion.Euler(0f, visualYaw, 0f) * Quaternion.Euler(pitch, 0f, -bank);
+            EaseUpAfterStepUp(modelParent, deltaTime);
+        }
+
+        /// <summary>
+        /// Holds the model below the character as it steps up onto something, then eases it up after it: the step's rise
+        /// is quick (it feels right that way), but the model popping up with the collider looked wrong. From where the
+        /// model was when the step began, it follows the character's height, a critically damped spring, never above it
+        /// and no further below than the most it may lag. Foot placement tucks the feet up onto the top meanwhile
+        /// (CharacterAnimationState.stepUpLag tells it how far the model lags). Moves the model parent only.
+        /// </summary>
+        private void EaseUpAfterStepUp(Transform modelParent, float deltaTime)
+        {
+            float rootHeight = transform.position.y;
+            float scale = modelParent.lossyScale.y > 0f ? modelParent.lossyScale.y : 1f;
+            bool steppingUp = movementController != null && movementController.lastFrameMovementData != null
+                              && movementController.lastFrameMovementData.state.HasFlag(CharacterState.SteppingUp);
+            if (stepUpLag == 0f)
+            {
+                modelParentLocalPosition = modelParent.localPosition;
+                if (steppingUp && stepUpSmoothTime > 0f)
+                {
+                    // From where the model was last frame, before this frame's part of the rise.
+                    easedHeight = hasLastRootHeight ? Mathf.Min(lastRootHeight, rootHeight) : rootHeight;
+                    easedHeightVelocity = 0f;
+                    stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -stepUpMaxLag * scale, -1e-5f);
+                    easedHeight = rootHeight + stepUpLag;
+                }
+            }
+            else
+            {
+                easedHeight = Mathf.SmoothDamp(easedHeight, rootHeight, ref easedHeightVelocity, stepUpSmoothTime, Mathf.Infinity, deltaTime);
+                stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -stepUpMaxLag * scale, 0f);
+                easedHeight = rootHeight + stepUpLag;
+                // Caught up (or the step up is over and the model nearly is): back to following the character exactly.
+                if (stepUpLag > -1e-3f * scale && !steppingUp) { stepUpLag = 0f; }
+            }
+            lastRootHeight = rootHeight;
+            hasLastRootHeight = true;
+            if (stepUpLag != 0f || modelParent.localPosition != modelParentLocalPosition)
+            {
+                modelParent.localPosition = modelParentLocalPosition;
+                modelParent.position += Vector3.up * stepUpLag;
+            }
         }
 
         /// <summary>The model's facing (yaw, degrees) as SmoothRotateVisuals has turned it, without its lean.</summary>

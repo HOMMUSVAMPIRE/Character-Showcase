@@ -45,8 +45,17 @@ namespace Character
         // Hanging from a ledge, and climbing up from one onto it
         public bool hanging;
         public bool climbing;
+        // Vaulting over something low, and about how far through the vault (0 to 1)
+        public bool vaulting;
+        public float vaultProgress;
+        // Stepping up onto something low and deep (its edge in ledgeEdge and ledgeNormal), and how far (m, 0 or
+        // negative) the model is being held below the character as it eases up after the step's quick rise: 0 once
+        // it has caught up (see AnimationController).
+        public bool steppingUp;
+        public float stepUpLag;
         // While hanging or climbing: the point on the ledge's edge the character holds (on its top, in front of the
-        // character), and the wall's normal below it (horizontal, pointing toward the character). Zero otherwise.
+        // character), and the wall's normal below it (horizontal, pointing toward the character). While vaulting, the
+        // same for the edge vaulted over (the normal toward where the vault started). Zero otherwise.
         public Vector3 ledgeEdge;
         public Vector3 ledgeNormal;
         // Sliding down a wall: a point on the wall's face in front of the character, and its normal (horizontal,

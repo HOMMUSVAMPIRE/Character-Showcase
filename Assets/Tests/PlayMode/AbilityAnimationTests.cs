@@ -8,7 +8,7 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Checks that the movement abilities show on the character's own model, through the shared Animator Controller
-    /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing and pushing each play their
+    /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting and pushing each play their
     /// state, a crouched model fits its lowered collider, and a hanging model's hands reach up to the ledge. In the
     /// SampleContent category, as they check the package's own controller and model.
     /// </summary>
@@ -21,7 +21,7 @@ namespace CharacterShowcase.Tests
 
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Hang", "Climb", "Push" })
+            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Hang", "Climb", "Vault", "Push" })
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -219,6 +219,69 @@ namespace CharacterShowcase.Tests
             Assert.That(climbingSteps, Is.GreaterThan(10), "Test setup: the character should climb.");
             Assert.That(rig.Movement.crouch.IsCrouched, Is.True, "Test setup: the climb should be crouched.");
             Assert.That(outOfClimb, Is.Zero, "A crouched climb shouldn't leave the Climb state.");
+        }
+
+        [UnityTest]
+        public IEnumerator VaultingOverALowWall_PlaysVault()
+        {
+            yield return Spawn();
+            rig.Body.position = new Vector3(0f, 3f, 0f);
+            float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
+            float top = 3f + share * rig.StandingHeight, face = rig.Radius + 0.25f;
+            rig.Box("Low Wall", new Vector3(0f, top / 2f, face + 0.2f), new Vector3(10f, top, 0.4f));
+
+            // Through the middle of the vault, the planted hand is on the wall's top, the body lowered for it to reach
+            // (rather than floating over the top, held clear of it by the collider).
+            bool played = false;
+            float closest = float.PositiveInfinity, size = rig.Controller.Scale.y;
+            Transform hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            yield return rig.Run(0.8f, _ => CharacterTestRig.Sprint(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                played |= InAnimatorState("Vault");
+                float progress = rig.Movement.vault.Progress;
+                if (rig.InState(CharacterState.Vaulting) && progress > 0.35f && progress < 0.55f)
+                {
+                    closest = Mathf.Min(closest, Mathf.Abs(hand.position.y - top));
+                }
+            });
+            Assert.That(played, Is.True, $"The 'Vault' state should play (the Animator is in '{CurrentAnimatorState()}').");
+            Assert.That(closest, Is.LessThan(0.08f * size), "Mid-vault, the planted hand should be on the wall's top.");
+        }
+
+        [UnityTest]
+        public IEnumerator SteppingUpOntoALowPlatform_EasesTheModelUp_WithTheFeetTuckedOntoTheTop()
+        {
+            yield return Spawn();
+            rig.Body.position = new Vector3(0f, 3f, 0f);
+            float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("vaultStepUpHeight"), 0.6f);
+            float top = 3f + share * rig.StandingHeight, face = rig.Radius + 0.25f;
+            rig.Box("Low Platform", new Vector3(0f, top / 2f, face + 3f), new Vector3(10f, top, 6f));
+
+            // The visuals stepped with the physics, as ACCharacterController does each frame.
+            Transform modelParent = rig.Models.ModelParent;
+            Vector3 restingLocal = modelParent.localPosition;
+            Transform leftFoot = animator.GetBoneTransform(HumanBodyBones.LeftFoot), rightFoot = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            bool steppedUp = false;
+            float deepestLag = 0f, deepestFoot = float.PositiveInfinity;
+            yield return rig.Run(0.8f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                StepAnimator(step);
+                steppedUp |= rig.InState(CharacterState.SteppingUp);
+                deepestLag = Mathf.Min(deepestLag, modelParent.position.y - rig.Character.transform.position.y);
+                foreach (Transform foot in new[] { leftFoot, rightFoot })
+                {
+                    if (foot.position.z > face + 0.05f) { deepestFoot = Mathf.Min(deepestFoot, foot.position.y - top); }
+                }
+            });
+
+            float size = rig.Controller.Scale.y;
+            Assert.That(steppedUp, Is.True, "Test setup: the character should step up onto the platform.");
+            Assert.That(deepestLag, Is.LessThan(-0.05f * size), "The model should lag below the character as it eases up after the step's quick rise.");
+            Assert.That(deepestLag, Is.GreaterThan(-0.36f * size), "The model shouldn't lag further than its most.");
+            Assert.That(deepestFoot, Is.GreaterThan(0f), "No foot over the platform should sink into its top: they're tucked up onto it.");
+            Assert.That(Vector3.Distance(modelParent.localPosition, restingLocal), Is.LessThan(1e-3f), "The model should have caught up with the character.");
         }
 
         [UnityTest]
