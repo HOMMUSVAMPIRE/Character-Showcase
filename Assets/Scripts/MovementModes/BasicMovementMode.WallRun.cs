@@ -247,7 +247,7 @@ namespace Character
         /// </summary>
         private static void StartWallJumpSteeringRecovery(MovementController controller)
         {
-            controller.lastGroundedTime = Time.fixedTime;
+            controller.lastGroundedTime = controller.StepTime;
             controller.wallJump.recovering = true;
             controller.wallJump.elapsed = 0f;
         }

@@ -1,0 +1,101 @@
+# Movement
+How the character moves: walking, jumping, dashing, turning, collision, size and moving ground, and what it can do ([Capabilities](#capabilities)). The abilities built on top of these (crouching, wall running, ledges, climbing, ropes and the rest) are in [abilities.md](abilities.md) and [traversal.md](traversal.md).
+
+Most of the settings named here are on the BasicMovementMode asset (`Assets/ScriptableObjects/BasicMovementMode.asset`), under the section named; the rest are on the Character prefab's components (`Assets/Prefabs/Character.prefab`).
+
+## Walking and Sprinting
+The character moves at its Walk Speed, or slower with partial stick input, and sprints at its Run Speed while Sprint is held: Left Shift (keyboard) or pressing the left stick (gamepad). Both are in the Speed section of the BasicMovementMode asset; a Run Speed at or below the Walk Speed turns sprinting off.
+
+Sprinting works in the air too: steering toward the run speed, and keeping a sprint's momentum through a jump without stacking more on top.
+
+Momentum carries onto the ground: landing from a sprint jump while walking keeps the sprint's speed, which eases down to the walk speed with the ground's friction (Grounded Dampen Horizontal Inertia). Walking or sprinting only makes up the difference between the momentum the character carries the way it's steering and its speed: it moves at whichever is faster, never at the two added together.
+
+(They used to add up: just after a landing the character moved at its air speed plus its walking speed, and hopping again at once, or clipping a ledge's lip for a step or two, carried both into the air, building up to several times the walking speed.)
+
+### How the gaits are shown
+Quaternius's walk is made for a slow stroll and their jog (what sprinting shows) for a quick run, so the mannequin's own brisk walk and run fill in the speeds between them. Each loop's speed is measured from its strides when the mannequin is generated (`MotionCaptureLocomotion.StrideSpeed`, logged by MannequinGenerator), and the Locomotion blend tree places it there.
+
+The brisk walk is also shown up to MannequinGenerator's `BriskWalkUpTo` speed, played faster than it's made for (`BriskWalkUpToPlayback`), so a walking speed faster than people naturally walk still looks like a walk rather than a run. The trade is that its planted feet slide a little at those speeds. Sprinting plays Quaternius's jog at its own pace, with its feet planted (see [Character Model and Animations](animation.md)).
+
+## Jumping
+Press Jump (Space, or the south face button) on the ground, or just after walking off an edge (Coyote Time), to jump. A press a moment before landing (within Jump Input Buffer) jumps on landing.
+
+A jump is set by how high it goes. A tap rises the Min Jump Height, and Jump held to the top of the jump rises the Max Jump Height. Letting go in between cuts the rise short, but never below the min height; let go of past it, the jump stops rising at once. The launch speed is worked out from the max height and the character's gravity, for the physics steps, so the heights are exact. Both heights scale with the character's size.
+
+Max Jumps sets how many jumps it gets before landing (1 for none in mid-air); an air jump rises the same heights from where it's made. Bumping a ceiling ends the rise.
+
+All of it is in the Jumping section of the BasicMovementMode asset; a Max Jump Height of 0 turns jumping off.
+
+## Dash
+Press F (keyboard) or right trigger (gamepad) to dash: a short burst in the movement direction relative to the camera, or straight ahead without input. A dash moves in a straight line, ignoring gravity and steering, and hands over to momentum when it ends instead of stopping dead.
+
+It has a cooldown, a short input buffer (pressing just before the cooldown ends still dashes), one dash per button press, and a limited number of air dashes that reset on landing. Jumping during a dash cancels it straight into the jump, keeping part of the dash's speed. Dashing during a jump cancels the jump's upward momentum, and the jump doesn't resume afterwards.
+
+The character plays a dash animation: it slides low in the dash direction with its legs trailing behind.
+
+All of it is tunable in the Dashing section of the BasicMovementMode asset, including a speed curve over the dash and how much speed is kept afterwards. A Dash Duration of 0 turns dashing off.
+
+## Turning and Leaning
+The character turns at once where it's steered, so it's always responsive, but its model (on the model parent, separate from the character's root for this) turns after it, naturally. All of this is tuned in the AnimationController's Smooth Rotation Variables and Leaning sections, on the Character prefab.
+
+**Turning.** The model eases into and out of each turn (a damped spring on its yaw, set by Rotation Fix Speed, rather than snapping most of the way round at the start). It turns no faster than Max Turn Speed Standing while standing still, falling to Max Turn Speed Moving at Full Turn Speed At and above, so a sprinting character sweeps round a turn instead of spinning on the spot.
+
+**Leaning into turns.** It leans into the curve the character actually runs, by the Turn Lean share of the lean that would balance it: the angle whose tangent is how hard its path turns it (its velocity projected onto the way the model faces, times how fast its path curves) over gravity. So a sharp turn the model is still coming round to leans little.
+
+**Leaning with speed changes.** It leans forward as it speeds up and back as it stops, by the Acceleration Lean share of the balancing lean.
+
+**Limits.** Either way, it leans no further than its actual speed allows (Max Lean Per Speed, in degrees per m/s, up to Max Lean), so walking leans less than sprinting, even round a sharp corner. At a steady speed or standing still it's upright.
+
+As the model turns about its feet, foot placement locks each planted foot where it was put down (see [IK](animation.md#ik)), so the feet don't slide round with it. Facings that abilities set (a dash, roll, slide, wall run, wall slide, wall climb, ledge, or holding an object) are turned to almost at once (Ability Turn Time), without leaning, and spinning ground turns the model with it.
+
+Only the model turns and leans: the character's collision and the camera, which follow the root, don't.
+
+## Collision
+MovementController resolves the character's movement against the world itself, with capsule sweeps rather than the physics solver. Each physics step it:
+- pushes the character out of anything that moved into them since the last step, so moving walls and platforms push the character instead of passing through
+- slides along walls and walkable slopes, and steps up stairs and low ledges, anything up to the step height, at any pace (a step-up carries the character far enough onto the step that it doesn't perch on the edge and slide back off)
+- slides the character off surfaces too steep to stand on, including ledge edges caught by the capsule's rounded bottom; but the edge of a step (one with walkable ground no further than the step height below the character's feet) is ground, so on stairs whose treads are shallower than the capsule is wide, as the level's are, the character walks and sprints down resting on the steps' edges instead of floating off the top step
+- snaps to the ground when walking down slopes and stairs
+
+Momentum that a collision blocks is lost: bumping a ceiling ends the jump, and momentum into a wall doesn't build up and fling the character once they move clear of it. Each step's MovementData records which sides were blocked (`collisions`, as Unity's CollisionFlags), and the next step can read them (`previousCollisions`).
+
+## Character Size
+The character can be resized at runtime with `ACCharacterController.SetScale(Vector3)`, or by editing the Scale field in the ACCharacterController's inspector while playing. x is width, y height and z depth, relative to the character as authored; any mix of positive values works, including non-uniform and fractional scales.
+
+Negative, zero and non-finite scales are refused with an error (the inspector field reverts), and values below `MinimumScale` (in `ACCharacterController.cs`) are raised to it. Only the model parent is scaled, never the character's own transform; a scaled root (by itself or a parent) is reported as an error, since it would break collision.
+
+Everything else follows:
+- **Collision:** the capsule's height scales with y and its radius with the larger of x and z (capped at half the height, so a wide, flat character doesn't get a collider taller than itself). Step height, ground snapping, the grounded tolerance, the ground check and the skin width (the small gap kept from surfaces) scale with it, so a tiny character obeys the same collision rules as a full-size one.
+- **Room to grow:** a change of size takes a moment (Scale Change Duration, on the ACCharacterController). Growing pauses while there isn't room, under a low ceiling say, and carries on once there is; shrinking always happens.
+- **Movement:** by default it scales in proportion: speeds, accelerations and gravity scale with height, and timings stay the same, so the character moves exactly like a scaled copy of itself. It crosses its own height in the same time, and a jump lasts as long and goes as high for its size, so a small character doesn't look zippy and a big one doesn't look floaty.
+
+  A test (`ScaleTests.AtAnySize_TheCharacterMovesLikeAScaledCopyOfItself`, at the sizes in its `AnySize` list) runs it over a course of ramps, a step, a jump and a dash, from far smaller to far bigger than authored, and checks every physics step lands it in the same place for its size as at full size.
+
+  The MovementController's Size Scaling setting can instead scale it naturally, as real animals do (speeds with the square root of height, gravity unchanged, so smaller characters look quicker for their size), or keep speeds unchanged.
+- **Mass** scales with volume.
+- **Animation:** the Animator gets speeds divided by the model's stride scale, so planted feet stay put at any size or stretch. Vertical speed is divided by how speeds scale, so the rising and falling poses fall at the same points of a jump. Foot placement's step limits scale too, and IK places hands and feet right when the model is stretched on one axis.
+
+  Unity's humanoid IK gets stretched models wrong in two ways, and CharacterIK corrects both. It reports foot goals as if the model were scaled evenly by its width, so a taller-stretched model's feet were placed below the floor, and a shorter one's above it. And it solves each limb from where the limb starts (the hip joint, or the collarbone), moving the hand or foot further from there across and along the model than asked, by the model's width and depth scale over its height scale: a foot was put well past a goal just in front of the hip on a deeper model, and a hand on a wider model missed by a wide margin.
+
+  Hands and feet now land on their goals on every model and stretch tested (`AnimationTests.MovingAGoal_MovesTheHandOrFootAsFar_AtAnyStretch`, which holds the tolerances).
+- **Feet on the ground:** every model's soles stay on the floor at any size, including stretched on one axis only. Prepare Character Models measures how far each model's soles stand from its origin and stores it as its source's Ground Offset, and straightens rotated nodes above the skeleton, which used to distort stretched models (see [Character models](animation.md#character-models)).
+- **The model's measurements**, the eye point and the placeholder all follow, and models loaded while the character is resized are measured at its size.
+- **The camera:** first person follows the eye point. Third person's pivot height, shoulder offset and distance, and the head bob, scale with the camera rig's Target Size Reference, which a spawned character hands the camera (its model parent), through its spawner's camera event (see [Spawning the Character](spawning.md)).
+
+  Speed effects (the speed-based field of view and head bob strength) judge the target's speed relative to its size, dividing it by its height, so a character at its own top speed gets the same effect at any size.
+
+  Every other distance and speed the camera uses scales with the target too: follow lag, landing dip and its speed threshold, collision probe and minimum distance, hide distance, shake, teleport distance and the clip planes (near always, far only for a bigger target, so a small one still sees the world). See [Camera System](camera.md).
+
+## Moving Ground
+The character rides along with whatever it stands on. Each physics step, before moving, the character is carried by however far its ground moved, and turned with it if it spins. It then moves relative to the ground as normal. Leaving moving ground, by jumping or walking off, keeps the ground's velocity, so the character doesn't stop dead in mid-air.
+
+These options can be toggled in the MovementController's Moving Ground section (Move With Ground, Rotate With Ground, Inherit Ground Velocity). Ground that moves further than Max Ground Carry Per Step in one physics step is treated as teleporting and doesn't carry the character.
+
+Moving platforms should be kinematic Rigidbodies moved in FixedUpdate with interpolation enabled; the MovingPlatform component does this. Tools > Character Showcase > Create Foot Placement Test Area adds a sliding platform, an elevator and a spinning platform to try it.
+
+## Capabilities
+`MovementController.Capabilities` says what the character can do, as it's tuned and sized now, read-only: how high it steps up and how steep a slope it walks; how tall it stands and crouches; how high its jumps rise; how far each kind of jump crosses (a jump, a sprint jump, a sprint jump and an air dash, and double jumps when it has air jumps); how high each kind of climb reaches (stepping up, jumping up onto something, jumping to a ledge and climbing it); and how far a slide, a roll and a wall run carry it, and how far a wall run falls. Each is in metres at the character's size, or NaN where it can't do that at all (an ability turned off).
+
+The values that are exact by construction come straight from the settings: the step height (MovementController's Max Step Height), the walkable slope (Max Slope Angle), the jump heights (Min Jump Height and Max Jump Height), the stand height (the collider) and the crouch height (Crouch Height's share of it). The rest are measured by running the character's own movement: a copy of the character (its settings, movement mode, collider and size, none of its state) is stepped through each move in a world of its own, far below everything else, faster than real time and without rendering (`MovementSimulation`). The movement is deterministic (a fixed physics step, its own clock, `StepTime`, and no randomness), so this gives exact answers that can't drift from what the movement does. Moves with a choice of timing (when to dash, when to jump again) are measured at their best timing, found by trying each. Measuring takes a moment, so the capabilities are measured the first time they're asked for and again after the movement mode's settings, the character's size or its collider change.
+
+The levelspec tool's movement checks hold levels to the default character's capabilities: Tools/LevelSpec/envelope.json is written from them (Tools > Character Showcase > Level > Specs > Write Movement Envelope; see [Level specs](level-specs.md)), and a test fails while it's out of date.

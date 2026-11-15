@@ -12,7 +12,8 @@ namespace CharacterShowcase.EditorTools.Level
     ///
     /// The hall is 120 × 100 m, laid out in its own coordinates (centred on its middle, +Z north) under a group moved
     /// to HallCentre, with walls to +16 and no roof: a 3 × 3 grid of rooms on floors from -8 to +8, as the sheet's key
-    /// locations, an upper catwalk at +12, and crates, shelves and machinery standing in for its objects. The
+    /// locations, an upper catwalk at +12, crates (most of them pushable), shelves and machinery, a lift, ladders and a
+    /// maintenance platform at the roofline (see BuildMechanics). The
     /// Concourse's east bridge (+8) comes in at its main entrance, its north-east bridge (+12) onto the catwalk, and
     /// the Service Network's tunnel at its basement (-8). How the sheets were read is in
     /// FabricationHall_Blockout_Notes.md beside the scene.
@@ -31,6 +32,12 @@ namespace CharacterShowcase.EditorTools.Level
         private const float Catwalk = 12f;      // Upper catwalks.
         private const float Basement = -8f;
         private const float CrateSize = 4f;
+        private const float Roofline = WallTop; // The maintenance platform at the walls' tops.
+
+        // The lift from the assembly wing (+4) up to its spur off the north catwalk (+12), in the wing's north-east corner.
+        private const float LiftX0 = 53f, LiftX1 = 57f, LiftZ0 = 22f, LiftZ1 = 26f;
+        private const float RingLadderZ = -14f;  // The ladder from the workshop floor (+8) up to the ring's east side (+12).
+        private const float LadderGap = 1.6f;    // A guardrail's gap for a ladder's top: too narrow either side of it to fall through.
 
         // The grid of rooms (hall coordinates): three columns and, in each, three rows, with 1 m walls between.
         private const float WestX0 = -59f, WestX1 = -29f, CentreX0 = -28f, CentreX1 = 20f, EastX0 = 21f, EastX1 = 59f;
@@ -64,11 +71,13 @@ namespace CharacterShowcase.EditorTools.Level
             Transform objects = Group(building, "Objects");
             Transform connections = Group(building, "Connections");
             Transform future = Group(building, "Future Mechanics");
+            Transform mechanics = Group(building, "Mechanics");
             BuildRooms(rooms);
             BuildWalls(Group(building, "Walls"));
             BuildStairs(stairs, rails);
             BuildCatwalks(catwalks, stairs, rails);
-            BuildObjects(objects, future);
+            BuildObjects(objects, mechanics, future);
+            BuildMechanics(mechanics, catwalks, rails);
             BuildUtilities(Group(building, "Utilities"));
             Marker(connections, "To Concourse (W, +8)", new Vector2(-60f, 0f), 8f);
             // Beside the main entrance, on the west wall's face, between its pilasters.
@@ -134,7 +143,8 @@ namespace CharacterShowcase.EditorTools.Level
             Wall(walls, "Wall (Storage)", new Vector2(CentreX0, 28.5f), new Vector2(CentreX1, 28.5f), WallBase, WallTop, t,
                 Door(4f, 28.5f, 8f), (new Vector2(-22f, 28.5f), 4f, Catwalk, WallTop));      // A door, and the catwalk spur above.
             Wall(walls, "Wall (Workshop, South)", new Vector2(CentreX0, -20.5f), new Vector2(CentreX1, -20.5f), WallBase, WallTop, t, Stairway(0f, -20.5f, 0f, 8f));
-            Wall(walls, "Wall (Parts Store)", new Vector2(EastX0, 28.5f), new Vector2(EastX1, 28.5f), WallBase, WallTop, t, Stairway(40f, 28.5f, 4f, 8f));
+            Wall(walls, "Wall (Parts Store)", new Vector2(EastX0, 28.5f), new Vector2(EastX1, 28.5f), WallBase, WallTop, t, Stairway(40f, 28.5f, 4f, 8f),
+                (new Vector2((LiftX0 + LiftX1) / 2f, 28.5f), LiftX1 - LiftX0, Catwalk, WallTop));  // The lift's spur, above.
             Wall(walls, "Wall (Assembly Wing, South)", new Vector2(EastX0, -12.5f), new Vector2(EastX1, -12.5f), WallBase, WallTop, t);
         }
 
@@ -168,8 +178,11 @@ namespace CharacterShowcase.EditorTools.Level
         {
             const float z0 = 34f, z1 = 42f, ring = 3f;
             CatwalkDeck(catwalks, "Catwalk (North)", -60f, 60f, z0, z1);
-            Rail(rails, new Vector2(WestX0, z0), new Vector2(EastX1, z0), Catwalk, (new Vector2(-22f, z0), 4f));
-            Rail(rails, new Vector2(WestX0, z1), new Vector2(EastX1, z1), Catwalk, (new Vector2(-4f, z1), StairWidth), (new Vector2(40f, z1), StairWidth));
+            // Gaps for the spurs (to the workshop ring and the lift), the stairs, the crate stack's jump (see BuildObjects)
+            // and the maintenance ladder (see BuildMechanics).
+            Rail(rails, new Vector2(WestX0, z0), new Vector2(EastX1, z0), Catwalk, (new Vector2(-22f, z0), 4f), (new Vector2((LiftX0 + LiftX1) / 2f, z0), LiftX1 - LiftX0));
+            Rail(rails, new Vector2(WestX0, z1), new Vector2(EastX1, z1), Catwalk, (new Vector2(-52f, z1), CrateSize), (new Vector2(-4f, z1), StairWidth),
+                (new Vector2(40f, z1), StairWidth), (new Vector2(56f, z1), LadderGap));
             Flight(stairs, "Stair (Catwalk to Storage)", new Vector2(-4f, z1 + FlightLength(8f, Catwalk)), Vector2.down, StairWidth, 8f, Catwalk);
             Flight(stairs, "Stair (Catwalk to Parts Store)", new Vector2(40f, z1 + FlightLength(8f, Catwalk)), Vector2.down, StairWidth, 8f, Catwalk);
 
@@ -207,7 +220,7 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(stairs, "Stair (Workshop to Ring)", new Vector2(-4f, wz1 - ring - FlightLength(8f, Catwalk)), Vector2.up, StairWidth, 8f, Catwalk);
             Vector2 a = new(wx0 + ring, wz0 + ring), b = new(wx1 - ring, wz0 + ring), c = new(wx1 - ring, wz1 - ring), d = new(wx0 + ring, wz1 - ring);
             Rail(rails, a, b, Catwalk);
-            Rail(rails, b, c, Catwalk);
+            Rail(rails, b, c, Catwalk, (new Vector2(wx1 - ring, RingLadderZ), LadderGap)); // The ladder up from the workshop (see BuildMechanics).
             Rail(rails, c, d, Catwalk, (new Vector2(-4f, wz1 - ring), StairWidth));
             Rail(rails, d, a, Catwalk);
         }
@@ -216,32 +229,45 @@ namespace CharacterShowcase.EditorTools.Level
         private static void CatwalkDeck(Transform parent, string name, float x0, float x1, float z0, float z1) =>
             Block(parent, name, x0, x1, z0, z1, Catwalk - Deck, Catwalk, Surface.Steel);
 
-        /// <summary>Crates, shelves and machinery: static stand-ins for the sheet's interactive objects, with markers for what they'll become.</summary>
-        private static void BuildObjects(Transform objects, Transform future)
+        /// <summary>
+        /// Crates, shelves and machinery. The west rooms' crates and the workshop's are pushable (in the crate store, one
+        /// to push against the stack there and climb to the catwalk); the parts store's and the stack itself stay put.
+        /// Markers for the mechanics still to come.
+        /// </summary>
+        private static void BuildObjects(Transform objects, Transform mechanics, Transform future)
         {
             void Crate(string where, float x, float z, float floor) =>
                 BoxXZ(objects, $"Crate ({where})", new Vector2(x, z), new Vector2(CrateSize, CrateSize), floor, floor + CrateSize, 0f, Surface.Steel);
-            Crate("Loading Bay", -50f, 25f, 4f);
-            Crate("Loading Bay", -52f, -10f, 4f);
-            Crate("Loading Bay", -35f, -10f, 4f);
-            Crate("Loading Bay", -35f, 15f, 4f);
+            void Pushable(float x, float z, float floor) => PushableCrate(mechanics, new Vector2(x, z), floor, CrateSize, speed: 0.8f);
+            Pushable(-50f, 25f, 4f);   // Loading bay.
+            Pushable(-52f, -10f, 4f);
+            Pushable(-35f, -10f, 4f);
+            Pushable(-35f, 15f, 4f);
+            // The crate store's stack, two crates high (+4 to +12): too tall to climb from the floor, but a crate pushed
+            // against it is a step half way (each climb 4 m, within a jump's ledge reach). From its top, a 2 m jump south
+            // through a gap in the catwalk's guardrail lands on the catwalk (+12). The crate to push starts 4 m east of it,
+            // too far to jump across from; the other two can be pushed there as well.
             Crate("Crate Store", -52f, 46f, 4f);
-            Crate("Crate Store", -46f, 46f, 4f);
             Crate("Crate Store", -52f, 46f, 8f);
-            Crate("Crate Store", -36f, 46f, 4f);
-            Crate("Crate Store", -52f, 31.5f, 4f);
-            Crate("Workshop", -15f, 10f, 8f);
-            Crate("Workshop", 8f, -10f, 8f);
-            Crate("Workshop", 10f, 14f, 8f);
+            Pushable(-44f, 46f, 4f);
+            Pushable(-36f, 46f, 4f);
+            Pushable(-52f, 31.5f, 4f);
+            Pushable(-15f, 10f, 8f);   // Workshop.
+            Pushable(8f, -10f, 8f);
+            Pushable(10f, 14f, 8f);
+            // The parts store's crates are footholds: one against the catwalk's edge, a step up to it.
             Crate("Parts Store", 50f, 32f, 8f);
             Crate("Parts Store", 26f, 46f, 8f);
-            Marker(future, "Pushable Crates (future): the crates", new Vector2(-50f, 25f), 8f);
 
-            // Shelves in storage, 2 m aisles between them (narrow passages), low enough to stay under the catwalk.
-            foreach ((float x0, float x1, float z) in new[] { (-26f, -8f, 31f), (8f, 18f, 31f), (-26f, -9f, 46.5f), (3f, 18f, 46.5f) })
+            // Shelves in storage, 2 m aisles between them (narrow passages), low enough to stay under the catwalk. The west
+            // one by the wall has a gap through it under a low beam, a crouch passage between its aisles.
+            const float passage = -17f, passageWidth = 2.4f;
+            foreach ((float x0, float x1, float z) in new[] { (-26f, passage - passageWidth / 2f, 31f), (passage + passageWidth / 2f, -8f, 31f), (8f, 18f, 31f), (-26f, -9f, 46.5f), (3f, 18f, 46.5f) })
             {
                 BoxXZ(objects, "Storage Shelf", new Vector2((x0 + x1) / 2f, z), new Vector2(x1 - x0, 1.5f), 8f, 10.5f, 0f, Surface.Graphite);
             }
+            LowBeam(objects, "Crouch Passage (Storage Shelf)", new Vector2(passage - passageWidth / 2f, 31f), new Vector2(passage + passageWidth / 2f, 31f), 8f, 1.2f);
+            Marker(objects, "Crouch Passage: through the west shelf in storage, under its 1.2 m beam", new Vector2(passage, 31f), 8f);
             BoxXZ(objects, "Assembly Line", new Vector2(42f, 12f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
             BoxXZ(objects, "Assembly Line", new Vector2(42f, -4f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
             foreach (Vector2 at in new[] { new Vector2(30f, -40f), new Vector2(42f, -40f), new Vector2(52f, -24f) })
@@ -256,10 +282,39 @@ namespace CharacterShowcase.EditorTools.Level
             Marker(future, "Sliding Door (future): Storage", new Vector2(4f, 28.5f), 8f);
             Marker(future, "Sliding Door (future): Crate Store", new Vector2(-44f, 28.5f), 4f);
             Marker(future, "Shutter (future): Service Door", new Vector2(-4f, -49.5f), 0f);
-            Marker(future, "Lift (future): Assembly Wing to Catwalk", new Vector2(54f, 20f), 4f);
-            Marker(future, "Ladder (future): Workshop to Ring", new Vector2(18f, -14f), 8f);
-            Marker(future, "Crouch Passage (future): between the shelves", new Vector2(-17f, 33.5f), 8f);
-            Marker(future, "Maintenance Access (future): catwalk to the roofline", new Vector2(56f, 38f), Catwalk);
+        }
+
+        /// <summary>
+        /// The hall's working mechanics, beside the crates: a lift from the assembly wing (+4) up to a spur off the north
+        /// catwalk (+12), a ladder from the workshop floor (+8) up to its ring (+12), and a maintenance ladder from the
+        /// catwalk's east end up to a platform at the walls' tops (+16), the roofline.
+        /// </summary>
+        private static void BuildMechanics(Transform mechanics, Transform catwalks, Transform rails)
+        {
+            // The lift, in the assembly wing's north-east corner, open to the sky, and its spur north through the parts
+            // store wall (opened above +12 for it) to the catwalk, railed both sides.
+            float liftX = (LiftX0 + LiftX1) / 2f, liftZ = (LiftZ0 + LiftZ1) / 2f;
+            MovingPlatform(mechanics, "Lift (Assembly Wing to Catwalk)", new Vector3(liftX, 4.05f, liftZ), new Vector3(LiftX1 - LiftX0, 0.5f, LiftZ1 - LiftZ0),
+                new Vector3(0f, Catwalk - 4f, 0f), 8f, pause: 1.5f);
+            CatwalkDeck(catwalks, "Catwalk (Lift Spur)", LiftX0, LiftX1, LiftZ1, 34f);
+            foreach (float x in new[] { LiftX0, LiftX1 })
+            {
+                Rail(rails, new Vector2(x, LiftZ1), new Vector2(x, NorthZ0 - 1f), Catwalk);
+                Rail(rails, new Vector2(x, NorthZ0), new Vector2(x, 34f), Catwalk);
+            }
+
+            // Up the inner face of the workshop ring's east side, through a gap in its guardrail.
+            Ladder(mechanics, new Vector2(CentreX1 - 3f, RingLadderZ), 8f, Catwalk - 8f, Vector2.left);
+
+            // Maintenance access: a platform at the roofline in the parts store's north-east corner, hung between the north
+            // and east walls (whose tops it's level with, to walk out along), up a ladder on its south face from the
+            // catwalk, through a gap in the catwalk's guardrail and in the platform's own.
+            const float px0 = 53f, pz0 = 42f, ladderX = 56f;
+            Block(catwalks, "Roofline Platform (+16)", px0, EastX1, pz0, NorthZ1, Roofline - Deck, Roofline, Surface.Steel);
+            Rail(rails, new Vector2(px0, pz0), new Vector2(EastX1, pz0), Roofline, (new Vector2(ladderX, pz0), LadderGap));
+            Rail(rails, new Vector2(px0, pz0), new Vector2(px0, NorthZ1), Roofline);
+            Ladder(mechanics, new Vector2(ladderX, pz0), Catwalk, Roofline - Catwalk, Vector2.down);
+            Marker(mechanics, "Maintenance Access: ladder from the catwalk to the roofline (+16), then out along the walls' tops", new Vector2(ladderX, 45f), Roofline);
         }
 
         /// <summary>

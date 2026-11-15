@@ -258,6 +258,8 @@ def _shapes(piece, f, state):
         a, s = g("at"), g("size")
         return [("mechanics", "poly", _rect(a[0] - s / 2, a[0] + s / 2, a[1] - s / 2, a[1] + s / 2), g("floor"), g("floor") + 0.3,
                  {"label": f"Bounce Pad ({_n(g('height'))} m)"})]
+    if name == "ClimbablePanel":
+        return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("y0"), g("y1"), {"label": "Climbable Panel"})]
     if name == "TimingGate":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("floor"), g("floor") + 4.2,
                  {"label": f"Timing Gate: {g('course')} ({g('role')})" + (f", {_n(g('distance'))} m" if g("distance") else "")})]

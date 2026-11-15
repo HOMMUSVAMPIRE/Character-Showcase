@@ -12,8 +12,9 @@ namespace CharacterShowcase.EditorTools.Level
     ///
     /// Octagonal tower platforms at +8, +16 and +24, each on a 6 m column, on a grid about 50 m apart, joined by 6 m
     /// bridges along the compass directions: suspended where they join towers of one height (no columns), on
-    /// columns with a stair at one end where they change height. Gaps of 8 to 12 m for jumps and dashes, rope
-    /// anchors for the swings the sheet plans, and stairs up from the ground (the recovery level) to the +8 towers.
+    /// columns with a stair at one end where they change height. Gaps of 8 to 12 m for jumps and dashes, two
+    /// chains of rope swings (north to north-east tower, and hub to south-east tower) on gantries, and stairs up from
+    /// the ground (the recovery level) to the +8 towers.
     /// The Concourse's south-east bridge (+16) joins the arrival tower. How the sheet was read is in
     /// SuspensionYard_Blockout_Notes.md beside the scene.
     /// </summary>
@@ -23,7 +24,14 @@ namespace CharacterShowcase.EditorTools.Level
 
         private const float BridgeWidth = 6f;
         private const float ColumnWidth = 6f;
-        private const float AnchorFrame = 32f;  // The rope-anchor gantry's top.
+
+        // The rope swings (see RopeChain), worked out for the movement's tuning (BasicMovementMode.asset): change them
+        // with it, and check the arithmetic in the notes again.
+        private const float RopeRise = 12f;       // The anchors, above the decks the swing goes between.
+        private const float RopeDrop = 2f;        // How far below those decks the ropes hang.
+        private const float RopeReach = 3f;       // The first and last rope, out from the decks' edges.
+        private const float RopeMaxSpacing = 10f; // The furthest apart ropes are along a chain.
+        private const float RopeMastOffset = 2.8f; // The gantry's masts, beside the line of ropes.
 
         private sealed class Tower
         {
@@ -35,7 +43,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         private static readonly Vector2 N = Vector2.up, S = Vector2.down, E = Vector2.right, W = Vector2.left;
-        private static readonly Vector2 SE = new Vector2(1f, -1f).normalized, SW = new Vector2(-1f, -1f).normalized, NW = new Vector2(-1f, 1f).normalized;
+        private static readonly Vector2 NE = new Vector2(1f, 1f).normalized, SE = new Vector2(1f, -1f).normalized, SW = new Vector2(-1f, -1f).normalized, NW = new Vector2(-1f, 1f).normalized;
 
         /// <summary>Builds the Suspension Yard under the complex's root, all in the given material.</summary>
         public static void BuildInto(Transform complex, Material material)
@@ -88,6 +96,15 @@ namespace CharacterShowcase.EditorTools.Level
             Gap(future, south, jumpA, W, "Gap (8 m, +8): South Platform to Jump Platform A");
             Gap(future, jumpA, jumpB, W, "Gap (12 m, +8): Jump Platform A to B");
 
+            // The rope swings: chains of ropes from tower to tower, swung along either way (see RopeChain). North to
+            // north-east (+24) beside their bridge, 6.5 m north of its middle (clear of its rails), from the north tower's
+            // north-east flat to the north-east tower's north-west flat, the gantry's masts to the north, away from the
+            // bridge; and the hub to the south-east tower (+16), along the diagonal over the middle of the yard, where no
+            // bridge goes.
+            Transform swings = Group(yard, "Rope Swings");
+            RopeChain(swings, north, northEast, E, new Vector2(0f, 6.5f), N, "Rope Swing (North Tower to North-East Tower, +24)");
+            RopeChain(swings, hub, southEast, SE, Vector2.zero, NE, "Rope Swing (Central Hub to South-East Tower, +16)");
+
             // Stairs up from the ground (the recovery level) to the +8 towers.
             Recovery(stairs, west, W, BridgeWidth);
             Recovery(stairs, south, S, BridgeWidth);
@@ -112,18 +129,6 @@ namespace CharacterShowcase.EditorTools.Level
                 }
             }
 
-            // Rope anchors: posts on the +24 towers, and a gantry over the hub to +32, for the swings to come.
-            foreach (Tower tower in new[] { north, northEast })
-            {
-                BoxXZ(future, "Rope Anchor (+24)", tower.Centre + new Vector2(0f, -tower.Apothem + 2f), new Vector2(1f, 1f), tower.Height, tower.Height + 4f, 0f, Surface.Graphite);
-            }
-            Marker(future, "Rope Swing (future): North Tower to North-East Tower, +24", (north.Centre + northEast.Centre) / 2f, 24f);
-            foreach (float side in new[] { -1f, 1f })
-            {
-                BoxXZ(future, "Anchor Gantry Column", hub.Centre + new Vector2(side * 7f, 0f), new Vector2(2f, 2f), hub.Height, AnchorFrame, 0f, Surface.Steel);
-            }
-            BoxXZ(future, "Anchor Gantry Beam (+32)", hub.Centre, new Vector2(16f, 2f), AnchorFrame - 1f, AnchorFrame, 0f, Surface.Steel);
-            Marker(future, "Rope Swing (future): Hub Gantry, +32", hub.Centre, AnchorFrame);
             Marker(future, "Optional Higher Route (future): above +24", northEast.Centre, 32f);
             // Lawn and trees (sparser) over the recovery level below the towers, where they don't crowd a column, stair or
             // walkway.
@@ -178,6 +183,81 @@ namespace CharacterShowcase.EditorTools.Level
                 float half = tower.Apothem * Mathf.Tan(22.5f * Mathf.Deg2Rad);
                 HazardStripes(markers, centre - across * half, centre + across * half, -flat, tower.Height);
             }
+        }
+
+        /// <summary>
+        /// A chain of rope swings from tower a to tower b (of one height) along direction, on the line through a's centre
+        /// offset by offset (b's centre is on it too, since the towers are lined up along direction): open in both
+        /// towers' guardrails on the flats the line crosses, with hazard stripes along them, and ropes along the line
+        /// between, the first and last RopeReach out from those flats and the rest evenly between, no more than
+        /// RopeMaxSpacing apart. They hang from one steel beam along the line, RopeRise above the decks, carried by arms
+        /// from graphite masts on the ground beside it (toward side), one at each rope but the first and last, so nothing
+        /// stands near the decks. Nothing swung on a rope rises above its anchor, and a jump off one (simulated) takes the
+        /// feet no more than about 8.5 m above the deck, the head well under the beam, so the beam is never in the way.
+        ///
+        /// Why these numbers (with the tuning in BasicMovementMode.asset: sprint 10 m/s, a jump of 2 m under gravity 40,
+        /// hands 2.1 m above the feet): a sprint jump off the edge has the hands 3.8 to 4.1 m above the deck between 2
+        /// and 4 m out, so the first rope, RopeReach out and hanging RopeDrop below the deck, is caught there about 8 m
+        /// below its anchor. Catching hold keeps only the speed across the rope (falling speed is lost), so every rope is
+        /// caught at about the speed of a run, and a release on the forward swing with the jump off (8 m/s up) carries the
+        /// character 10 m or more on, still well above the deck, to the next. Simulated with the rope code's steps, every
+        /// rope in these chains has about 0.8 s or more of its swing to let go in and still reach the next (or the far
+        /// deck), without pumping the swing; pumping widens it. The chains are the same from either end, so they're
+        /// swung along either way.
+        /// </summary>
+        private static void RopeChain(Transform parent, Tower a, Tower b, Vector2 direction, Vector2 offset, Vector2 side, string name)
+        {
+            Transform chain = Group(parent, name);
+            Vector2 d = direction.normalized, through = a.Centre + offset;
+            (Vector2 start, Vector2 startFlat) = Exit(a, through, d);
+            (Vector2 end, Vector2 endFlat) = Exit(b, through, -d);
+            float height = a.Height, length = Vector2.Distance(start, end);
+            float span = length - 2f * RopeReach;
+            int count = Mathf.CeilToInt(span / RopeMaxSpacing - 1e-3f) + 1;
+            float spacing = span / (count - 1);
+
+            // Open where the line leaves a and meets b, with hazard stripes along the edges.
+            foreach ((Tower tower, Vector2 flat) in new[] { (a, startFlat), (b, endFlat) })
+            {
+                float half = tower.Apothem * Mathf.Tan(22.5f * Mathf.Deg2Rad);
+                Vector2 centre = tower.Centre + flat * tower.Apothem, across = new Vector2(flat.y, -flat.x);
+                tower.Openings.Add((centre, 2f * half));
+                HazardStripes(chain, centre - across * half, centre + across * half, -flat, height);
+            }
+
+            // The beam along the line, the ropes from its underside, and the masts and arms that carry it.
+            float anchor = height + RopeRise, beam = anchor + Settings.mechanics.ropeBracket, beamTop = beam + 0.4f;
+            float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg, sideYaw = Mathf.Atan2(side.x, side.y) * Mathf.Rad2Deg;
+            Vector2 first = start + d * RopeReach;
+            BoxXZ(chain, "Rope Gantry Beam", first + d * (span / 2f), new Vector2(0.6f, span + 1f), beam, beamTop, yaw, Surface.Steel);
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 at = first + d * (i * spacing);
+                Rope(chain, new Vector3(at.x, anchor, at.y), RopeRise + RopeDrop);
+                if (i == 0 || i == count - 1) { continue; }
+                BoxXZ(chain, "Rope Gantry Mast", at + side * RopeMastOffset, new Vector2(0.8f, 0.8f), 0f, beamTop, yaw, Surface.Graphite);
+                BoxXZ(chain, "Rope Gantry Arm", at + side * (RopeMastOffset / 2f), new Vector2(0.6f, RopeMastOffset), beam, beamTop, sideYaw, Surface.Steel);
+            }
+        }
+
+        /// <summary>
+        /// Where the line through "through" along direction leaves a tower's deck (an octagon, its flats facing the compass
+        /// points), and the outward direction of the flat it leaves by.
+        /// </summary>
+        private static (Vector2 point, Vector2 flat) Exit(Tower tower, Vector2 through, Vector2 direction)
+        {
+            Vector2 relative = through - tower.Centre, flat = direction;
+            float best = float.MaxValue;
+            for (int k = 0; k < 8; k++)
+            {
+                float angle = 45f * k * Mathf.Deg2Rad;
+                var normal = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                float facing = Vector2.Dot(normal, direction);
+                if (facing < 1e-4f) { continue; }
+                float t = (tower.Apothem - Vector2.Dot(normal, relative)) / facing;
+                if (t < best) { best = t; flat = normal; }
+            }
+            return (through + direction * best, flat);
         }
 
         /// <summary>A stair from the ground up to a tower's flat.</summary>

@@ -19,6 +19,15 @@ namespace Character
         public virtual void AfterMovementResolved(MovementData movementData, MovementController controller)
         {
         }
+
+        /// <summary>
+        /// Measures what this mode lets a character do (see MovementController.Capabilities), by running its movement in
+        /// the given simulation, into capabilities (whose step height, slope, stand height and radius are already filled
+        /// in from the character). A mode measures the moves it has: jumps, climbs, and its abilities' reach.
+        /// </summary>
+        public virtual void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
+        {
+        }
     }
 
     /// <summary>

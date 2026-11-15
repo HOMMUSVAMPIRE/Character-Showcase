@@ -174,5 +174,22 @@ namespace CharacterShowcase.Tests.EditMode
             StringAssert.Contains("1 bounce pad", summary);
             Object.DestroyImmediate(levelCable);
         }
+
+        [Test]
+        public void SetUp_MakesClimbablePanelsClimbable_ButNotFutureClimbableWallMarkers()
+        {
+            GameObject panel = Add("Climbable Panel | speed=0.8");
+            panel.AddComponent<BoxCollider>();
+            GameObject marker = Add("Climbable Wall (future): the tower's west face");
+            Transform setup = Add("Game Setup").transform;
+
+            string summary = LevelFixtureSetup.SetUp(scene, setup, null, withUndo: false);
+
+            var climbable = panel.GetComponent<ClimbableSurface>();
+            Assert.IsNotNull(climbable);
+            Assert.AreEqual(0.8f, climbable.SpeedMultiplier, 1e-5f);
+            Assert.IsNull(marker.GetComponent<ClimbableSurface>(), "A future climbable wall's marker isn't climbable.");
+            StringAssert.Contains("1 climbable panel", summary);
+        }
     }
 }

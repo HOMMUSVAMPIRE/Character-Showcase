@@ -160,6 +160,7 @@
         {"piece": "Group", "parent": "Air Mechanics", "name": "Rope Swing (+4)"},
         {"piece": "Platform", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Rope Platform (North, +4)", "x0": -47, "x1": -43, "z0": 2, "z1": 6, "y0": 0, "top": 4, "coping": "Accent"},
         {"piece": "Platform", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Rope Platform (South, +4)", "x0": -47, "x1": -43, "z0": -12, "z1": -8, "y0": 0, "top": 4, "coping": "Accent"},
+        {"piece": "ClimbablePanel", "parent": "Air Mechanics/Rope Swing (+4)", "a": [-47, 2.5], "b": [-47, 5.5], "y0": 0, "y1": 4, "facing": [-1, 0]},
         {"piece": "Flight", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Stair (to the Rope Platform)", "basePoint": [-45, 11.6], "direction": [0, -1], "width": 3, "y0": 0, "y1": 4},
         {"piece": "Flight", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Stair (from the Rope Platform)", "basePoint": [-45, -17.6], "direction": [0, 1], "width": 3, "y0": 0, "y1": 4},
         {"piece": "Group", "parent": "Air Mechanics/Rope Swing (+4)", "name": "Gantry"},

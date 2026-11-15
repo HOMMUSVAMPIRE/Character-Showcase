@@ -12,7 +12,7 @@ namespace CharacterShowcase.EditorTools.Level
     /// Its floor is at -12. Corridors (6 m wide, 6 m high) and rooms (8 m high) run under the Kinetic Gardens and on
     /// east past the Ascension Spire, with a service tunnel (4 m wide, 4 m high) on to the Fabrication Hall's
     /// basement. It comes up by stairwells at the gardens' two service-network markers and beside the spire, and two
-    /// ventilation shafts rise from it to +16. Where it comes up, the ground (and the gardens' floor) has openings
+    /// ventilation shafts rise from it to +16, with a ladder up each to a deck outside its top (BuildShaftClimbs). Where it comes up, the ground (and the gardens' floor) has openings
     /// (GroundOpenings). How the sheet was read is in ServiceNetwork_Blockout_Notes.md beside the scene.
     /// </summary>
     public static class MeridianServiceNetworkBuilder
@@ -109,11 +109,64 @@ namespace CharacterShowcase.EditorTools.Level
             // Ventilation shafts: open to the network below, walled up to +16 above the ground.
             ShaftWalls(shafts, "Ventilation Shaft (West)", 10f, 104f, 18f, 112f, GroundUnderside, ShaftTop);
             ShaftWalls(shafts, "Ventilation Shaft (East)", 56f, 56f, 64f, 64f, GroundUnderside, ShaftTop);
-            Marker(future, "Ladder (future): West Shaft, -12 to +16", new Vector2(14f, 108f), Level);
-            Marker(future, "Ladder (future): East Shaft, -12 to +16", new Vector2(60f, 60f), Level);
+            BuildShaftClimbs(Group(network, "Mechanics"), rails);
+
+            // Still to come: climbing only handles surfaces leaning out up to 30° (not a ceiling), there's no crawl (a
+            // crouch passage beside the main corridor would only repeat it), and nothing yet to hide a route.
             Marker(future, "Ceiling Climb (future): Pump Room", new Vector2(-38f, 108f), Level + RoomHeight);
             Marker(future, "Crawl Space (future): from the Junction Room", new Vector2(-14f, 113.5f), Level);
             Marker(future, "Hidden Route (future): Spire Access Room", new Vector2(24f, 100f), Level);
+        }
+
+        /// <summary>
+        /// Ladders up the two ventilation shafts, from the network's floor (-12) to the shafts' tops (+16), each climbed
+        /// off over the shaft's wall onto a deck at +16 built against it outside (a ladder is only climbed off its top onto
+        /// a floor there; inside, the shafts are open to the sky). The west shaft's deck reaches across to the Ascension
+        /// Spire's skyway (+16), behind its east guardrail (hopped or vaulted: the skyway is the spire's); the east
+        /// shaft's deck is the top of a zipline south down to the landing at the end of the Concourse's north-east bridge
+        /// (+12), outside the Fabrication Hall. Each deck is guarded but for the ladder's top and, on the east deck, the
+        /// south edge the zipline leaves over (walking off it under the cable catches it).
+        /// </summary>
+        private static void BuildShaftClimbs(Transform mechanics, Transform rails)
+        {
+            Vector2 column = Settings.decks.walkwayColumnSize;
+            const float gap = 2f; // The guardrail's gap at each ladder's top: room for the character to climb off.
+
+            // The west shaft (x 10 to 18, z 104 to 112): up its north wall, whose inside is solid all the way up (the
+            // main corridor comes in on its west side, the spire access room on its east), onto a deck north of it.
+            Transform west = Group(mechanics, "West Shaft Climb");
+            Ladder(west, new Vector2(14f, 112f), Level, ShaftTop - Level, Vector2.down);
+            // From the skyway's east edge (x 6) to past the shaft's east wall, between the shaft's wall and z 115.5.
+            BoxXZ(west, "Shaft Deck (+16)", new Vector2(12.25f, 114f), new Vector2(12.5f, 3f), ShaftTop - Deck, ShaftTop, 0f, Surface.Steel);
+            IBeamColumn(west, "Column", new Vector2(7f, 115f), column, 0f, ShaftTop - Deck);
+            IBeamColumn(west, "Column", new Vector2(18f, 115f), column, 0f, ShaftTop - Deck);
+            Bracket(west, new Vector2(11f, 112.5f), Vector2.up, ShaftTop - Deck);
+            Bracket(west, new Vector2(17f, 112.5f), Vector2.up, ShaftTop - Deck);
+            Rail(rails, new Vector2(6f, 115.5f), new Vector2(18.5f, 115.5f), ShaftTop);
+            Rail(rails, new Vector2(18.5f, 115.5f), new Vector2(18.5f, 112f), ShaftTop);
+            Rail(rails, new Vector2(6f, 112.5f), new Vector2(9.5f, 112.5f), ShaftTop);
+            // Along the shaft's wall top, over the drop into the shaft, but for the ladder's top.
+            Rail(rails, new Vector2(9.5f, 112.25f), new Vector2(18.5f, 112.25f), ShaftTop, (new Vector2(14f, 112.25f), gap));
+
+            // The east shaft (x 56 to 64, z 56 to 64): up its west wall (the service tunnel comes in on its north and
+            // south sides), onto a deck west of it.
+            Transform east = Group(mechanics, "East Shaft Climb");
+            Ladder(east, new Vector2(56f, 60f), Level, ShaftTop - Level, Vector2.right);
+            BoxXZ(east, "Shaft Deck (+16)", new Vector2(53.5f, 60f), new Vector2(4f, 8f), ShaftTop - Deck, ShaftTop, 0f, Surface.Steel);
+            IBeamColumn(east, "Column", new Vector2(52f, 57f), column, 0f, ShaftTop - Deck);
+            IBeamColumn(east, "Column", new Vector2(52f, 63f), column, 0f, ShaftTop - Deck);
+            Bracket(east, new Vector2(55.5f, 58f), Vector2.left, ShaftTop - Deck);
+            Bracket(east, new Vector2(55.5f, 62f), Vector2.left, ShaftTop - Deck);
+            Rail(rails, new Vector2(51.5f, 56f), new Vector2(51.5f, 64f), ShaftTop);
+            Rail(rails, new Vector2(51.5f, 64f), new Vector2(56f, 64f), ShaftTop);
+            Rail(rails, new Vector2(55.75f, 56f), new Vector2(55.75f, 64f), ShaftTop, (new Vector2(55.75f, 60f), gap));
+            // The zipline: from over the deck's north end, south over its open south edge and over the landing's north
+            // guardrail, to over the landing (+12), letting go a little above it and short of its south guardrail. High
+            // enough over the deck that a rider caught over it clears the deck to its edge (a little lower, a rider's feet
+            // touched the deck before its edge, and touching down lets go), and low enough at the edge that walking off it
+            // catches the cable (within the character's zipline grab reach).
+            const float landing = 12f;
+            Zipline(east, new Vector3(53.5f, ShaftTop + 3.8f, 62f), new Vector3(52f, landing + 3.4f, 40f), ShaftTop, landing);
         }
 
         /// <summary>Guardrails round a stairwell's opening at the surface, but for the side the stair comes up on.</summary>

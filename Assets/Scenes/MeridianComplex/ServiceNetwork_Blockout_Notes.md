@@ -27,14 +27,36 @@ side its stair comes up on.
 | North corridor | 6 m wide | Up to the gardens' north access |
 | Pump room, junction room, spire access room | 16, 12 and 12 m across, 8 m high | Where corridors meet |
 | Service tunnel | 4 m wide, 4 m high | About 190 m, east and then south to the hall |
-| Ventilation shafts | 8 × 8 m | Two, open from the network up to +16 above the ground |
+| Ventilation shafts | 8 × 8 m | Two, open from the network up to +16 above the ground, a ladder up each (below) |
 
 Everything's built from axis-aligned rooms and passages: floors, ceilings and walls are generated from them, open
 wherever two meet.
 
 **Lighting**: plain point lights along the passages and in the rooms (no shadows), and a baked reflection probe in
-each, so the network reflects itself instead of the sky. Under **Future Mechanics**: ladders up the shafts, a ceiling
-climb, a crawl space and a hidden route.
+each, so the network reflects itself instead of the sky.
+
+## Mechanics
+
+The shafts' ladders are fixtures (made to work by Set Up Scene), under **Mechanics**, built by `BuildShaftClimbs`.
+Inside, the shafts are open to the sky, so each ladder (−12 to +16, 28 m) is climbed off over the shaft's wall onto a
+steel deck at +16 built against the chimney outside, on two I-beam columns, guarded but for the ladder's top:
+
+- **West shaft**: the ladder's on the shaft's north wall, at (14, 112), the only wall solid all the way up (the main
+  corridor comes in on its west side, the spire access room on its east). Its deck (x 6 to 18.5, z 112.5 to 115.5)
+  reaches west to the Ascension Spire's skyway (+16), which runs past 3.5 m west of the shaft: the skyway's east
+  guardrail (1.1 m, the spire's) is between them, hopped or vaulted. It works both ways: down from the skyway into
+  the network, or up out of it.
+- **East shaft**: the ladder's on the shaft's west wall, at (56, 60) (the service tunnel comes in on its north and
+  south sides). Nothing's at +16 near it, so its deck (x 51.5 to 55.5, z 56 to 64) is the top of a **zipline** south
+  to the landing at the end of the Concourse's north-east bridge (+12), outside the Fabrication Hall: from 3.3 m over
+  the deck's north end, about 2.2 m over its open south edge (as the playground's zipline tower's is, so walking off
+  it catches the cable), over the landing's north guardrail with the rider's feet about 1 m clear, to 3.4 m over the
+  landing at (52, 40). A way out of the network, one way.
+
+Under **Future Mechanics**, still markers, for mechanics that don't exist yet: a ceiling climb in the pump room
+(climbing only handles surfaces leaning out up to 30°), a crawl space from the junction room (there's no crawl; a
+crouch passage would only run beside the main corridor, to the same places), and a hidden route in the spire access
+room.
 
 ## Where the sheet was ambiguous, and what was chosen
 

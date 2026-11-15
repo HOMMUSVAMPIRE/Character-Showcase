@@ -7,6 +7,26 @@ namespace Character
     // character), since movement modes are shared assets.
 
     /// <summary>
+    /// A character's dash state, which persists between frames. Lives on the MovementController (one per character),
+    /// since movement modes are shared assets.
+    /// </summary>
+    public class DashState
+    {
+        // Seconds left in the current dash (0 when not dashing)
+        public float timeRemaining;
+        // Seconds until another dash may start
+        public float cooldownRemaining;
+        // Air dashes used since last touching the ground
+        public int airDashesUsed;
+        // The direction of the current dash
+        public Vector3 direction;
+        // Whether the current press of the dash button has already started a dash, so holding it doesn't repeat
+        public bool pressConsumed;
+
+        public bool IsDashing => timeRemaining > 0f;
+    }
+
+    /// <summary>
     /// Turns a button into one-off presses: a press counts once, and only within a buffer of when it was made, so a
     /// press made just before an ability is ready still starts it, but holding the button doesn't start it again.
     /// </summary>
@@ -122,7 +142,7 @@ namespace Character
         public Vector3 wallPoint;
         // Jumps in a row off the same wall while sliding down it since the character last touched the ground
         public int jumpsUsed;
-        // How the character was last moving (horizontally) in mid-air, and when (Time.fixedTime): what it hit a wall
+        // How the character was last moving (horizontally) in mid-air, and when (MovementController.StepTime): what it hit a wall
         // with, after the wall stopped it
         public Vector3 approachVelocity;
         public float approachTime = float.NegativeInfinity;

@@ -44,7 +44,7 @@ namespace CharacterShowcase.EditorTools.Level
 
             Transform s = Placed(spire, "Spire", SpireCentre);
             Transform masses = Group(s, "Core and Platforms"), stairs = Group(s, "Stairs"), rails = Group(s, "Guardrails");
-            Transform connections = Group(s, "Connections"), future = Group(s, "Future Mechanics"), landmarks = Group(s, "Landmarks");
+            Transform connections = Group(s, "Connections"), mechanics = Group(s, "Mechanics"), landmarks = Group(s, "Landmarks");
 
             // The central core, and the west and east platforms, each up a stair to it.
             Vector2[] core = Octagon(CoreApothem);
@@ -56,11 +56,19 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(stairs, "Stair (East Platform to Core)", new Vector2(stairFoot, 0f), Vector2.left, StairWidth, Platform, Core);
             Vector2 skywayFoot = new(SkywayX - SpireCentre.x, -PlatformWidth / 2f);
             RailAround(rails, Rect(-PlatformEnd, -PlatformWidth / 2f, -stairFoot, PlatformWidth / 2f), Platform,
-                (new Vector2(-PlatformEnd, 0f), 8f), (new Vector2(-stairFoot, 0f), StairWidth), (skywayFoot, SkywayWidth));
+                (new Vector2(-PlatformEnd, 0f), 8f), (new Vector2(-stairFoot, 0f), StairWidth), (skywayFoot, SkywayWidth),
+                (new Vector2(-stairFoot, -LadderWalkMiddle), LadderWalkWidth));
             RailAround(rails, Rect(stairFoot, -PlatformWidth / 2f, PlatformEnd, PlatformWidth / 2f), Platform,
                 (new Vector2(PlatformEnd, 0f), 8f), (new Vector2(stairFoot, 0f), StairWidth));
             Marker(connections, "To Kinetic Gardens (W, +12)", new Vector2(-PlatformEnd, 0f), Platform);
             Marker(connections, "Future Connection (E, +12): toward the Fabrication Hall", new Vector2(PlatformEnd, 0f), Platform);
+
+            // A ladder up the core's west face, beside the stair: a walk at +12 on along the stair's south side from the
+            // west platform's end to the core, and the ladder up from it to the core's top (a gap in the core's rail).
+            BoxXZ(masses, "West Ladder Walk (+12)", new Vector2(-(stairFoot + CoreApothem) / 2f, -LadderWalkMiddle),
+                new Vector2(stairFoot - CoreApothem, LadderWalkWidth), Platform - Deck, Platform);
+            Rail(rails, new Vector2(-stairFoot, -PlatformWidth / 2f), new Vector2(-CoreApothem, -PlatformWidth / 2f), Platform);
+            Ladder(mechanics, new Vector2(-CoreApothem, -LadderWalkMiddle), Platform, Core - Platform, Vector2.left);
 
             // The south wing: up from the entry (±0) to a terrace at +8, and on up to the core.
             const float wingHalf = 14f, wingSouth = -46f;
@@ -100,14 +108,17 @@ namespace CharacterShowcase.EditorTools.Level
             Vector2 northEast = new Vector2(1f, 1f).normalized * CoreApothem;
             RailAround(rails, core, Core,
                 (new Vector2(-CoreApothem, 0f), StairWidth), (new Vector2(CoreApothem, 0f), StairWidth), (new Vector2(0f, -CoreApothem), StairWidth),
-                (new Vector2(0f, CoreApothem), coreSide), (northEast, coreSide));
+                (new Vector2(0f, CoreApothem), coreSide), (northEast, coreSide),
+                (new Vector2(-CoreApothem, -(StairWidth / 2f + 2.5f / 2f)), 2.5f)); // The west ladder's top, on to the stair's.
             float galleryNorthWest = CoreSide;
             RailAround(rails, gallery, Core, (northEast, coreSide),
                 (new Vector2((galleryNorthWest + galleryEast) / 2f, laneStart), galleryEast - galleryNorthWest));
             RailAround(rails, Rect(TowerHalf, laneEnd, galleryEast, laneEnd + 6f), Landing, (new Vector2((TowerHalf + galleryEast) / 2f, laneEnd), galleryEast - TowerHalf));
             RailAround(rails, Rect(TowerHalf, TowerSouth, galleryEast - laneWidth, laneStart), Summit,
-                (new Vector2(TowerHalf, (TowerSouth + laneStart) / 2f), laneStart - TowerSouth), (new Vector2(laneB, laneStart), laneWidth));
-            RailAround(rails, Rect(-TowerHalf, TowerSouth, TowerHalf, TowerNorth), Summit, (new Vector2(TowerHalf, (TowerSouth + laneStart) / 2f), laneStart - TowerSouth));
+                (new Vector2(TowerHalf, (TowerSouth + laneStart) / 2f), laneStart - TowerSouth), (new Vector2(laneB, laneStart), laneWidth),
+                (ZiplineLaunch, 3f));
+            RailAround(rails, Rect(-TowerHalf, TowerSouth, TowerHalf, TowerNorth), Summit, (new Vector2(TowerHalf, (TowerSouth + laneStart) / 2f), laneStart - TowerSouth),
+                (new Vector2(-TowerHalf, PanelMiddle), PanelWidth + 1f));
 
             // The summit's crown: four posts and a frame to +60.
             foreach (Vector2 corner in new[] { new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(1f, 1f), new Vector2(-1f, 1f) })
@@ -122,15 +133,53 @@ namespace CharacterShowcase.EditorTools.Level
             BoxXZ(landmarks, "Crown Beam (East)", new Vector2(TowerHalf - 1f, mid), new Vector2(1f, span), Crown - 1f, Crown, 0f, Surface.Steel);
             Marker(landmarks, "Spire Summit (+56)", new Vector2(0f, mid), Summit);
 
-            // A narrow balcony high on the tower's west face, for the climbing routes the sheets plan.
-            BoxXZ(future, "Narrow Balcony (+40)", new Vector2(-TowerHalf - 3f, mid), new Vector2(6f, 16f), Balcony - Deck, Balcony);
-            RailAround(rails, Rect(-TowerHalf - 6f, mid - 8f, -TowerHalf, mid + 8f), Balcony, (new Vector2(-TowerHalf, mid), 16f));
-            Marker(future, "Ladder (future): Core to the Balcony, +20 to +40 (24 m)", new Vector2(-TowerHalf, TowerSouth + 2f), Core);
-            Marker(future, "Climbable Wall (future): the tower's west face, Balcony to Summit", new Vector2(-TowerHalf, mid), Balcony);
-            Marker(future, "Wall Run (future): along the south terrace's east side", new Vector2(wingHalf, (wingSouth - CoreApothem) / 2f), Lower);
-            Marker(future, "Ladder (future): West Platform to Core", new Vector2(-CoreApothem - 1f, -4f), Platform);
-            Marker(future, "Rope (future): Summit to the East Platform", new Vector2(TowerHalf, mid), Summit);
+            // A narrow balcony high on the tower's west face, reached by a ladder from the core and left by a climbable
+            // panel up the tower to the summit. The ladder stands on the core's top against the south face of a pier,
+            // up to a walk at +40 along the tower's south face and round its south-west corner onto the balcony.
+            BoxXZ(masses, "Narrow Balcony (+40)", new Vector2(-TowerHalf - 3f, mid), new Vector2(6f, 16f), Balcony - Deck, Balcony);
+            RailAround(rails, Rect(-TowerHalf - 6f, mid - 8f, -TowerHalf, mid + 8f), Balcony, (new Vector2(-TowerHalf, mid), 16f),
+                (new Vector2(-TowerHalf - 3f, mid - 8f), 6f)); // Open to the walk from the ladder.
+            const float walkSouth = TowerSouth - 4f, walkEast = -4f, pierWest = walkEast - 2f;
+            BoxXZ(masses, "Balcony Walk (+40, South)", new Vector2((-TowerHalf - 6f + walkEast) / 2f, (walkSouth + TowerSouth) / 2f),
+                new Vector2(walkEast + TowerHalf + 6f, TowerSouth - walkSouth), Balcony - Deck, Balcony);
+            BoxXZ(masses, "Balcony Walk (+40, West)", new Vector2(-TowerHalf - 3f, (TowerSouth + mid - 8f) / 2f),
+                new Vector2(6f, mid - 8f - TowerSouth), Balcony - Deck, Balcony);
+            Block(masses, "Balcony Ladder Pier", pierWest, walkEast, walkSouth, TowerSouth, Core, Balcony - Deck, Surface.Steel);
+            float ladderX = walkEast - 1f;
+            Ladder(mechanics, new Vector2(ladderX, walkSouth), Core, Balcony - Core, Vector2.down);
+            Rail(rails, new Vector2(-TowerHalf - 6f, walkSouth), new Vector2(walkEast, walkSouth), Balcony, (new Vector2(ladderX, walkSouth), 1.8f));
+            Rail(rails, new Vector2(walkEast, walkSouth), new Vector2(walkEast, TowerSouth), Balcony);
+            Rail(rails, new Vector2(-TowerHalf - 6f, walkSouth), new Vector2(-TowerHalf - 6f, mid - 8f), Balcony);
+            // The climbable panel, from the balcony's floor to the summit's (a gap in the summit's rail at its top).
+            ClimbablePanel(mechanics, new Vector2(-TowerHalf, PanelMiddle - PanelWidth / 2f), new Vector2(-TowerHalf, PanelMiddle + PanelWidth / 2f),
+                Balcony, Summit, Vector2.left);
+
+            // A zipline from the summit down to the east platform, off the summit landing's south edge (a gap in its rail):
+            // run and jump off the edge to catch it. The cable crosses the edge high enough that a rider hanging from it
+            // clears the landing's top edge as it drops away (it falls steeply), and starts well back over the landing, on a
+            // post there, so the run-up to the edge passes under it (starting just short of the edge, its post stood in the
+            // way of a run along it, and stepping round the post put the hands out of reach of it); it ends over the
+            // platform's middle, the rider's feet just above it.
+            Vector2 zipEnd = new((stairFoot + PlatformEnd) / 2f + 0.6f, 0f), zipAlong = (zipEnd - ZiplineLaunch).normalized;
+            float edgeHeight = Summit + 3.6f, endHeight = Platform + 2.6f;
+            float slope = (edgeHeight - endHeight) / Vector2.Distance(ZiplineLaunch, zipEnd);
+            const float runUnder = 3f;
+            Vector2 zipStart = ZiplineLaunch - zipAlong * runUnder;
+            Zipline(mechanics, new Vector3(zipStart.x, edgeHeight + runUnder * slope, zipStart.y), new Vector3(zipEnd.x, endHeight, zipEnd.y), Summit, Platform);
+
+            // The south terrace's east face is a wall run: 28 m long and solid to the ground, so running north along it
+            // from the ground and jumping into it runs the whole of a wall run (about 11 m) on it.
+            Marker(mechanics, "Wall Run: along the south terrace's east face, from the ground", new Vector2(wingHalf + 0.6f, (wingSouth - CoreApothem) / 2f), 0f);
         }
+
+        /// <summary>The west ladder's walk at +12, along the stair's south side: how far its middle is south of the stair's, and its width.</summary>
+        private const float LadderWalkWidth = 3f, LadderWalkMiddle = StairWidth / 2f + LadderWalkWidth / 2f;
+
+        /// <summary>The climbable panel up the tower's west face: its middle (z) and width, clear of the tower's orange band.</summary>
+        private const float PanelMiddle = 36.5f, PanelWidth = 4f;
+
+        /// <summary>Where the zipline leaves the summit: the middle of the summit landing's south edge.</summary>
+        private static readonly Vector2 ZiplineLaunch = new(TowerHalf + 3f, TowerSouth);
 
         /// <summary>The skyway's centre line (world x): within the Concourse's 12 m north bridge, and over the west platform.</summary>
         private const float SkywayX = 2f;

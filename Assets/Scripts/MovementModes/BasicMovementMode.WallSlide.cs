@@ -44,6 +44,12 @@ namespace Character
         // reaches the other side of a chimney before the slide's cooldown is over).
         private const float WallSlideApproachMemory = 0.3f;
 
+        // How far into the ledge-grab window (0 = its lowest height, 1 = its highest) a wall has to reach, above the
+        // character's feet, to be slid down: high enough that it's against the body, not a low wall's top caught with the
+        // legs (see TryStartWallSlide), and a little above the window's bottom so a top just coming within reach is
+        // grabbed rather than slid past.
+        private const float WallSlideBodyReachShare = 0.25f;
+
         float WallSlideMode.wallSlideSpeed { get => wallSlideSpeed; set => wallSlideSpeed = value; }
         float WallSlideMode.wallSlideMaxDuration { get => wallSlideMaxDuration; set => wallSlideMaxDuration = value; }
 
@@ -63,7 +69,7 @@ namespace Character
         public bool ProcessMovementDataForWallSlide(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallSlideState slide = controller.wallSlide;
-            RememberApproach(movementData, slide);
+            RememberApproach(movementData, slide, controller.StepTime);
             if (!slide.IsWallSliding && !TryStartWallSlide(ref movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
@@ -154,7 +160,7 @@ namespace Character
             // of its hands. A wall that low is vaulted over (see ProcessMovementDataForVault), or fallen past until its
             // top can be grabbed. A little higher, so a top just coming within reach is grabbed (the ledge is tried
             // first) rather than slid past on the step it's at the very bottom of the grab window.
-            float bodyHeight = Mathf.Lerp(ledgeGrabMinHeight, ledgeGrabMaxHeight, 0.25f) * controller.StandingHeight;
+            float bodyHeight = Mathf.Lerp(ledgeGrabMinHeight, ledgeGrabMaxHeight, WallSlideBodyReachShare) * controller.StandingHeight;
             float bodyReach = controller.Radius + wallSlideCheckDistance * controller.HeightScale + 2f * controller.Skin;
             if (!controller.Raycast(feet + Vector3.up * bodyHeight, -normal, bodyReach, out _)) { return false; }
 
@@ -173,7 +179,7 @@ namespace Character
         /// Remembers how the character is moving (horizontally) while it's moving: hitting a wall stops it, and the
         /// speed it hit with is what a slide starts from (see Approach).
         /// </summary>
-        private static void RememberApproach(MovementData movementData, WallSlideState slide)
+        private static void RememberApproach(MovementData movementData, WallSlideState slide, float now)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 horizontal = new Vector3(inertia.x, 0f, inertia.z);
@@ -181,7 +187,7 @@ namespace Character
             if (horizontal.sqrMagnitude > 0.25f)
             {
                 slide.approachVelocity = horizontal;
-                slide.approachTime = Time.fixedTime;
+                slide.approachTime = now;
             }
         }
 
@@ -193,7 +199,7 @@ namespace Character
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
-            bool remembered = Time.fixedTime - slide.approachTime <= WallSlideApproachMemory * controller.DurationScale;
+            bool remembered = controller.StepTime - slide.approachTime <= WallSlideApproachMemory * controller.DurationScale;
             return remembered && slide.approachVelocity.sqrMagnitude > moving.sqrMagnitude ? slide.approachVelocity : moving;
         }
 

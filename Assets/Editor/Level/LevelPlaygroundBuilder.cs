@@ -33,8 +33,8 @@ namespace CharacterShowcase.EditorTools.Level
     ///   and a timed 20 m run between two timing gates, and in the building a crate to push (fixtures Set Up Scene makes
     ///   work);
     /// - far west, the mechanics in the air: a tower at +8, up a ladder or a bounce pad, with a zipline from its top south
-    ///   down to the ground, and a rope on a gantry to swing on across a 10 m gap between two platforms at +4 (too far to
-    ///   jump, even with a dash);
+    ///   down to the ground, and a rope on a gantry to swing on across a gap between two platforms at +4 (too far for a
+    ///   sprint jump), the north one with a climbable panel up its west face;
     /// - placeholders and markers for mechanics to come, as the complex has them.
     /// </summary>
     public static class LevelPlaygroundBuilder
@@ -335,6 +335,8 @@ namespace CharacterShowcase.EditorTools.Level
             Transform swing = Group(air, "Rope Swing (+4)");
             Platform(swing, "Rope Platform (North, +4)", -47f, -43f, 2f, 6f, 0f, Terrace, coping: Surface.Accent);
             Platform(swing, "Rope Platform (South, +4)", -47f, -43f, -12f, -8f, 0f, Terrace, coping: Surface.Accent);
+            // A climbable panel up the north platform's west face, another way up to it.
+            ClimbablePanel(swing, new Vector2(-47f, 2.5f), new Vector2(-47f, 5.5f), 0f, Terrace, Vector2.left);
             Flight(swing, "Stair (to the Rope Platform)", new Vector2(-45f, 6f + FlightLength(0f, Terrace)), Vector2.down, 3f, 0f, Terrace);
             Flight(swing, "Stair (from the Rope Platform)", new Vector2(-45f, -12f - FlightLength(0f, Terrace)), Vector2.up, 3f, 0f, Terrace);
             const float beam = 14f;

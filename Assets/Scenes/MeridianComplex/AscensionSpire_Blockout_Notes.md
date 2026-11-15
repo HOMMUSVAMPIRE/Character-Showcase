@@ -26,13 +26,35 @@ stair to its +12. So from the Concourse you reach the spire at +16, and the gard
 | 1 Summit tower | +56 | 28 × 28 m, north of the core, with a crown of posts and beams to +60 |
 | Tower gallery | +20 | From the core's north-east face round to the foot of the summit stair |
 | Switchback stair | +20 to +56 | Up the tower's east side: north to a landing at +38, then south beside the tower to a landing at +56 and the summit |
-| Narrow balcony | +40 | On the tower's west face: reached only by climbing (future) |
+| Narrow balcony | +40 | On the tower's west face: reached by the ladder from the core, left by the climbable panel to the summit |
+| Balcony walk and pier | +40 | A walk along the tower's south face (x −20 to −4) and round its south-west corner to the balcony, on a steel pier standing on the core |
+| West ladder walk | +12 | A 3 m walk along the west stair's south side, from the west platform's end to the core's west face |
 
 Markers: To Kinetic Gardens (W, +12); a future connection off the east platform (E, +12), toward the Fabrication
-Hall (the sheets' secondary path between them); Entry (S, ±0). Under **Future Mechanics**: ladders (core to the
-balcony, 24 m; west platform to core), the tower's west face as a climbable wall, a wall run along the south terrace,
-and a rope from the summit to the east platform. The Service Network's spire stairwell comes up just west of the
-south wing, at world (23, 132).
+Hall (the sheets' secondary path between them); Entry (S, ±0). The Service Network's spire stairwell comes up just
+west of the south wing, at world (23, 132).
+
+## Mechanics (fixtures, made to work by Set Up Scene)
+
+Under **Mechanics**, the climbing routes the sheets plan:
+
+- **Ladder, west platform to core** (+12 to +20, 8 m): up the core's west face at z −4.5, from the west ladder walk;
+  climbed off through a gap in the core's rail beside the stair's.
+- **Ladder, core to the balcony** (+20 to +40, 20 m): on the core's top at (−5, 14), against the south face of the
+  balcony pier, climbed off its top (a gap in the walk's rail) onto the balcony walk, which leads west and north round
+  the tower's corner to the balcony (its south rail is gone, open to the walk).
+- **Climbable panel, balcony to summit** (+40 to +56): 4 m wide on the tower's west face, z 34.5 to 38.5 (clear of
+  the orange band at z 32), its top through a 5 m gap in the summit's rail.
+- **Zipline, summit to the east platform** (+56 to +12): the sheets' "rope" from the summit to the east platform,
+  which drops 44 m over about 30: too far for a rope, so a zipline. It leaves through a 3 m gap in the south rail of
+  the summit landing (the top of the switchback stair), crossing the edge 3.6 m above it (so a rider hanging 2.3 m
+  below it clears the landing's top edge as the steep cable drops away), from a post half a metre back; run and jump
+  off the edge to catch it. It ends 2.6 m over the east platform's middle, at (40, 0). The summit's own south edge
+  can't launch it: the crown's south beam (+59) is in the way.
+- **Wall run** (a plain marker): along the south terrace's east face from the ground. The face is 28 m long and solid
+  down to the ground, more than a wall run's 11 m. Nothing needs a fixture.
+
+Nothing in the spire is left "(future)".
 
 ## Where the sheets were ambiguous, and what was chosen
 
@@ -41,9 +63,14 @@ south wing, at world (23, 132).
 - **Core diameter 20.** Too small for a core with four routes onto it: taken as the tower's core, and the central
   core platform is 36 m across, as the plan draws it. The tower itself is 28 m square (the sheets give a main tower of
   30 × 30).
-- **Getting to the summit.** The sheets plan ladders, climbable walls and wall runs (all future). So the summit can
-  be reached now, a switchback stair climbs the tower's outside: 120 steps of 0.3 m, in two flights of 24 m. The
-  balcony at +40 is left for climbing.
+- **Getting to the summit.** The sheets plan ladders, climbable walls and wall runs. A switchback stair climbs the
+  tower's outside (120 steps of 0.3 m, in two flights of 24 m), so the summit can be reached on foot; the climbing
+  route goes core, ladder, balcony, climbable panel, summit.
+- **The core-to-balcony ladder ("24 m").** The core's top doesn't reach the tower's west face, where the balcony is,
+  so the ladder stands on the core against the tower's south side, and a walk at +40 joins its top to the balcony.
+  It is 20 m (+20 to +40).
+- **The west platform ladder.** The platform ends 10.8 m short of the core (the stair is between), so a walk at +12
+  beside the stair takes the ladder's foot to the core's face.
 - **The Concourse's +16 exit.** The spire's entry is at ±0 and its platforms at +12, so the Concourse's +16 bridge
   can't meet either directly: the skyway runs on to the west platform, which is also where the gardens' bridge ends.
 - **Service band (−12 to 0).** The spire has no basement of its own; the Service Network comes up beside it.

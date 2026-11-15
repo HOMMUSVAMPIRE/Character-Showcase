@@ -24,6 +24,8 @@ MonoBehaviour:
   groundOffset: 0.00108
   animatedGroundOffset: -0.00811
   facingCorrection: 0
+  measuredOwnHeight: 1.7083808
+  measuredOwnShoulderWidth: 0.22222096
   addIK: 1
   addFootPlacement: 1
   matchCharacterLayer: 1

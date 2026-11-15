@@ -555,6 +555,38 @@
       "required": ["piece", "parent", "cells", "portals", "openTop"],
       "additionalProperties": false
     },
+    "piece.ClimbablePanel": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "ClimbablePanel"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "facing": {
+          "$ref": "#/$defs/point2"
+        },
+        "speed": {
+          "type": "number",
+          "default": 1
+        }
+      },
+      "required": ["piece", "parent", "a", "b", "y0", "y1", "facing"],
+      "additionalProperties": false
+    },
     "piece.Column": {
       "type": "object",
       "properties": {
@@ -1865,6 +1897,9 @@
         },
         {
           "$ref": "#/$defs/piece.Cells"
+        },
+        {
+          "$ref": "#/$defs/piece.ClimbablePanel"
         },
         {
           "$ref": "#/$defs/piece.Column"
