@@ -104,7 +104,7 @@
       "additionalProperties": false
     },
     "surface": {
-      "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass"]
+      "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass", "Water"]
     },
     "piece.State": {
       "type": "object",
@@ -1819,6 +1819,38 @@
       "required": ["piece", "parent", "name", "a", "b", "y0", "y1", "thickness"],
       "additionalProperties": false
     },
+    "piece.Water": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Water"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "$ref": "#/$defs/point2"
+        },
+        "bottom": {
+          "type": "number"
+        },
+        "surface": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size", "bottom", "surface"],
+      "additionalProperties": false
+    },
     "piece.Zipline": {
       "type": "object",
       "properties": {
@@ -2020,6 +2052,9 @@
         },
         {
           "$ref": "#/$defs/piece.Wall"
+        },
+        {
+          "$ref": "#/$defs/piece.Water"
         },
         {
           "$ref": "#/$defs/piece.Zipline"

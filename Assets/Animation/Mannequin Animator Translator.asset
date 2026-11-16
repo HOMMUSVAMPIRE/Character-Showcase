@@ -54,6 +54,7 @@ MonoBehaviour:
   grabbingParameter: Grabbing
   ropeSwingingParameter: RopeSwinging
   zipliningParameter: Ziplining
+  swimmingParameter: Swimming
   eventTriggers:
   - events: 34359803907
     trigger: Jump

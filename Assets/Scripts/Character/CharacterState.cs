@@ -36,5 +36,7 @@ namespace Character
         RopeSwinging = 131072,
         // Hanging from a zipline's cable (see Level.Zipline) and riding down it
         Ziplining = 262144,
+        // Swimming at the surface of deep water (see Level.Water)
+        Swimming = 524288,
     }
 }

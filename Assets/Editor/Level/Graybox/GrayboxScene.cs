@@ -32,6 +32,11 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>The shader they're made with: noise-built concrete, world-space, no textures (tint, panels, metal and all).</summary>
         public const string SurfaceShaderPath = "Assets/Materials/NoiseConcrete.shadergraph";
         /// <summary>
+        /// The shader the Water surface is made with instead: see-through, its ripples, depth and foam built from noise in
+        /// world space, no textures.
+        /// </summary>
+        public const string WaterShaderPath = "Assets/Materials/Water.shader";
+        /// <summary>
         /// The climbable mask every unpainted surface shares: 1 pixel of black, nothing climbable (see the shader's
         /// Climbable settings, and PaintedClimbableSurface, which gives painted objects masks of their own).
         /// </summary>
@@ -75,6 +80,8 @@ namespace CharacterShowcase.EditorTools.Level
             /* Soil     */ new(new Color(0.27f, 0.2f, 0.14f), 0f, 0.08f, 0.02f, 0.7f, 0.2f, 0.25f),
             // Grass: a fresher green than the trees' leaves, with strong stains for patchy, mown-lawn mottling.
             /* Grass    */ new(new Color(0.3f, 0.46f, 0.19f), 0f, 0.1f, 0.018f, 0.85f, 0f, 0.3f),
+            // Water is made with its own shader (see MakeWaterMaterial): only its tint is used, for its shallows.
+            /* Water    */ new(new Color(0.16f, 0.52f, 0.6f), 0f, 0.92f, 0f, 0f, 0f, 0f),
         };
 
 
@@ -269,7 +276,7 @@ namespace CharacterShowcase.EditorTools.Level
                 Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (material == null)
                 {
-                    material = MakeMaterial(shader, Looks[(int)surface]);
+                    material = surface == Graybox.Surface.Water ? MakeWaterMaterial(Looks[(int)surface]) : MakeMaterial(shader, Looks[(int)surface]);
                     material.name = $"Level_{surface}";
                     AssetDatabase.CreateAsset(material, path);
                 }
@@ -303,6 +310,28 @@ namespace CharacterShowcase.EditorTools.Level
             material.SetColor("_Emission", look.emission);
             if (material.HasProperty("_ClimbableMask")) { material.SetTexture("_ClimbableMask", AssetDatabase.LoadAssetAtPath<Texture>(NoClimbableMaskPath)); }
             if (look.emission.maxColorComponent > 0f) { material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive; }
+            return material;
+        }
+
+        /// <summary>
+        /// The Water surface's material, in the water shader (its other settings at the shader's defaults, to tune on the
+        /// material), its shallows tinted as the look says; or, without the shader, plain see-through URP Lit.
+        /// </summary>
+        private static Material MakeWaterMaterial(Look look)
+        {
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(WaterShaderPath);
+            if (shader == null)
+            {
+                Debug.LogWarning($"[Graybox] No water shader at '{WaterShaderPath}': the level's water is plain URP Lit.");
+                var lit = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                lit.SetFloat("_Surface", 1f); // Transparent.
+                lit.SetColor("_BaseColor", new Color(look.tint.r, look.tint.g, look.tint.b, 0.6f));
+                lit.SetFloat("_Smoothness", look.smoothness);
+                return lit;
+            }
+            var material = new Material(shader);
+            material.SetColor("_ShallowColour", look.tint);
+            material.SetFloat("_Smoothness", look.smoothness);
             return material;
         }
 

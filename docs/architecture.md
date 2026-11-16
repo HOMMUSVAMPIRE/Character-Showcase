@@ -6,7 +6,7 @@ How the project fits together: what happens in one physics step, which code may 
 - **The movement** (Assets/Scripts/MovementModes): a movement mode (`BasicMovementMode`, a ScriptableObject asset) made of movement components (walking and running, falling and air handling, and each ability), which the `MovementController` runs every physics step. See [Movement](movement.md).
 - **Animation, IK and models** (Assets/Scripts/Animation, IK, Models): `AnimationController` turns what the movement did into an animation state for the model; `CharacterModelHost` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
 - **The camera** (Assets/Scripts/CameraSystem): `CameraRig`, which follows any Transform. See [Camera System](camera.md).
-- **The levels** (Assets/Editor/Level, Assets/Scripts/Level): editor builders that generate graybox levels from pieces, recorded as level specs; and the runtime components of their mechanics (moving platforms, ropes, ziplines, bounce pads, climbable surfaces). See [Test Levels](levels.md) and [Level Specs](level-specs.md).
+- **The levels** (Assets/Editor/Level, Assets/Scripts/Level): editor builders that generate graybox levels from pieces, recorded as level specs; and the runtime components of their mechanics (moving platforms, ropes, ziplines, bounce pads, water, climbable surfaces). See [Test Levels](levels.md) and [Level Specs](level-specs.md).
 
 ## One physics step
 Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, animation) runs in `Update`, from the last finished step.

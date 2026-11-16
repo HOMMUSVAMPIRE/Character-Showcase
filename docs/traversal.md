@@ -1,5 +1,5 @@
 # Climbing and Traversal
-Climbing walls and ladders, pushing and pulling objects, ropes, ziplines and bounce pads. Each is a component of the BasicMovementMode asset (Assets/ScriptableObjects/BasicMovementMode.asset; see [Movement Components](movement.md#movement-components)), in Assets/Scripts/MovementModes/Components, with its settings under its name in the asset's Components list. The settings named below are on that asset unless another component is named.
+Climbing walls and ladders, pushing and pulling objects, ropes, ziplines, bounce pads and swimming. Each is a component of the BasicMovementMode asset (Assets/ScriptableObjects/BasicMovementMode.asset; see [Movement Components](movement.md#movement-components)), in Assets/Scripts/MovementModes/Components, with its settings under its name in the asset's Components list. The settings named below are on that asset unless another component is named.
 
 ## Wall Climbing
 Surfaces with a ClimbableSurface component (on a collider, or on a parent to make a whole group climbable) can be climbed, and so can the parts of an object painted climbable with a PaintedClimbableSurface (see [Painting climbable areas](#painting-climbable-areas)); nothing else can. A climbable wall is climbed instead of wall-run along or slid down.
@@ -107,3 +107,25 @@ A BouncePad component on an object makes everything collidable on it a bounce pa
 The launch counts as the character's jump: its air jumps and dashes are left, and it ends whatever else the character was doing (a dash, roll or slide, or holding a rope or a zipline). A pad can squash its Spring (its springy top) and let it spring back on each launch, for show, and raises Launched for effects and sound.
 
 In the levels, the Graybox BouncePad piece builds one (a steel base with a cyan top), which Set Up Scene makes bounce; the Level Playground has one up onto its zipline tower. The BasicMovementMode asset's Bounce Pads component holds Bounce Jump Boost and Bounce Height Multiplier, which every pad's height is multiplied by; turning it off, or a multiplier of 0, turns pads off.
+
+## Swimming
+A Water component makes a body of water: a box whose top, at its object's position, is the water's surface, reaching down and across its Size (width, depth and length, in its own space; it may be turned about the vertical, not tilted). Nothing collides with water: the character finds it as it finds ropes and ziplines, and stands on whatever is built under it (a pool's floor). With Build Mesh on, it draws its own flat surface in its Material. In the levels, the Graybox Water piece draws the surface over a footprint, which Set Up Scene makes swimmable; the Level Playground has a pool.
+
+**Getting in.** Where the water over the character's feet is at least Swim Depth deep (a share of its standing height), it swims: walking down into it, or falling or jumping in. Getting in gives back jumps and air dashes, as touching the ground does, and ends whatever else the character was doing (a dash, roll or slide). Shallower water is walked through.
+
+**Floating.** The character swims at the surface, its feet hanging Swim Depth below it, floating up off a beach walked down into, or off the bottom. Falling in, it plunges deeper and floats back up: the water's drag takes Swim Plunge Drag (a share of its speed) for each metre it plunges, so a plunge from high goes only a little deeper than one from low, and it rises back no faster than Swim Surfacing Speed, settling at its depth without bobbing past it.
+
+**Swimming.** The character swims the way the movement input points, relative to the camera, at Swim Speed (Swim Sprint Speed with Sprint held), facing the way it swims. Its speed changes at Swim Acceleration: speeding up, turning, slowing to a stop without input, and taking away the speed it falls in with. It can't dash, crouch or dive: swimming is only at the surface.
+
+**Getting out.** Jump jumps out, its feet rising Swim Jump Height above the surface: enough to climb out onto an edge a little above the water, or to catch a ledge. It's the character's jump from the ground, so its air jumps are left. Swimming into shallows, it finds its feet and walks out once it stands on a floor a little shallower than Swim Depth (so wading at the edge doesn't flicker in and out of swimming). Swimming into an edge whose top is within reach of the character's hands (no higher above its feet than Ledges' Ledge Grab Max Height) climbs out onto it, as climbing over a ledge's top (a pool's side, say). A ladder or a climbable wall rising out of the water is climbed out too (Wall Climbing comes before Swimming in the components), straight over its top if that's within reach. A side higher than that is only jumped onto. Off the water's edge, it carries on as it was going.
+
+The BasicMovementMode asset's Swimming component tunes it; turning it off, or a Swim Depth of 0, turns swimming off (the character sinks to the bottom and walks there). The swimming animation is floated at the default character's Swim Depth: after retuning it, run Generate Mannequin again (see [Swimming animations](animation.md#swimming)).
+
+### The water's look
+The levels' water is drawn with its own shader, Assets/Materials/Water.shader (the Level_Water material, made the first time a level's built), whose whole look is built from noise in world space with no textures, as the other surfaces' is:
+- layers of drifting noise make the ripples, which bend the surface's normal (Ripple Size, Ripple Speed, Ripple Strength) and lift and lower it a little (Wave Height);
+- the sky reflects in it, more at a glancing look, and the sun glints off the ripples (Smoothness, Sky Reflection, Sun Glints);
+- how much water is under each point (from the camera's depth texture) tints it from Shallow Colour to Deep Colour, from see-through to nearly opaque (Depth To Deep, Shallow Opacity, Deep Opacity);
+- and foam rims what stands in the water, broken up by noise (Foam Colour, Foam Distance, Foam Breakup).
+
+From under the surface it's a murky ceiling. The depth effects need the render pipeline asset's Depth Texture on (the PC asset has it); without it, the water all looks deep and has no foam. A camera that goes under the water sees the pool clearly: there's no underwater fog yet.

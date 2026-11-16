@@ -17,7 +17,7 @@ namespace CharacterShowcase.EditorTools
         private static AnimatorController BuildAnimatorController()
         {
             Dictionary<string, AnimationClip> clips = LoadClips();
-            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash", "Crouch", "Hang", "Wall Slide", "Rope Swing", "Zipline" };
+            string[] required = { "Idle", "Walk", "Brisk Walk", "Run", "Sprint", "Rise", "Apex", "Fall", "Dash", "Crouch", "Hang", "Wall Slide", "Rope Swing", "Zipline", "Swim" };
             string[] missing = required.Where(n => !clips.ContainsKey(n)).ToArray();
             if (missing.Length > 0)
             {
@@ -37,6 +37,7 @@ namespace CharacterShowcase.EditorTools
             if (useLibrary)
             {
                 StandLibraryOnMannequinsFloor(measuringModel, clips["Idle"]);
+                FloatLibrarySwimsAtTheSwimDepth(measuringModel);
                 library = LoadLibraryClips();
             }
             Debug.Log(useLibrary
@@ -54,7 +55,7 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
-            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter })
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter })
             {
                 controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
             }

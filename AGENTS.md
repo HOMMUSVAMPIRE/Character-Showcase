@@ -164,8 +164,8 @@ change and say regeneration is still needed.
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
 New Animator parameters or states belong in `MannequinGenerator`; new clips in the Blender scripts. The levels'
-materials (`Assets/Materials/Level/Level_[Surface].mat`) and `NoiseConcrete.shadergraph` are hand-edited: nothing
-regenerates them.
+materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph` and `Water.shader` are
+hand-edited: nothing regenerates them.
 
 ## Recipes
 
@@ -178,7 +178,8 @@ component and its hooks, its state, flag and events, its place in the mode, anim
 **Retuning the movement:** follow [docs/tuning.md](docs/tuning.md). In short: change the asset, not the code defaults;
 saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside
 the editor needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. No tuning is fixed: tests that need one
-set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together.
+set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together. The
+swimming clips are floated at Swimming's Swim Depth: after changing it, run Generate Mannequin.
 
 ## Things that aren't obvious
 
@@ -194,7 +195,8 @@ set it on the rig. The walk and run speeds suit the locomotion clips (docs/anima
 - **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `OverlapSphere`,
   `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders and its `IgnoredCollisionRoot`.
   `SetHeightFraction` lowers the collider keeping the feet in place.
-- **Ropes and ziplines have no colliders:** abilities find them through `Level.Rope.All` / `Level.Zipline.All`. A
+- **Ropes, ziplines and water have no colliders:** abilities find them through `Level.Rope.All` / `Level.Zipline.All`
+  / `Level.Water.All` (the character stands on what's built under water). A
   rope swings itself when let go and is drawn interpolated between physics steps, so the hands IK'd onto it stay on it.
   Bounce pad and jump launch speeds are solved for the stepped physics (`LaunchSpeedFor`), so heights are exact.
 - **Climbable surfaces** are `Level.ClimbableSurface` (a collider or its parent) or painted cells of a

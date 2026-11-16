@@ -20,6 +20,7 @@ MonoBehaviour:
   - rid: 5929479653649547265
   - rid: 5929479653649547266
   - rid: 5929479653649547267
+  - rid: 5929479671128260608
   - rid: 5929479653649547268
   - rid: 5929479653649547269
   - rid: 5929479654000558080
@@ -321,3 +322,14 @@ MonoBehaviour:
         enabled: 1
         walkSpeed: 5
         runSpeed: 10
+    - rid: 5929479671128260608
+      type: {class: Swimming, ns: Character, asm: CharacterShowcase}
+      data:
+        enabled: 1
+        swimDepth: 0.75
+        swimSurfacingSpeed: 3
+        swimPlungeDrag: 1.5
+        swimSpeed: 3
+        swimSprintSpeed: 5
+        swimAcceleration: 8
+        swimJumpHeight: 1.2

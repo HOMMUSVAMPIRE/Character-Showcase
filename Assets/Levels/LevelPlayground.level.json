@@ -172,9 +172,24 @@
       ]
     },
     {
+      "name": "the pool",
+      "pieces": [
+        {"piece": "Group", "parent": "", "name": "Pool"},
+        {"piece": "Block", "parent": "Pool", "name": "Pool Floor", "x0": 12, "x1": 34, "z0": 25, "z1": 37, "y0": -3.5, "y1": -3, "surface": "Panel"},
+        {"piece": "Block", "parent": "Pool", "name": "Pool Wall (South)", "x0": 12, "x1": 34, "z0": 25, "z1": 25.5, "y0": -3, "y1": 0, "surface": "Panel"},
+        {"piece": "Block", "parent": "Pool", "name": "Pool Wall (North)", "x0": 12, "x1": 34, "z0": 36.5, "z1": 37, "y0": -3, "y1": 0, "surface": "Panel"},
+        {"piece": "Block", "parent": "Pool", "name": "Pool Wall (East)", "x0": 33.5, "x1": 34, "z0": 25.5, "z1": 36.5, "y0": -3, "y1": 0, "surface": "Panel"},
+        {"piece": "Ramp", "parent": "Pool", "name": "Beach (1:4)", "start": [24, 31], "direction": [-1, 0], "width": 11, "length": 12, "y0": -3, "y1": 0},
+        {"piece": "Ladder", "parent": "Pool", "at": [33.5, 31], "floor": -3, "height": 3, "facing": [-1, 0]},
+        {"piece": "Water", "parent": "Pool", "name": "Pool", "centre": [22.75, 31], "size": [21.5, 11], "bottom": -3, "surface": -0.4},
+        {"piece": "GuideLine", "parent": "Pool", "name": "Pool Edge (White)", "points": [[12, 25], [34, 25], [34, 37], [12, 37]], "height": 0, "surface": "White", "closed": true},
+        {"piece": "FloorLabel", "parent": "Pool", "text": "2.6 m", "at": [30, 23.6], "height": 0, "facing": [0, 1]}
+      ]
+    },
+    {
       "name": "the ground",
       "pieces": [
-        {"piece": "Ground", "parent": "", "half": 55, "openings": [[20, 14, 26, 22], [30, -3, 36, 3]]}
+        {"piece": "Ground", "parent": "", "half": 55, "openings": [[20, 14, 26, 22], [30, -3, 36, 3], [12, 25, 34, 37]]}
       ]
     },
     {

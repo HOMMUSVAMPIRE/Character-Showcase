@@ -364,6 +364,17 @@ namespace CharacterShowcase.EditorTools
             return p == null ? 0f : p.Min(bone => bone.Min(v => v.y));
         }
 
+        /// <summary>
+        /// How high (m) a clip holds one of the model's bones on average (its pivot: the head's is at the top of the neck,
+        /// the hips' in the middle of the pelvis), played on the model, over the clip.
+        /// </summary>
+        public static float MeanBoneHeight(GameObject model, AnimationClip clip, HumanBodyBones bone)
+        {
+            const int samples = 60;
+            Vector3[][] p = SampleBones(model, clip, Enumerable.Range(0, samples).Select(i => clip.length * i / samples).ToArray(), bone);
+            return p == null ? 0f : p[0].Average(v => v.y);
+        }
+
         // ---- Phase ----
 
         /// <summary>

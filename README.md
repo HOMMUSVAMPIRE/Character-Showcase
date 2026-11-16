@@ -24,7 +24,7 @@ All of the runtime code is in the Assets/Scripts folder:
 - Animation: the AnimationController, the animation state it builds, and the translators that drive an Animator from it
 - IK: CharacterIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
 - Models: the character's model host and the sources it gets models from
-- Level: the level mechanics (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, crates, timing gates)
+- Level: the level mechanics (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates)
 - CameraSystem: the camera rig, which knows nothing about the character
 
 The editor tools that generate the character, its animations and the levels are in Assets/Editor, and the tests in Assets/Tests.
@@ -54,7 +54,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Architecture](docs/architecture.md): how the parts fit together, one physics step, what may reference what
 - [Movement](docs/movement.md): walking and sprinting, jumping, dashing, turning and leaning, collision, character size, moving ground
 - [Movement abilities](docs/abilities.md): crouching, sliding and rolling, wall running, wall sliding, ledges, vaulting
-- [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads
+- [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming
 - [Camera system](docs/camera.md)
 - [Character model and animations](docs/animation.md): the mannequin, replacing the model, the animation libraries, IK
 - [Test levels](docs/levels.md): the Meridian Complex, the Level Playground, level mechanics

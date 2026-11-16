@@ -149,6 +149,50 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
+        /// <summary>
+        /// Floats the libraries' swimming clips (treading water and the swim stroke) at the character's swimming depth.
+        /// They're made around the water line: where a grounded clip has its floor, their swimmer has the water's surface.
+        /// But a swimming character's origin is still its feet, hanging Swimming's swim depth below the surface, so as
+        /// made the swimmer was that much too deep. Each is raised (its root height offset), measured on the mannequin
+        /// with its feet the default character's swim depth below the surface: treading water so that its head stands
+        /// HeadAboveWater above the surface, and the stroke so that its hips are HipsBelowWater under it (the library's
+        /// stroke, at its treading's water line, had the swimmer's back under the water). The swim depth is the
+        /// character's tuning: retuning it needs Generate Mannequin run again.
+        /// </summary>
+        private static void FloatLibrarySwimsAtTheSwimDepth(GameObject measuringModel)
+        {
+            const string treading = "Swim_Idle_Loop", stroke = "Swim_Fwd_Loop";
+            if (QuaterniusAnimationImporter.FindClip(treading) == null || QuaterniusAnimationImporter.FindClip(stroke) == null) { return; }
+            float surface = DefaultSwimDepth();
+            // How the library's mannequin's sizes compare with this one's: the offsets are in its units.
+            float scale = LibraryHumanScale() / HumanScale(measuringModel);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                var raise = new Dictionary<string, float>
+                {
+                    [treading] = (surface + HeadAboveWater - MotionCaptureLocomotion.MeanBoneHeight(measuringModel, QuaterniusAnimationImporter.FindClip(treading), HumanBodyBones.Head)) * scale,
+                    [stroke] = (surface - HipsBelowWater - MotionCaptureLocomotion.MeanBoneHeight(measuringModel, QuaterniusAnimationImporter.FindClip(stroke), HumanBodyBones.Hips)) * scale,
+                };
+                Debug.Log($"[MannequinGenerator] Floating the libraries' swimming at the swim depth ({surface:0.00} m over the feet): raising " +
+                          string.Join(", ", raise.Select(r => $"{r.Key} {r.Value * 100f:0.0} cm")));
+                if (raise.Values.All(r => Mathf.Abs(r) < 0.002f) || !QuaterniusAnimationImporter.RaiseClips(raise)) { break; }
+            }
+        }
+
+        /// <summary>
+        /// How far (m) below the surface the Character prefab's feet hang as it swims: its movement mode's Swimming's swim
+        /// depth (whether or not it's turned on; Swimming's default without one), a share of its standing height. That's
+        /// its collider's height as authored, which the movement measures by, not its model's (a little shorter).
+        /// </summary>
+        private static float DefaultSwimDepth()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+            MovementController movement = prefab != null ? prefab.GetComponent<MovementController>() : null;
+            if (movement == null) { return 0f; }
+            float share = movement.movementHandler is ComposedMovementMode mode ? mode.SettingsOf<Swimming>().SwimDepth : new Swimming().SwimDepth;
+            return share * movement.StandingHeight;
+        }
+
         private static float HumanScale(GameObject model)
         {
             GameObject instance = Object.Instantiate(model);

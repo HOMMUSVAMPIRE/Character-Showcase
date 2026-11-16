@@ -34,6 +34,7 @@ The character's measured capabilities are also available at runtime (`MovementCo
 
 ## Things to tune together
 - **Walk and run speeds and the locomotion animations.** The walk, brisk walk, jog and run loops are placed by the speeds their strides suit, so feet slide at speeds far from those. See [Walking and running](animation.md#walking-and-running).
+- **The swim depth and the swimming animation.** The swimming clips are floated at Swimming's Swim Depth by Generate Mannequin, so after changing it, run Generate Mannequin again. See [Swimming](animation.md#swimming).
 - **Gravity and the jump.** Jumps are set by height (Jumping's Min Jump Height and Max Jump Height), and their launch speed is worked out from gravity, so changing Gravity Strength changes how long a jump takes, not how high it goes.
 - **Size.** By default the movement scales in proportion with the character's size, so a small character moves like a scaled copy of a big one; the MovementController's Size Scaling can instead scale it as real animals do. See [Character Size](movement.md#character-size).
 

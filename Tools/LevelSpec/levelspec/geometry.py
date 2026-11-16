@@ -17,7 +17,7 @@ SETTINGS_ASSET = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os
 
 #: What each layer of a schematic holds.
 LAYERS = {
-    "ground": "Ground", "solid": "Solids", "deck": "Decks and bridges", "stairs": "Stairs and ramps", "cells": "Rooms",
+    "ground": "Ground", "solid": "Solids", "deck": "Decks and bridges", "stairs": "Stairs and ramps", "water": "Water", "cells": "Rooms",
     "rails": "Guardrails", "structure": "Structure", "mechanics": "Mechanics", "foliage": "Lawns and trees",
     "markings": "Markings", "markers": "Markers and signs",
 }
@@ -258,6 +258,10 @@ def _shapes(piece, f, state):
         a, s = g("at"), g("size")
         return [("mechanics", "poly", _rect(a[0] - s / 2, a[0] + s / 2, a[1] - s / 2, a[1] + s / 2), g("floor"), g("floor") + 0.3,
                  {"label": f"Bounce Pad ({_n(g('height'))} m)"})]
+    if name == "Water":
+        surface, bottom = g("surface"), g("bottom")
+        return [("water", "poly", _oriented(g("centre"), g("size"), g("yaw", 0)), bottom, surface,
+                 {"label": f"{label} ({_n(surface - bottom)} m deep)"})]
     if name == "ClimbablePanel":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("y0"), g("y1"), {"label": "Climbable Panel"})]
     if name == "TimingGate":

@@ -98,7 +98,7 @@ The numbers the shared pieces are made with are in one asset, Assets/Editor/Leve
 - markings (hazard stripes, corner brackets, floor labels) and signs (gantries, area signs, lettering);
 - dressing (banners, guide lines, spawn pads, future-mechanic marks, rulers, tower bands);
 - foliage (tree and shrub sizes, planters, how far apart and how much room the scattered trees need, lawn cells and margins, grass tufts' density, height, draw distance and shadows, and the seed);
-- mechanics (edge bands, timing gates, low beams, ladders, ropes, ziplines, bounce pads);
+- mechanics (edge bands, timing gates, low beams, ladders, ropes, ziplines, bounce pads, and the cells water's surface is drawn in);
 - culling (whether to bake occlusion, and its smallest occluder, smallest hole and backface threshold);
 - and the sun and haze.
 
@@ -112,7 +112,8 @@ The levels share a palette of materials, after the style reference's colours (gr
 - Graphite (posts, rails, trims, machinery);
 - Steel (columns, supports, catwalks, crates);
 - Accent (orange: top rails, nosings, fascias);
-- and the glowing Light and Cyan, and White.
+- the glowing Light and Cyan, and White;
+- and Water, made with its own shader instead (see [The water's look](traversal.md#the-waters-look)).
 
 The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.Surface`). The materials (Assets/Materials/Level) are made the first time a level's built (from the looks in `GrayboxScene`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
 
@@ -129,6 +130,7 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 - one of each of the Calibration Annex's tests (steps either side of the step limit, a ledge, a slope, a low tunnel, a narrow beam beside a wall-run wall);
 - one of each mechanic (a lift, a ladder up to the lift's landing, a slide gate, a timed run and a crate to push; see [Level mechanics](#level-mechanics));
 - in the far west, the mechanics in the air: a tower, up a ladder or a bounce pad, with a zipline from its top south down to the ground, and a rope on a gantry over a gap between two raised platforms, too far for a sprint jump (a sprint jump and a well-timed air dash can just cross it), the near one with a climbable panel up its side;
+- in the north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to where it's deep enough to swim, and a ladder up its east wall at the deep end;
 - and placeholders for mechanics to come.
 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Character Showcase > Level > Build Level Playground, or `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
@@ -141,6 +143,7 @@ The level builders can't reference the game's code, so a mechanic is built as a 
 - "Rope | length=m | thickness=m" (at its anchor) gets a Rope, which draws itself as it swings, in the level's material ("Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes);
 - "Zipline | length=m | speed=m/s" (at the cable's start, its +Z along it) gets a Zipline that keeps the level's cable;
 - "Bounce Pad | height=m | keep=f" gets a BouncePad, its "Spring" child squashing on each launch;
+- "Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that keeps the level's surface;
 - "Climbable Panel | speed=f" gets a ClimbableSurface (the whole panel climbable, at that speed multiplier); only the panel is climbable, not the wall it stands on, so a climb stops at its edges;
 - "Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, and each course a CourseTimer under the Game Setup object, told by the spawner who's racing; a gate's display, "Timing Display | course=name", shows its course's time under way, the last and best, and (with a distance) the speed.
 

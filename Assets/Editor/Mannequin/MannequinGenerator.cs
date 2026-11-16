@@ -69,6 +69,7 @@ namespace CharacterShowcase.EditorTools
         private const string VaultProgressParameter = AnimatorParameterTranslator.DefaultVaultProgressParameter;
         private const string RopeSwingingParameter = AnimatorParameterTranslator.DefaultRopeSwingingParameter;
         private const string ZipliningParameter = AnimatorParameterTranslator.DefaultZipliningParameter;
+        private const string SwimmingParameter = AnimatorParameterTranslator.DefaultSwimmingParameter;
         // Past the end of the Locomotion, Crouch and Wall Climb blend trees, the translator plays the fastest loop faster
         // through these speed multipliers, from the speeds each loop is made for, which the controller carries as the
         // TopSpeed parameters' defaults (see AnimatorParameterTranslator's Playback section). So no top speed, which a
@@ -94,10 +95,19 @@ namespace CharacterShowcase.EditorTools
         // otherwise; see BuildAbilityStates). Of them, those standing on the floor are raised onto the mannequin's, as
         // the locomotion clips are (see StandLibraryOnMannequinsFloor).
         private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop",
-            "Climb_Idle_Loop", "Climb_Up_Loop", "Climb_Down_Loop", "Climb_Left_Loop", "Climb_Right_Loop", "Climb_Enter", "Climb_Exit", "ClimbLedge" };
+            "Climb_Idle_Loop", "Climb_Up_Loop", "Climb_Down_Loop", "Climb_Left_Loop", "Climb_Right_Loop", "Climb_Enter", "Climb_Exit", "ClimbLedge",
+            "Swim_Idle_Loop", "Swim_Fwd_Loop" };
         private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
         // A climbing loop's speed (m/s) if it can't be measured on the mannequin (see MotionCaptureLocomotion.ClimbSpeed).
         private const float ClimbLoopFallbackSpeed = 1f;
+        // Treading water, how far (m, on the mannequin) its head's pivot (the top of its neck) stands above the surface: the
+        // chin just out of the water. Swimming along, how far below the surface its hips' pivot is: the back just breaking
+        // it, the head at the water line (see FloatLibrarySwimsAtTheSwimDepth).
+        private const float HeadAboveWater = 0.15f, HipsBelowWater = 0.05f;
+        // The swimming speed (m/s, at the authored size) from which the Swim state shows the library's swim stroke fully:
+        // below it, it blends from treading water. The stroke is on the spot (it has no strides to measure), so it's
+        // shown at any swimming speed past this.
+        private const float SwimStrokeSpeed = 1.5f;
         // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
         // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
         private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;

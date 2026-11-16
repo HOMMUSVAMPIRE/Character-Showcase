@@ -55,6 +55,8 @@ namespace CharacterShowcase.EditorTools.Level
             Soil,
             /// <summary>Lawn: grass over open ground and platform tops, and its tufts.</summary>
             Grass,
+            /// <summary>Water's surface: see-through, rippling, darker where it's deeper (its own shader: see GrayboxScene).</summary>
+            Water,
         }
 
         private static Material[] palette;

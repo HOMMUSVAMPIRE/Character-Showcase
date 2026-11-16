@@ -12,20 +12,20 @@ from .checks import check, load_envelope
 from .geometry import layout, LAYERS
 
 #: Layers drawn bottom to top.
-ORDER = ["ground", "foliage", "cells", "solid", "deck", "stairs", "structure", "rails", "mechanics", "markings", "markers"]
+ORDER = ["ground", "foliage", "cells", "solid", "deck", "stairs", "water", "structure", "rails", "mechanics", "markings", "markers"]
 SHADES = 9
 
 PALETTE_LIGHT = """
   --paper: #F3F4F5; --sheet: #FBFBFC; --ink: #2D3138; --ink-soft: #5E6672; --rule: #CDD2D8; --grid: #E3E6EA;
   --accent: #D9702A; --cyan: #2E9FB0; --good: #3B8F5E; --warn: #C43C33; --tree: #7FA36A; --lawn: #DCE8D2; --hole: #FBFBFC;
   --h0: #E6E8EB; --h1: #D7DADE; --h2: #C5CAD0; --h3: #B1B7BF; --h4: #9CA3AD; --h5: #868E99; --h6: #707884; --h7: #5A626D; --h8: #454C56;
-  --ground: #EEF0F2; --stairs: #F5E3D3; --cells: #E9EEF5;"""
+  --ground: #EEF0F2; --stairs: #F5E3D3; --cells: #E9EEF5; --water: #8FC3E6;"""
 PALETTE_DARK = """
   color-scheme: dark;
   --paper: #16191D; --sheet: #1C1F24; --ink: #D6D9DD; --ink-soft: #9AA2AD; --rule: #333941; --grid: #23272D;
   --accent: #EE8A3E; --cyan: #54C6D6; --good: #5DBA84; --warn: #E8645A; --tree: #6C9A58; --lawn: #22301F; --hole: #1C1F24;
   --h0: #262A31; --h1: #2F343C; --h2: #3A4049; --h3: #454C56; --h4: #515965; --h5: #5E6773; --h6: #6C7682; --h7: #7B8591; --h8: #8B96A2;
-  --ground: #1E2227; --stairs: #3A2E25; --cells: #1F2630;"""
+  --ground: #1E2227; --stairs: #3A2E25; --cells: #1F2630; --water: #2B5A7E;"""
 
 SVG_STYLE = """
 .g-ground .poly { fill: var(--ground); stroke: var(--rule); stroke-width: 0.15; }
@@ -33,6 +33,7 @@ SVG_STYLE = """
 .g-cells .poly { fill: var(--cells); stroke: var(--ink-soft); stroke-dasharray: 0.8 0.4; }
 .g-stairs .poly { fill: var(--stairs); stroke: var(--accent); }
 .g-foliage .poly { fill: var(--lawn); stroke: none; }
+.g-water .poly { fill: var(--water); fill-opacity: 0.6; stroke: var(--cyan); stroke-width: 0.15; }
 .g-mechanics .poly { fill: none; stroke: var(--cyan); stroke-width: 0.35; }
 .g-structure .poly { fill: var(--h6); stroke: none; }
 .line { fill: none; stroke-width: 0.25; stroke-linecap: round; stroke-linejoin: round; }

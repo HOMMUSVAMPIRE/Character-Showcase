@@ -6,7 +6,7 @@ using UnityEngine;
 namespace CharacterShowcase.EditorTools.Level
 {
     // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders, ropes,
-    // ziplines, bounce pads), and low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
+    // ziplines, bounce pads, water), and low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
     // with its settings after the name ("Moving Platform (Lift) | travel=0,8,0 | period=5"); the scene's game setup
     // (SceneGameSetup, LevelFixtureSetup) turns it into the real thing. The names' starts must match LevelFixtureSetup's.
     // Fixtures that move are never static.
@@ -32,6 +32,8 @@ namespace CharacterShowcase.EditorTools.Level
         public const string ZiplinePrefix = "Zipline";
         /// <summary>How a bounce pad's name starts (as "Bounce Pad |", like a ladder's).</summary>
         public const string BouncePadPrefix = "Bounce Pad";
+        /// <summary>How a body of water's name starts (as "Water |", like a ladder's).</summary>
+        public const string WaterPrefix = "Water";
         /// <summary>How a climbable panel's name starts.</summary>
         public const string ClimbablePrefix = "Climbable Panel";
 
@@ -222,6 +224,41 @@ namespace CharacterShowcase.EditorTools.Level
             springMesh.AddTo(spring, spring.name);
             GameObjectUtility.SetStaticEditorFlags(spring, 0);
             return pad;
+        }
+
+        /// <summary>
+        /// A body of water (named name): its surface at surface, over a footprint on the ground plane (centre and size,
+        /// turned yaw), down to bottom. Only its surface is drawn, in the Water surface (its own see-through, rippling
+        /// shader), in cells for its waves to bend; it has no collider, so what holds it (a pool's floor and sides) is
+        /// built round it, and characters stand on what's under it. The game setup makes it swimmable (see
+        /// LevelFixtureSetup). Not static: it's see-through, and moving water ripples, which batching would freeze.
+        /// </summary>
+        [Piece]
+        public static GameObject Water(Transform parent, string name, Vector2 centre, Vector2 size, float bottom, float surface, float yaw = 0f)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Water), parent, name, centre, size, bottom, surface, yaw);
+            float depth = Mathf.Max(0f, surface - bottom);
+            // At its surface's centre, as the runtime water is (its surface at its position, reaching down its depth).
+            var water = new GameObject($"{WaterPrefix} | size={F(new Vector3(size.x, depth, size.y))} | label={name}");
+            water.transform.SetParent(parent, false);
+            water.transform.SetLocalPositionAndRotation(new Vector3(centre.x, surface, centre.y), Quaternion.Euler(0f, yaw, 0f));
+
+            float cell = Mathf.Max(0.1f, Settings.mechanics.waterCell);
+            int columns = Mathf.Max(1, Mathf.CeilToInt(size.x / cell)), rows = Mathf.Max(1, Mathf.CeilToInt(size.y / cell));
+            var mesh = new GrayboxMesh();
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < columns; c++)
+                {
+                    float x0 = (c / (float)columns - 0.5f) * size.x, x1 = ((c + 1) / (float)columns - 0.5f) * size.x;
+                    float z0 = (r / (float)rows - 0.5f) * size.y, z1 = ((r + 1) / (float)rows - 0.5f) * size.y;
+                    mesh.Quad(Surface.Water, Vector3.up, new Vector3(x0, 0f, z0), new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1), new Vector3(x1, 0f, z0));
+                }
+            }
+            mesh.AddTo(water, water.name, uv2: false);
+            water.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            GameObjectUtility.SetStaticEditorFlags(water, 0);
+            return water;
         }
 
         /// <summary>

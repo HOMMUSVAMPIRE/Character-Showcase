@@ -1,6 +1,6 @@
 """
 Procedurally authored animation clips for the mannequin: Idle, Walk, Run, Sprint, Rise, Fall, Dash, Crouch, Hang, Wall Slide,
-Rope Swing and Zipline.
+Rope Swing, Zipline and Swim.
 
 Poses are described as *world-space* (armature-space) rotations per bone, which are far easier to reason about than
 each bone's local axes, and converted to Blender's bone-local pose rotations here. All clips loop, stay in place
@@ -469,6 +469,25 @@ def zipline(p):
     return pose
 
 
+def swim(p):
+    """Treading water at the surface, upright: the arms out to the sides a little below the shoulders, sculling forward
+    and back with soft elbows, the legs cycling slowly beneath, knees bent, one kicking down as the other draws up, the
+    head up out of the water and the body bobbing a little with the strokes. (For when the Quaternius libraries, whose
+    treading water and swim stroke the Swim state plays, aren't installed.)"""
+    pose = Pose()
+    w = math.sin(TAU * p)
+    c = math.cos(TAU * p)
+    stroke = math.sin(TAU * 2.0 * p)  # Two sculls of the arms to each cycle of the legs.
+    torso(pose, hips_lean=6.0, spine_lean=4.0 + 1.0 * stroke, chest_lean=-2.0, head_lean=-6.0 - 1.0 * stroke)
+    legs(pose, "Left", thigh=-34.0 + 16.0 * w, knee=60.0 - 16.0 * c, foot=30.0)
+    legs(pose, "Right", thigh=-34.0 - 16.0 * w, knee=60.0 + 16.0 * c, foot=30.0)
+    arms(pose, "Left", lower=58.0, swing=-34.0 + 22.0 * stroke, elbow=30.0 + 10.0 * stroke)
+    arms(pose, "Right", lower=58.0, swing=-34.0 + 22.0 * stroke, elbow=30.0 + 10.0 * stroke)
+    # Raised a little, so that with its feet the default swim depth below the surface, the head is just out of the water.
+    pose.hips_offset = Vector((0.0, 0.0, 0.1 + 0.015 * stroke))
+    return pose
+
+
 # name -> (pose function, duration in seconds). Walk, Run and Sprint take their durations from their ground speeds, so
 # their planted feet don't slide at those speeds. Of them, the Animator's blend tree uses only Sprint, at the speed its
 # strides measure in Unity (MannequinGenerator); the walk and run there are the motion capture's.
@@ -487,6 +506,7 @@ CLIPS = {
     "Wall Slide": (wall_slide, 1.5),
     "Rope Swing": (rope_swing, 2.0),
     "Zipline": (zipline, 2.0),
+    "Swim": (swim, 2.0),
 }
 
 # Keys per second of animation. One per frame: a running foot is planted for only a few frames, and keys any

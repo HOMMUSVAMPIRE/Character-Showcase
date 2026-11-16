@@ -392,6 +392,8 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector2 climbableHoldSpacing = new(0.9f, 0.8f);
             [Tooltip("Climbable panels: a hold's size (m): across, up, and how far it stands out from the panel.")]
             public Vector3 climbableHold = new(0.22f, 0.14f, 0.06f);
+            [Tooltip("Water: the size (m) of the cells its surface is drawn in, fine enough for the water's waves to bend it.")]
+            public float waterCell = 1f;
         }
 
         /// <summary>Sets whether a level's occlusion culling is baked, and the bake's sizes.</summary>

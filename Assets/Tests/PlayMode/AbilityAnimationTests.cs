@@ -9,8 +9,8 @@ namespace CharacterShowcase.Tests
     /// <summary>
     /// Checks that the movement abilities show on the character's own model, through the shared Animator Controller
     /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting, pushing, swinging on a
-    /// rope and riding a zipline each play their state, a crouched model fits its lowered collider, and a hanging model's
-    /// hands reach up to the ledge, the rope or the cable. In the
+    /// rope, riding a zipline and swimming each play their state, a crouched model fits its lowered collider, a hanging
+    /// model's hands reach up to the ledge, the rope or the cable, and a swimmer's head is just out of the water. In the
     /// SampleContent category, as they check the package's own controller and model.
     /// </summary>
     [Category(TestArea.Animation)]
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests
 
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline" })
+            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline", "Swim" })
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -498,6 +498,27 @@ namespace CharacterShowcase.Tests
                 Transform hand = animator.GetBoneTransform(bone);
                 Assert.That(DistanceToSegment(hand.position, line.Start, line.End), Is.LessThan(0.1f * size), $"The {bone} should hold the cable.");
             }
+        }
+
+        [UnityTest]
+        public IEnumerator Swimming_PlaysSwim_WithTheHeadJustOutOfTheWater()
+        {
+            yield return Spawn();
+            // Deep water, with no floor under it: only the swimming holds the character up.
+            Level.Water water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));
+            float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
+            rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth - 0.1f, 0f));
+            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), StepAnimator);
+            Assert.That(rig.InState(CharacterState.Swimming), Is.True, "Test setup: the character should be swimming.");
+
+            // Treading water, the head (its pivot, at the top of the neck) is just above the surface: the swimming clips
+            // are floated at the swim depth (see MannequinGenerator.FloatLibrarySwimsAtTheSwimDepth).
+            float size = rig.Controller.Scale.y;
+            float head = animator.GetBoneTransform(HumanBodyBones.Head).position.y - water.SurfaceHeight;
+            Assert.That(head, Is.InRange(0f, 0.35f * size), "Treading water, the swimmer's head should be just out of the water.");
+
+            yield return ExpectState("Swim", 1f, _ => CharacterTestRig.Move(Vector3.forward));
         }
 
         [UnityTest]

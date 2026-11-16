@@ -46,11 +46,12 @@ namespace Character
         /// whatever the character is doing on it (rolling, sliding, dashing); then what the character hangs from (a
         /// zipline, a rope), as they hold it over everything below; then a ledge, whose top is grabbed out of a slide down
         /// its wall, and a vault, over what's too low to grab; holding an object; and a climbable surface, climbed
-        /// instead of run along or slid down, before a wall run and a slide down a wall. Then on the ground, a roll and a
-        /// slide; and crouching, which only changes how the character walks. Then how it moves by itself (see
-        /// MovementComponent.Locomotion): falling and steering in the air, whose ground friction comes before walking reads
-        /// the momentum it leaves, and walking and running. Then dashing and jumping, which act on top of walking, a dash
-        /// before the jump that cancels it (see MovementComponent.AfterWalking).
+        /// instead of run along or slid down, or swum into from the water. Then swimming, which deep water takes the
+        /// character into from whatever is below it in the list; then a wall run and a slide down a wall. Then on the
+        /// ground, a roll and a slide; and crouching, which only changes how the character walks. Then how it moves by
+        /// itself (see MovementComponent.Locomotion): falling and steering in the air, whose ground friction comes before
+        /// walking reads the momentum it leaves, and walking and running. Then dashing and jumping, which act on top of
+        /// walking, a dash before the jump that cancels it (see MovementComponent.AfterWalking).
         /// </summary>
         protected override IEnumerable<MovementComponent> DefaultComponents()
         {
@@ -61,6 +62,7 @@ namespace Character
             yield return new Vaulting();
             yield return new PushingAndPulling();
             yield return new WallClimbing();
+            yield return new Swimming();
             yield return new WallRunning();
             yield return new WallSliding();
             yield return new Rolling();

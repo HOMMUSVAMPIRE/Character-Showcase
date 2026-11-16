@@ -31,6 +31,8 @@ namespace CharacterShowcase.EditorTools
     /// the level's cable.</item>
     /// <item>"Bounce Pad | height=m | keep=f" gets a BouncePad, squashing its "Spring" child when it launches someone.</item>
     /// <item>"Climbable Panel | speed=f" gets a ClimbableSurface (all of it climbable) with that speed multiplier.</item>
+    /// <item>"Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that
+    /// keeps the level's surface. Only names starting "Water |".</item>
     /// </list>
     /// The names' starts must match the level builders' (Graybox), which can't reference these.
     /// </summary>
@@ -54,6 +56,8 @@ namespace CharacterShowcase.EditorTools
         public const string ZiplinePrefix = "Zipline";
         /// <summary>How a bounce pad's name starts (Graybox.BouncePadPrefix).</summary>
         public const string BouncePadPrefix = "Bounce Pad";
+        /// <summary>How a body of water's name starts (Graybox.WaterPrefix).</summary>
+        public const string WaterPrefix = "Water";
         /// <summary>The name of a bounce pad's child that squashes when it launches someone.</summary>
         public const string BouncePadSpringName = "Spring";
         /// <summary>How a climbable panel's name starts (Graybox.ClimbablePrefix).</summary>
@@ -190,6 +194,20 @@ namespace CharacterShowcase.EditorTools
             return pad;
         }
 
+        /// <summary>
+        /// Makes a body of water swimmable, from its name's settings (adding what it needs), keeping the level's surface
+        /// (its mesh and material).
+        /// </summary>
+        public static Water SetUpWater(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            Water water = Need<Water>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(water, "Set Up Scene"); }
+            water.BuildsMesh = false;
+            water.Size = Vector(p, "size", new Vector3(10f, 3f, 10f));
+            return water;
+        }
+
         /// <summary>Makes a climbable panel climbable, from its name's settings (adding what it needs).</summary>
         public static ClimbableSurface SetUpClimbable(GameObject obj, bool withUndo)
         {
@@ -219,11 +237,12 @@ namespace CharacterShowcase.EditorTools
             foreach (Transform t in all.Where(t => IsNamed(t.name, PushablePrefix))) { SetUpPushable(t.gameObject, withUndo); pushables++; }
             int ladders = 0;
             foreach (Transform t in all.Where(t => IsLadder(t.name))) { SetUpLadder(t.gameObject, withUndo); ladders++; }
-            int ropes = 0, ziplines = 0, pads = 0, climbables = 0;
+            int ropes = 0, ziplines = 0, pads = 0, climbables = 0, waters = 0;
             foreach (Transform t in all.Where(t => IsFixture(t.name, ClimbablePrefix))) { SetUpClimbable(t.gameObject, withUndo); climbables++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, RopePrefix))) { SetUpRope(t.gameObject, withUndo); ropes++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, ZiplinePrefix))) { SetUpZipline(t.gameObject, withUndo); ziplines++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, BouncePadPrefix))) { SetUpBouncePad(t.gameObject, withUndo); pads++; }
+            foreach (Transform t in all.Where(t => IsFixture(t.name, WaterPrefix))) { SetUpWater(t.gameObject, withUndo); waters++; }
 
             // A timer for each course its gates name, under the game setup.
             var timers = new Dictionary<string, CourseTimer>();
@@ -282,6 +301,7 @@ namespace CharacterShowcase.EditorTools
             if (ziplines > 0) { parts.Add($"{ziplines} zipline{(ziplines == 1 ? "" : "s")}"); }
             if (pads > 0) { parts.Add($"{pads} bounce pad{(pads == 1 ? "" : "s")}"); }
             if (climbables > 0) { parts.Add($"{climbables} climbable panel{(climbables == 1 ? "" : "s")}"); }
+            if (waters > 0) { parts.Add($"{waters} bod{(waters == 1 ? "y" : "ies")} of water"); }
             if (gates > 0) { parts.Add($"{gates} timing gate{(gates == 1 ? "" : "s")} on {timers.Count} course{(timers.Count == 1 ? "" : "s")} with {displays} display{(displays == 1 ? "" : "s")}"); }
             return string.Join(", ", parts);
         }

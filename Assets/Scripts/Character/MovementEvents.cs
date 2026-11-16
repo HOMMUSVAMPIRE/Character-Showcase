@@ -69,5 +69,9 @@ namespace Character
         ZiplineEnded = 1L << 34,
         // Launched by a bounce pad (see Level.BouncePad), reported by the movement mode
         Bounced = 1L << 35,
+        // Started swimming (got into water deep enough to swim in), and stopped (climbed or jumped out, or found its feet
+        // in shallower water: jumping out is a Jumped too)
+        SwimStarted = 1L << 36,
+        SwimEnded = 1L << 37,
     }
 }

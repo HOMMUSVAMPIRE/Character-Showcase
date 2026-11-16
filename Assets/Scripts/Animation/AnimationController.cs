@@ -282,6 +282,7 @@ namespace Character
                 wallNormal = wallNormal,
                 swinging = swinging,
                 ziplining = ziplining,
+                swimming = movementData.state.HasFlag(CharacterState.Swimming),
                 gripPoint = gripPoint,
                 gripDirection = gripDirection,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform

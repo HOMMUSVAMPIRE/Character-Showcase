@@ -24,7 +24,8 @@ namespace CharacterShowcase.EditorTools
         /// parameter is set, and left for Locomotion, Crouch or Airborne, whichever matches the character, once it's
         /// cleared. The Quaternius libraries' crouch, slide, roll, climb, vault, push and wall runs are used where they're installed, and
         /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
-        /// rise for the climb and the vault, and its walk for the push). Hanging, sliding down a wall, swinging on a rope
+        /// rise for the climb and the vault, and its walk for the push). Swimming (Swim) is the library's treading water
+        /// and swim stroke, by Speed, or the mannequin's treading water. Hanging, sliding down a wall, swinging on a rope
         /// (Rope Swing) and riding a zipline (Zipline) are always the mannequin's own.
         /// </summary>
         private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
@@ -99,6 +100,14 @@ namespace CharacterShowcase.EditorTools
             ropeSwing.motion = clips["Rope Swing"];
             AnimatorState zipline = stateMachine.AddState("Zipline");
             zipline.motion = clips["Zipline"];
+
+            // Swimming at the surface: the library's treading water, blending into its swim stroke by swimming speed (Speed,
+            // as at the authored size: see SwimStrokeSpeed); or else the mannequin's own treading water.
+            AnimatorState swim = stateMachine.AddState("Swim");
+            AnimationClip swimIdle = Library("Swim_Idle_Loop", null), swimStroke = Library("Swim_Fwd_Loop", null);
+            swim.motion = swimIdle != null && swimStroke != null
+                ? CreateBlendTree(controller, "Swim", SpeedParameter, (swimIdle, 0f, 1f, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
+                : clips["Swim"];
 
             // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
             // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at
@@ -184,7 +193,7 @@ namespace CharacterShowcase.EditorTools
                 (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (wallClimb, WallClimbingParameter, 0.15f), (ladderState, OnLadderParameter, 0.15f),
                 (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
                 (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
-                (ropeSwing, RopeSwingingParameter, 0.1f), (zipline, ZipliningParameter, 0.1f),
+                (ropeSwing, RopeSwingingParameter, 0.1f), (zipline, ZipliningParameter, 0.1f), (swim, SwimmingParameter, 0.2f),
             };
             if (climbEnter != null)
             {
@@ -214,7 +223,7 @@ namespace CharacterShowcase.EditorTools
                     // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
                     // falling): that shows instead, or two Any State transitions would keep swapping the states.
                     start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
-                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter })
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter })
                     {
                         start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
                     }

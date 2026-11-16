@@ -277,6 +277,21 @@ namespace CharacterShowcase.Tests
             return rope;
         }
 
+        /// <summary>
+        /// A body of water whose surface is at surfaceCentre, size across (x), deep (y) and long (z), drawing its own
+        /// surface. It has no collider: build what's under it (a floor) separately.
+        /// </summary>
+        public Water Water(Vector3 surfaceCentre, Vector3 size)
+        {
+            var obj = new GameObject("Water");
+            created.Add(obj);
+            obj.transform.position = surfaceCentre;
+            var water = obj.AddComponent<Water>();
+            water.Size = size;
+            water.Rebuild();
+            return water;
+        }
+
         /// <summary>A large flat floor whose top surface is at the given height, 100 m across unless given a width.</summary>
         public GameObject Floor(float topHeight = 0f, float width = 100f) =>
             Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));
@@ -516,6 +531,10 @@ namespace CharacterShowcase.Tests
         public float ZiplineHangHeight => MovementSetting<float>("ziplineHangHeight") * StandingHeight;
         /// <summary>Whether the character is riding a zipline.</summary>
         public bool Ziplining => InState(CharacterState.Ziplining);
+        /// <summary>How far (m) below the water's surface the character's feet hang as it swims, at its size.</summary>
+        public float SwimDepth => MovementSetting<float>("swimDepth") * StandingHeight;
+        /// <summary>Whether the character is swimming.</summary>
+        public bool Swimming => InState(CharacterState.Swimming);
 
         /// <summary>
         /// Spawns the character, waits for its model to load (which fits its collider to the model, so its size is

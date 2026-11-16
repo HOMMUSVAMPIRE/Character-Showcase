@@ -193,5 +193,30 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.IsNull(marker.GetComponent<ClimbableSurface>(), "A future climbable wall's marker isn't climbable.");
             StringAssert.Contains("1 climbable panel", summary);
         }
+
+        [Test]
+        public void SetUp_MakesWaterSwimmable_KeepingTheLevelsSurface_ButNotFutureWaterMarkers()
+        {
+            GameObject pool = Add("Water | size=22,2.6,12 | label=Pool");
+            pool.transform.SetPositionAndRotation(new Vector3(23f, -0.4f, 31f), Quaternion.Euler(0f, 30f, 0f));
+            var levelSurface = new Mesh { name = "The Level's Water" };
+            pool.AddComponent<MeshFilter>().sharedMesh = levelSurface;
+            GameObject marker = Add("Water (future): a canal along the wall");
+            Transform setup = Add("Game Setup").transform;
+
+            string summary = LevelFixtureSetup.SetUp(scene, setup, null, withUndo: false);
+
+            var water = pool.GetComponent<Water>();
+            Assert.IsNotNull(water);
+            Assert.IsFalse(water.BuildsMesh, "A level's water should keep the level's surface.");
+            Assert.AreSame(levelSurface, pool.GetComponent<MeshFilter>().sharedMesh);
+            Assert.That(Vector3.Distance(water.Size, new Vector3(22f, 2.6f, 12f)), Is.LessThan(1e-4f));
+            Assert.AreEqual(-0.4f, water.SurfaceHeight, 1e-5f);
+            Assert.IsTrue(water.Contains(new Vector3(23f, -2f, 31f)), "The water's middle, under its surface, should be in it.");
+            Assert.IsFalse(water.Contains(new Vector3(23f, 0f, 31f)), "Above its surface isn't in the water.");
+            Assert.IsNull(marker.GetComponent<Water>(), "A future water marker isn't water.");
+            StringAssert.Contains("1 body of water", summary);
+            Object.DestroyImmediate(levelSurface);
+        }
     }
 }

@@ -42,7 +42,7 @@ namespace CharacterShowcase.Tests.EditMode
                 Is.EqualTo(new[]
                 {
                     typeof(BouncePads), typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting),
-                    typeof(PushingAndPulling), typeof(WallClimbing), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
+                    typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
                     typeof(Crouching), typeof(FallAndAirHandling), typeof(WalkingAndRunning), typeof(Dashing), typeof(Jumping),
                 }),
                 "Most committed first: a bounce pad launches whatever the character is doing; what it hangs from holds it " +

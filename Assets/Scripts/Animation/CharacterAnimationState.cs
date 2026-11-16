@@ -123,6 +123,8 @@ namespace Character
         public bool swinging;
         /// <summary>Riding a zipline (see gripPoint and gripDirection).</summary>
         public bool ziplining;
+        /// <summary>Swimming at the surface of deep water (horizontalSpeed is how fast it swims).</summary>
+        public bool swimming;
         /// <summary>
         /// While swinging or ziplining: where the hands hold the line (the rope or the cable; as it's drawn this frame).
         /// Zero otherwise.

@@ -221,6 +221,8 @@ namespace Character
         public ZiplineState zipline { get; } = new ZiplineState();
         /// <summary>The character's bounce pad state (BouncePads).</summary>
         public BounceState bounce { get; } = new BounceState();
+        /// <summary>The character's swimming state (Swimming).</summary>
+        public SwimState swim { get; } = new SwimState();
 
         /// <summary>
         /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times
@@ -404,6 +406,7 @@ namespace Character
             (CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
             (CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
             (CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
+            (CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
         };
 
         private void RaiseEvents(MovementData data)
