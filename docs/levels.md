@@ -130,7 +130,7 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 - one of each of the Calibration Annex's tests (steps either side of the step limit, a ledge, a slope, a low tunnel, a narrow beam beside a wall-run wall);
 - one of each mechanic (a lift, a ladder up to the lift's landing, a slide gate, a timed run and a crate to push; see [Level mechanics](#level-mechanics));
 - in the far west, the mechanics in the air: a tower, up a ladder or a bounce pad, with a zipline from its top south down to the ground, and a rope on a gantry over a gap between two raised platforms, too far for a sprint jump (a sprint jump and a well-timed air dash can just cross it), the near one with a climbable panel up its side;
-- in the north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to where it's deep enough to swim, and a ladder up its east wall at the deep end;
+- in the north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to a shallow shelf, and a drop-off to a deep end to dive in, with an arch to swim through along its floor and a ladder up its east wall;
 - and placeholders for mechanics to come.
 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Character Showcase > Level > Build Level Playground, or `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.

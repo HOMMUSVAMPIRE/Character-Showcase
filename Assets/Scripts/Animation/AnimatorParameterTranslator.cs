@@ -90,6 +90,8 @@ namespace Character
         public const string DefaultZipliningParameter = "Ziplining";
         /// <summary>The Swimming parameter's default name (bool): swimming at the surface of deep water.</summary>
         public const string DefaultSwimmingParameter = "Swimming";
+        /// <summary>The Diving parameter's default name (bool): swimming under the surface (Swimming is set too).</summary>
+        public const string DefaultDivingParameter = "Diving";
         /// <summary>The LocomotionPlayback parameter's default name (float): how much faster than its fastest loop the Locomotion state plays (see the Playback section).</summary>
         public const string DefaultLocomotionPlaybackParameter = "LocomotionPlayback";
         /// <summary>The LocomotionTopSpeed parameter's default name (float, read, not set): the speed (m/s) the Locomotion state's fastest loop is made for.</summary>
@@ -228,6 +230,8 @@ namespace Character
         [SerializeField] private string zipliningParameter = DefaultZipliningParameter;
         [Tooltip("Swimming at the surface of deep water")]
         [SerializeField] private string swimmingParameter = DefaultSwimmingParameter;
+        [Tooltip("Swimming under the surface (Swimming is set too)")]
+        [SerializeField] private string divingParameter = DefaultDivingParameter;
 
         [Header("Triggers")]
         [Tooltip("Animator triggers fired by movement events, such as a landing or jump animation")]
@@ -241,7 +245,7 @@ namespace Character
             // Parameter hashes, or 0 for parameters to skip
             private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
             private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing, ropeSwinging, ziplining, swimming;
+            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing, ropeSwinging, ziplining, swimming, diving;
             private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
             // The speeds (m/s) the controller's fastest loops are made for (its parameters' defaults), or 0 if it has none.
             private readonly float locomotionTop, crouchTop, climbUpTop, climbDownTop, climbLeftTop, climbRightTop;
@@ -298,6 +302,7 @@ namespace Character
                 ropeSwinging = Find(settings.ropeSwingingParameter, AnimatorControllerParameterType.Bool);
                 ziplining = Find(settings.zipliningParameter, AnimatorControllerParameterType.Bool);
                 swimming = Find(settings.swimmingParameter, AnimatorControllerParameterType.Bool);
+                diving = Find(settings.divingParameter, AnimatorControllerParameterType.Bool);
 
                 locomotionPlayback = Find(settings.locomotionPlaybackParameter, AnimatorControllerParameterType.Float);
                 crouchPlayback = Find(settings.crouchPlaybackParameter, AnimatorControllerParameterType.Float);
@@ -372,6 +377,7 @@ namespace Character
                 if (ropeSwinging != 0) { animator.SetBool(ropeSwinging, state.swinging); }
                 if (ziplining != 0) { animator.SetBool(ziplining, state.ziplining); }
                 if (swimming != 0) { animator.SetBool(swimming, state.swimming); }
+                if (diving != 0) { animator.SetBool(diving, state.diving); }
             }
 
             /// <summary>

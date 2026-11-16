@@ -14,7 +14,7 @@ namespace Character
     /// can be replaced (or swapped at runtime) without touching the character.
     /// </summary>
     [DisallowMultipleComponent]
-    public class AnimationController : MonoBehaviour, ICharacterAnimationStateSource
+    public partial class AnimationController : MonoBehaviour, ICharacterAnimationStateSource
     {
         [SerializeField] [Tooltip("A reference to the parent character controller")]
         private ACCharacterController characterController;
@@ -78,6 +78,15 @@ namespace Character
                                   "Swimming): a swimmer at the edge is already part way up, its body higher than one " +
                                   "hanging from it, so starting from the hang dropped the model before it rose")]
         [Range(0f, 0.9f)] private float climbOutOfWaterStart = 0.35f;
+
+        [Header("Head In Water")]
+        [SerializeField] [Tooltip("How far (m, at the character's authored size) past a water's surface its head must go to " +
+                                  "count as under it (HeadSubmerged), or back above it (HeadSurfaced), so a head bobbing " +
+                                  "at the surface (a swim stroke's) doesn't flick in and out")]
+        [Min(0f)] private float headWaterMargin = 0.1f;
+
+        /// <summary>How far (m, at the authored size) past a water's surface the head must go to count as under it or above it.</summary>
+        public float HeadWaterMargin { get => headWaterMargin; set => headWaterMargin = Mathf.Max(0f, value); }
 
         /// <summary>How far into the climb onto a ledge (0 to 1) a climb out of the water starts.</summary>
         public float ClimbOutOfWaterStart { get => climbOutOfWaterStart; set => climbOutOfWaterStart = Mathf.Clamp(value, 0f, 0.9f); }
@@ -298,6 +307,7 @@ namespace Character
                 swinging = swinging,
                 ziplining = ziplining,
                 swimming = movementData.state.HasFlag(CharacterState.Swimming),
+                diving = movementData.state.HasFlag(CharacterState.Diving),
                 gripPoint = gripPoint,
                 gripDirection = gripDirection,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform

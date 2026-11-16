@@ -15,7 +15,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// replacing whatever is open (Unity can't add a new scene beside an untitled one, which the test runner may have):
     /// placed characters replaced by spawn points where they stood, spawn markers used as spawn points, a set-up scene
     /// keeping its spawn points when set up again, the camera wired to the spawner (copied from the demo scene, or the
-    /// scene's own), the input manager copied once, and other cameras turned off rather than deleted. They need the
+    /// scene's own), the input manager copied once, other cameras turned off rather than deleted, and the camera given an
+    /// underwater view in a level with water. They need the
     /// demo scene, which the camera and input manager are copied from, and the Character prefab.
     /// </summary>
     [Category(TestArea.Spawning)]
@@ -132,6 +133,18 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.AreEqual(1, scene.GetRootGameObjects().Count(root => root.name == SceneGameSetup.SetupName), "The old setup should have been replaced.");
             CollectionAssert.AreEqual(points.Select(p => p.position), SceneGameSetup.FindSpawner(scene).SpawnPoints.Select(p => p.position));
             Assert.AreEqual(1, scene.GetRootGameObjects().Sum(root => root.GetComponentsInChildren<ACInputManager>(true).Length));
+        }
+
+        [Test]
+        public void SetUp_GivesTheCameraAnUnderwaterView_OnlyInALevelWithWater([Values(false, true)] bool water)
+        {
+            if (water) { Add("Water | size=10,3,10 | label=Pool"); }
+
+            Assert.IsTrue(SceneGameSetup.SetUp(scene, Settings(), withUndo: false));
+
+            Camera camera = SceneGameSetup.FindSetup(scene).GetComponentsInChildren<Camera>(true).Single();
+            Assert.That(camera.GetComponent<Level.UnderwaterView>() != null, Is.EqualTo(water),
+                water ? "With water in the level, the camera should have an underwater view." : "Without water, the camera needs no underwater view.");
         }
 
         [Test]

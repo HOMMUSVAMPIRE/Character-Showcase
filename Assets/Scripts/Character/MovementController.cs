@@ -410,6 +410,7 @@ namespace Character
             (CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
             (CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
             (CharacterState.Wading, MovementEvents.WadeStarted, MovementEvents.WadeEnded),
+            (CharacterState.Diving, MovementEvents.DiveStarted, MovementEvents.DiveEnded),
         };
 
         private void RaiseEvents(MovementData data)

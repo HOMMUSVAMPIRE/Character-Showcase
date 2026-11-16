@@ -76,5 +76,8 @@ namespace Character
         // Started or stopped wading (walking through water too shallow to swim in)
         WadeStarted = 1L << 38,
         WadeEnded = 1L << 39,
+        // Dived under the water's surface, and stopped swimming underwater (back up at the surface, or out of the water)
+        DiveStarted = 1L << 40,
+        DiveEnded = 1L << 41,
     }
 }

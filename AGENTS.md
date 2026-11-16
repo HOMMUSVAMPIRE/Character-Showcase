@@ -20,9 +20,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
 | `Assets/Scripts/Models` | `CharacterModelHost` and the model sources |
+| `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level mechanics' runtime components |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/` |
+| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests |
 | `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` (Blender scripts) |
@@ -164,8 +165,9 @@ change and say regeneration is still needed.
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
 New Animator parameters or states belong in `MannequinGenerator`; new clips in the Blender scripts. The levels'
-materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph` and `Water.shader` are
-hand-edited: nothing regenerates them.
+materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph`, `Water.shader` and
+`WaterEffect.shader` are hand-edited: nothing regenerates them. So are the default water effects (`Assets/Prefabs/Effects`,
+`Assets/Materials/Effects`), which Create Water Effects (`WaterEffectAssets`) makes only where they're missing.
 
 ## Recipes
 

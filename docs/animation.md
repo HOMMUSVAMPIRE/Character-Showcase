@@ -45,6 +45,8 @@ The libraries' clips are raised or lowered so their lowest foot stands where the
 
 ## Swimming
 
+Swimming underwater (the Diving parameter, set with Swimming) has a state of its own, Swim Underwater, so a controller can give it its own clips; the generated one plays the same as Swim, which suits it well enough. It's entered from any state while diving, and swimming back at the surface returns to Swim.
+
 The Swim state plays Quaternius's treading water still, blending by Speed into their swim stroke, shown fully from `SwimStrokeSpeed` (in MannequinGenerator.cs) up: the stroke is on the spot, with no strides to measure, so it's shown at any swimming speed past that.
 
 The library's swimming is made around the water line: where a grounded clip has its floor, its swimmer has the water's surface. A swimming character's origin is still its feet, hanging Swimming's Swim Depth below the surface, so Generate Mannequin raises the swimming clips (their root height offsets, which it logs), measured on the mannequin with its feet the Character prefab's Swim Depth below the surface: treading water so its head stands `HeadAboveWater` above the surface (the chin just out of the water), and the stroke so its hips are `HipsBelowWater` under it (the back just breaking the surface). The Swim Depth is the movement's tuning, so after changing it, run Generate Mannequin again, or the swimmer floats too high or too low. Without the libraries, the Swim state is the mannequin's own treading water, made for the default Swim Depth.

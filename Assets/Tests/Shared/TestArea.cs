@@ -12,7 +12,7 @@ namespace CharacterShowcase.Tests
         public const string Movement = "Movement";
         /// <summary>Crouching, sliding, rolling, wall running, wall sliding, ledges and vaulting (docs/abilities.md).</summary>
         public const string Abilities = "Abilities";
-        /// <summary>Climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming and wading (docs/traversal.md).</summary>
+        /// <summary>Climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming, diving and wading (docs/traversal.md).</summary>
         public const string Traversal = "Traversal";
         /// <summary>Animation, IK, foot placement and the model's turning (docs/animation.md).</summary>
         public const string Animation = "Animation";

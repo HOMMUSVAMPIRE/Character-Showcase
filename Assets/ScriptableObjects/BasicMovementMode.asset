@@ -334,6 +334,10 @@ MonoBehaviour:
         swimSprintSpeed: 5
         swimAcceleration: 8
         swimJumpHeight: 1.2
+        swimVaultHeight: 0.3
+        swimDiveSpeed: 4
+        swimVerticalSpeed: 2.5
+        swimBuoyancy: 0
     - rid: 5929479671128260609
       type: {class: Wading, ns: Character, asm: CharacterShowcase}
       data:

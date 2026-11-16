@@ -40,5 +40,7 @@ namespace Character
         Swimming = 524288,
         // Walking through water too shallow to swim in, slowed by it (see Wading)
         Wading = 1048576,
+        // Swimming under the surface (Swimming is set too: see Swimming)
+        Diving = 2097152,
     }
 }

@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 2503010006209077673}
   - component: {fileID: 5209213404800541197}
   - component: {fileID: 456934232584960403}
+  - component: {fileID: 2159346865127861795}
   m_Layer: 0
   m_Name: Character
   m_TagString: Untagged
@@ -137,6 +138,7 @@ MonoBehaviour:
   stepUpSmoothTime: 0.08
   stepUpMaxLag: 0.35
   climbOutOfWaterStart: 0.35
+  headWaterMargin: 0.1
 --- !u!136 &2503010006209077673
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -209,6 +211,28 @@ MonoBehaviour:
   minimumHeightFraction: 0.6
   colliderFit: 0
   colliderWidthMargin: 1.4
+--- !u!114 &2159346865127861795
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2098279046411243804}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ec39934c4994be581bd84442478cc99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CharacterShowcase::Character.WaterEffects
+  splashPrefab: {fileID: 2128114978611597593, guid: ea3a210b33f594878b973fe72b185d5d, type: 3}
+  ripplePrefab: {fileID: 5259221796791745848, guid: 5b5e8c7877acb430497ed0149d01fec7, type: 3}
+  splashFullSpeed: 10
+  splashMinStrength: 0.15
+  splashRipples: 1
+  rippleSpacing: 1.2
+  idleRippleInterval: 1.5
+  rippleMovingSpeed: 0.3
+  weakestScale: 0.5
+  maxPlaying: 8
 --- !u!1 &2471405576659864554
 GameObject:
   m_ObjectHideFlags: 0

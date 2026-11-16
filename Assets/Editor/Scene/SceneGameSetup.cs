@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CameraSystem;
 using Character;
+using Level;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
@@ -206,6 +207,8 @@ namespace CharacterShowcase.EditorTools
             UnityEventTools.AddPersistentListener(spawner.OnCameraTargetSpawned, rig.Follow);
             // The level's fixtures: moving platforms, pushable crates and timing gates, from the markers the level builds.
             string fixtures = LevelFixtureSetup.SetUp(scene, setup, spawner, withUndo);
+            // With water in the level, the camera's view goes underwater with it (see UnderwaterView).
+            bool underwaterView = AddUnderwaterView(scene, rig, withUndo);
             if (withUndo)
             {
                 Undo.RegisterCreatedObjectUndo(setup.gameObject, "Set Up Scene");
@@ -220,7 +223,21 @@ namespace CharacterShowcase.EditorTools
                       (placed.Count > 0 ? $" Replaced the placed {(placed.Count == 1 ? "character" : "characters")}: {placedNames}." : "") +
                       (keepInputManager ? " The scene's own input manager is kept." : "") +
                       (otherCameras.Count > 0 ? $" Turned off the scene's other cameras: {string.Join(", ", otherCameras.Select(c => c.name))}." : "") +
-                      (fixtures.Length > 0 ? $" Set up the level's {fixtures}." : ""));
+                      (fixtures.Length > 0 ? $" Set up the level's {fixtures}." : "") +
+                      (underwaterView ? " The camera has an underwater view." : ""));
+            return true;
+        }
+
+        /// <summary>
+        /// Gives the camera the rig drives an UnderwaterView, if the scene has any water (outside the game setup) and the
+        /// camera hasn't one already. Returns whether the camera has one.
+        /// </summary>
+        public static bool AddUnderwaterView(Scene scene, CameraRig rig, bool withUndo)
+        {
+            Camera camera = rig != null ? rig.GetComponentInChildren<Camera>(true) : null;
+            if (camera == null || !OutsideSetup<Water>(scene).Any()) { return false; }
+            if (camera.GetComponent<UnderwaterView>() != null) { return true; }
+            if (withUndo) { Undo.AddComponent<UnderwaterView>(camera.gameObject); } else { camera.gameObject.AddComponent<UnderwaterView>(); }
             return true;
         }
 

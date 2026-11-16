@@ -77,6 +77,23 @@ namespace Level
             return found;
         }
 
+        /// <summary>
+        /// The body of water whose footprint point is over (or under) and whose surface is at most above below it (or
+        /// above it): what point is in, or over by no more than above (a character just leaving it, for a splash where it
+        /// left). The one with the highest surface where several are; null if none.
+        /// </summary>
+        public static Water Under(Vector3 point, float above)
+        {
+            Water found = null;
+            for (int i = 0; i < active.Count; i++)
+            {
+                Water water = active[i];
+                if (water == null || point.y < water.BottomHeight || point.y > water.SurfaceHeight + above || !water.Covers(point)) { continue; }
+                if (found == null || water.SurfaceHeight > found.SurfaceHeight) { found = water; }
+            }
+            return found;
+        }
+
         private void OnEnable()
         {
             if (!active.Contains(this)) { active.Add(this); }

@@ -55,7 +55,7 @@ namespace CharacterShowcase.EditorTools
             });
             controller.AddParameter(DashingParameter, AnimatorControllerParameterType.Bool);
             if (useLibrary) { controller.AddParameter(JumpTrigger, AnimatorControllerParameterType.Trigger); }
-            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter })
+            foreach (string ability in new[] { CrouchingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter, DivingParameter })
             {
                 controller.AddParameter(ability, AnimatorControllerParameterType.Bool);
             }

@@ -32,8 +32,9 @@ namespace CharacterShowcase.EditorTools.Level
     /// - south, one of each mechanic: a lift (a moving platform) to a landing with a ladder up its side, a slide gate,
     ///   and a timed 20 m run between two timing gates, and in the building a crate to push (fixtures Set Up Scene makes
     ///   work);
-    /// - north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end, deep
-    ///   enough to swim in beyond it, and a ladder up its east wall at the deep end;
+    /// - north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to a
+    ///   shallow shelf, and a drop-off to a deep end to dive in, with an arch to swim through along its floor and a
+    ///   ladder up its east wall;
     /// - far west, the mechanics in the air: a tower at +8, up a ladder or a bounce pad, with a zipline from its top south
     ///   down to the ground, and a rope on a gantry to swing on across a gap between two platforms at +4 (too far for a
     ///   sprint jump), the north one with a climbable panel up its west face;
@@ -328,32 +329,42 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- North-east: the pool (water's a fixture too) ----
 
-        // The pool's hole in the ground, its floor's top, its water's surface (below the ground, so getting out means
-        // jumping or climbing), and its walls' thickness.
-        private static readonly UnityEngine.Rect Pool = UnityEngine.Rect.MinMaxRect(12f, 25f, 34f, 37f);
-        private const float PoolFloor = -3f, PoolSurface = -0.4f, PoolWall = 0.5f;
+        // The pool's hole in the ground, its water's surface (below the ground, so getting out means climbing, vaulting
+        // or jumping), its walls' thickness, the shallow shelf's and the deep end's floors, and where the deep end starts.
+        private static readonly UnityEngine.Rect Pool = UnityEngine.Rect.MinMaxRect(10f, 25f, 36f, 38f);
+        private const float PoolSurface = -0.4f, PoolWall = 0.5f, PoolShelf = -2f, PoolDeep = -6f, PoolDropOff = 22f;
 
         private static void BuildPool(Transform root, Material material)
         {
             Transform pool = Section(root, material, "Pool");
             float x0 = Pool.xMin, x1 = Pool.xMax, z0 = Pool.yMin, z1 = Pool.yMax;
-            // A tiled basin in the ground's opening: its floor, and walls round it from under the floor up to the ground.
-            Block(pool, "Pool Floor", x0, x1, z0, z1, PoolFloor - 0.5f, PoolFloor, Surface.Panel);
-            Block(pool, "Pool Wall (South)", x0, x1, z0, z0 + PoolWall, PoolFloor, 0f, Surface.Panel);
-            Block(pool, "Pool Wall (North)", x0, x1, z1 - PoolWall, z1, PoolFloor, 0f, Surface.Panel);
-            Block(pool, "Pool Wall (East)", x1 - PoolWall, x1, z0 + PoolWall, z1 - PoolWall, PoolFloor, 0f, Surface.Panel);
-            // A beach at the west end, from the ground down to the floor at a 1:4 slope (the terrace ramp's), wading in
-            // until it's deep enough to swim.
-            const float beach = 4f * -PoolFloor;
-            float inner = z1 - z0 - 2f * PoolWall;
-            Ramp(pool, "Beach (1:4)", new Vector2(x0 + beach, (z0 + z1) / 2f), Vector2.left, inner, beach, PoolFloor, 0f);
-            // A ladder up the east wall at the deep end, out of the water.
-            Ladder(pool, new Vector2(x1 - PoolWall, (z0 + z1) / 2f), PoolFloor, -PoolFloor, Vector2.left);
+            float zIn0 = z0 + PoolWall, zIn1 = z1 - PoolWall, middle = (z0 + z1) / 2f, inner = zIn1 - zIn0;
+            // A tiled basin in the ground's opening: walls round it from the deep end's floor up to the ground.
+            Block(pool, "Pool Wall (South)", x0, x1, z0, zIn0, PoolDeep, 0f, Surface.Panel);
+            Block(pool, "Pool Wall (North)", x0, x1, zIn1, z1, PoolDeep, 0f, Surface.Panel);
+            Block(pool, "Pool Wall (East)", x1 - PoolWall, x1, zIn0, zIn1, PoolDeep, 0f, Surface.Panel);
+            // The shallow end: a beach at the west end, down from the ground at a 1:4 slope (the terrace ramp's) to a
+            // shelf, wading in until it's deep enough to swim; the shelf's a block down to the deep end's floor, its
+            // east face the drop-off.
+            const float beach = 4f * -PoolShelf;
+            Ramp(pool, "Beach (1:4)", new Vector2(x0 + beach, middle), Vector2.left, inner, beach, PoolShelf, 0f);
+            Block(pool, "Pool Shelf", x0 + beach, PoolDropOff, zIn0, zIn1, PoolDeep, PoolShelf, Surface.Panel);
+            // The deep end: deep enough to dive in, with an arch to swim through along its floor (in its middle, so
+            // swimmers at the surface go round it), and a ladder up its east wall.
+            Block(pool, "Pool Floor (Deep End)", PoolDropOff, x1 - PoolWall, zIn0, zIn1, PoolDeep - 0.5f, PoolDeep, Surface.Panel);
+            const float archX = 29f, archThickness = 1f, archTop = -1.2f, tunnelHeight = 1.5f, tunnelWidth = 3f;
+            float archZ0 = zIn0 + 1.5f, archZ1 = zIn1 - 1.5f;
+            Transform arch = Group(pool, "Swim-Through Arch");
+            Block(arch, "Arch (South)", archX, archX + archThickness, archZ0, middle - tunnelWidth / 2f, PoolDeep, archTop, Surface.Concrete);
+            Block(arch, "Arch (North)", archX, archX + archThickness, middle + tunnelWidth / 2f, archZ1, PoolDeep, archTop, Surface.Concrete);
+            Block(arch, "Arch (Lintel)", archX, archX + archThickness, middle - tunnelWidth / 2f, middle + tunnelWidth / 2f, PoolDeep + tunnelHeight, archTop, Surface.Concrete);
+            Ladder(pool, new Vector2(x1 - PoolWall, middle), PoolDeep, -PoolDeep, Vector2.left);
             // The water, over the whole basin inside its walls (under the beach's top, the beach hides it).
-            Water(pool, "Pool", new Vector2((x0 + x1 - PoolWall) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0 - PoolWall, inner), PoolFloor, PoolSurface);
-            // An off-white edge round the rim, and the deep end's depth on the ground beside it.
+            Water(pool, "Pool", new Vector2((x0 + x1 - PoolWall) / 2f, middle), new Vector2(x1 - x0 - PoolWall, inner), PoolDeep, PoolSurface);
+            // An off-white edge round the rim, and each end's depth on the ground beside it.
             GuideLine(pool, "Pool Edge (White)", Rect(x0, z0, x1, z1), 0f, Surface.White, closed: true);
-            FloorLabel(pool, $"{PoolSurface - PoolFloor:0.0} m", new Vector2(x1 - 4f, z0 - 1.4f), 0f, Vector2.up);
+            FloorLabel(pool, $"{PoolSurface - PoolShelf:0.0} m", new Vector2((x0 + beach + PoolDropOff) / 2f, z0 - 1.4f), 0f, Vector2.up);
+            FloorLabel(pool, $"{PoolSurface - PoolDeep:0.0} m", new Vector2(x1 - 4f, z0 - 1.4f), 0f, Vector2.up);
         }
 
         // ---- Far west: ropes, ziplines and bounce pads (fixtures too) ----

@@ -125,6 +125,8 @@ namespace Character
         public bool ziplining;
         /// <summary>Swimming at the surface of deep water (horizontalSpeed is how fast it swims).</summary>
         public bool swimming;
+        /// <summary>Swimming under the surface (swimming is set too).</summary>
+        public bool diving;
         /// <summary>
         /// While swinging or ziplining: where the hands hold the line (the rope or the cable; as it's drawn this frame).
         /// Zero otherwise.

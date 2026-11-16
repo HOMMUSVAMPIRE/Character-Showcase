@@ -25,7 +25,8 @@ namespace CharacterShowcase.EditorTools
         /// cleared. The Quaternius libraries' crouch, slide, roll, climb, vault, push and wall runs are used where they're installed, and
         /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
         /// rise for the climb and the vault, and its walk for the push). Swimming (Swim) is the library's treading water
-        /// and swim stroke, by Speed, or the mannequin's treading water. Hanging, sliding down a wall, swinging on a rope
+        /// and swim stroke, by Speed, or the mannequin's treading water; swimming underwater (Swim Underwater) is a state
+        /// of its own, playing the same. Hanging, sliding down a wall, swinging on a rope
         /// (Rope Swing) and riding a zipline (Zipline) are always the mannequin's own.
         /// </summary>
         private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
@@ -108,6 +109,10 @@ namespace CharacterShowcase.EditorTools
             swim.motion = swimIdle != null && swimStroke != null
                 ? CreateBlendTree(controller, "Swim", SpeedParameter, (swimIdle, 0f, 1f, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
                 : clips["Swim"];
+            // Swimming underwater (Diving): a state of its own, so a controller can give it clips of its own; this one
+            // plays the surface's, which suit it well enough.
+            AnimatorState swimUnderwater = stateMachine.AddState("Swim Underwater");
+            swimUnderwater.motion = swim.motion;
 
             // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
             // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at
@@ -194,6 +199,7 @@ namespace CharacterShowcase.EditorTools
                 (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
                 (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
                 (ropeSwing, RopeSwingingParameter, 0.1f), (zipline, ZipliningParameter, 0.1f), (swim, SwimmingParameter, 0.2f),
+                (swimUnderwater, DivingParameter, 0.2f),
             };
             if (climbEnter != null)
             {
@@ -218,12 +224,14 @@ namespace CharacterShowcase.EditorTools
                 }
                 // A ladder has a state of its own.
                 if (state == wallClimb) { start.AddCondition(AnimatorConditionMode.IfNot, 0f, OnLadderParameter); }
+                // Swimming underwater has a state of its own (Swimming is set then too).
+                if (state == swim) { start.AddCondition(AnimatorConditionMode.IfNot, 0f, DivingParameter); }
                 if (state == crouch)
                 {
                     // The character can be crouched while doing something else (dashing, climbing onto a low ledge, or
                     // falling): that shows instead, or two Any State transitions would keep swapping the states.
                     start.AddCondition(AnimatorConditionMode.If, 0f, GroundedParameter);
-                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter })
+                    foreach (string other in new[] { DashingParameter, SlidingParameter, RollingParameter, WallRunningParameter, WallSlidingParameter, WallClimbingParameter, OnLadderParameter, ClimbEnteringParameter, ClimbExitingParameter, HangingParameter, ClimbingParameter, VaultingParameter, GrabbingParameter, RopeSwingingParameter, ZipliningParameter, SwimmingParameter, DivingParameter })
                     {
                         start.AddCondition(AnimatorConditionMode.IfNot, 0f, other);
                     }

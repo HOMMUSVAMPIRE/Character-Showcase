@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests
 
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline", "Swim" })
+            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline", "Swim", "Swim Underwater" })
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -519,6 +519,20 @@ namespace CharacterShowcase.Tests
             Assert.That(head, Is.InRange(0f, 0.35f * size), "Treading water, the swimmer's head should be just out of the water.");
 
             yield return ExpectState("Swim", 1f, _ => CharacterTestRig.Move(Vector3.forward));
+        }
+
+        [UnityTest]
+        public IEnumerator Diving_PlaysSwimUnderwater_AndBackAtTheSurface_Swim()
+        {
+            yield return Spawn();
+            Level.Water water = rig.Water(new Vector3(0f, 12f, 0f), new Vector3(40f, 10f, 40f));
+            float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
+            rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
+            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState("Swim Underwater", 0.6f, step => CharacterTestRig.Crouch(step));
+            Assert.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
+            yield return rig.RunUntil(() => !rig.InState(CharacterState.Diving), step => CharacterTestRig.Jump(step), StepAnimator, timeoutSeconds: 5f);
+            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
         }
 
         [UnityTest]

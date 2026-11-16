@@ -70,6 +70,7 @@ namespace CharacterShowcase.EditorTools
         private const string RopeSwingingParameter = AnimatorParameterTranslator.DefaultRopeSwingingParameter;
         private const string ZipliningParameter = AnimatorParameterTranslator.DefaultZipliningParameter;
         private const string SwimmingParameter = AnimatorParameterTranslator.DefaultSwimmingParameter;
+        private const string DivingParameter = AnimatorParameterTranslator.DefaultDivingParameter;
         // Past the end of the Locomotion, Crouch and Wall Climb blend trees, the translator plays the fastest loop faster
         // through these speed multipliers, from the speeds each loop is made for, which the controller carries as the
         // TopSpeed parameters' defaults (see AnimatorParameterTranslator's Playback section). So no top speed, which a

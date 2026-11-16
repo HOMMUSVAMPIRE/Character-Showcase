@@ -7,7 +7,8 @@ namespace Character
     /// <summary>
     /// Swimming (see Level.Water): in water deep enough, the character swims at the surface, its feet hanging the swim
     /// depth below it, the way the movement input points (faster with Sprint held). Falling or jumping in, it plunges and
-    /// floats back up. Jump jumps out; swimming into something low sticking out of the water vaults over or onto it, and
+    /// floats back up. Crouch dives, to swim underwater (steered by the camera, or up and down with Jump and Crouch held),
+    /// back to the surface by drifting or swimming up. Jump jumps out; swimming into something low sticking out of the water vaults over or onto it, and
     /// into an edge within reach of its hands climbs out onto it (handed to Vaulting and Ledges); and the character walks
     /// out where the floor comes up to find its feet. Only at the surface: it
     /// doesn't dive.
@@ -42,6 +43,17 @@ namespace Character
                  "climbs out onto it if its hands reach the top (see Ledges). 0 means it never vaults from the water")]
         [Range(0f, 1f)] [SerializeField] private float swimVaultHeight = 0.3f;
 
+        [Header("Diving")]
+        [Tooltip("How fast (m/s) pressing Crouch at the surface pushes the character down under it, at its authored size. " +
+                 "0 turns diving off")]
+        [Min(0f)] [SerializeField] private float swimDiveSpeed = 4f;
+        [Tooltip("How fast (m/s) holding Jump or Crouch underwater rises or sinks, at its authored size, whichever way the " +
+                 "camera looks (otherwise the character swims the way the camera looks, up or down with it)")]
+        [Min(0f)] [SerializeField] private float swimVerticalSpeed = 2.5f;
+        [Tooltip("How fast (m/s) the character drifts up underwater without any input, at its authored size: reaching its " +
+                 "swimming depth, it's back at the surface. 0 stays where it is")]
+        [Min(0f)] [SerializeField] private float swimBuoyancy = 0.5f;
+
         // Seconds over which the character closes in on its swimming depth (rising back up, or settling down onto it):
         // quickly, but not in one step.
         private const float SettleTime = 0.25f;
@@ -61,6 +73,13 @@ namespace Character
         public float SwimSpeed { get => swimSpeed; set => swimSpeed = Mathf.Max(0f, value); }
 
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
+
+        /// <summary>
+        /// Underwater, the character's collider is lowered to the crouch height, as a body swimming along is far less tall
+        /// than one standing, so it fits through what it swims through. (Its collider is still an upright capsule: a
+        /// flat one, for a body lying along the way it swims, waits on movement not assuming that shape.)
+        /// </summary>
+        public override bool KeepsLow(MovementController controller) => controller.swim.IsUnderwater;
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {
@@ -105,6 +124,8 @@ namespace Character
             if ((movementData.previousCollisions & CollisionFlags.Below) != 0 && verticalSpeed < 0f) { verticalSpeed = 0f; }
             if ((movementData.previousCollisions & CollisionFlags.Above) != 0 && verticalSpeed > 0f) { verticalSpeed = 0f; }
 
+            if (swim.underwater) { return SwimUnderwater(ref movementData, inputs, controller, water, depth, verticalSpeed); }
+
             if (swimJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller))
             {
                 // Out of the water: up fast enough that the feet rise the jump height above the surface, from where they are.
@@ -113,6 +134,13 @@ namespace Character
                 float up = MovementHelpers.LaunchSpeedFor(rise, Mode.GravityAcceleration(controller), dt);
                 MovementHelpers.JumpOff(ref movementData, controller, new Vector3(velocity.x, up, velocity.z), MovementEvents.Jumped);
                 return true;
+            }
+
+            // Crouch dives: pushed down under the surface, and swimming underwater from this step.
+            if (swimDiveSpeed > 0f && Mode.ConsumeCrouchPress(inputs, controller))
+            {
+                swim.underwater = true;
+                return SwimUnderwater(ref movementData, inputs, controller, water, depth, Mathf.Min(verticalSpeed, -swimDiveSpeed * controller.SpeedScale));
             }
 
             // Swimming into an edge within reach of the hands (a pool's side), up onto it, as climbing over a ledge's top.
@@ -146,6 +174,52 @@ namespace Character
         }
 
         /// <summary>
+        /// Swimming underwater: the way the movement input points relative to the camera, up and down with it as it looks
+        /// (looking down and pushing forward swims down), at the swim speed; holding Jump rises and Crouch sinks, at the
+        /// swim vertical speed, whichever way it looks. Without any input, it drifts up at the swim buoyancy; back up at its
+        /// swimming depth, rising, it's at the surface again. A press of Jump only rises: it isn't kept to jump out with
+        /// once the character's at the surface. Speeds change at the swim acceleration; it faces the way it swims across.
+        /// </summary>
+        private bool SwimUnderwater(ref MovementData movementData, Inputs inputs, MovementController controller, Water water, float depth,
+            float verticalSpeed)
+        {
+            SwimState swim = controller.swim;
+            float dt = movementData.deltaTime;
+            if (Mode.IsNewJumpPress(inputs, controller)) { controller.jump.press.Use(); }
+
+            // movementVector is the stick in camera space, flat: turned by the whole camera, pitch and all.
+            Vector3 steer = Vector3.ClampMagnitude(movementData.cameraLook * inputs.movementVector, 1f);
+            float upOrDown = (Held(inputs.jump) ? 1f : 0f) - (Held(inputs.crouch) ? 1f : 0f);
+            float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier;
+            Vector3 target = steer * topSpeed;
+            if (upOrDown != 0f) { target.y = upOrDown * swimVerticalSpeed * controller.SpeedScale; }
+            else if (steer.sqrMagnitude < 1e-4f) { target.y = swimBuoyancy * controller.SpeedScale; }
+
+            Vector3 velocity = movementData.initialVelocity;
+            velocity = Vector3.MoveTowards(new Vector3(velocity.x, verticalSpeed, velocity.z), target, swimAcceleration * controller.AccelerationScale * dt);
+            Vector3 across = new Vector3(steer.x, 0f, steer.z);
+            if (across.sqrMagnitude > 1e-4f && topSpeed > 0f) { movementData.targetRotation = Quaternion.LookRotation(across.normalized, Vector3.up); }
+
+            // Back up to its swimming depth, rising: at the surface again, arriving at it rather than past it.
+            float surface = water.SurfaceHeight - depth, feet = movementData.initialPosition.y;
+            if (velocity.y > 0f && feet + velocity.y * dt >= surface)
+            {
+                velocity.y = Mathf.Max(0f, (surface - feet) / dt);
+                swim.underwater = false;
+            }
+            swim.verticalSpeed = velocity.y;
+
+            movementData.velocityOverride = velocity;
+            movementData.directMovementVector = Vector3.zero;
+            movementData.state |= CharacterState.Swimming;
+            if (swim.underwater) { movementData.state |= CharacterState.Diving; }
+            if (velocity.sqrMagnitude > 1e-4f) { movementData.state |= CharacterState.Moving; }
+            return true;
+        }
+
+        private static bool Held(InputButton button) => button != null && button.value;
+
+        /// <summary>
         /// The speed (m/s) to swim at for these inputs, at full movement input and the character's authored size: the
         /// sprint speed while Sprint is held (if it's the faster), otherwise the swim speed.
         /// </summary>
@@ -167,7 +241,11 @@ namespace Character
             controller.crouch.wantsToStand = false;
         }
 
-        private static void StopSwimming(MovementController controller) => controller.swim.water = null;
+        private static void StopSwimming(MovementController controller)
+        {
+            controller.swim.water = null;
+            controller.swim.underwater = false;
+        }
 
         /// <summary>
         /// Gets out of the water over or onto something the character is swimming into (steering into a wall it touches).
@@ -195,6 +273,10 @@ namespace Character
         public Level.Water water;
         /// <summary>How fast (m/s) the character is rising (positive) or sinking in the water.</summary>
         public float verticalSpeed;
+        /// <summary>Whether the character is swimming underwater (dived), rather than at the surface.</summary>
+        public bool underwater;
+        /// <summary>Whether the character is swimming underwater.</summary>
+        public bool IsUnderwater => water != null && underwater;
 
         /// <summary>Whether the character is swimming.</summary>
         public bool IsSwimming => water != null;
