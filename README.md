@@ -51,6 +51,7 @@ If you intend to get a full understanding of the project, start with Character/A
 | Release cursor | Escape (click to re-lock) | |
 
 ## Documentation
+- [Architecture](docs/architecture.md): how the parts fit together, one physics step, what may reference what
 - [Movement](docs/movement.md): walking and sprinting, jumping, dashing, turning and leaning, collision, character size, moving ground
 - [Movement abilities](docs/abilities.md): crouching, sliding and rolling, wall running, wall sliding, ledges, vaulting
 - [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads
@@ -60,12 +61,19 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Spawning the character](docs/spawning.md)
 - [Automated tests](docs/testing.md)
+- [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
 - [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs
+- [Adding level content](docs/adding-level-content.md): a new level mechanic, a new piece, changing a builder
+- [Troubleshooting](docs/troubleshooting.md)
+- [Design decisions](docs/decisions.md): why it's built the way it is
+- [Glossary](docs/glossary.md)
 
 Every tunable value is a setting in the inspector: the BasicMovementMode asset (Assets/ScriptableObjects) for the movement and its abilities, the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/GrayboxSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 
 ## Future Changes:
 ### Medium Priority Changes
+- Movement tuning at runtime: each character with its own copy of its movement, and tuning zones that change it in part of a level (undone on leaving)
+- Import and export the movement tuning as CSV spreadsheets
 - Tune performance
 - Refactor for improved readability in some areas
 

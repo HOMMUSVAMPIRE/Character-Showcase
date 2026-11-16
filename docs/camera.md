@@ -8,6 +8,48 @@ Beside a wall that blocks its shoulder even partly (running along one, say), the
 
 A wall alongside never pulls the camera in: each collision sweep stops a little short of what it hits, so the camera's backward sweep never starts pressed against a wall it's running parallel to (which used to snap the camera in as a wall run began).
 
+## Its settings
+Everything is on the CameraRig component, grouped by feature in its inspector (each setting's tooltip says what it does):
+
+| Section | What it covers |
+| --- | --- |
+| Target, Target Size Reference | What the camera follows, and an optional Transform whose scale frames resized targets alike |
+| Input | Where camera input comes from: a PlayerInput (the scene's first, if none is set) or an Input Action asset, and the action names |
+| Modes | The view mode it starts in, and the blend between first and third person |
+| Look | Mouse and stick sensitivity, the stick's response curve, smoothing |
+| Cursor | Locking the cursor during play, and the keys to release and re-lock it |
+| First Person | Eye height (or an eye anchor Transform), eye offset, near clip, hiding the target's own renderers |
+| Third Person | Pivot height, shoulder offset and swapping, follow smoothing, hiding the target up close |
+| Zoom | Distance range, zoom speed, and switching to first person at the closest |
+| Aim | Field of view, distance, shoulder and sensitivity while aiming, and how aiming is held or toggled |
+| Collision | The layers it collides with, the probe's size, the closest it may be pulled in |
+| Follow | Interpolating a physics-driven target, the teleport distance, and how far the follow may trail |
+| Speed FOV, Head Bob, Landing | Widening the view with speed, bobbing in first person, dipping on landing |
+| Shake | Trauma-based shake: how fast it fades and how strong it gets |
+| Recenter | Swinging behind the target after a while without look input |
+| Debug | Drawing the pivot, shoulder point and collision probe in the Scene view |
+
+Distances and speeds are for a target of normal size, and scale with the Target Size Reference (see [Character Size](movement.md#character-size)).
+
+## Connecting it to something
+The camera follows a plain Transform: `CameraRig.Follow(target)`, or `Follow(target, eyeAnchor, sizeReference)` to give it an eye point for first person and a size reference too (`SetTarget` changes only the target). Nothing in it knows what it follows, so it works the same on a character, a vehicle or a moving prop.
+
+How fast the target moves, when it lands and how it's scaled are worked out by watching the Transform (`CameraTargetTracker`), not by asking the target's code.
+
+In the levels, the character and the camera are connected in the scene: Set Up Scene wires the CharacterSpawner's On Camera Target Spawned event to the rig's Follow, which then gets each spawned character, its eye point and its model parent as the size reference (see [Spawning the Character](spawning.md)).
+
+## Camera zones
+A CameraZone is a volume (a trigger collider for its shape: a primitive or a convex mesh) that changes the camera while its target is inside: forcing first or third person (in a cramped vent, say), capping the third person distance (in a narrow corridor), or adding to or taking from the field of view. Where zones overlap, the one with the highest Priority wins. It checks whether the target is inside by itself, so the target needs no Rigidbody.
+
+## Shake
+`CameraRig.AddTrauma(amount)` shakes one camera, and `CameraRig.ShakeAll(amount)` every camera rig, by adding trauma (0 to 1), which fades over time (the Shake section). Landings add some by themselves.
+
+## Adding a camera feature that needs the character
+The camera assembly references nothing of the character's (see [Architecture](architecture.md#what-may-know-about-what)), and a feature mustn't change that. If a feature needs something only the character knows (that it's wall running, say), the camera exposes a generic way to be told: a public method or settable value (as `Follow`, `SetMode`, `SetDistance` and `AddTrauma` are), an event, or an interface the camera defines. The character's side then calls it, from the character's code or wired in the scene (as the spawner's event is wired to `Follow`).
+
+Prefer working it out from the Transform where that's enough, as the tracker does for speed and landings: then it works for any target.
+
+## Controls
 | Action | Keyboard & Mouse | Gamepad |
 | --- | --- | --- |
 | Look | Mouse | Right stick |

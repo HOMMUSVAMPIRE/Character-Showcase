@@ -1,7 +1,9 @@
 # AGENTS.md
 
 Instructions for AI agents (and people) changing this repository. Read this before editing anything. README.md and
-docs/ describe what the project does; this file describes how to change it safely.
+docs/ describe what the project does; this file describes how to change it safely. docs/architecture.md is the map
+of how it fits together, docs/decisions.md why, docs/glossary.md its terms, and docs/troubleshooting.md the usual
+pitfalls.
 
 ## The project at a glance
 
@@ -168,35 +170,13 @@ regenerates them.
 **A new movement ability:** follow [docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the
 component and its hooks, its state, flag and events, its place in the mode, animation, level fixtures, tests and docs).
 
-**A new level mechanic** (a fixture): a piece in `Graybox.Mechanics.cs` naming its geometry "Name | key=value | …"; a
-set-up step in `LevelFixtureSetup` (the prefixes in both must match, and match only "Name |", since "(future)" markers
-and placeholders are named for mechanics too); an example in the Level Playground; a `LevelFixtureSetupTests` case; an
-outline in `Tools/LevelSpec/levelspec/geometry.py`.
+**A new level mechanic, a new level piece, or a change to a builder:** follow
+[docs/adding-level-content.md](docs/adding-level-content.md).
 
-**A new level piece:** mark it `[Piece]` and start it with
-`using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Piece), arg1, arg2, …);` (arguments in
-parameter order), using parameter types `LevelSpec.Encode`/`Decode` handle. Its dimensions go in `GrayboxSettings` (a
-field with a `[Tooltip]`), not constants. Give its mesh a UV2 (`GrayboxMesh.AddTo` does unless `uv2: false`). Pieces
-that look at what's round them do so in `Graybox.Defer`. Add an example to the Level Playground and an outline in
-`geometry.py`. Visual detail never changes collision (trims have no collider; structure gets one box round it), and
-only solid pieces are occluders (`MakeStatic(obj, occluder: false)` for anything seen through).
-
-**Changing a builder:** builders make everything through pieces: no moving, renaming or deleting what a piece made
-afterwards (place groups with `Graybox.Placed` or `Turned`), no `System.Random` but the seeded ones, no `/` or `#` in
-names of groups used as parents. Try it in the Level Playground first (builds in seconds), then rebuild the level,
-re-export its spec (`LevelSpecTools.ExportFromCommandLine -level "<Level>"`; `-force` replaces a spec that changed
-since its export, so check first that the only differences are yours), and run Set Up Scene on it (rebuilding removes
-its game setup). Update the area's `*_Blockout_Notes.md` with the builder. Stairs keep under the character's step
-height and ramps to the envelope's ramp gradient, except the Calibration Annex's deliberate tests; prism footprints'
-edges run at multiples of 45° (so `FootprintBoxes` fills them exactly).
-
-**Retuning the movement:** change the asset, not the code defaults. Saving it in the editor writes the movement
-envelope again (`Tools/LevelSpec/envelope.json`, from the default character's `MovementController.Capabilities`, by
-`MovementEnvelopeAutoWriter`, which logs what changed); a change made outside the editor (a YAML edit, batch mode)
-needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. Then check the levels' movement findings
-(the levelspec tool), which are graded to it. No tuning is fixed: tests that need one (no air jumps, say) set it on the rig. A new ability
-whose reach matters to levels gets a measurement in `BasicMovementMode.Capabilities.cs` and a `MovementCapabilities` value. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them
-together.
+**Retuning the movement:** follow [docs/tuning.md](docs/tuning.md). In short: change the asset, not the code defaults;
+saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside
+the editor needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. No tuning is fixed: tests that need one
+set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together.
 
 ## Things that aren't obvious
 

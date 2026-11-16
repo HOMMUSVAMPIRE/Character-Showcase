@@ -20,7 +20,7 @@ A tuning preset (a MovementTuningPreset asset: Create > Scriptable Objects > Mov
 
 In a preset's inspector, each component it covers is listed with a tick beside each setting: ticked settings are set by the preset and the rest left alone (changing a value ticks it; All and None tick or untick a whole component, and Turned On is the component's on/off switch). Add Component's Settings adds another component, unticked. Save From Mode replaces the preset with the Movement Mode's tuning now, and Apply To Mode sets the preset's settings on it, with Undo, and says what changed. The Movement Mode is the Character prefab's unless another is picked.
 
-A preset only sets values and on/off switches: it never adds, removes or reorders a mode's components, and a setting of a component the mode doesn't have is left out (and reported). Presets are made and edited in the editor only.
+A preset only sets values and on/off switches: it never adds, removes or reorders a mode's components, and a setting of a component the mode doesn't have is left out (and reported). Presets are made and edited in the editor only. How tuning works as a whole (what changes when you save, what to tune together) is in [Tuning the Character](tuning.md).
 
 ## Walking and Sprinting
 The character moves at its Walk Speed, or slower with partial stick input, and sprints at its Run Speed while Sprint is held: Left Shift (keyboard) or pressing the left stick (gamepad). Both are in the BasicMovementMode asset's Walking & Running component; a Run Speed at or below the Walk Speed turns sprinting off. Turned off, movement input doesn't move the character on the ground (it still steers in the air, toward these speeds).
