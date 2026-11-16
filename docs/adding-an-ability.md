@@ -1,0 +1,75 @@
+# Adding a Movement Ability
+The steps for adding a new part to the character's movement: a new `MovementComponent` in the BasicMovementMode's list (see [Movement Components](movement.md#movement-components)). `RopeSwinging` and `Ziplines` (Assets/Scripts/MovementModes/Components) are good examples to copy.
+
+The inspector (its toggle, moving it up and down, removing it, Add Component), tuning presets and letting go when it's turned off mid-use come with being a component: they all work from the class and its fields, with nothing to add.
+
+## 1. The component
+A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementModes/Components/<Ability>.cs`.
+
+**Settings.** Each has a `[Tooltip]` written for a designer, grouped with `[Header]` where that helps. Field names must be unique across the mode and all its components (the hygiene check enforces it): tests and tuning presets find settings by name. Settings are numbers, toggles, enums or curves; `MovementTuningPresetTests` fails on any other kind, which presets couldn't copy. A value of 0 that turns the ability off (a duration, a reach) is the convention.
+
+**When it acts.** Override the hooks for the points of a physics step it acts at (see `MovementComponent` and `BasicMovementMode.ProcessMovementData`):
+
+- `TakeOver`: carries on, or starts if its inputs and surroundings call for it, and returns whether it has the character. The usual one for an ability: the first component in the list that takes over has the character for the step.
+- `IsActive` and `Interrupt`: whether it's under way, and ending it cleanly, when another ability takes the character or it's turned off while it has it.
+- `AdvanceTimers`: its cooldowns, every step, whatever has the character.
+- For what isn't a takeover: `BeforeAbilities` (forces, like gravity), `BeforeLocomotion` (changing how the character walks, like crouching), `Locomotion` (how it moves by itself), `AfterWalking` (acting on top of walking, like dashing and jumping) and `FinishStep` (limits, like the fall speed).
+- `KeepsLow`: whether it keeps the character's collider at the crouch height.
+- `AfterMovementResolved`: for moving something along with the character, by however far it actually moved.
+- `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities`, and to `MovementEnvelopeWriter` if the levelspec tool's checks should use it.
+
+**Working with the rest of the movement.**
+
+- Ask the component's `Mode` for the shared rules: `GravityAcceleration`, `AirAcceleration`, `MoveSpeed`, `IsNewJumpPress`, `ConsumeCrouchPress`, `AbilityInProgress` (or `AbilityInProgressExcept<T>`, for an ability that may take over from a T) and `InterruptOthers` (when it takes the character).
+- Read another component's settings with `SettingsOf<T>()` (they apply whether it's turned on or not, or its defaults if it's been removed). Hand the character to another component with `Mode.Get<T>()` (only found turned on). Never reach into another component otherwise.
+- The rules several abilities share are in `MovementHelpers`: using up and giving back jumps (`TryUseJump`, `GiveBackJumps`, `GiveBackAirMoves`), catching hold of a line (`TakeHoldOfALine`), and wall jumps.
+- Query the world through the `MovementController` (`SweepCapsule`, `Raycast`, `OverlapSphere`, `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders, and read the physics pose, not the Transform.
+- Time things by `controller.StepTime`, never global time, so the capability measurements (which step a copy of the character faster than real time) behave the same.
+- Multiply speeds by `controller.SpeedScale`, distances by `HeightScale`, accelerations by `AccelerationScale` and durations by `DurationScale`, so it works at any size.
+- No allocation in per-step code: reuse buffers.
+
+**Its name.** The inspector shows the class name spaced out. Give it `[MovementComponentName("...")]` if it needs a name a class name can't have (an ampersand, say).
+
+## 2. Its state
+Movement modes are shared assets, so what each character is doing lives on its `MovementController`. Put a state class at the bottom of the component's file, and add a property for it on `MovementController` beside the others (`public FooState foo { get; } = new FooState();`).
+
+## 3. Its state flag and events
+- A `CharacterState` flag for it (a 32-bit flags enum: take the next unused bit).
+- `MovementEvents` for it starting and ending (a 64-bit flags enum: take the next unused bits).
+- A row in `MovementController.StateEvents`, which raises the events when the flag comes and goes.
+
+## 4. Putting it in the mode
+- Add it to `BasicMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.
+- Update the expected list in `MovementCompositionTests.ANewBasicMovementMode_StartsWithItsComponents_InOrder`.
+- Add it to `Assets/ScriptableObjects/BasicMovementMode.asset` with Add Component in its inspector, and move it to its place. Saving writes the movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed.
+
+## 5. Animation, if it has a look of its own
+1. Fields for it in `CharacterAnimationState`, filled by `AnimationController.BuildState`.
+2. A parameter on `AnimatorParameterTranslator`: its default name, field, hash, and where it's set.
+3. In `MannequinGenerator`: the parameter, the crouch state's exclusions, and a state in `MannequinGenerator.AbilityStates.cs`.
+4. A clip in `Tools/Mannequin/mannequin_animations.py`, if it needs one.
+5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one.
+6. Then regenerate the mannequin (Generate Mannequin) and prepare the character models (Prepare Character Models). See [Character Model and Animations](animation.md).
+
+## 6. Level side, if it uses something in the level
+For an ability used on something in the level (as ropes and ziplines are):
+
+1. A runtime component for it in `Assets/Scripts/Level`.
+2. A graybox piece in `Graybox.Mechanics.cs`, naming its geometry "Name | key=value | ...".
+3. A set-up step in `LevelFixtureSetup` (its prefix matching the piece's), with a `LevelFixtureSetupTests` case.
+4. An example in the Level Playground.
+5. An outline in `Tools/LevelSpec/levelspec/geometry.py`.
+
+The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
+
+## 7. Tests and docs
+- **PlayMode tests on `CharacterTestRig`.**
+  - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
+  - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
+  - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.
+- **The turned-off cases.** Cover the component turned off with its toggle, and turned off by its 0 setting.
+- **Docs.**
+  - Add a section for it in [abilities.md](abilities.md) or [traversal.md](traversal.md), and add it to the component list in [movement.md](movement.md#movement-components).
+  - Name each setting by its inspector name and the component it's on, never by its value.
+
+Then run the hygiene check, the tests the change can affect, and both full suites before committing (see AGENTS.md, How to verify your work).

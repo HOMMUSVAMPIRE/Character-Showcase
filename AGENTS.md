@@ -98,8 +98,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (lowered
   while any component's `KeepsLow` says so) and `FinishStep` (the fall speed limit). Within each point, list order
   decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
-  assets, so per-character state lives on the `MovementController` (each state class in its component's file). See the recipe for
-  adding an ability.
+  assets, so per-character state lives on the `MovementController` (each state class in its component's file). Adding an
+  ability: see docs/adding-an-ability.md.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
 - **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never the
@@ -165,24 +165,8 @@ regenerates them.
 
 ## Recipes
 
-**A new movement ability** (`RopeSwinging` and `Ziplines` are recent examples to copy):
-1. A `[Serializable]` `MovementComponent` subclass in `Assets/Scripts/MovementModes/Components/<Ability>.cs`, holding its
-   settings (each with a `[Tooltip]`; names unique across the mode and its components, which the hygiene check enforces).
-   Override `TakeOver` (carry on or start; return whether it has the character), `IsActive`, `Interrupt` (end it when
-   another ability takes the character, or it's turned off), `AdvanceTimers` for its cooldowns, and
-   `AfterMovementResolved` if it moves something with the character. Add it to `BasicMovementMode.DefaultComponents` at
-   its place in the order (most committed first), and to the asset with Add Component.
-2. A state class in the component's file and a property for it on `MovementController`.
-3. A `CharacterState` flag, `MovementEvents` for its start and end, and an entry in `MovementController.StateEvents`
-   (which raises them from the flag).
-4. Tests reach its settings by name as before (`rig.MovementSetting`, which searches the components) and the component
-   itself with `rig.Component<T>()`.
-5. Animation: fields in `CharacterAnimationState` filled by `AnimationController.BuildState`; a parameter on
-   `AnimatorParameterTranslator` (default name, field, hash, set); in `MannequinGenerator`, the parameter, the crouch
-   state's exclusions and a state in `MannequinGenerator.AbilityStates.cs`; a clip in `mannequin_animations.py` if
-   needed; an IK component added in `CharacterModelImporter.SaveModelPrefab` if needed. Then regenerate the mannequin
-   and prepare the character models.
-6. PlayMode tests, a docs section, and its turned-off-at-0 case.
+**A new movement ability:** follow [docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the
+component and its hooks, its state, flag and events, its place in the mode, animation, level fixtures, tests and docs).
 
 **A new level mechanic** (a fixture): a piece in `Graybox.Mechanics.cs` naming its geometry "Name | key=value | …"; a
 set-up step in `LevelFixtureSetup` (the prefixes in both must match, and match only "Name |", since "(future)" markers

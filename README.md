@@ -60,6 +60,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Spawning the character](docs/spawning.md)
 - [Automated tests](docs/testing.md)
+- [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs
 
 Every tunable value is a setting in the inspector: the BasicMovementMode asset (Assets/ScriptableObjects) for the movement and its abilities, the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/GrayboxSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 
