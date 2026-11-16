@@ -29,6 +29,11 @@ namespace CharacterShowcase.Tests
         /// could be seen. In batch mode, whose frames are far shorter, this doesn't slow anything.
         /// </summary>
         private const float MaxFrameTime = 0.05f;
+        /// <summary>
+        /// The game time (s) each frame covers while a landing's dip is measured: exactly this, every frame (see
+        /// MeasureLandingDip).
+        /// </summary>
+        private const float DipFrameTime = 0.02f;
 
         private readonly List<Object> created = new();
         private FrameTimeLimit timeLimit;
@@ -54,6 +59,7 @@ namespace CharacterShowcase.Tests
         {
             foreach (Object obj in created) { if (obj != null) { Object.Destroy(obj); } }
             created.Clear();
+            Time.captureDeltaTime = 0f; // Should a dip's measurement have been cut short.
             Object.Destroy(timeLimit.gameObject);
             yield return null;
         }
@@ -569,6 +575,15 @@ namespace CharacterShowcase.Tests
         /// </summary>
         private IEnumerator MeasureLandingDip(float size, System.Action<float> result)
         {
+            // Every frame exactly DipFrameTime of game time, however long it really takes: the dip's lowest point is
+            // looked for frame by frame, and FrameTimeLimit can only cap a frame by how long the last one took, so a
+            // frame much longer than the one before (the editor's hitches) covered far more game time, sampled the dip
+            // more coarsely, and the two sizes' dips differed by more than the test allows. So the limit is off while
+            // the dip's measured, at a time scale of 1, and each frame is DipFrameTime long (captureDeltaTime): the
+            // limit would otherwise still set the time scale from each frame's real length.
+            timeLimit.enabled = false;
+            Time.timeScale = 1f;
+            Time.captureDeltaTime = DipFrameTime;
             rig.Shake.enabled = false;
             rig.ThirdPerson.verticalDamping = 0f;
             target.position = new Vector3(0f, 20f * size, 0f);
@@ -588,6 +603,8 @@ namespace CharacterShowcase.Tests
             }
             yield return new WaitForSeconds(1f);
             rest = cam.transform.position.y;
+            Time.captureDeltaTime = 0f;
+            timeLimit.enabled = true;
             result((rest - lowest) / size);
         }
 

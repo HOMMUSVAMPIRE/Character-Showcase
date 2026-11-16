@@ -11,6 +11,19 @@ Play mode tests in Assets/Tests/PlayMode spawn the character with real physics a
 
 The settings that turn an ability off at 0 are each tested doing so, in the ability's fixture: the slide's longest time, the wall run's and wall slide's longest times, the ledge climb's duration, the max jump height, the rope's and zipline's grab reach, the bounce pads' height multiplier, and the swim depth.
 
+### Golden paths
+**GoldenPathTests** holds the character's movement to exactly what it was: 18 scripted runs over every part of it (walking, sprinting and turning; jumps and an air jump; stairs and a ramp; crouching through a tunnel, a slide and a roll; dashes; a ledge hang and climb; a vault; a wall run and wall jump; a wall climb over the top; a ladder onto a platform; a bounce pad; a zipline ride and jump; a rope swing; swimming, diving and getting out; wading and vaulting in the water; a moving platform; and a small and a large character), each checked step by step against the path recorded for it in Assets/Tests/PlayMode/GoldenPaths: where the character is, its facing, velocity, state, events and collider height. Any difference fails, naming the run, the first step that differs and what differs, with this run's path written to Temp/GoldenPaths to compare. Each run must also visit the states and raise the events it's there for, so a run that no longer exercises what it should fails too.
+
+They're for changes meant to leave the movement as it is: a refactor passes only if every path is unchanged. They don't get in the way of tuning: the runs use their own tuning, recorded with the paths (GoldenPaths/Tuning.json: every movement component's settings, the MovementController's own and its collider's size), not the movement asset's, so retuning the asset leaves them passing.
+
+When a change to the movement code is meant to change the movement, record the paths again, all at once (so they share one tuning), with Unity closed:
+
+```
+CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1 <Unity> -batchmode -projectPath . -runTests -testPlatform PlayMode -testFilter GoldenPathTests -testResults GoldenPaths.xml
+```
+
+Then look at what changed in the recorded paths (git diff) before committing them: it should be only what the change meant to change. A run with no recorded path yet is inconclusive rather than failed. The paths are recorded on one machine; physics on another platform (CI's) may differ in the last digits, which the tolerances (a millimetre, a hundredth of a metre per second, a twentieth of a degree) allow for.
+
 ### Moving about
 - **MovementTests**: settling on the ground without hovering, sinking or drifting; falling within gravity's limits, including walking off a ledge after standing still; stopping at walls, jumping and landing; climbing stairs and standing on a ramp without sliding (each well within the character's step height and slope limit); climbing any step up to the step height, and not taller ones; coyote time easing gravity in after leaving the ground, and jumps not being refunded by it; keeping speed when walking off edges; walking smoothly down stairs, and walking and sprinting down a long flight of steps nearly the step height (shallower than the character is wide) from different starting points and headings, without leaving them or speeding up; air steering that doesn't stack on carried momentum; and the jump input buffer.
 - **SprintTests**: sprinting at the run speed and walking again once Sprint is let go; Sprint alone not moving the character; a sprint's speed carried through a jump without stacking.

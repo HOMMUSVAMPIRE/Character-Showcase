@@ -52,13 +52,16 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
    Without Unity, push a branch or open a pull request: the `Tests` GitHub Actions workflow runs the hygiene check and
    both suites (a new push cancels the run in progress, so batch pushes; Markdown-only and `docs/` changes don't
    trigger it).
-3. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
+3. **A refactor of the movement must leave `GoldenPathTests` passing:** it holds the character's movement, step by step,
+   to recorded paths (docs/testing.md, Golden paths). Record them again (`CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1`)
+   only when a change is meant to change the movement, and check the recorded paths' diff.
+4. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
    e.g. `"LedgeTests|AbilityAnimationTests"`, or a whole area with `-testCategory`: every fixture is in a `TestArea`, as the docs are), plus those of what depends on it: movement reaches the movement,
    ability and scale fixtures; animation, IK and models reach `AnimationTests`, `AbilityAnimationTests`, `ModelTests`,
    `ModelVariantTests` and the EditMode model checks; the camera reaches `CameraRigTests`. Before committing, run both
    full suites and the hygiene check, and only commit on green.
-4. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
-5. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.
+5. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
+6. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.
 
 ## Definition of done
 
