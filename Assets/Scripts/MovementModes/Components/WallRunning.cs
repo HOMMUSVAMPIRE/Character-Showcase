@@ -225,8 +225,8 @@ namespace Character
         /// </summary>
         private bool WallReachesFeet(MovementController controller, Vector3 feet, Vector3 normal)
         {
-            float reach = controller.Radius + wallRunCheckDistance * controller.HeightScale + 2f * controller.Skin;
-            return controller.Raycast(feet + Vector3.up * (wallRunFootHeight * controller.StandingHeight), -normal, reach, out _);
+            float reach = controller.Body.SideExtent + wallRunCheckDistance * controller.HeightScale + 2f * controller.Skin;
+            return controller.Raycast(feet + Vector3.up * (wallRunFootHeight * controller.Body.StandingHeight), -normal, reach, out _);
         }
 
         /// <summary>
@@ -294,7 +294,7 @@ namespace Character
             // A run started level (or falling: a fall is caught) sinks the furthest: its drop is the run's.
             {
                 simulation.ClearObstacles();
-                simulation.Reset(new Vector3(0f, 4f * simulation.Controller.StandingHeight, 0f));
+                simulation.Reset(new Vector3(0f, 4f * simulation.Controller.Body.StandingHeight, 0f));
                 WallBeside(simulation, 0.1f);
                 simulation.Controller.OverrideVelocity(Vector3.forward * (SettingsOf<WalkingAndRunning>().RunSpeed * simulation.Controller.SpeedScale));
                 Vector3 input = Quaternion.Euler(0f, 10f, 0f) * Vector3.forward;
@@ -307,7 +307,7 @@ namespace Character
         /// <summary>A long, tall wall along the character's right, its face outFromWall (m) beyond the character's side.</summary>
         private static void WallBeside(MovementSimulation simulation, float outFromWall)
         {
-            float face = simulation.Controller.Radius + outFromWall;
+            float face = simulation.Controller.Body.SideExtent + outFromWall;
             simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
         }
 

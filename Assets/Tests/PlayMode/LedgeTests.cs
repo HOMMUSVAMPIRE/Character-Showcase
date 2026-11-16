@@ -45,7 +45,7 @@ namespace CharacterShowcase.Tests
         private void BuildLedge(float ledgeAbove)
         {
             top = rig.Position.y + ledgeAbove * rig.StandingHeight;
-            face = rig.Position.z + rig.Radius + 0.15f;
+            face = rig.Position.z + rig.FrontExtent + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
         }
 
@@ -66,7 +66,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(Hanging, Is.True, "The character should keep hanging.");
             Assert.That(rig.Position.y, Is.EqualTo(top - HangHeight).Within(0.02f), "The character should hang its hang height below the ledge.");
-            Assert.That(rig.Position.z + rig.Radius, Is.EqualTo(face).Within(0.06f), "The character should hang against the ledge's wall.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.EqualTo(face).Within(0.06f), "The character should hang against the ledge's wall.");
             Assert.That(Vector3.Distance(rig.Position, hanging), Is.LessThan(0.01f), "Hanging should hold still, without falling.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(1f), "The character should face the wall.");
         }
@@ -84,7 +84,7 @@ namespace CharacterShowcase.Tests
             Assert.That(climbingSteps, Is.EqualTo(CharacterTestRig.StepsFor(ClimbDuration)).Within(1), "A climb should take its duration.");
             Assert.That(rig.Grounded, Is.True, "The character should stand on top of the ledge.");
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.03f), "The character should stand on the ledge's top.");
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(face), "The character should be fully on top of the ledge.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(face), "The character should be fully on top of the ledge.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.False, "With room on top, the character should stand.");
         }
 
@@ -145,7 +145,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(ClimbDuration + 0.5f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True, "The character should be on top of the ledge.");
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.03f));
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(face));
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(face));
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "With only room to crouch, the climb should end crouched.");
             Assert.That(rig.CurrentHeight, Is.LessThan(clearance));
         }
@@ -156,7 +156,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 3f, 0f), settleSeconds: 0f);
             top = 3f + rig.StandingHeight;
-            face = rig.Radius + 0.15f;
+            face = rig.FrontExtent + 0.15f;
             // A platform sliding along X, its -Z side the ledge.
             var platform = rig.Platform(new Vector3(0f, top, face + 2f), new Vector3(6f, 1f, 4f), new Vector3(3f, 0f, 0f), 4f, Vector3.zero);
             yield return GrabAndHang();
@@ -183,7 +183,7 @@ namespace CharacterShowcase.Tests
 
             // A wall whose top is a standing height above the top of the jump.
             top = apex + rig.StandingHeight;
-            face = rig.Position.z + rig.Radius + 0.15f;
+            face = rig.Position.z + rig.FrontExtent + 0.15f;
             rig.Box("Tall Wall", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
 
             rig.ClearEvents();
@@ -208,7 +208,7 @@ namespace CharacterShowcase.Tests
             yield return SetUpLedge();
             // Steps rising away from the ledge's edge, nearly the step height each and shallower than the character is
             // wide: there's no room to stand at the edge's own height, but there is on the stairs.
-            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.Radius;
+            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.FrontExtent;
             for (int i = 1; i <= 6; i++)
             {
                 rig.Box($"Step {i}", new Vector3(0f, top + i * rise / 2f, face + i * run + 2f), new Vector3(10f, i * rise, 4f));

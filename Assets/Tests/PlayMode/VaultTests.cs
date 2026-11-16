@@ -43,7 +43,7 @@ namespace CharacterShowcase.Tests
             if (onTheGround) { yield return rig.SpawnSettled(Vector3.zero); }
             else { yield return rig.SpawnSettled(new Vector3(0f, 3f, 0f), settleSeconds: 0f); }
             top = rig.Position.y + (topAbove != null ? topAbove() : LowWallShare) * rig.StandingHeight;
-            face = rig.Position.z + rig.Radius + distance;
+            face = rig.Position.z + rig.FrontExtent + distance;
             back = face + thickness;
             rig.Box("Low Wall", new Vector3(0f, top / 2f, face + thickness / 2f), new Vector3(10f, top, thickness));
         }
@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests
             Assert.That(record.hung, Is.False, "A wall too low to grab shouldn't be hung from.");
             Assert.That(record.vaultingSteps, Is.GreaterThan(CharacterTestRig.StepsFor(RiseDuration)), "A vault should rise over its rise time, then swing over.");
             Assert.That(record.speedAfter, Is.GreaterThan(0.95f * ExitSpeed(speed)), "The vault should leave the character with its share of the speed.");
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(back), "The character should end up beyond the wall.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(back), "The character should end up beyond the wall.");
             Assert.That(rig.Grounded, Is.True, $"The character should land on the far side (it's at {rig.Position}, the wall's top at {top}).");
         }
 
@@ -130,7 +130,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(record.vaulted, Is.True, "Steering into the low wall should vault over it.");
             Assert.That(record.speedAfter, Is.GreaterThan(0.95f * MinSpeed), "The vault should leave the character at its slowest speed at least.");
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(back), "The character should end up beyond the wall.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(back), "The character should end up beyond the wall.");
         }
 
         [UnityTest]
@@ -166,7 +166,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(record.vaulted, Is.True, "Sprinting into the low wall should vault over it.");
             Assert.That(record.speedAfter, Is.GreaterThan(0.95f * ExitSpeed(rig.RunSpeed)), "The vault should leave the character with its share of the sprint's speed.");
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(back), "The character should end up beyond the wall.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(back), "The character should end up beyond the wall.");
             Assert.That(rig.Grounded, Is.True, "The character should land on the far side.");
         }
 
@@ -182,7 +182,7 @@ namespace CharacterShowcase.Tests
             Assert.That(record.vaulted, Is.False, vaultingFromTheGroundOff
                 ? "With vaulting from the ground off, sprinting into the wall shouldn't vault it."
                 : "Walking into the low wall shouldn't vault it: only sprinting does.");
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThan(face + 0.05f), "The character should stay in front of the wall.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThan(face + 0.05f), "The character should stay in front of the wall.");
         }
 
         [UnityTest]

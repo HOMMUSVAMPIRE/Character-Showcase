@@ -429,7 +429,7 @@ namespace CharacterShowcase.Tests
             AnimationController animation = rig.Animation;
             // The rig moves the character itself; the animation is fed each step, as the character's own update would.
             void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
-            yield return rig.Run(rig.SecondsToWalk(3f + rig.Radius, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
+            yield return rig.Run(rig.SecondsToWalk(3f + rig.FrontExtent, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingCollider, Is.False);
             Assert.That(rig.Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");

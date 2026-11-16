@@ -141,7 +141,7 @@ namespace Character
             float vertical = 0f;
             if (rise > 0f)
             {
-                float gap = Mathf.Max(0f, -past - controller.Radius);
+                float gap = Mathf.Max(0f, -past - controller.Body.FrontExtent);
                 float speedIn = Mathf.Max(Vector3.Dot(vault.exitVelocity, -wallNormal), 1e-3f);
                 float timeToWall = Mathf.Max(gap / speedIn, movementData.deltaTime);
                 vertical = Mathf.Min(StepUpRiseSpeed * controller.SpeedScale, rise / timeToWall);
@@ -183,7 +183,7 @@ namespace Character
 
             // From just over a step to just under a ledge the character could grab.
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
-            return StartVaultOver(ref movementData, controller, ledges, heading, steer, grounded, stepHeight, ledges.LedgeGrabMinHeight * controller.StandingHeight);
+            return StartVaultOver(ref movementData, controller, ledges, heading, steer, grounded, stepHeight, ledges.LedgeGrabMinHeight * controller.Body.StandingHeight);
         }
 
         /// <summary>
@@ -217,7 +217,7 @@ namespace Character
             Vector3 moving = new Vector3(velocity.x, 0f, velocity.z);
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
             // Looked for far enough ahead that a fast approach is caught before the next step takes it into the wall.
-            float reach = controller.Radius + Mathf.Max(ledges.LedgeGrabReach * controller.HeightScale, 2f * moving.magnitude * movementData.deltaTime);
+            float reach = controller.Body.FrontExtent + Mathf.Max(ledges.LedgeGrabReach * controller.HeightScale, 2f * moving.magnitude * movementData.deltaTime);
             Vector3 feet = movementData.initialPosition;
             if (!ledges.FindLedge(controller, feet, heading, low, high, reach, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)) { return false; }
             bool steeringIn = Vector3.Dot(steer, -wallNormal) >= (grounded ? Mathf.Cos(vaultGroundMaxAngle * Mathf.Deg2Rad) : 0.5f);
@@ -231,15 +231,15 @@ namespace Character
             Vector3 inFront = edge + wallNormal * (2f * skin + 0.05f * controller.HeightScale) + Vector3.up * skin;
             if (controller.Raycast(inFront, Vector3.down, stepHeight + skin, out _)) { return false; }
 
-            // What's beyond the edge, a body's width past the wall's face: the top carrying on (something deep, to
+            // What's beyond the edge, a body's length past the wall's face: the top carrying on (something deep, to
             // stand on), or else whatever's below, where the character lands after vaulting over.
-            Vector3 beyond = edge - wallNormal * (2f * controller.Radius + 2f * skin);
+            Vector3 beyond = edge - wallNormal * (controller.Body.FrontExtent + controller.Body.BackExtent + 2f * skin);
             bool deep = controller.Raycast(beyond + Vector3.up * stepHeight, Vector3.down, 2f * stepHeight, out RaycastHit far)
                         && Vector3.Angle(far.normal, Vector3.up) <= controller.MaxSlopeAngle;
             if (grounded && !deep)
             {
                 // From the ground, only over to somewhere to land, not much below: not over a railing into a drop.
-                float down = edge.y - feet.y + vaultMaxDrop * controller.StandingHeight;
+                float down = edge.y - feet.y + vaultMaxDrop * controller.Body.StandingHeight;
                 if (!controller.Raycast(beyond, Vector3.down, down, out _)) { return false; }
             }
 
@@ -249,7 +249,7 @@ namespace Character
             if (!controller.CanFitAt(new Vector3(feet.x, Mathf.Max(feet.y, clearedHeight), feet.z), 1f)) { return false; }
             float headingIn = Mathf.Max(Vector3.Dot(heading, -wallNormal), 0.5f);
             float toFace = Mathf.Max(0f, Vector3.Dot(edge - feet, -wallNormal));
-            Vector3 end = feet + heading * ((toFace + controller.Radius) / headingIn);
+            Vector3 end = feet + heading * ((toFace + controller.Body.BackExtent) / headingIn);
             end.y = clearedHeight;
             if (!controller.CanFitAt(end, 1f)) { return false; }
 
@@ -265,7 +265,7 @@ namespace Character
             // A hand planted on the top counts as touching the ground: the character's jumps and air dashes come back.
             GiveBackAirMoves(controller);
 
-            if (deep && edge.y - feet.y <= vaultStepUpHeight * controller.StandingHeight)
+            if (deep && edge.y - feet.y <= vaultStepUpHeight * controller.Body.StandingHeight)
             {
                 // Onto the top of something low and deep: stepped up onto at once, as stairs are, keeping the speed.
                 vault.phase = VaultState.Phase.SteppingUp;
@@ -276,7 +276,7 @@ namespace Character
             // A vault: the rise closes the gap to the wall (from the capsule's front to the face), and the swing over
             // carries the body the rest of the way, speeding up to the speed it leaves with. All along the heading.
             float length = Vector3.Distance(new Vector3(feet.x, 0f, feet.z), new Vector3(end.x, 0f, end.z));
-            float gap = Mathf.Max(0f, toFace - controller.Radius) / headingIn;
+            float gap = Mathf.Max(0f, toFace - controller.Body.FrontExtent) / headingIn;
             vault.phase = VaultState.Phase.Vaulting;
             vault.localStart = toObstacleSpace * (feet - obstaclePosition);
             vault.localEnd = toObstacleSpace * (end - obstaclePosition);

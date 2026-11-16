@@ -30,7 +30,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, 0f), settleSeconds: 0f);
-            face = rig.Radius + 0.1f;
+            face = rig.FrontExtent + 0.1f;
             rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
         }
 
@@ -61,7 +61,7 @@ namespace CharacterShowcase.Tests
             Assert.That(fastestFall, Is.LessThanOrEqualTo(SlideSpeed + 0.01f), "The slide should be no faster than the slide speed.");
             Assert.That(drop, Is.LessThan(0.5f * 0.5f * rig.Gravity * seconds * seconds), "Sliding down a wall should be much slower than falling.");
             Assert.That(drop, Is.GreaterThan(0.5f * SlideSpeed * seconds), "The character should slide down, not stick.");
-            Assert.That(rig.Position.z + rig.Radius, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(1f), "The character should face the wall.");
         }
 

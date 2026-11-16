@@ -190,7 +190,7 @@ namespace CharacterShowcase.EditorTools
             MovementController movement = prefab != null ? prefab.GetComponent<MovementController>() : null;
             if (movement == null) { return 0f; }
             float share = movement.movementHandler is ComposedMovementMode mode ? mode.SettingsOf<Swimming>().SwimDepth : new Swimming().SwimDepth;
-            return share * movement.StandingHeight;
+            return share * movement.Body.StandingHeight;
         }
 
         private static float HumanScale(GameObject model)

@@ -175,7 +175,7 @@ namespace Character
             float size = Size;
             float strength = Mathf.Clamp01(speed / (splashFullSpeed * (movement != null ? movement.SpeedScale : 1f)));
             if (strength < splashMinStrength || strength <= 0f) { return false; }
-            float height = movement != null ? movement.StandingHeight : 2f * size;
+            float height = movement != null ? movement.Body.StandingHeight : 2f * size;
             Water water = Water.Under(feet, height);
             if (water == null) { return false; }
             var context = Context(water, feet, strength, velocity);
@@ -213,7 +213,7 @@ namespace Character
             hasLastPosition = true;
             bool atSurface = data != null && (data.state & (CharacterState.Swimming | CharacterState.Wading)) != 0
                              && (data.state & CharacterState.Diving) == 0;
-            Water water = atSurface ? Water.Under(position, movement.StandingHeight) : null;
+            Water water = atSurface ? Water.Under(position, movement.Body.StandingHeight) : null;
             if (water == null)
             {
                 rippleDistance = 0f;

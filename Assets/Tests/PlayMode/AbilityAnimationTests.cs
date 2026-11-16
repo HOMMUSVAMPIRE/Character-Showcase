@@ -128,7 +128,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 6f, -10f);
-            float face = rig.Radius + 0.1f;
+            float face = rig.FrontExtent + 0.1f;
             rig.Box("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
             float speed = rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
             rig.Movement.OverrideVelocity(Vector3.forward * speed);
@@ -165,7 +165,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 3f, 0f);
-            float top = 3f + rig.StandingHeight, face = rig.Radius + 0.15f;
+            float top = 3f + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
             yield return ExpectState("Hang", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
@@ -203,7 +203,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 3f, 0f);
-            float top = 3f + rig.StandingHeight, face = rig.Radius + 0.15f;
+            float top = 3f + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
             float clearance = rig.StandingHeight * Mathf.Lerp(rig.Component<Crouching>().CrouchHeight, 1f, 0.5f);
             rig.Box("Low Ceiling", new Vector3(0f, top + clearance + 0.5f, face + 2f), new Vector3(10f, 1f, 4f));
@@ -229,7 +229,7 @@ namespace CharacterShowcase.Tests
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 3f, 0f);
             float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
-            float top = 3f + share * rig.StandingHeight, face = rig.Radius + 0.25f;
+            float top = 3f + share * rig.StandingHeight, face = rig.FrontExtent + 0.25f;
             rig.Box("Low Wall", new Vector3(0f, top / 2f, face + 0.2f), new Vector3(10f, top, 0.4f));
 
             // Through the middle of the vault, the planted hand is on the wall's top, the body lowered for it to reach
@@ -257,7 +257,7 @@ namespace CharacterShowcase.Tests
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 3f, 0f);
             float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("vaultStepUpHeight"), 0.6f);
-            float top = 3f + share * rig.StandingHeight, face = rig.Radius + 0.25f;
+            float top = 3f + share * rig.StandingHeight, face = rig.FrontExtent + 0.25f;
             rig.Box("Low Platform", new Vector3(0f, top / 2f, face + 3f), new Vector3(10f, top, 6f));
 
             // The visuals stepped with the physics, as ACCharacterController does each frame.
@@ -291,7 +291,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 8f, 0f);
-            float face = rig.Radius + 0.1f;
+            float face = rig.FrontExtent + 0.1f;
             rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
             yield return ExpectState("Wall Slide", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
@@ -350,7 +350,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator PushingABox_PlaysPush()
         {
             yield return Spawn();
-            float near = rig.Position.z + rig.Radius + 0.1f;
+            float near = rig.Position.z + rig.FrontExtent + 0.1f;
             rig.PushableBox(new Vector3(0f, 0.75f, near + 0.75f), Vector3.one * 1.5f);
             yield return ExpectState("Push", 1f, step => CharacterTestRig.Grab(step, Vector3.forward));
         }
@@ -360,7 +360,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Floor();
-            float face = rig.Position.z + rig.Radius + 0.3f;
+            float face = rig.Position.z + rig.FrontExtent + 0.3f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
             yield return ExpectState("Wall Climb", 1.5f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.InState(CharacterState.WallClimbing), Is.True, "Test setup: the character should be climbing.");
@@ -394,7 +394,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Floor();
-            float face = rig.Position.z + rig.Radius + 0.3f;
+            float face = rig.Position.z + rig.FrontExtent + 0.3f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
             yield return ExpectState("Climb Enter", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return ExpectState("Wall Climb", 1f, _ => CharacterTestRig.Idle());
@@ -418,7 +418,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Floor();
-            float face = rig.Position.z + rig.Radius + 0.3f;
+            float face = rig.Position.z + rig.FrontExtent + 0.3f;
             Level.Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, 0f, face + 0.03f), 12f);
             yield return ExpectState("Ladder", 2f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.8f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);

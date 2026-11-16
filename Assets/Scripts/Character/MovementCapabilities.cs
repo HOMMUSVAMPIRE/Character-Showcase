@@ -36,12 +36,12 @@ namespace Character
         public float StepHeight { get; internal set; } = float.NaN;
         /// <summary>The steepest slope (degrees) it treats as walkable ground (MovementController's Max Slope Angle).</summary>
         public float WalkableSlopeAngle { get; internal set; } = float.NaN;
-        /// <summary>How tall (m) the character's collider is standing: what it needs to stand under something.</summary>
+        /// <summary>How tall (m) the character stands: what it needs to stand under something.</summary>
         public float StandHeight { get; internal set; } = float.NaN;
         /// <summary>How tall (m) its collider is crouched: what it needs to crouch under something (NaN without crouching).</summary>
         public float CrouchHeight { get; internal set; } = float.NaN;
-        /// <summary>Its collider's radius (m): half the width it needs to pass between things.</summary>
-        public float Radius { get; internal set; } = float.NaN;
+        /// <summary>How far (m) its body reaches to either side: half the width it needs to pass between things.</summary>
+        public float HalfWidth { get; internal set; } = float.NaN;
         /// <summary>How high (m) its feet rise on the shortest jump (a tap).</summary>
         public float MinJumpHeight { get; internal set; } = float.NaN;
         /// <summary>How high (m) its feet rise on the highest jump (Jump held).</summary>

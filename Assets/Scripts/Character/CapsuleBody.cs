@@ -29,6 +29,12 @@ namespace Character
         public override float Radius => capsule.radius;
         public override float Height => capsule.height;
 
+        // A capsule is round, so it reaches as far every way: its radius (or, before it has a collider, half a metre at
+        // the character's height).
+        public override float FrontExtent => capsule != null ? capsule.radius : 0.5f * Owner.HeightScale;
+        public override float BackExtent => FrontExtent;
+        public override float SideExtent => FrontExtent;
+
         public override void RememberAuthoredSize()
         {
             // Also before Awake (a prefab asset asked about, say), so the capsule is fetched here too.

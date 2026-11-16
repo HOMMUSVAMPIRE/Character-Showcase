@@ -30,7 +30,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor(floorTop, floorWidth);
             yield return rig.SpawnSettled(new Vector3(0f, floorTop + 0.05f, 0f));
-            float near = rig.Position.z + rig.Radius + 0.1f;
+            float near = rig.Position.z + rig.FrontExtent + 0.1f;
             box = rig.PushableBox(new Vector3(0f, floorTop + BoxSize / 2f, near + BoxSize / 2f), Vector3.one * BoxSize, speedMultiplier, canBePulled);
             yield return rig.Run(0.1f, _ => CharacterTestRig.Idle());
         }
@@ -55,7 +55,7 @@ namespace CharacterShowcase.Tests
             Assert.That(Grabbing, Is.True, "The character should be holding the box.");
             Assert.That(boxMoved, Is.EqualTo(PushPullSpeed * seconds).Within(0.1f * PushPullSpeed * seconds), "The box should be pushed at the push speed.");
             Assert.That(characterMoved, Is.EqualTo(boxMoved).Within(0.02f), "The character should move with the box.");
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThanOrEqualTo(BoxNearSide + 0.02f), "The character shouldn't go into the box.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThanOrEqualTo(BoxNearSide + 0.02f), "The character shouldn't go into the box.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(1f), "The character should face the box.");
         }
 
@@ -104,7 +104,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(box.Position.z + BoxSize / 2f, Is.LessThanOrEqualTo(wall + 0.005f), "The box shouldn't go into the wall.");
             Assert.That(box.Position.z + BoxSize / 2f, Is.GreaterThan(wall - 0.05f), "The box should be pushed up to the wall.");
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThanOrEqualTo(BoxNearSide + 0.02f), "The character shouldn't go into the box.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThanOrEqualTo(BoxNearSide + 0.02f), "The character shouldn't go into the box.");
         }
 
         [UnityTest]
@@ -116,7 +116,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Grabbing, Is.False, "Letting go of grab should let go of the box.");
             Assert.That(box.Position.z, Is.EqualTo(boxZ).Within(0.001f), "Walking into a box without holding it shouldn't move it.");
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThanOrEqualTo(BoxNearSide + 0.01f), "The box should block the character.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThanOrEqualTo(BoxNearSide + 0.01f), "The box should block the character.");
         }
 
         [UnityTest]

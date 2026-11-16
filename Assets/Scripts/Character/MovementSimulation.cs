@@ -74,8 +74,8 @@ namespace Character
             {
                 StepHeight = copy.MaxStepHeight * copy.HeightScale,
                 WalkableSlopeAngle = copy.MaxSlopeAngle,
-                StandHeight = copy.StandingHeight,
-                Radius = copy.Radius,
+                StandHeight = copy.Body.StandingHeight,
+                HalfWidth = copy.Body.SideExtent,
             };
             if (source.movementHandler != null) { source.movementHandler.MeasureCapabilities(simulation, capabilities); }
             return capabilities;

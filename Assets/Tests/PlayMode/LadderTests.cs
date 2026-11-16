@@ -32,7 +32,7 @@ namespace CharacterShowcase.Tests
         private IEnumerator SetUpLadder(float height = 6f, float sideways = 0.15f)
         {
             yield return rig.StandOnFloor();
-            face = rig.Radius + 0.3f;
+            face = rig.FrontExtent + 0.3f;
             ladder = rig.Ladder(new Vector3(sideways, 0f, face + 0.03f), height);
         }
 
@@ -55,7 +55,7 @@ namespace CharacterShowcase.Tests
             Assert.That(OnLadder, Is.True);
             Assert.That(rig.Position.y - start, Is.EqualTo(rig.ClimbSpeed * seconds).Within(0.1f * rig.ClimbSpeed * seconds), "Up should climb the ladder at the climbing speed.");
             Assert.That(rig.Position.x, Is.EqualTo(ladder.transform.position.x).Within(0.02f), "The character should climb on the ladder's middle.");
-            Assert.That(face - (rig.Position.z + rig.Radius), Is.InRange(-0.01f, 0.08f), "The character should be against the ladder.");
+            Assert.That(face - (rig.Position.z + rig.FrontExtent), Is.InRange(-0.01f, 0.08f), "The character should be against the ladder.");
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(1f), "The character should face the ladder.");
         }
 
@@ -75,7 +75,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator ALadder_IsNotTakenHoldOfFromBehind()
         {
             yield return rig.StandOnFloor();
-            face = rig.Radius + 0.3f;
+            face = rig.FrontExtent + 0.3f;
             // Facing +Z: the character comes at its back.
             rig.Ladder(new Vector3(0f, 0f, face + 0.03f), 6f, Quaternion.identity);
             bool climbed = false;
@@ -121,7 +121,7 @@ namespace CharacterShowcase.Tests
             var events = rig.EventsRaised;
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
             Assert.That(Climbing, Is.False);
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThan(face - 0.5f), "Jumping off should push the character away from the ladder.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThan(face - 0.5f), "Jumping off should push the character away from the ladder.");
             Assert.That(events.Contains(MovementEvents.WallJumped), Is.True);
         }
     }

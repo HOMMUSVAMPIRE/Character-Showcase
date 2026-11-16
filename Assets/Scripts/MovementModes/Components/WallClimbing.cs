@@ -283,7 +283,7 @@ namespace Character
                 : approach.sqrMagnitude > 0.01f ? approach.normalized : Facing(movementData);
 
             Vector3 feet = movementData.initialPosition;
-            float reach = controller.Radius + wallClimbStartReach * controller.HeightScale + controller.Skin;
+            float reach = controller.Body.FrontExtent + wallClimbStartReach * controller.HeightScale + controller.Skin;
             if (!ProbeClimbableSurface(controller, feet, -heading, reach, out ClimbContact contact)) { return false; }
             if (!SteepEnoughToClimb(contact.normal) || IsUnclimbableNearer(controller, contact)) { return false; }
 
@@ -330,7 +330,7 @@ namespace Character
             out ClimbContact contact, float paintTolerance = 0f)
         {
             contact = new ClimbContact { distance = float.PositiveInfinity, unclimbableDistance = float.PositiveInfinity };
-            Vector3 grip = feet + Vector3.up * (wallClimbGripHeight * controller.StandingHeight);
+            Vector3 grip = feet + Vector3.up * (wallClimbGripHeight * controller.Body.StandingHeight);
             int count = controller.OverlapSphere(grip, reach, climbOverlaps);
             float bestScore = float.PositiveInfinity;
             for (int i = 0; i < count; i++)
@@ -389,7 +389,7 @@ namespace Character
             distance = ladder.InFrontOf(grip);
             point = ladder.FrontBottom + ladder.Up * up;
             return distance > -controller.Skin && up >= 0f && up <= ladder.Height
-                   && Mathf.Abs(ladder.SideOf(grip)) <= 0.5f * ladder.Width + controller.Radius;
+                   && Mathf.Abs(ladder.SideOf(grip)) <= 0.5f * ladder.Width + controller.Body.SideExtent;
         }
 
         /// <summary>On a ladder, the move this step back toward its middle (at most step long); zero off one.</summary>
@@ -438,11 +438,11 @@ namespace Character
             normal.y <= Mathf.Sin(wallClimbMaxLeanBack * Mathf.Deg2Rad) && normal.y >= -Mathf.Sin(wallClimbMaxOverhang * Mathf.Deg2Rad);
 
         /// <summary>How far the character's grip is held from the surface: its collider just clear of it.</summary>
-        private static float WallClimbHoldDistance(MovementController controller) => controller.Radius + controller.Skin;
+        private static float WallClimbHoldDistance(MovementController controller) => controller.Body.FrontExtent + controller.Skin;
 
         /// <summary>How far from the grip a surface being climbed is looked for.</summary>
         private float WallClimbReach(MovementController controller) =>
-            controller.Radius + Mathf.Max(wallClimbStartReach, 2f * WallClimbEdgeTolerance) * controller.HeightScale + 2f * controller.Skin;
+            controller.Body.FrontExtent + Mathf.Max(wallClimbStartReach, 2f * WallClimbEdgeTolerance) * controller.HeightScale + 2f * controller.Skin;
 
         /// <summary>Remembers the surface held at a contact.</summary>
         private static void HoldSurface(WallClimbState climb, ClimbContact contact)

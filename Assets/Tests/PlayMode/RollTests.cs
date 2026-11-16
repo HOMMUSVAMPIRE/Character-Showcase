@@ -151,16 +151,16 @@ namespace CharacterShowcase.Tests
             float standing = rig.StandingHeight;
             // A short low ceiling the roll ends under: from just ahead to past where the roll ends.
             float underside = standing * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
-            float start = rig.Radius + 0.2f, length = RollSpeed * RollDuration + 1f;
+            float start = rig.FrontExtent + 0.2f, length = RollSpeed * RollDuration + 1f;
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, start + length / 2f), new Vector3(4f, 1f, length));
 
             yield return RollOnce(Vector3.forward, _ => { }, Vector3.zero);
-            Assert.That(rig.Position.z, Is.LessThan(start + length - rig.Radius), "Test setup: the roll should end under the ceiling.");
+            Assert.That(rig.Position.z, Is.LessThan(start + length - rig.FrontExtent), "Test setup: the roll should end under the ceiling.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "With no room to stand, the roll should end crouched.");
             Assert.That(rig.CurrentHeight, Is.LessThan(underside));
 
             float crouchSpeed = rig.Component<Crouching>().CrouchSpeed * rig.Movement.SpeedScale;
-            yield return rig.Run((length + rig.Radius) / crouchSpeed + 0.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run((length + rig.BackExtent) / crouchSpeed + 0.5f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.InState(CharacterState.Crouching), Is.False, "Out from under the ceiling, the character should stand up by itself.");
         }
 

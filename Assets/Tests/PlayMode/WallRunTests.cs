@@ -33,7 +33,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, -25f), settleSeconds: 0f);
-            wallFace = rig.Radius + 0.1f;
+            wallFace = rig.SideExtent + 0.1f;
             rig.Box("Wall", new Vector3(wallFace + 0.5f, 20f, -26f + wallLength / 2f), new Vector3(1f, 40f, wallLength));
         }
 
@@ -59,7 +59,7 @@ namespace CharacterShowcase.Tests
             Assert.That(wallRunningSteps, Is.EqualTo(steps), "The character should run along the wall.");
             Assert.That(drop, Is.LessThan(0.5f * freeFall), "A wall run should fall much slower than falling freely.");
             Assert.That(rig.Position.z - start.z, Is.GreaterThan(0.8f * WallRunSpeed * seconds), "A wall run should keep going along the wall.");
-            Assert.That(rig.Position.x + rig.Radius, Is.EqualTo(wallFace).Within(0.05f), "A wall run should stay against the wall.");
+            Assert.That(rig.Position.x + rig.SideExtent, Is.EqualTo(wallFace).Within(0.05f), "A wall run should stay against the wall.");
             Assert.That(rig.Movement.wallRun.side, Is.EqualTo(1f), "The wall is on the character's right.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(2f), "The character should face along the wall.");
         }
@@ -160,7 +160,7 @@ namespace CharacterShowcase.Tests
             yield return LaunchAlongWall();
             float wallEnd = -26f + wallLength;
             yield return rig.Run((wallLength + 1f) / WallRunSpeed + 0.2f, _ => CharacterTestRig.Move(Vector3.forward));
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(wallEnd), "Test setup: the character should be past the wall.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(wallEnd), "Test setup: the character should be past the wall.");
             Assert.That(WallRunning, Is.False, "Past the end of the wall, the wall run should end.");
             Assert.That(rig.Movement.lastFrameMovementData.finalVelocity.z, Is.GreaterThan(0.8f * WallRunSpeed), "The character should keep its momentum.");
         }
@@ -196,7 +196,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 12f, -25f), settleSeconds: 0f);
-            wallFace = rig.Radius + 0.1f;
+            wallFace = rig.SideExtent + 0.1f;
             // A wall hanging in the air, its bottom edge a little below the character's feet.
             float bottom = rig.Position.y - 0.4f;
             rig.Box("Hanging Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));
@@ -218,7 +218,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 12f, -25f), settleSeconds: 0f);
-            wallFace = rig.Radius + 0.1f;
+            wallFace = rig.SideExtent + 0.1f;
             // Beside the character's upper body only: its bottom edge at the character's waist.
             float bottom = rig.Position.y + 0.5f * rig.StandingHeight;
             rig.Box("High Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));

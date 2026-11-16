@@ -179,7 +179,7 @@ namespace Character
         {
             simulation.ClearObstacles();
             simulation.Reset(Vector3.zero, mode);
-            float face = simulation.Controller.Radius + back;
+            float face = simulation.Controller.Body.FrontExtent + back;
             simulation.Box(new Vector3(0f, height / 2f, face + 10f), new Vector3(20f, height, 20f));
             bool airborne = false;
             // Hanging from the top's edge, Jump is let go of for a step and pressed again, to climb up.

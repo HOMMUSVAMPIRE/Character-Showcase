@@ -38,7 +38,7 @@ namespace CharacterShowcase.Tests
         private IEnumerator SetUpStanding()
         {
             yield return rig.StandOnFloor();
-            face = rig.Radius + 0.3f;
+            face = rig.FrontExtent + 0.3f;
         }
 
         /// <summary>The character standing in front of a tall wall (climbable, unless asked otherwise), 10 m wide.</summary>
@@ -83,7 +83,7 @@ namespace CharacterShowcase.Tests
             Assert.That(climbingSteps, Is.EqualTo(steps), "The character should keep climbing.");
             Assert.That(rig.Position.y - start, Is.EqualTo(rig.ClimbSpeed * seconds).Within(0.1f * rig.ClimbSpeed * seconds),
                 "Up on the stick should climb up at the climbing speed.");
-            Assert.That(rig.Position.z + rig.Radius, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(1f), "The character should face the wall.");
         }
 
@@ -123,7 +123,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 6f, 0f), settleSeconds: 0f);
-            face = rig.Radius + 0.1f;
+            face = rig.FrontExtent + 0.1f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
             bool slid = false;
             yield return rig.Run(0.3f, _ => Up, _ => slid |= rig.InState(CharacterState.WallSliding));
@@ -172,11 +172,11 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(3f, _ => Right);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the edge of the climbable area.");
             Assert.That(rig.Position.x, Is.GreaterThan(0.5f), "The character should have climbed across the panel.");
-            Assert.That(rig.Position.x, Is.LessThan(1f + rig.Radius), "The character should stop at the panel's edge, not climb on along the plain wall.");
+            Assert.That(rig.Position.x, Is.LessThan(1f + rig.SideExtent), "The character should stop at the panel's edge, not climb on along the plain wall.");
 
             yield return rig.Run(5f, _ => CharacterTestRig.Move(Vector3.left));
             Assert.That(Climbing, Is.True);
-            Assert.That(rig.Position.x, Is.GreaterThan(-1f - rig.Radius), "The character should stop at the panel's other edge too.");
+            Assert.That(rig.Position.x, Is.GreaterThan(-1f - rig.SideExtent), "The character should stop at the panel's other edge too.");
         }
 
         [UnityTest]
@@ -201,7 +201,7 @@ namespace CharacterShowcase.Tests
 
             Assert.That(Climbing, Is.True, "The character should still be climbing, round the corner.");
             Assert.That(Vector3.Angle(Forward, Vector3.left), Is.LessThan(10f), "The character should face the pillar's right face.");
-            Assert.That(rig.Position.x - rig.Radius, Is.EqualTo(1f).Within(0.08f), "The character should be against the pillar's right face.");
+            Assert.That(rig.Position.x - rig.FrontExtent, Is.EqualTo(1f).Within(0.08f), "The character should be against the pillar's right face.");
             Assert.That(rig.Position.z, Is.GreaterThan(face + 0.25f), "The character should have climbed along the right face.");
         }
 
@@ -222,7 +222,7 @@ namespace CharacterShowcase.Tests
             float cornerZ = rig.Position.z;
             yield return rig.Run(1f, _ => Right);
             Assert.That(rig.Position.z, Is.LessThan(cornerZ - 0.5f * rig.ClimbSpeed), "Climbing on, the character should move along the side wall.");
-            Assert.That(side - (rig.Position.x + rig.Radius), Is.EqualTo(0f).Within(0.05f), "The character should be against the side wall.");
+            Assert.That(side - (rig.Position.x + rig.FrontExtent), Is.EqualTo(0f).Within(0.05f), "The character should be against the side wall.");
         }
 
         [UnityTest]
@@ -410,7 +410,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 8f, 0f), settleSeconds: 0f);
-            face = rig.Radius + 2f;
+            face = rig.FrontExtent + 2f;
             rig.ClimbableBox("Wall", new Vector3(0f, 8f, face + 0.5f), new Vector3(10f, 16f, 1f));
             int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
             if (maxAirDashes < 1) { Assert.Ignore("The character has no air dashes."); }
@@ -451,7 +451,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 6f, 0f), settleSeconds: 0f);
-            face = rig.Radius + 0.1f;
+            face = rig.FrontExtent + 0.1f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
             bool entered = false;
             yield return rig.Run(0.3f, _ => Up, _ => entered |= rig.Movement.wallClimb.IsEntering);

@@ -35,6 +35,22 @@ namespace Character
         /// <summary>The body's height (m) now, at the character's size and posture. Only while it has a collider.</summary>
         public abstract float Height { get; }
 
+        // Its proportions: what the abilities measure the character by (how tall it stands, how far it reaches out in front,
+        // behind and to the sides of its feet), rather than the collider's dimensions, so a body of another shape answers
+        // them for itself. Its posture (lowered while crouching, say) doesn't change its standing height.
+
+        /// <summary>How tall (m) the character stands, at its size: grip, hang and reach heights are shares of it.</summary>
+        public virtual float StandingHeight => AuthoredHeight * Owner.Scale.y;
+
+        /// <summary>How far (m) the body reaches out in front of its feet, horizontally, now: how near it comes to what it faces.</summary>
+        public abstract float FrontExtent { get; }
+
+        /// <summary>How far (m) the body reaches out behind its feet, horizontally, now.</summary>
+        public abstract float BackExtent { get; }
+
+        /// <summary>How far (m) the body reaches out to either side of its feet, now: half the width it needs to pass between things.</summary>
+        public abstract float SideExtent { get; }
+
         /// <summary>Reads the body's size as authored from its collider, if it hasn't yet (before Awake, too: a prefab asked about).</summary>
         public abstract void RememberAuthoredSize();
 

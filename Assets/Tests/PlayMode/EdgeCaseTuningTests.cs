@@ -177,9 +177,9 @@ namespace CharacterShowcase.Tests
         public IEnumerator VeryHighSpeed_DoesntPassThroughAThinWall([Values("walking", "dashing")] string how)
         {
             yield return Settle();
-            float radius = rig.Radius;
+            float radius = rig.FrontExtent;
             const float face = 6f, thickness = 0.1f;
-            rig.Box("Thin Wall", new Vector3(0f, rig.Height, face + thickness / 2f), new Vector3(10f, 2f * rig.Height, thickness));
+            rig.Box("Thin Wall", new Vector3(0f, rig.StandingHeight, face + thickness / 2f), new Vector3(10f, 2f * rig.StandingHeight, thickness));
             float furthest = float.NegativeInfinity;
             System.Action<int> track = _ =>
             {

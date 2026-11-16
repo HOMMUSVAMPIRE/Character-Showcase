@@ -67,13 +67,13 @@ namespace CharacterShowcase.Tests
             float standing = rig.StandingHeight;
             // A ceiling between the crouch height and the standing height, starting a little ahead of the character.
             float underside = Mathf.Lerp(standing * rig.CrouchHeight, standing, 0.5f);
-            float start = rig.Radius + 0.5f, length = 2f;
+            float start = rig.FrontExtent + 0.5f, length = 2f;
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, start + length / 2f), new Vector3(4f, 1f, length));
 
             // Crouch, walk in under the ceiling, and press Crouch to stand there.
             yield return PressCrouch();
             yield return rig.Run(rig.SecondsToWalk(start + length / 2f, 0f) * rig.WalkSpeed / CrouchSpeed, _ => CharacterTestRig.Move(Vector3.forward));
-            Assert.That(rig.Position.z, Is.GreaterThan(start + rig.Radius), "Test setup: the character should be under the ceiling.");
+            Assert.That(rig.Position.z, Is.GreaterThan(start + rig.FrontExtent), "Test setup: the character should be under the ceiling.");
             yield return PressCrouch();
             Assert.That(Crouched, Is.True, "With no room above, the character should stay crouched.");
             Assert.That(rig.CurrentHeight, Is.LessThan(underside), "The collider should stay under the ceiling.");
@@ -82,11 +82,11 @@ namespace CharacterShowcase.Tests
             bool stoodUnderCeiling = false;
             yield return rig.Run(rig.SecondsToWalk(length, 0f) * rig.WalkSpeed / CrouchSpeed, _ => CharacterTestRig.Move(Vector3.forward), _ =>
             {
-                bool under = rig.Position.z + rig.Radius > start && rig.Position.z - rig.Radius < start + length;
+                bool under = rig.Position.z + rig.FrontExtent > start && rig.Position.z - rig.BackExtent < start + length;
                 if (under && rig.CurrentHeight > underside) { stoodUnderCeiling = true; }
             });
             Assert.That(stoodUnderCeiling, Is.False, "The character stood up into the ceiling.");
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(start + length), "Test setup: the character should be past the ceiling.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(start + length), "Test setup: the character should be past the ceiling.");
             Assert.That(Crouched, Is.False, "Once there's room, the character should stand up by itself.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f));
         }

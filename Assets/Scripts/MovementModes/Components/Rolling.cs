@@ -108,7 +108,7 @@ namespace Character
         {
             RollState roll = controller.roll;
             if (rollDuration <= 0f || landingRollMinFall <= 0f || !movementData.initialGrounded || Mode.AbilityInProgress(controller)) { return false; }
-            if (roll.landingFall < landingRollMinFall * controller.StandingHeight || Mode.IsNewJumpPress(inputs, controller)) { return false; }
+            if (roll.landingFall < landingRollMinFall * controller.Body.StandingHeight || Mode.IsNewJumpPress(inputs, controller)) { return false; }
             Vector3 inertia = movementData.initialInertia;
             Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
             Vector3 steer = InputDirection(movementData, inputs);

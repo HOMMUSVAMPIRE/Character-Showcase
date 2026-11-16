@@ -97,7 +97,7 @@ namespace Character
         {
             SwimState swim = controller.swim;
             Vector3 feet = movementData.initialPosition;
-            float depth = swimDepth * controller.StandingHeight;
+            float depth = swimDepth * controller.Body.StandingHeight;
             Water water = depth > 0f ? Water.At(feet) : null;
             float under = water != null ? water.SurfaceHeight - feet.y : float.NegativeInfinity;
             float surfacingSpeed = swimSurfacingSpeed * controller.SpeedScale;
@@ -258,7 +258,7 @@ namespace Character
         {
             if (input.sqrMagnitude < ClimbOutInput * ClimbOutInput || (movementData.previousCollisions & CollisionFlags.Sides) == 0) { return false; }
             Vaulting vaulting = Mode.Get<Vaulting>();
-            float vaultTop = under + swimVaultHeight * controller.StandingHeight;
+            float vaultTop = under + swimVaultHeight * controller.Body.StandingHeight;
             bool gotOut = (swimVaultHeight > 0f && vaulting != null && vaulting.TryVaultOutOfWater(ref movementData, inputs, controller, input, under, vaultTop))
                           || (Mode.Get<Ledges>() is { } ledges && ledges.TryClimbOverTop(ref movementData, controller, input.normalized, withinReach: false, requireFloor: true));
             if (gotOut) { StopSwimming(controller); }

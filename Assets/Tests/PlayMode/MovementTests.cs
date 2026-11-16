@@ -144,8 +144,8 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            float radius = rig.Radius, face = radius + 2f;
-            rig.Box("Wall", new Vector3(0f, rig.Height, face + 0.5f), new Vector3(10f, 2f * rig.Height, 1f));
+            float radius = rig.FrontExtent, face = radius + 2f;
+            rig.Box("Wall", new Vector3(0f, rig.StandingHeight, face + 0.5f), new Vector3(10f, 2f * rig.StandingHeight, 1f));
 
             float furthest = float.NegativeInfinity;
             yield return rig.Run(rig.SecondsToWalk(2f), _ => CharacterTestRig.Move(Vector3.forward), _ => furthest = Mathf.Max(furthest, rig.Position.z));
@@ -357,7 +357,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            float height = fraction * rig.StepHeight, start = rig.Radius + 1.5f;
+            float height = fraction * rig.StepHeight, start = rig.FrontExtent + 1.5f;
             rig.Box("Step", new Vector3(0f, height / 2f, start + 20f), new Vector3(10f, height, 40f));
             yield return rig.Run(rig.SecondsToWalk((start + 1f) / pace, 1.5f), _ => CharacterTestRig.Move(Vector3.forward * pace));
 
@@ -371,7 +371,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            float height = 1.15f * rig.StepHeight, start = rig.Radius + 1.5f;
+            float height = 1.15f * rig.StepHeight, start = rig.FrontExtent + 1.5f;
             rig.Box("Step", new Vector3(0f, height / 2f, start + 20f), new Vector3(10f, height, 40f));
             yield return rig.Run(rig.SecondsToWalk(start + 1f, 1f), _ => CharacterTestRig.Move(Vector3.forward));
 
@@ -385,7 +385,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             // Six steps, each a little over half the step height, starting just ahead, then a long landing.
-            float rise = 0.55f * rig.StepHeight, run = 0.35f, start = rig.Radius + 0.5f, top = 6f * rise;
+            float rise = 0.55f * rig.StepHeight, run = 0.35f, start = rig.FrontExtent + 0.5f, top = 6f * rise;
             for (int i = 0; i < 6; i++)
             {
                 float height = rise * (i + 1);
@@ -411,7 +411,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
             if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
             const int steps = 40;
-            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.Radius, top = steps * rise, width = 40f;
+            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.FrontExtent, top = steps * rise, width = 40f;
             rig.Box("Top Landing", new Vector3(0f, top / 2f, -5f), new Vector3(width, top, 10f));
             for (int i = 0; i < steps - 1; i++)
             {

@@ -282,7 +282,7 @@ namespace CharacterShowcase.Tests
 
             public Course(CharacterTestRig rig)
             {
-                float height = rig.Height, speed = rig.WalkSpeed;
+                float height = rig.StandingHeight, speed = rig.WalkSpeed;
                 Dashing dash = (rig.Movement.movementHandler as ComposedMovementMode)?.Get<Dashing>();
                 float dashDistance = dash != null ? dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration : 0f;
                 rampAngle = Mathf.Min(20f, 0.5f * rig.MaxSlopeAngle);
@@ -385,7 +385,7 @@ namespace CharacterShowcase.Tests
             var normal = new List<CourseStep>();
             Course course = null;
             yield return RunCourse(1f, normal, c => course = c);
-            float radius = rig.Radius;
+            float radius = rig.FrontExtent;
             yield return ReplaceRig();
             var scaled = new List<CourseStep>();
             yield return RunCourse(size, scaled);

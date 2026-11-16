@@ -85,11 +85,11 @@ namespace CharacterShowcase.Tests
             float standing = rig.StandingHeight;
             // A bar between the crouch height and the standing height, a little ahead.
             float underside = standing * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
-            float barZ = rig.Position.z + rig.Radius + 1.5f;
+            float barZ = rig.Position.z + rig.FrontExtent + 1.5f;
             rig.Box("Low Bar", new Vector3(0f, underside + 0.25f, barZ), new Vector3(6f, 0.5f, 0.3f));
 
             yield return rig.Run(SlideMaxDuration + 1f, step => SprintCrouching(step));
-            Assert.That(rig.Position.z - rig.Radius, Is.GreaterThan(barZ + 0.15f), "The slide should carry the character under the bar.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(barZ + 0.15f), "The slide should carry the character under the bar.");
         }
 
         [UnityTest]
@@ -120,10 +120,10 @@ namespace CharacterShowcase.Tests
         public IEnumerator SlidingIntoAWall_Stops()
         {
             yield return SprintForward();
-            float face = rig.Position.z + rig.Radius + 1f;
+            float face = rig.Position.z + rig.FrontExtent + 1f;
             rig.Box("Wall", new Vector3(0f, 2f, face + 0.5f), new Vector3(10f, 4f, 1f));
             yield return rig.Run(SlideMaxDuration + 0.5f, step => SprintCrouching(step));
-            Assert.That(rig.Position.z + rig.Radius, Is.LessThanOrEqualTo(face + 0.01f), "A slide shouldn't pass through a wall.");
+            Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThanOrEqualTo(face + 0.01f), "A slide shouldn't pass through a wall.");
             Assert.That(Sliding, Is.False, "Hitting a wall should end the slide.");
         }
 

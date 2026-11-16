@@ -182,8 +182,8 @@ namespace Character
             // first) rather than slid past on the step it's at the very bottom of the grab window.
             // The window a ledge is grabbed in, whether or not ledges are (see Ledges).
             Ledges ledges = SettingsOf<Ledges>();
-            float bodyHeight = Mathf.Lerp(ledges.LedgeGrabMinHeight, ledges.LedgeGrabMaxHeight, WallSlideBodyReachShare) * controller.StandingHeight;
-            float bodyReach = controller.Radius + wallSlideCheckDistance * controller.HeightScale + 2f * controller.Skin;
+            float bodyHeight = Mathf.Lerp(ledges.LedgeGrabMinHeight, ledges.LedgeGrabMaxHeight, WallSlideBodyReachShare) * controller.Body.StandingHeight;
+            float bodyReach = controller.Body.FrontExtent + wallSlideCheckDistance * controller.HeightScale + 2f * controller.Skin;
             if (!controller.Raycast(feet + Vector3.up * bodyHeight, -normal, bodyReach, out _)) { return false; }
 
             float minHeight = wallSlideMinHeight * controller.HeightScale;

@@ -112,7 +112,7 @@ namespace CharacterShowcase.Tests
             yield return SetUpSwing(speed: 8f);
             float furthest = float.NegativeInfinity;
             yield return rig.Run(2f, _ => CharacterTestRig.Idle(), _ => furthest = Mathf.Max(furthest, rig.Position.z));
-            Assert.That(furthest + rig.Radius, Is.LessThanOrEqualTo(2f + 0.05f), "The wall should stop the character.");
+            Assert.That(furthest + rig.FrontExtent, Is.LessThanOrEqualTo(2f + 0.05f), "The wall should stop the character.");
             Assert.That(Swinging, Is.True, "The character should still be on the rope.");
         }
 

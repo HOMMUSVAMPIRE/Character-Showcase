@@ -166,7 +166,7 @@ namespace CharacterShowcase.Tests
                     rig.Floor();
                     // As LedgeTests: in mid-air before a block whose top is a standing height above the feet.
                     const float feet = 3f;
-                    float top = feet + rig.StandingHeight, face = rig.Radius + 0.15f;
+                    float top = feet + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
                     rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
                     return new Vector3(0f, feet, 0f);
                 },
@@ -193,7 +193,7 @@ namespace CharacterShowcase.Tests
                 {
                     rig.Floor();
                     // As WallRunTests: in mid-air beside a long wall, launched along it.
-                    float face = rig.Radius + 0.1f;
+                    float face = rig.FrontExtent + 0.1f;
                     rig.Box("Wall", new Vector3(face + 0.5f, 20f, 5f), new Vector3(1f, 40f, 60f));
                     return new Vector3(0f, 12f, -25f);
                 },
@@ -208,7 +208,7 @@ namespace CharacterShowcase.Tests
                 build = rig =>
                 {
                     rig.Floor();
-                    float face = rig.Radius + 0.3f;
+                    float face = rig.FrontExtent + 0.3f;
                     rig.ClimbableBox("Wall", new Vector3(0f, 1.5f, face + 1f), new Vector3(10f, 3f, 2f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
@@ -223,7 +223,7 @@ namespace CharacterShowcase.Tests
                     rig.Floor();
                     // As LadderTests: a ladder up the face of a platform, climbed off onto it.
                     const float height = 4f;
-                    float face = rig.Radius + 0.3f;
+                    float face = rig.FrontExtent + 0.3f;
                     rig.Ladder(new Vector3(0f, 0f, face + 0.03f), height);
                     rig.Box("Platform", new Vector3(0f, height / 2f, face + 0.06f + 15f), new Vector3(6f, height, 30f));
                     return new Vector3(0f, 0.05f, 0f);

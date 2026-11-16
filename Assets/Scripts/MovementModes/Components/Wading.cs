@@ -41,7 +41,7 @@ namespace Character
             Vector3 feet = movementData.initialPosition;
             Water water = Water.At(feet);
             if (water == null) { return; }
-            float height = controller.StandingHeight;
+            float height = controller.Body.StandingHeight;
             float under = water.SurfaceHeight - feet.y;
             float start = wadeStartDepth * height;
             if (under < start) { return; }

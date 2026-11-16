@@ -2,13 +2,9 @@ using UnityEngine;
 
 namespace Character
 {
-    // For movement modes: the character's size, and world queries that skip the character's own colliders.
+    // For movement modes: the character's skin, and world queries that skip the character's own colliders.
     public partial class MovementController
     {
-        /// <summary>The character's collider height standing up, in metres at its size (its collider may be lower: see HeightFraction).</summary>
-        public float StandingHeight => BaseHeight * Scale.y;
-        /// <summary>The character's collider radius, in metres at its size.</summary>
-        public float Radius => Body.Collider != null ? Body.Radius : 0.5f * HeightScale;
         /// <summary>The gap the character keeps from surfaces, in metres at its size.</summary>
         public float Skin => SkinWidth;
         /// <summary>The physics layers the character collides with.</summary>

@@ -111,7 +111,7 @@ namespace Character
             // from wherever the character caught hold).
             Vector3 feet = movementData.initialPosition;
             Vector3 travel = direction * (ride.speed * dt);
-            Vector3 hang = line.PointAt(ride.along) - Vector3.up * (ziplineHangHeight * controller.StandingHeight);
+            Vector3 hang = line.PointAt(ride.along) - Vector3.up * (ziplineHangHeight * controller.Body.StandingHeight);
             Vector3 correction = Vector3.ClampMagnitude(hang - (feet + travel), ziplineSnapSpeed * controller.SpeedScale * dt);
             movementData.velocityOverride = (travel + correction) / dt;
             movementData.directMovementVector = Vector3.zero;
@@ -143,7 +143,7 @@ namespace Character
                 || Mode.AbilityInProgressExcept<WallSliding, Dashing>(controller)) { return false; }
 
             float dt = movementData.deltaTime;
-            float hangHeight = ziplineHangHeight * controller.StandingHeight;
+            float hangHeight = ziplineHangHeight * controller.Body.StandingHeight;
             Vector3 grip = movementData.initialPosition + Vector3.up * hangHeight;
             Vector3 gripNext = grip + movementData.initialVelocity * dt;
             float reach = ziplineGrabReach * controller.HeightScale;

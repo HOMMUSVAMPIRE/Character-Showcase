@@ -121,7 +121,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
   depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
   `MovementController.Body`, a `CharacterBody` (`CapsuleBody`, the upright capsule, for now): don't reach for the
-  collider itself.
+  collider itself. Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
+  `BackExtent`, `SideExtent`), the one they mean, not by a collider dimension.
 - **Time-since-grounded values update every step, including in the air.** Coyote time, coyote gravity and air
   steering depend on it.
 - **Long comments in the code explain past bugs.** Treat them as constraints: keep the behaviour a comment protects,

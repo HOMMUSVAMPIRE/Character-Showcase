@@ -144,10 +144,12 @@ namespace CharacterShowcase.Tests
         // ---- The character's size and tuning, as it is now (at its current size) ----
 
         public CapsuleCollider Capsule => Character.GetComponent<CapsuleCollider>();
-        /// <summary>The capsule's height in metres.</summary>
-        public float Height => Capsule.height * Character.transform.lossyScale.y;
-        /// <summary>The capsule's radius in metres.</summary>
-        public float Radius => Capsule.radius * Mathf.Max(Character.transform.lossyScale.x, Character.transform.lossyScale.z);
+        /// <summary>How far (m) the character's body reaches out in front of its feet (see CharacterBody.FrontExtent).</summary>
+        public float FrontExtent => Movement.Body.FrontExtent;
+        /// <summary>How far (m) the character's body reaches out behind its feet (see CharacterBody.BackExtent).</summary>
+        public float BackExtent => Movement.Body.BackExtent;
+        /// <summary>How far (m) the character's body reaches out to either side of its feet (see CharacterBody.SideExtent).</summary>
+        public float SideExtent => Movement.Body.SideExtent;
         /// <summary>The tallest step the character climbs, in metres.</summary>
         public float StepHeight => Movement.MaxStepHeight * Movement.HeightScale;
         /// <summary>The steepest walkable slope, in degrees.</summary>
@@ -513,10 +515,10 @@ namespace CharacterShowcase.Tests
             }
         }
 
-        /// <summary>The character's collider height now, in metres (lower than its standing height while crouched).</summary>
-        public float CurrentHeight => Capsule.height;
-        /// <summary>The character's collider height standing up, in metres at its size.</summary>
-        public float StandingHeight => Movement.StandingHeight;
+        /// <summary>The character's body's height now, in metres (lower than its standing height while crouched).</summary>
+        public float CurrentHeight => Movement.Body.Height;
+        /// <summary>How tall the character stands, in metres at its size (see CharacterBody.StandingHeight).</summary>
+        public float StandingHeight => Movement.Body.StandingHeight;
         /// <summary>The character's velocity (m/s) as its last step left it.</summary>
         public Vector3 Velocity => Movement.lastFrameMovementData.finalVelocity;
         /// <summary>The character's gravity (m/s²) at its size: Fall &amp; Air Handling's Gravity Strength, scaled.</summary>

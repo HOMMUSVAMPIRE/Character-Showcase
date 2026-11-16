@@ -111,7 +111,7 @@ namespace Character
             swing.velocity = (next - offset) / dt;
             swing.offset = next;
 
-            Vector3 feet = rope.Anchor + next - Vector3.up * (ropeGripHeight * controller.StandingHeight);
+            Vector3 feet = rope.Anchor + next - Vector3.up * (ropeGripHeight * controller.Body.StandingHeight);
             movementData.velocityOverride = (feet - movementData.initialPosition) / dt;
             movementData.directMovementVector = Vector3.zero;
             Vector3 steer = MovementHelpers.InputDirection(movementData, inputs);
@@ -131,7 +131,7 @@ namespace Character
             RopeSwingState swing = controller.ropeSwing;
             if (!swing.IsSwinging || swing.rope == null || !movementData.state.HasFlag(CharacterState.RopeSwinging)) { return; }
             Vector3 feet = movementData.initialPosition + movementData.finalMovementVector;
-            Vector3 reached = feet + Vector3.up * (ropeGripHeight * controller.StandingHeight) - swing.rope.Anchor;
+            Vector3 reached = feet + Vector3.up * (ropeGripHeight * controller.Body.StandingHeight) - swing.rope.Anchor;
             if (reached.sqrMagnitude < 1e-8f) { return; }
             reached = reached.normalized * swing.gripDistance;
             if ((reached - swing.offset).sqrMagnitude > 1e-8f)
@@ -159,7 +159,7 @@ namespace Character
                 || Mode.AbilityInProgressExcept<WallSliding, Dashing>(controller)) { return false; }
 
             float dt = movementData.deltaTime;
-            Vector3 grip = movementData.initialPosition + Vector3.up * (ropeGripHeight * controller.StandingHeight);
+            Vector3 grip = movementData.initialPosition + Vector3.up * (ropeGripHeight * controller.Body.StandingHeight);
             Vector3 gripNext = grip + movementData.initialVelocity * dt;
             float reach = ropeGrabReach * controller.HeightScale;
 

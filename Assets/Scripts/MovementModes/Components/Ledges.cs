@@ -130,9 +130,9 @@ namespace Character
             Vector3 heading = InputDirection(movementData, inputs);
             heading = heading.sqrMagnitude > 0.01f ? heading.normalized : Facing(movementData);
             Vector3 feet = movementData.initialPosition;
-            float height = controller.StandingHeight;
+            float height = controller.Body.StandingHeight;
             if (!FindLedge(controller, feet, heading, ledgeGrabMinHeight * height, ledgeGrabMaxHeight * height,
-                    controller.Radius + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
+                    controller.Body.FrontExtent + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
             {
                 return false;
             }
@@ -147,8 +147,8 @@ namespace Character
         /// <summary>Where the character's feet hang from a ledge with the given edge and wall normal below it.</summary>
         private Vector3 HangPosition(MovementController controller, Vector3 wallNormal, Vector3 edge)
         {
-            Vector3 hang = edge + wallNormal * (controller.Radius + 2f * controller.Skin);
-            hang.y = edge.y - ledgeHangHeight * controller.StandingHeight;
+            Vector3 hang = edge + wallNormal * (controller.Body.FrontExtent + 2f * controller.Skin);
+            hang.y = edge.y - ledgeHangHeight * controller.Body.StandingHeight;
             return hang;
         }
 
@@ -159,7 +159,7 @@ namespace Character
         private void HoldLedge(MovementController controller, RaycastHit top, Vector3 wallNormal, Vector3 edge, Vector3 hang)
         {
             LedgeState ledge = controller.ledge;
-            Vector3 climbTarget = edge - wallNormal * (controller.Radius + ledgeClimbInset * controller.HeightScale);
+            Vector3 climbTarget = edge - wallNormal * (controller.Body.BackExtent + ledgeClimbInset * controller.HeightScale);
             climbTarget.y = edge.y + controller.Skin;
 
             // Kept in the ledge's space, so the character hangs on and climbs ledges that move.
@@ -192,19 +192,19 @@ namespace Character
         {
             if (ledgeClimbDuration <= 0f) { return false; }
             Vector3 feet = movementData.initialPosition;
-            float height = controller.StandingHeight;
+            float height = controller.Body.StandingHeight;
             // From low on the body (the wall is there, as the character is climbing it), or the lowest a ledge is grabbed
             // at, to as high as the hands reach.
             float low = (withinReach ? ledgeGrabMinHeight : 0.25f) * height;
             if (!FindLedge(controller, feet, heading, low, ledgeGrabMaxHeight * height,
-                    controller.Radius + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
+                    controller.Body.FrontExtent + ledgeGrabReach * controller.HeightScale, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge))
             {
                 return false;
             }
             if (requireFloor)
             {
                 // Something to stand on where the climb ends (see HoldLedge and TryDropOntoLedge), not open air behind.
-                Vector3 target = edge - wallNormal * (controller.Radius + ledgeClimbInset * controller.HeightScale);
+                Vector3 target = edge - wallNormal * (controller.Body.BackExtent + ledgeClimbInset * controller.HeightScale);
                 target.y = edge.y + controller.Skin;
                 if (!TryDropOntoLedge(controller, target, out _)) { return false; }
             }
@@ -243,7 +243,7 @@ namespace Character
 
             // Open space above it at the top of the window, out to a little past the wall's face, so the ledge's top is
             // somewhere in between.
-            float inset = Mathf.Min(0.1f * controller.HeightScale, controller.Radius);
+            float inset = Mathf.Min(0.1f * controller.HeightScale, controller.Body.FrontExtent);
             float depth = wall.distance + inset;
             Vector3 above = feet + Vector3.up * high;
             if (controller.Raycast(above, heading, depth, out _)) { return false; }
