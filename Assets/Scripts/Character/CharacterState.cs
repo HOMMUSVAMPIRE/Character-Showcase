@@ -38,5 +38,7 @@ namespace Character
         Ziplining = 262144,
         // Swimming at the surface of deep water (see Level.Water)
         Swimming = 524288,
+        // Walking through water too shallow to swim in, slowed by it (see Wading)
+        Wading = 1048576,
     }
 }

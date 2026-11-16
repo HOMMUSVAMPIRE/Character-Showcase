@@ -223,6 +223,8 @@ namespace Character
         public BounceState bounce { get; } = new BounceState();
         /// <summary>The character's swimming state (Swimming).</summary>
         public SwimState swim { get; } = new SwimState();
+        /// <summary>The character's wading state (Wading).</summary>
+        public WadeState wade { get; } = new WadeState();
 
         /// <summary>
         /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times
@@ -407,6 +409,7 @@ namespace Character
             (CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
             (CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
             (CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
+            (CharacterState.Wading, MovementEvents.WadeStarted, MovementEvents.WadeEnded),
         };
 
         private void RaiseEvents(MovementData data)

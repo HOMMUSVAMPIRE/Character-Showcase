@@ -11,7 +11,8 @@ namespace CharacterShowcase.Tests
     /// Tests of swimming: falling into deep water, the character plunges and floats back up to swim with its feet the
     /// swim depth below the surface; it swims the way the input points at the swim speed (the sprint speed with Sprint
     /// held), and slows to a stop without input; Jump jumps it out, its feet rising the swim jump height above the
-    /// surface, onto an edge a little above the water; it climbs a ladder out of the water, and climbs out onto a side
+    /// surface, onto an edge a little above the water; it climbs a ladder out of the water; swimming into something low
+    /// sticking out of the water it vaults over or onto it (a pool's side, a divider), and climbs out onto a taller side
     /// within reach of its hands (not one out of reach); walking down into deep water, or plunging to the bottom, it floats
     /// up to swim; swimming into shallows it finds its feet and walks out; and it doesn't swim with Swimming turned off, or
     /// a swim depth of 0.
@@ -156,18 +157,76 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y, Is.EqualTo(edge).Within(0.05f), "The character should have climbed out onto the pool's side.");
         }
 
+        private float SwimVaultHeight => rig.MovementSetting<float>("swimVaultHeight") * rig.StandingHeight;
+
+        /// <summary>Swims into the pool's side until standing on it (or the timeout), noting whether it vaulted and whether it climbed.</summary>
+        private IEnumerator SwimOutOver(float edge, System.Action<bool, bool> result)
+        {
+            bool vaulted = false, climbed = false;
+            yield return rig.RunUntil(() => rig.Grounded && rig.Position.y > edge - 0.05f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                vaulted |= rig.InState(CharacterState.Vaulting) || rig.InState(CharacterState.SteppingUp);
+                climbed |= rig.InState(CharacterState.LedgeClimbing);
+            }, timeoutSeconds: 6f);
+            result(vaulted, climbed);
+        }
+
         [UnityTest]
-        public IEnumerator SwimmingIntoALowSide_ClimbsOutOntoIt()
+        public IEnumerator SwimmingIntoALowSide_VaultsOntoIt()
         {
             yield return SwimmingInThePool();
             const float edge = 0.4f; // As the Level Playground's pool's sides are.
+            Assume.That(edge, Is.LessThan(SwimVaultHeight), "Test setup: the side should be low enough to vault from the water.");
             PoolSide(edge, ladder: false);
-            bool climbed = false;
-            yield return rig.RunUntil(() => rig.Grounded && rig.Position.y > edge - 0.05f, _ => CharacterTestRig.Move(Vector3.forward),
-                _ => climbed |= rig.InState(CharacterState.LedgeClimbing), timeoutSeconds: 6f);
-            Assert.That(climbed, Is.True, "Swimming into a side within reach, the character should climb out over it.");
+            bool vaulted = false, climbed = false;
+            yield return SwimOutOver(edge, (v, c) => { vaulted = v; climbed = c; });
+            Assert.That(vaulted, Is.True, "Swimming into a side low enough, the character should vault onto it.");
+            Assert.That(climbed, Is.False, "A side low enough to vault isn't climbed.");
             Assert.That(rig.Swimming, Is.False);
+            Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(edge).Within(0.05f), "The character should be standing on the side.");
+        }
+
+        [UnityTest]
+        public IEnumerator SwimmingIntoATallerSideWithinReach_ClimbsOutOntoIt()
+        {
+            yield return SwimmingInThePool();
+            float edge = SwimVaultHeight + 0.3f;
+            PoolSide(edge, ladder: false);
+            bool vaulted = false, climbed = false;
+            yield return SwimOutOver(edge, (v, c) => { vaulted = v; climbed = c; });
+            Assert.That(climbed, Is.True, "Swimming into a side too tall to vault but within reach, the character should climb out onto it.");
+            Assert.That(vaulted, Is.False);
+            Assert.That(rig.Position.y, Is.EqualTo(edge).Within(0.05f), "The character should be standing on the side.");
+        }
+
+        [UnityTest]
+        public IEnumerator ASwimVaultHeightOfZero_ClimbsOutOntoALowSideInstead()
+        {
+            yield return SwimmingInThePool();
+            rig.SetMovementSetting("swimVaultHeight", 0f);
+            const float edge = 0.4f;
+            PoolSide(edge, ladder: false);
+            bool vaulted = false, climbed = false;
+            yield return SwimOutOver(edge, (v, c) => { vaulted = v; climbed = c; });
+            Assert.That(vaulted, Is.False, "With a swim vault height of 0, the character shouldn't vault from the water.");
+            Assert.That(climbed, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator SwimmingIntoALowDivider_VaultsOverIt_BackIntoTheWater()
+        {
+            yield return SwimmingInThePool();
+            // A thin wall across the pool, its top a little out of the water: deep water on both sides.
+            const float top = 0.3f, at = 4f;
+            rig.Box("Divider", new Vector3(0f, (top - PoolDepth) / 2f, at), new Vector3(20f, top + PoolDepth, 0.3f));
+            Physics.SyncTransforms();
+            bool vaulted = false;
+            yield return rig.RunUntil(() => vaulted && rig.Swimming, _ => CharacterTestRig.Move(Vector3.forward),
+                _ => vaulted |= rig.InState(CharacterState.Vaulting), timeoutSeconds: 6f);
+            Assert.That(vaulted, Is.True, "Swimming into a low divider, the character should vault over it.");
+            Assert.That(rig.Swimming, Is.True, "Over the divider, the character should be swimming again.");
+            Assert.That(rig.Position.z, Is.GreaterThan(at), "The character should be past the divider.");
         }
 
         [UnityTest]

@@ -136,6 +136,7 @@ MonoBehaviour:
   leanSmoothTime: 0.12
   stepUpSmoothTime: 0.08
   stepUpMaxLag: 0.35
+  climbOutOfWaterStart: 0.35
 --- !u!136 &2503010006209077673
 CapsuleCollider:
   m_ObjectHideFlags: 0

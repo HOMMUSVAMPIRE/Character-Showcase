@@ -8,7 +8,7 @@ Crouching, sliding, rolling, wall-running, wall climbing, hanging, climbing, vau
 - The push plays at the speed the character pushes, and backward when it pulls (GrabSpeed).
 - A wall run plays the library's wall run for the side the wall is on, at the run's speed (the sprint, without the libraries).
 - A bounce off a bounce pad plays the jump (the Jump trigger fires on Bounced as on jumps).
-- Swimming plays the library's treading water, blending into its swim stroke as the character swims faster (see [Swimming](#swimming)).
+- Swimming plays the library's treading water, blending into its swim stroke as the character swims faster (see [Swimming](#swimming)). A vault out of the water plays the climb onto a ledge instead of the vault (`AnimationController` shows it as climbing, at the vault's progress), starting part way into the climb (the AnimationController's Climb Out Of Water Start): a swimmer at the edge is already higher than one hanging from it, so the climb's start dropped the body before it rose.
 
 Some states are poses of the mannequin's own, since the libraries have nothing for them:
 

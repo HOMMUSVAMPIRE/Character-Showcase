@@ -73,5 +73,8 @@ namespace Character
         // in shallower water: jumping out is a Jumped too)
         SwimStarted = 1L << 36,
         SwimEnded = 1L << 37,
+        // Started or stopped wading (walking through water too shallow to swim in)
+        WadeStarted = 1L << 38,
+        WadeEnded = 1L << 39,
     }
 }

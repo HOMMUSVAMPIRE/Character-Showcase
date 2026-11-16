@@ -21,7 +21,8 @@ namespace Character
         [Tooltip("The slowest (m/s) a vault leaves the character, at its authored size: a slower approach is sped up to " +
                  "this, so a vault is always brisk")]
         [SerializeField] private float vaultMinSpeed = 3f;
-        [Tooltip("Whether sprinting into something low on the ground vaults it, as running into it in mid-air does")]
+        [Tooltip("Whether sprinting into something low on the ground vaults it, as running into it in mid-air does (or " +
+                 "walking into it, while wading: see Wading)")]
         [SerializeField] private bool vaultFromGround = true;
         [Tooltip("How far (degrees) from head-on a sprint into something low on the ground can be and still vault it, so " +
                  "running along a railing doesn't")]
@@ -158,7 +159,6 @@ namespace Character
         /// </summary>
         private bool TryStartVault(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            VaultState vault = controller.vault;
             if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             // Below the window a ledge is grabbed in, whether or not ledges are (see Ledges).
             Ledges ledges = SettingsOf<Ledges>();
@@ -166,8 +166,11 @@ namespace Character
             Vector3 steer = InputDirection(movementData, inputs);
             if (grounded)
             {
+                // Sprinting into it; or, wading (as the last step was), walking into it: the water slows the character
+                // too much to sprint up to something low in it, and climbing over beats wading round.
                 bool sprinting = inputs.sprint != null && inputs.sprint.value;
-                if (!vaultFromGround || !sprinting || steer.sqrMagnitude < 0.25f) { return false; }
+                bool wading = (movementData.previousState & CharacterState.Wading) != 0;
+                if (!vaultFromGround || !(sprinting || wading) || steer.sqrMagnitude < 0.25f) { return false; }
             }
             else if (movementData.initialVelocity.y > ledges.LedgeMaxGrabRiseSpeed * controller.SpeedScale) { return false; }
 
@@ -178,13 +181,45 @@ namespace Character
                 : moving.sqrMagnitude > 0.01f ? moving.normalized : Vector3.zero;
             if (heading == Vector3.zero) { return false; }
 
-            // From just over a step to just under a ledge the character could grab. Looked for far enough ahead that a
-            // fast approach is caught before the next step takes it into the wall.
+            // From just over a step to just under a ledge the character could grab.
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
-            float high = ledges.LedgeGrabMinHeight * controller.StandingHeight;
+            return StartVaultOver(ref movementData, controller, ledges, heading, steer, grounded, stepHeight, ledges.LedgeGrabMinHeight * controller.StandingHeight);
+        }
+
+        /// <summary>
+        /// Vaults (or steps up) out of the water, for a swimmer heading into something whose top sticks out of it (see
+        /// Swimming): its top between low and high above the character's feet (from the water's surface to as high as
+        /// Swimming vaults from), over or onto it as from mid-air. The vault's first step is this one, as for a vault
+        /// started in TakeOver: a step with the swim over and the vault not yet begun (neither swimming nor vaulting)
+        /// had the Animator start blending from swimming into the air, which the climb out then had to wait for, and the
+        /// model went up, down and up again. Returns whether it started.
+        /// </summary>
+        internal bool TryVaultOutOfWater(ref MovementData movementData, Inputs inputs, MovementController controller, Vector3 heading,
+            float low, float high)
+        {
+            if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || heading.sqrMagnitude < 1e-4f) { return false; }
+            heading = heading.normalized;
+            if (!StartVaultOver(ref movementData, controller, SettingsOf<Ledges>(), heading, heading, grounded: false, low, high)) { return false; }
+            controller.vault.outOfWater = true;
+            return TakeOver(ref movementData, inputs, controller);
+        }
+
+        /// <summary>
+        /// Starts a vault or a step up over a wall just ahead, heading (and steered, steer) into it, whose top is between
+        /// low and high above the character's feet, with room to rise up to it and to be on top of it just past the edge
+        /// (see TryStartVault). From the ground, only over to somewhere to land.
+        /// </summary>
+        private bool StartVaultOver(ref MovementData movementData, MovementController controller, Ledges ledges, Vector3 heading,
+            Vector3 steer, bool grounded, float low, float high)
+        {
+            VaultState vault = controller.vault;
+            Vector3 velocity = movementData.initialVelocity;
+            Vector3 moving = new Vector3(velocity.x, 0f, velocity.z);
+            float stepHeight = controller.MaxStepHeight * controller.HeightScale;
+            // Looked for far enough ahead that a fast approach is caught before the next step takes it into the wall.
             float reach = controller.Radius + Mathf.Max(ledges.LedgeGrabReach * controller.HeightScale, 2f * moving.magnitude * movementData.deltaTime);
             Vector3 feet = movementData.initialPosition;
-            if (!ledges.FindLedge(controller, feet, heading, stepHeight, high, reach, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)) { return false; }
+            if (!ledges.FindLedge(controller, feet, heading, low, high, reach, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)) { return false; }
             bool steeringIn = Vector3.Dot(steer, -wallNormal) >= (grounded ? Mathf.Cos(vaultGroundMaxAngle * Mathf.Deg2Rad) : 0.5f);
             bool movingIn = !grounded && Vector3.Dot(moving, -wallNormal) >= 1f * controller.SpeedScale;
             if (!steeringIn && !movingIn) { return false; }
@@ -221,6 +256,7 @@ namespace Character
             float minSpeed = vaultMinSpeed * controller.SpeedScale;
             float speed = Mathf.Max(moving.magnitude, minSpeed, 1e-3f);
             vault.elapsed = 0f;
+            vault.outOfWater = false;
             vault.obstacle = top.transform;
             MovementController.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
             Quaternion toObstacleSpace = Quaternion.Inverse(obstacleRotation);
@@ -283,6 +319,11 @@ namespace Character
 
         /// <summary>Whether the character is vaulting or stepping up (None when it's doing neither).</summary>
         public Phase phase;
+        /// <summary>
+        /// Whether this vault is out of the water (see Swimming): a swimmer pulling itself up over or onto something,
+        /// which animation shows as a climb rather than a vault.
+        /// </summary>
+        public bool outOfWater;
         /// <summary>The object vaulted over (its Rigidbody's, if it has one).</summary>
         public Transform obstacle;
         /// <summary>The point on the edge vaulted over (on its top, in front of the character), in the obstacle's space.</summary>

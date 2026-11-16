@@ -43,7 +43,7 @@ namespace CharacterShowcase.Tests.EditMode
                 {
                     typeof(BouncePads), typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting),
                     typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
-                    typeof(Crouching), typeof(FallAndAirHandling), typeof(WalkingAndRunning), typeof(Dashing), typeof(Jumping),
+                    typeof(Crouching), typeof(Wading), typeof(FallAndAirHandling), typeof(WalkingAndRunning), typeof(Dashing), typeof(Jumping),
                 }),
                 "Most committed first: a bounce pad launches whatever the character is doing; what it hangs from holds it " +
                 "over everything below; a wall's top is grabbed out of a slide down it; a climbable wall is climbed rather " +

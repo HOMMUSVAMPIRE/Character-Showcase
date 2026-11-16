@@ -48,9 +48,9 @@ namespace Character
         /// its wall, and a vault, over what's too low to grab; holding an object; and a climbable surface, climbed
         /// instead of run along or slid down, or swum into from the water. Then swimming, which deep water takes the
         /// character into from whatever is below it in the list; then a wall run and a slide down a wall. Then on the
-        /// ground, a roll and a slide; and crouching, which only changes how the character walks. Then how it moves by
-        /// itself (see MovementComponent.Locomotion): falling and steering in the air, whose ground friction comes before
-        /// walking reads the momentum it leaves, and walking and running. Then dashing and jumping, which act on top of
+        /// ground, a roll and a slide; and crouching and wading, which only change how the character walks. Then how it
+        /// moves by itself (see MovementComponent.Locomotion): falling and steering in the air, whose ground friction comes
+        /// before walking reads the momentum it leaves, and walking and running. Then dashing and jumping, which act on top of
         /// walking, a dash before the jump that cancels it (see MovementComponent.AfterWalking).
         /// </summary>
         protected override IEnumerable<MovementComponent> DefaultComponents()
@@ -67,6 +67,7 @@ namespace Character
             yield return new WallSliding();
             yield return new Rolling();
             yield return new Crouching();
+            yield return new Wading();
             yield return new FallAndAirHandling();
             yield return new WalkingAndRunning();
             yield return new Dashing();
@@ -158,9 +159,13 @@ namespace Character
         /// <summary>
         /// The speed to move at for these inputs: the crouch speed while crouched (Crouching's), otherwise the run speed
         /// while sprinting, or the walk speed (Walking &amp; Running's, whether or not it's turned on: they shape air
-        /// steering and a roll's steering too; see WalkingAndRunning.MoveSpeed).
+        /// steering and a roll's steering too; see WalkingAndRunning.MoveSpeed). Slowed by wading this step, if Wading's
+        /// turned on (see Wading).
         /// </summary>
-        public override float MoveSpeed(Inputs inputs, MovementController controller) =>
-            controller.crouch.IsCrouched ? SettingsOf<Crouching>().CrouchSpeed : SettingsOf<WalkingAndRunning>().MoveSpeed(inputs);
+        public override float MoveSpeed(Inputs inputs, MovementController controller)
+        {
+            float speed = controller.crouch.IsCrouched ? SettingsOf<Crouching>().CrouchSpeed : SettingsOf<WalkingAndRunning>().MoveSpeed(inputs);
+            return Get<Wading>() != null ? speed * controller.wade.speedMultiplier : speed;
+        }
     }
 }

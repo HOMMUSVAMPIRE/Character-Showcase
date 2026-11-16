@@ -25,6 +25,7 @@ MonoBehaviour:
   - rid: 5929479653649547269
   - rid: 5929479654000558080
   - rid: 5929479654000558081
+  - rid: 5929479671128260609
   - rid: 5929479656689369088
   - rid: 5929479656689369089
   - rid: 5929479654395346944
@@ -333,3 +334,9 @@ MonoBehaviour:
         swimSprintSpeed: 5
         swimAcceleration: 8
         swimJumpHeight: 1.2
+    - rid: 5929479671128260609
+      type: {class: Wading, ns: Character, asm: CharacterShowcase}
+      data:
+        enabled: 1
+        wadeStartDepth: 0.1
+        wadeSpeedMultiplier: 0.5

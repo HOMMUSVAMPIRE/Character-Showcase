@@ -522,6 +522,44 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator SwimmingIntoALowSide_PlaysClimb_NotVault()
+        {
+            yield return Spawn();
+            // Deep water (no floor under it), with a side ahead whose top is a little out of the water: low enough to
+            // vault onto from the water (see Swimming), which shows as climbing out.
+            Level.Water water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));
+            float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
+            float edge = 0.5f * rig.MovementSetting<float>("swimVaultHeight") * rig.StandingHeight;
+            float top = water.SurfaceHeight + edge;
+            rig.Box("Pool Side", new Vector3(0f, (top + water.BottomHeight) / 2f, 18f), new Vector3(20f, top - water.BottomHeight, 30f));
+            rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
+            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+
+            // Straight from swimming into the climb, the body rising with it: it once went through the air state first (a
+            // step with neither swim nor climb), and the climb then started from its hang, below the swimmer's body, so
+            // the model went up, down and up again.
+            bool climbed = false, vaulted = false, airborne = false;
+            float size = rig.Controller.Scale.y, biggestDrop = 0f;
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            float lastHips = hips.position.y;
+            yield return rig.Run(3f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                climbed |= InAnimatorState("Climb");
+                vaulted |= InAnimatorState("Vault");
+                bool outOfWater = rig.InState(CharacterState.Vaulting);
+                airborne |= outOfWater && InAnimatorState("Airborne");
+                if (outOfWater) { biggestDrop = Mathf.Max(biggestDrop, lastHips - hips.position.y); }
+                lastHips = hips.position.y;
+            });
+            Assert.That(rig.Grounded && rig.Position.y > top - 0.05f, Is.True, "Test setup: the character should have got out onto the side.");
+            Assert.That(climbed, Is.True, $"Getting out of the water onto the side should play the climb (the Animator is in '{CurrentAnimatorState()}').");
+            Assert.That(vaulted, Is.False, "Getting out of the water shouldn't play the vault.");
+            Assert.That(airborne, Is.False, "Getting out of the water shouldn't pass through the air state.");
+            Assert.That(biggestDrop, Is.LessThan(0.1f * size), "Climbing out, the model's body shouldn't drop back as it rises.");
+        }
+
+        [UnityTest]
         public IEnumerator RollingFromACrouch_BlendsIntoTheCrouch_WithoutStandingUp()
         {
             yield return Spawn();

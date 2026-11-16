@@ -73,6 +73,15 @@ namespace Character
                                   "eases up after a step up, so its knees never fold up past its chest")]
         [Min(0f)] private float stepUpMaxLag = 0.35f;
 
+        [Header("Climbing Out Of Water")]
+        [SerializeField] [Tooltip("How far into the climb onto a ledge (0 to 1) a climb out of the water starts (see " +
+                                  "Swimming): a swimmer at the edge is already part way up, its body higher than one " +
+                                  "hanging from it, so starting from the hang dropped the model before it rose")]
+        [Range(0f, 0.9f)] private float climbOutOfWaterStart = 0.35f;
+
+        /// <summary>How far into the climb onto a ledge (0 to 1) a climb out of the water starts.</summary>
+        public float ClimbOutOfWaterStart { get => climbOutOfWaterStart; set => climbOutOfWaterStart = Mathf.Clamp(value, 0f, 0.9f); }
+
         // Gravity (m/s²) leans are balanced against, at the character's authored size.
         private const float LeanGravity = 9.81f;
 
@@ -215,6 +224,10 @@ namespace Character
             {
                 movementController.vault.TryGetEdge(out ledgeEdge, out ledgeNormal);
             }
+            // A vault out of the water (a swimmer pulling itself up onto a pool's edge, or over a divider) is shown as a
+            // climb up onto a ledge, its hands on the edge, not as a vault: from the water there's nothing to run at it from.
+            bool vaultingOutOfWater = movementData.state.HasFlag(CharacterState.Vaulting) && movementController != null
+                                      && movementController.vault.outOfWater;
             bool wallSliding = movementData.state.HasFlag(CharacterState.WallSliding) && movementController != null;
             bool wallClimbing = movementData.state.HasFlag(CharacterState.WallClimbing) && movementController != null;
             Vector3 wallPoint = Vector3.zero, wallNormal = Vector3.zero;
@@ -261,11 +274,13 @@ namespace Character
                 wallRunning = movementData.state.HasFlag(CharacterState.WallRunning),
                 wallSide = movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null ? movementController.wallRun.side : 0f,
                 rollProgress = movementController != null ? movementController.roll.Progress : 0f,
-                climbProgress = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing) ? movementController.ledge.ClimbProgress : 0f,
+                climbProgress = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing) ? movementController.ledge.ClimbProgress
+                    : vaultingOutOfWater ? Mathf.Lerp(climbOutOfWaterStart, 1f, movementController.vault.Progress) : 0f,
                 hanging = movementData.state.HasFlag(CharacterState.LedgeHanging),
-                climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing),
-                vaulting = movementData.state.HasFlag(CharacterState.Vaulting),
-                vaultProgress = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) ? movementController.vault.Progress : 0f,
+                climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing) || vaultingOutOfWater,
+                vaulting = movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater,
+                vaultProgress = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater
+                    ? movementController.vault.Progress : 0f,
                 steppingUp = movementData.state.HasFlag(CharacterState.SteppingUp),
                 stepUpLag = stepUpLag,
                 grabbing = movementData.state.HasFlag(CharacterState.Grabbing),
