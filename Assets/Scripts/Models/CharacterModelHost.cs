@@ -318,8 +318,8 @@ namespace Character
                 return; // Fitted, so it can't fail to fit.
             }
 
-            if (ModelHeightMeters <= 0f || !TryGetComponent(out CapsuleCollider capsule)) { return; }
-            float colliderHeight = capsule.height * transform.lossyScale.y;
+            if (ModelHeightMeters <= 0f || movement == null || movement.Body.Collider == null) { return; }
+            float colliderHeight = movement.Body.Height * transform.lossyScale.y;
             if (ModelHeightMeters > colliderHeight + 0.01f || ModelHeightMeters < colliderHeight * minimumHeightFraction)
             {
                 Debug.LogWarning($"[{nameof(CharacterModelHost)}] The model '{created.Root.name}' is {ModelHeightMeters:0.00} m tall, " +

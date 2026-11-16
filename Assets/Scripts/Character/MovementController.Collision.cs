@@ -2,12 +2,13 @@ using UnityEngine;
 
 namespace Character
 {
-    // Collision: resolving the step's motion against the world with capsule sweeps (sliding, stepping up, depenetrating).
+    // Collision: resolving the step's motion against the world with sweeps of the character's body (see CharacterBody):
+    // sliding, stepping up, depenetrating.
     public partial class MovementController
     {
         /// <summary>
         /// Resolve the character's intended motion against the world: push out of anything that moved into the
-        /// character, sweep the capsule, slide along walls and walkable slopes, step up onto low ledges (stairs), slide
+        /// character, sweep its body, slide along walls and walkable slopes, step up onto low ledges (stairs), slide
         /// off surfaces too steep to stand on, and stick to descending slopes. Momentum that a collision blocks is
         /// removed, and data.collisions records which sides were blocked.
         /// </summary>
@@ -19,7 +20,7 @@ namespace Character
 
             // Sweeps can't see anything they start inside of, so first push out of anything that moved into the
             // character since the last step (a moving wall, a platform's side, a lowering ceiling).
-            Vector3 depenetration = Depenetrate(pos, data.initialRotation);
+            Vector3 depenetration = Body.Depenetrate(pos, data.initialRotation);
             if (depenetration != Vector3.zero)
             {
                 pos += depenetration;
@@ -58,7 +59,7 @@ namespace Character
                 float maxSlopeDrop = Mathf.Min(groundSnapDistance * HeightScale, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
                 float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + SkinWidth;
                 if (horizDist > 1e-4f * HeightScale) { maxDrop = Mathf.Max(maxDrop, StepHeight + SkinWidth); }
-                if (CapsuleSweep(pos, Vector3.down, maxDrop + SkinWidth, out var snapHit)
+                if (Body.Sweep(pos, Vector3.down, maxDrop + SkinWidth, out var snapHit)
                     && (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle || IsStepEdge(snapHit, pos)))
                 {
                     // Negative when the ground is closer than the skin width (rolling over a step's edge can close the
@@ -93,7 +94,7 @@ namespace Character
             if (mag < 1e-6f) { return Vector3.zero; }
             Vector3 dir = horizMove / mag;
 
-            if (!CapsuleSweep(feetPos, dir, mag + SkinWidth, out var hit))
+            if (!Body.Sweep(feetPos, dir, mag + SkinWidth, out var hit))
             {
                 return horizMove;
             }
@@ -130,7 +131,7 @@ namespace Character
             if (slideMag < 1e-6f) { return traveled; }
 
             // Make sure the slide direction isn't itself blocked (a corner).
-            if (CapsuleSweep(feetPos + traveled, slide / slideMag, slideMag + SkinWidth, out var slideHit))
+            if (Body.Sweep(feetPos + traveled, slide / slideMag, slideMag + SkinWidth, out var slideHit))
             {
                 Vector3 cornerNormal = new Vector3(slideHit.normal.x, 0f, slideHit.normal.z);
                 if (cornerNormal.sqrMagnitude > 1e-6f) { RemoveInertiaInto(ref inertia, cornerNormal.normalized); }
@@ -141,18 +142,18 @@ namespace Character
         }
 
         /// <summary>
-        /// Attempt the classic step-up: lift the capsule by maxStepHeight, move forward, then drop back down.
+        /// Attempt the classic step-up: lift the body by maxStepHeight, move forward, then drop back down.
         /// Returns Vector3.zero if the step cannot be made (headroom blocked, no floor, or floor too steep).
         /// </summary>
         private Vector3 TryStepUp(Vector3 feetPos, Vector3 dir, float distance)
         {
             // 1) Make sure there's headroom to lift up.
             float stepHeight = StepHeight;
-            if (CapsuleSweep(feetPos, Vector3.up, stepHeight + SkinWidth, out _)) { return Vector3.zero; }
+            if (Body.Sweep(feetPos, Vector3.up, stepHeight + SkinWidth, out _)) { return Vector3.zero; }
             Vector3 raised = feetPos + Vector3.up * stepHeight;
 
             // 2) Sweep forward from the raised position.
-            if (CapsuleSweep(raised, dir, distance + SkinWidth, out var fwdHit))
+            if (Body.Sweep(raised, dir, distance + SkinWidth, out var fwdHit))
             {
                 float travel = Mathf.Max(0f, fwdHit.distance - SkinWidth);
                 if (travel < 1e-4f * HeightScale) { return Vector3.zero; }
@@ -164,7 +165,7 @@ namespace Character
             }
 
             // 3) Drop back down and make sure we land on walkable ground.
-            if (!CapsuleSweep(raised, Vector3.down, stepHeight + SkinWidth, out var downHit)) { return Vector3.zero; }
+            if (!Body.Sweep(raised, Vector3.down, stepHeight + SkinWidth, out var downHit)) { return Vector3.zero; }
 
             // 4) Make sure we land on the step, not perched on its edge. Moving only this step's distance forward, the
             // capsule's rounded bottom often comes down on the step's edge, well ahead of its axis. The ground check
@@ -177,9 +178,9 @@ namespace Character
             if (ahead > landingReach)
             {
                 float extra = ahead - landingReach;
-                if (CapsuleSweep(raised, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
+                if (Body.Sweep(raised, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
                 raised += dir * extra;
-                if (!CapsuleSweep(raised, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
+                if (!Body.Sweep(raised, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
             }
             if (Vector3.Angle(downHit.normal, Vector3.up) > maxSlopeAngle) { return Vector3.zero; }
 
@@ -204,7 +205,7 @@ namespace Character
             if (Mathf.Abs(verticalDelta) < 1e-6f) { return Vector3.zero; }
             Vector3 dir = verticalDelta > 0f ? Vector3.up : Vector3.down;
             float mag = Mathf.Abs(verticalDelta);
-            if (!CapsuleSweep(feetPos, dir, mag + SkinWidth, out var hit)) { return dir * mag; }
+            if (!Body.Sweep(feetPos, dir, mag + SkinWidth, out var hit)) { return dir * mag; }
             float travel = Mathf.Max(0f, hit.distance - SkinWidth);
             Vector3 traveled = dir * travel;
 
@@ -229,7 +230,7 @@ namespace Character
                 if (slideMag > 1e-6f)
                 {
                     Vector3 slideDir = slide / slideMag;
-                    if (CapsuleSweep(feetPos + traveled, slideDir, slideMag + SkinWidth, out var slideHit))
+                    if (Body.Sweep(feetPos + traveled, slideDir, slideMag + SkinWidth, out var slideHit))
                     {
                         slide = slideDir * Mathf.Max(0f, slideHit.distance - SkinWidth);
                     }
@@ -240,41 +241,10 @@ namespace Character
         }
 
         /// <summary>
-        /// Finds how far the character must move to stop overlapping the world. Only overlaps deeper than the skin
-        /// width count, so resting against the floor or a wall isn't treated as being inside it.
-        /// </summary>
-        private Vector3 Depenetrate(Vector3 feetPos, Quaternion rotation)
-        {
-            if (capsule == null) { return Vector3.zero; }
-
-            Vector3 offset = Vector3.zero;
-            for (int pass = 0; pass < MaxDepenetrationPasses; pass++)
-            {
-                GetSweepCapsule(feetPos + offset, out Vector3 top, out Vector3 bottom, out float radius);
-                int count = Physics.OverlapCapsuleNonAlloc(top, bottom, radius, overlaps, movementLayerMask, QueryTriggerInteraction.Ignore);
-                bool pushed = false;
-                for (int i = 0; i < count; i++)
-                {
-                    Collider other = overlaps[i];
-                    if (IsOwnCollider(other.transform)) { continue; }
-                    GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
-                    if (Physics.ComputePenetration(capsule, feetPos + offset, rotation, other, otherPosition, otherRotation,
-                            out Vector3 direction, out float distance))
-                    {
-                        offset += direction * distance;
-                        pushed = true;
-                    }
-                }
-                if (!pushed) { break; }
-            }
-            return offset;
-        }
-
-        /// <summary>
         /// A collider's physics pose. Colliders on an interpolated Rigidbody follow its physics pose, not their
         /// transform, which may hold a smoothed render pose that lags the simulation.
         /// </summary>
-        private static void GetColliderPose(Collider collider, out Vector3 position, out Quaternion rotation)
+        internal static void GetColliderPose(Collider collider, out Vector3 position, out Quaternion rotation)
         {
             Transform colliderTransform = collider.transform;
             Rigidbody body = collider.attachedRigidbody;
@@ -292,59 +262,13 @@ namespace Character
         }
 
         /// <summary>
-        /// The capsule used for collision queries, placed at the given feet position: the character's capsule shrunk by
-        /// the skin width, with its bottom raised by the skin width.
-        /// </summary>
-        private void GetSweepCapsule(Vector3 feetPos, out Vector3 top, out Vector3 bottom, out float radius)
-        {
-            if (capsule != null) { GetSweepCapsule(feetPos, capsule.radius, capsule.height, capsule.center, SkinWidth, out top, out bottom, out radius); }
-            else { GetSweepCapsule(feetPos, 0.5f, 2f, new Vector3(0f, 1f, 0f), SkinWidth, out top, out bottom, out radius); }
-        }
-
-        /// <summary>The same, for a capsule of the given size and skin width (one the character might be resized to).</summary>
-        private static void GetSweepCapsule(Vector3 feetPos, float capsuleRadius, float capsuleHeight, Vector3 localCenter,
-            float skin, out Vector3 top, out Vector3 bottom, out float radius)
-        {
-            radius = capsuleRadius - skin;
-            if (radius <= 0f) { radius = capsuleRadius * 0.5f; }
-            float height = Mathf.Max(capsuleHeight, capsuleRadius * 2f);
-            float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skin);
-            Vector3 center = feetPos + localCenter;
-            bottom = center - Vector3.up * halfSegment;
-            top = center + Vector3.up * halfSegment;
-        }
-
-        /// <summary>
-        /// Capsule-sweep from a feet-anchored position in the given direction, returning the closest non-self hit.
-        /// </summary>
-        private bool CapsuleSweep(Vector3 feetPos, Vector3 direction, float distance, out RaycastHit closest)
-        {
-            closest = default;
-            if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
-
-            GetSweepCapsule(feetPos, out Vector3 top, out Vector3 bot, out float radius);
-            int count = Physics.CapsuleCastNonAlloc(top, bot, radius, direction.normalized, castHits, distance, movementLayerMask, QueryTriggerInteraction.Ignore);
-            float min = float.PositiveInfinity;
-            bool found = false;
-            for (int i = 0; i < count; i++)
-            {
-                RaycastHit h = castHits[i];
-                if (IsOwnCollider(h.collider.transform)) { continue; }
-                // hit.distance of 0 means we started already overlapping — skip so we can slide out instead of locking up.
-                if (h.distance <= 0f) { continue; }
-                if (h.distance < min) { min = h.distance; closest = h; found = true; }
-            }
-            return found;
-        }
-
-        /// <summary>
         /// Something the character's collision ignores, as it does its own colliders: an object it's holding and moving
         /// along with itself (see GrabState), which would otherwise block it. Null for nothing.
         /// </summary>
         public Transform IgnoredCollisionRoot { get; set; }
 
         /// <summary>Whether a collider is the character's own (or ignored: see IgnoredCollisionRoot), so collision skips it.</summary>
-        private bool IsOwnCollider(Transform other) =>
+        internal bool IsOwnCollider(Transform other) =>
             other.IsChildOf(transform) || (IgnoredCollisionRoot != null && other.IsChildOf(IgnoredCollisionRoot));
     }
 }

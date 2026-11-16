@@ -2,7 +2,7 @@
 How the project fits together: what happens in one physics step, which code may know about which, and where each kind of thing lives. The rules for changing it are in AGENTS.md; this page is the map. Terms used here are in the [Glossary](glossary.md).
 
 ## The parts
-- **The character** (Assets/Scripts/Character): `ACCharacterController` drives it; `MovementController` moves it, resolving collision itself with capsule sweeps rather than the physics solver; `ACInputManager` reads the player's input; `CharacterSpawner` spawns it.
+- **The character** (Assets/Scripts/Character): `ACCharacterController` drives it; `MovementController` moves it, resolving collision itself with sweeps of its body (a `CharacterBody`: an upright capsule, `CapsuleBody`) rather than the physics solver; `ACInputManager` reads the player's input; `CharacterSpawner` spawns it.
 - **The movement** (Assets/Scripts/MovementModes): a movement mode (`BasicMovementMode`, a ScriptableObject asset) made of movement components (walking and running, falling and air handling, and each ability), which the `MovementController` runs every physics step. See [Movement](movement.md).
 - **Animation, IK and models** (Assets/Scripts/Animation, IK, Models): `AnimationController` turns what the movement did into an animation state for the model; `CharacterModelHost` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
 - **Effects** (Assets/Scripts/Effects): `WaterEffects` plays splashes and ripples from the movement's events and state, as prefabs anyone can replace (see [Climbing and Traversal](traversal.md#splashes-and-ripples)).
@@ -28,7 +28,7 @@ flowchart TD
         D6 --> D7["Posture (collider lowered while kept low)"]
         D7 --> D8["FinishStep (fall speed limit)"]
     end
-    D8 --> E["CheckMovementValid: capsule sweeps against the world<br/>(MovementController.Collision.cs)"]
+    D8 --> E["CheckMovementValid: body sweeps against the world<br/>(MovementController.Collision.cs, CharacterBody)"]
     E --> F["AfterMovementResolved (things moved with the character)"]
     F --> G["CompleteMovement: moves the Rigidbody"]
     G --> H["Events raised (MovementEvents)"]

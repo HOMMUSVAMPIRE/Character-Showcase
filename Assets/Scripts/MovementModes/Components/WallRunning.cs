@@ -207,7 +207,7 @@ namespace Character
             normal = Vector3.zero;
             distance = 0f;
             float reach = wallRunCheckDistance * controller.HeightScale + controller.Skin;
-            if (!controller.SweepCapsule(feet, direction, reach, out RaycastHit hit)) { return false; }
+            if (!controller.SweepBody(feet, direction, reach, out RaycastHit hit)) { return false; }
             if (Mathf.Abs(hit.normal.y) > Mathf.Sin(wallRunMaxWallTilt * Mathf.Deg2Rad)) { return false; }
             normal = new Vector3(hit.normal.x, 0f, hit.normal.z);
             if (normal.sqrMagnitude < 1e-6f) { return false; }

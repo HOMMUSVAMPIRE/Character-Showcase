@@ -54,29 +54,27 @@ namespace Character
         /// </summary>
         private string CapabilitiesKey()
         {
-            RememberBaseCapsule();
             CultureInfo invariant = CultureInfo.InvariantCulture;
             string F(float value) => value.ToString("R", invariant);
             string V(Vector3 value) => $"{F(value.x)},{F(value.y)},{F(value.z)}";
             string mode = movementHandler != null ? $"{movementHandler.GetType().FullName}:{JsonUtility.ToJson(movementHandler)}" : "";
-            return string.Join("|", mode, V(Scale), F(baseRadius), F(baseHeight), V(baseCenter), sizeScaling.ToString(), F(maxStepHeight),
+            return string.Join("|", mode, V(Scale), Body.CapabilitiesKey(), sizeScaling.ToString(), F(maxStepHeight),
                 F(maxSlopeAngle), F(skinWidth), F(groundSnapDistance), F(groundCheckRadius), F(movementSpeedMultiplier), F(jumpStrengthModifier),
                 movementLayerMask.value.ToString(invariant), moveWithGround.ToString(), rotateWithGround.ToString(),
                 inheritGroundVelocity.ToString(), F(maxGroundCarryPerStep), gameObject.layer.ToString(invariant));
         }
 
         /// <summary>
-        /// Makes this controller (on a bare object with the given Rigidbody and capsule, not yet active) a copy of source
-        /// for simulating its movement: the same settings, movement mode, collider (as authored, and at the same size; or,
-        /// given an authored radius and height, that collider standing on its feet), but none of its state. See
-        /// MovementSimulation.
+        /// Makes this controller (on a bare object with the given Rigidbody, not yet active) a copy of source for
+        /// simulating its movement: the same settings, movement mode, body (a collider of its kind, as authored, and at the
+        /// same size; or, given an authored radius and height, that body standing on its feet: see CharacterBody.CopyFor),
+        /// but none of its state. See MovementSimulation.
         /// </summary>
-        internal void CopyForSimulation(MovementController source, Rigidbody body, CapsuleCollider collider, MovementMode mode,
+        internal void CopyForSimulation(MovementController source, Rigidbody body, MovementMode mode,
             float? authoredRadius = null, float? authoredHeight = null)
         {
-            source.RememberBaseCapsule();
             rb = body;
-            capsule = collider;
+            this.body = source.Body.CopyFor(this, authoredRadius, authoredHeight);
             movementHandler = mode;
             movementSpeedMultiplier = source.movementSpeedMultiplier;
             jumpStrengthModifier = source.jumpStrengthModifier;
@@ -91,16 +89,6 @@ namespace Character
             rotateWithGround = source.rotateWithGround;
             inheritGroundVelocity = source.inheritGroundVelocity;
             maxGroundCarryPerStep = source.maxGroundCarryPerStep;
-            baseRadius = source.baseRadius;
-            baseHeight = source.baseHeight;
-            baseCenter = source.baseCenter;
-            if (authoredRadius.HasValue && authoredHeight.HasValue && authoredHeight.Value > 0f)
-            {
-                baseHeight = authoredHeight.Value;
-                baseRadius = Mathf.Min(authoredRadius.Value, baseHeight * 0.5f);
-                baseCenter = new Vector3(baseCenter.x, baseHeight * 0.5f, baseCenter.z);
-            }
-            hasBaseCapsule = true;
             heightFraction = 1f;
             ApplyScale(source.Scale);
         }

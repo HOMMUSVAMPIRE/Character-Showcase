@@ -105,7 +105,7 @@ namespace Character
             if (!held || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             Vector3 feet = movementData.initialPosition;
             Vector3 facing = Facing(movementData);
-            if (!controller.SweepCapsule(feet, facing, grabReach * controller.HeightScale + controller.Skin, out RaycastHit hit)) { return false; }
+            if (!controller.SweepBody(feet, facing, grabReach * controller.HeightScale + controller.Skin, out RaycastHit hit)) { return false; }
             PushableObject target = hit.collider.GetComponentInParent<PushableObject>();
             if (target == null || !target.isActiveAndEnabled) { return false; }
 

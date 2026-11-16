@@ -8,7 +8,7 @@ namespace Character
         /// <summary>The character's collider height standing up, in metres at its size (its collider may be lower: see HeightFraction).</summary>
         public float StandingHeight => BaseHeight * Scale.y;
         /// <summary>The character's collider radius, in metres at its size.</summary>
-        public float Radius => capsule != null ? capsule.radius : 0.5f * HeightScale;
+        public float Radius => Body.Collider != null ? Body.Radius : 0.5f * HeightScale;
         /// <summary>The gap the character keeps from surfaces, in metres at its size.</summary>
         public float Skin => SkinWidth;
         /// <summary>The physics layers the character collides with.</summary>
@@ -19,8 +19,8 @@ namespace Character
         /// would hit within distance, other than the character itself. A hit's distance includes the skin width, so a
         /// surface the character rests against is about Skin away.
         /// </summary>
-        public bool SweepCapsule(Vector3 feet, Vector3 direction, float distance, out RaycastHit hit) =>
-            CapsuleSweep(feet, direction, distance, out hit);
+        public bool SweepBody(Vector3 feet, Vector3 direction, float distance, out RaycastHit hit) =>
+            Body.Sweep(feet, direction, distance, out hit);
 
         /// <summary>The nearest thing a ray hits within distance, other than the character itself (triggers aren't hit).</summary>
         public bool Raycast(Vector3 origin, Vector3 direction, float distance, out RaycastHit hit)

@@ -157,7 +157,7 @@ namespace Character
         /// </summary>
         private bool IsStepEdge(RaycastHit hit, Vector3 feet)
         {
-            float radius = capsule != null ? capsule.radius : 0.5f * HeightScale;
+            float radius = Body.Collider != null ? Body.Radius : 0.5f * HeightScale;
             if (hit.point.y > feet.y + radius) { return false; }
             float lift = SkinWidth;
             float reach = lift + StepHeight + GroundedTolerance + SkinWidth;

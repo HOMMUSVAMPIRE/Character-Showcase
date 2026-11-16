@@ -72,7 +72,7 @@ As the model turns about its feet, foot placement locks each planted foot where 
 Only the model turns and leans: the character's collision and the camera, which follow the root, don't.
 
 ## Collision
-MovementController resolves the character's movement against the world itself, with capsule sweeps rather than the physics solver. Each physics step it:
+MovementController resolves the character's movement against the world itself, with sweeps of the character's body rather than the physics solver. The body (`MovementController.Body`, a `CharacterBody`) is everything collision knows of the character's shape: its collider, its size, sweeping it, whether it fits somewhere, and pushing it out of what's moved into it. For now it's an upright capsule (`CapsuleBody`), standing on the character's feet. Each physics step it:
 - pushes the character out of anything that moved into them since the last step, so moving walls and platforms push the character instead of passing through
 - slides along walls and walkable slopes, and steps up stairs and low ledges, anything up to the step height, at any pace (a step-up carries the character far enough onto the step that it doesn't perch on the edge and slide back off)
 - slides the character off surfaces too steep to stand on, including ledge edges caught by the capsule's rounded bottom; but the edge of a step (one with walkable ground no further than the step height below the character's feet) is ground, so on stairs whose treads are shallower than the capsule is wide, as the level's are, the character walks and sprints down resting on the steps' edges instead of floating off the top step

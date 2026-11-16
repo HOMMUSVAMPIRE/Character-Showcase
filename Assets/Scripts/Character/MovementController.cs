@@ -69,7 +69,7 @@ namespace Character
 
         [Header("Collision")]
         [SerializeField]
-        [Tooltip("The character's capsule collider — collision sweeps use its size. Auto-fetched in Awake if left empty.")]
+        [Tooltip("The character's capsule collider: its body for collision (see Body), whose size collision sweeps use. Auto-fetched in Awake if left empty.")]
         private CapsuleCollider capsule;
         [SerializeField]
         [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
@@ -120,16 +120,13 @@ namespace Character
         /// radius. Small clearances (the skin width) scale with it, so they stay as thin, for the character's size, on
         /// every side.
         /// </summary>
-        private float ClearanceScale => hasBaseCapsule && baseRadius > 0f && capsule != null
-            ? Mathf.Min(HeightScale, capsule.radius / baseRadius) : HeightScale;
+        private float ClearanceScale => Body.HasAuthoredSize && Body.AuthoredRadius > 0f && Body.Collider != null
+            ? Mathf.Min(HeightScale, Body.Radius / Body.AuthoredRadius) : HeightScale;
 
         /// <summary>The gap kept between the character and surfaces, at its size.</summary>
-        private float SkinWidth => skinWidth * ClearanceScale;
-
-        // The capsule as authored, which the character's size scales.
-        private float baseRadius, baseHeight;
-        private Vector3 baseCenter;
-        private bool hasBaseCapsule;
+        internal float SkinWidth => skinWidth * ClearanceScale;
+        /// <summary>The gap kept between the character and surfaces at its authored size (a body scales it for itself).</summary>
+        internal float AuthoredSkinWidth => skinWidth;
 
         // How far below the feet the floor can be while still counting as grounded. The ground snap always closes
         // this gap, so the character never hovers inside it.
@@ -140,21 +137,23 @@ namespace Character
         // How far from straight below the character's feet a step's edge may be when it lands on the step (see TryStepUp).
         private const float StepLandingAngle = 40f;
 
-        /// <summary>The radius of the capsule used for collision sweeps (the capsule's, less the skin width).</summary>
-        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (capsule != null ? capsule.radius : 0.5f) - SkinWidth);
+        /// <summary>The radius of the body used for collision sweeps (the body's, less the skin width).</summary>
+        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (Body.Collider != null ? Body.Radius : 0.5f) - SkinWidth);
 
         /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
         private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
-            : (capsule != null ? capsule.radius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
+            : (Body.Collider != null ? Body.Radius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
 
         /// <summary>The tallest step the character climbs at its size.</summary>
         private float StepHeight => maxStepHeight * HeightScale;
 
-        // Passes made to push the character out of geometry that moved into them, for when several things overlap.
-        private const int MaxDepenetrationPasses = 4;
         private readonly Collider[] overlaps = new Collider[16];
         // Reused for every ground check and collision sweep (several per physics step), so they don't allocate
         private readonly RaycastHit[] castHits = new RaycastHit[32];
+        /// <summary>The buffer the body's overlap queries fill (reused, so they don't allocate).</summary>
+        internal Collider[] OverlapBuffer => overlaps;
+        /// <summary>The buffer the body's sweeps fill (reused: the ground check and sweeps share it, one at a time).</summary>
+        internal RaycastHit[] CastBuffer => castHits;
 
         private void Awake()
         {

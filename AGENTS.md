@@ -117,8 +117,11 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
   Transform holds a lagging render pose. Movement reads `Rigidbody.position` / `rotation` (see `GetGroundPose`).
   Moving platforms are kinematic Rigidbodies moved in `FixedUpdate`.
-- **Collision is resolved by `MovementController` with capsule sweeps,** not the physics solver. Blocked momentum is
-  removed; `MovementData.collisions` / `previousCollisions` record blocked sides.
+- **Collision is resolved by `MovementController` with sweeps of the character's body,** not the physics solver.
+  Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
+  depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
+  `MovementController.Body`, a `CharacterBody` (`CapsuleBody`, the upright capsule, for now): don't reach for the
+  collider itself.
 - **Time-since-grounded values update every step, including in the air.** Coyote time, coyote gravity and air
   steering depend on it.
 - **Long comments in the code explain past bugs.** Treat them as constraints: keep the behaviour a comment protects,
@@ -197,7 +200,7 @@ swimming clips are floated at Swimming's Swim Depth: after changing it, run Gene
 - **Movement times things by `MovementController.StepTime`,** its own clock, never `Time.fixedTime`, so a copy stepped
   faster than real time (`MovementSimulation`, which measures `Capabilities`) behaves the same. Don't read global time
   in movement code.
-- **Abilities query the world through the `MovementController`** (`SweepCapsule`, `Raycast`, `OverlapSphere`,
+- **Abilities query the world through the `MovementController`** (`SweepBody`, `Raycast`, `OverlapSphere`,
   `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders and its `IgnoredCollisionRoot`.
   `SetHeightFraction` lowers the collider keeping the feet in place.
 - **Ropes, ziplines and water have no colliders:** abilities find them through `Level.Rope.All` / `Level.Zipline.All`

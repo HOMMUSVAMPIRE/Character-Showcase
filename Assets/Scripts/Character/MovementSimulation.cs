@@ -92,13 +92,12 @@ namespace Character
             character = new GameObject("Simulated Character") { hideFlags = HideFlags.HideAndDontSave, layer = source.gameObject.layer };
             character.SetActive(false);
             character.transform.SetParent(root.transform, false);
-            var collider = character.AddComponent<CapsuleCollider>();
             body = character.AddComponent<Rigidbody>();
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.None;
             Controller = character.AddComponent<MovementController>();
-            Controller.CopyForSimulation(source, body, collider, mode != null ? mode : source.movementHandler, baseRadius, baseHeight);
+            Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementHandler, baseRadius, baseHeight);
             Controller.InputCamera = root.transform;
             Controller.MovementEventRaised += (e, _) => LastEvents |= e;
             character.SetActive(true);

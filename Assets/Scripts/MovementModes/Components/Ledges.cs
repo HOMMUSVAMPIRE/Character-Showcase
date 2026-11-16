@@ -304,7 +304,7 @@ namespace Character
             // it by float rounding, depending on the ledge's height: off a ladder whose top was level with a floor, at 3, 8,
             // 10 or 12 m the floor was missed and the character was stuck at the ladder's top (at 4 to 6 m it was found).
             // Two skins further makes sure of it.
-            if (!controller.SweepCapsule(from, Vector3.down, 2f * stepHeight + 4f * controller.Skin, out RaycastHit hit)) { return false; }
+            if (!controller.SweepBody(from, Vector3.down, 2f * stepHeight + 4f * controller.Skin, out RaycastHit hit)) { return false; }
             standing = from + Vector3.down * Mathf.Max(0f, hit.distance - controller.Skin);
             return controller.CanFitAt(standing, 1f);
         }
