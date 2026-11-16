@@ -71,6 +71,9 @@ namespace Character
             if (IsModelReady || IsLoadingModel) { return; }
             modelSource = source;
         }
+        /// <summary>
+        /// Loaded instead if the model source fails to load (not if it's replaced first). May be null.
+        /// </summary>
         public CharacterModelSource FallbackSource { get => fallbackSource; set => fallbackSource = value; }
         /// <summary>The model in use, with its Animator, IK and translator, or null while there is none.</summary>
         public CharacterModel CurrentModel => model != null && model.Root != null ? model : null;
@@ -80,7 +83,9 @@ namespace Character
         public Animator Animator => CurrentModel?.Animator;
         /// <summary>IK for the model's hands, feet, elbows and knees, blended over its animations. May be null.</summary>
         public CharacterIK IK => CurrentModel?.IK;
+        /// <summary>Whether a model is in use.</summary>
         public bool IsModelReady => CurrentModel != null;
+        /// <summary>Whether a model is being loaded (the current one, if any, stays until it's ready).</summary>
         public bool IsLoadingModel => pendingLoad != null;
         /// <summary>The transform models go under; turned to face the character's direction by AnimationController.</summary>
         public Transform ModelParent => modelParent;
@@ -95,6 +100,10 @@ namespace Character
 
         /// <summary>How the character's collider is fitted to its model. See colliderFit. Applies to models loaded after it's set.</summary>
         public ColliderFit ColliderFitting { get => colliderFit; set => colliderFit = value; }
+        /// <summary>
+        /// With Collider Fit set to Height And Width: the collider's width as a multiple of the model's shoulder width
+        /// (at least 0.1).
+        /// </summary>
         public float ColliderWidthMargin { get => colliderWidthMargin; set => colliderWidthMargin = Mathf.Max(0.1f, value); }
         /// <summary>Whether a collider fitted to the model is still waiting for room to grow.</summary>
         public bool IsFittingCollider => pendingColliderFit;
@@ -133,9 +142,15 @@ namespace Character
             if (loadModelOnStart && modelSource != null && !IsModelReady && !IsLoadingModel) { _ = LoadModelAsync(modelSource); }
         }
 
-        private void FixedUpdate()
+        // A fitted collider that didn't have room to grow tries again each physics step.
+        private void FixedUpdate() => TryFitColliderNow();
+
+        /// <summary>
+        /// Tries again to fit the collider to the model, if it's waiting for room to grow, as each physics step does: for
+        /// something that steps the physics itself (the tests' rig), whose steps don't run FixedUpdate.
+        /// </summary>
+        public void TryFitColliderNow()
         {
-            // A fitted collider that didn't have room to grow tries again each physics step.
             if (pendingColliderFit) { TryFitCollider(); }
         }
 

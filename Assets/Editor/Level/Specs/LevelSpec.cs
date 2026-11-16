@@ -19,6 +19,7 @@ namespace CharacterShowcase.EditorTools.Level
     /// </summary>
     public sealed class SeededRandom : System.Random
     {
+        /// <summary>The seed it was made with.</summary>
         public readonly int Seed;
         public SeededRandom(int seed) : base(seed) => Seed = seed;
     }
@@ -46,18 +47,26 @@ namespace CharacterShowcase.EditorTools.Level
     /// </summary>
     public sealed class LevelSpec
     {
+        /// <summary>What a spec's "format" says, so a file can be told for a level spec.</summary>
         public const string Format = "character-showcase-level";
+        /// <summary>The spec format's version, written as "version".</summary>
         public const int Version = 1;
+        /// <summary>The name a "State" entry has in place of a piece's.</summary>
         public const string StatePiece = "State";
 
+        /// <summary>The level's name: its root object's.</summary>
         public string Name;
+        /// <summary>The scene it's built into.</summary>
         public string Scene;
+        /// <summary>Its parts, in build order.</summary>
         public readonly List<Part> Parts = new();
 
         /// <summary>A part of a level: built as one step, its pieces in order.</summary>
         public sealed class Part
         {
+            /// <summary>The part's name, which its build step shows ("Building [name]").</summary>
             public string Name;
+            /// <summary>Its pieces' calls (and "State" entries), in the order they're made.</summary>
             public readonly List<JsonObject> Pieces = new();
         }
 
@@ -490,6 +499,7 @@ namespace CharacterShowcase.EditorTools.Level
             lastState = startState;
         }
 
+        /// <summary>Stops recording.</summary>
         internal static void End() => part = null;
 
         /// <summary>The dimensions a "State" entry sets, as they are now.</summary>

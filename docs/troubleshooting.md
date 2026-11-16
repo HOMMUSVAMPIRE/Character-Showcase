@@ -24,6 +24,9 @@ Tests should read expected values from the settings (`rig.MovementSetting<T>("na
 **A test is ignored rather than run.**
 `CharacterTestRig` ignores a test whose ability the character doesn't have: `rig.Component<T>()` when the mode has no T, or `rig.MovementSetting` for a setting no component has.
 
+**Something removed in a test is still there.**
+`Object.Destroy` waits for the end of the frame, and a movement-only test steps the physics itself, with no frames between its steps. Use `Object.DestroyImmediate` in tests (see [Automated Tests](testing.md#how-long-each-test-takes)).
+
 **Running the tests from the command line gives no results.**
 Unity can't open a project that's open in the editor, so a batch-mode run quits at once, with no results file. Close the editor first, or run the tests from the Test Runner window.
 

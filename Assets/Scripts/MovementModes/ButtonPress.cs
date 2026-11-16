@@ -20,6 +20,12 @@ namespace Character
         public bool IsFresh(InputButton button, float buffer) =>
             button != null && button.value && !consumed && button.holdDuration <= buffer;
 
+        /// <summary>
+        /// Marks the current press as used, so it starts nothing else until the button is released and pressed again
+        /// (for something that used it without asking Consume, as a jump off a wall checks the press first).
+        /// </summary>
+        public void Use() => consumed = true;
+
         /// <summary>Uses up the press if it's fresh (see IsFresh), returning whether it was.</summary>
         public bool Consume(InputButton button, float buffer)
         {

@@ -69,6 +69,7 @@ namespace CharacterShowcase.EditorTools.Level
             ("Markers", new[] { "SpawnMarker", "Marker" }),
         };
 
+        /// <summary>Opens the Level Editor window.</summary>
         [MenuItem("Tools/Character Showcase/Level/Level Editor", priority = 20)]
         public static void ShowWindow() => GetWindow<LevelEditorWindow>("Level Editor").Show();
 

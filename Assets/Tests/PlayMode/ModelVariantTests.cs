@@ -17,18 +17,17 @@ namespace CharacterShowcase.Tests
     /// avatar built from that, as importing such a file would. Their sources haven't been measured, so they measure
     /// their models as they load.
     /// </summary>
-    public class ModelVariantTests
+    [Category(TestArea.Models)]
+    public class ModelVariantTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-        private readonly List<Object> created = new();
+        // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
+        protected override bool MovementOnly => false;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
+        private readonly List<Object> created = new();
 
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            rig.Dispose();
             foreach (Object obj in created) { if (obj != null) { Object.Destroy(obj); } }
             created.Clear();
             yield return null;
@@ -158,9 +157,7 @@ namespace CharacterShowcase.Tests
             yield return StandVariant(Taller, Vector3.one);
             (float bottom, float top) normal = Extent();
             float normalHips = Bone(HumanBodyBones.Hips).y;
-            rig.Dispose();
-            yield return null;
-            rig = new CharacterTestRig();
+            yield return ReplaceRig();
 
             yield return StandVariant(Taller, stretch);
             (float bottom, float top) stretched = Extent();

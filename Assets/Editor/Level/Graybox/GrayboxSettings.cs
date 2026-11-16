@@ -18,8 +18,10 @@ namespace CharacterShowcase.EditorTools.Level
     /// </summary>
     public sealed class GrayboxSettings : ScriptableObject
     {
+        /// <summary>Where the settings asset is.</summary>
         public const string AssetPath = "Assets/Editor/Level/GrayboxSettings.asset";
 
+        /// <summary>Sizes stairs' steps and their nosing, and sets the steepest the levels' ramps go.</summary>
         [Serializable]
         public sealed class StairSettings
         {
@@ -29,13 +31,16 @@ namespace CharacterShowcase.EditorTools.Level
             public float stepRun = 0.4f;
             [Tooltip("How deep the orange nosing strip along each step's front edge is (m).")]
             public float nosingDepth = 0.04f;
-            [Tooltip("The steepest the levels' ramps go, as rise over run (0.25 = 1:4): a rule for the levels to keep to, " +
+            [Tooltip("The steepest the levels' ramps go, as rise over run (the height gained per metre along): a rule for the levels to keep to, " +
                      "gentler than the character's own limit (its MovementController's Max Slope Angle), which the movement " +
                      "checks hold ramps to (written to the movement envelope with the character's capabilities). The " +
                      "Calibration Annex's slope tests are the deliberate exceptions.")]
             [Range(0.01f, 1f)] public float maxRampGradient = 0.25f;
         }
 
+        /// <summary>
+        /// Sizes decks, walkways and bridges, and the columns, ramp supports and trusses that hold them up.
+        /// </summary>
         [Serializable]
         public sealed class DeckSettings
         {
@@ -57,6 +62,10 @@ namespace CharacterShowcase.EditorTools.Level
             public float trussMaxDepth = 1.5f;
         }
 
+        /// <summary>
+        /// Sizes guardrails: their height and collider, posts, top and mid rails, and the fascia along the edge they
+        /// stand on.
+        /// </summary>
         [Serializable]
         public sealed class RailSettings
         {
@@ -80,6 +89,9 @@ namespace CharacterShowcase.EditorTools.Level
             public float fasciaProud = 0.01f;
         }
 
+        /// <summary>
+        /// Sizes walls' detail: pilasters, the frames round openings, and underground rooms' skirting.
+        /// </summary>
         [Serializable]
         public sealed class WallSettings
         {
@@ -101,6 +113,7 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector2 skirtingSize = new(0.12f, 0.02f);
         }
 
+        /// <summary>Sizes the coping round platforms' top edges.</summary>
         [Serializable]
         public sealed class PlatformSettings
         {
@@ -112,6 +125,7 @@ namespace CharacterShowcase.EditorTools.Level
             public float copingGap = 0.01f;
         }
 
+        /// <summary>Sizes columns' chamfers and the accent strips up their faces.</summary>
         [Serializable]
         public sealed class ColumnSettings
         {
@@ -125,6 +139,7 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector2 accentStripSpan = new(0.15f, 0.85f);
         }
 
+        /// <summary>Sizes the structural pieces: I-beam columns, trusses, braced frames and knee brackets.</summary>
         [Serializable]
         public sealed class StructureSettings
         {
@@ -142,6 +157,10 @@ namespace CharacterShowcase.EditorTools.Level
             public float bracketSize = 1f;
         }
 
+        /// <summary>
+        /// Sizes the light fixtures: underground ceiling panels and strip lights, door lights, bollards, floodlights
+        /// and bridges' accent posts.
+        /// </summary>
         [Serializable]
         public sealed class FixtureSettings
         {
@@ -169,6 +188,10 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector2 accentPost = new(0.1f, 0.5f);
         }
 
+        /// <summary>
+        /// Sets the lights underground (their spacing, intensity, colour and range) and whether the fixtures in
+        /// daylight cast light.
+        /// </summary>
         [Serializable]
         public sealed class LightSettings
         {
@@ -188,6 +211,10 @@ namespace CharacterShowcase.EditorTools.Level
             public float floodlightAngle = 70f;
         }
 
+        /// <summary>
+        /// Sizes the utilities underground: the pipes along the ceilings and their hangers, and the utility stations'
+        /// cabinets, conduits and vents.
+        /// </summary>
         [Serializable]
         public sealed class UtilitySettings
         {
@@ -213,6 +240,10 @@ namespace CharacterShowcase.EditorTools.Level
             public float ventSlatSpacing = 0.09f;
         }
 
+        /// <summary>
+        /// Sizes the markings painted on surfaces: hazard stripes, test lanes' corner brackets and the measured values
+        /// on the floor.
+        /// </summary>
         [Serializable]
         public sealed class MarkingSettings
         {
@@ -232,6 +263,9 @@ namespace CharacterShowcase.EditorTools.Level
             public Color labelColour = new(0.18f, 0.19f, 0.22f);
         }
 
+        /// <summary>
+        /// Sizes the signs: the gantries over bridges and the signs at areas' entrances, and their lettering.
+        /// </summary>
         [Serializable]
         public sealed class SignSettings
         {
@@ -253,6 +287,10 @@ namespace CharacterShowcase.EditorTools.Level
             public float areaSignLift = 1.2f;
         }
 
+        /// <summary>
+        /// Sizes the dressing: banners, guide lines, spawn pads, marks for mechanics to come, floor rulers and towers'
+        /// bands.
+        /// </summary>
         [Serializable]
         public sealed class DressingSettings
         {
@@ -272,6 +310,10 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector2 towerBand = new(1.4f, 0.03f);
         }
 
+        /// <summary>
+        /// Sizes and scatters the foliage: trees, shrubs, planters, lawns and their grass tufts, and how far the tufts
+        /// are drawn.
+        /// </summary>
         [Serializable]
         public sealed class FoliageSettings
         {
@@ -303,12 +345,16 @@ namespace CharacterShowcase.EditorTools.Level
             [Range(2, 9)] public int tuftBlades = 5;
             [Tooltip("The chance a lawn cell at the lawn's edge gets a shrub, for a planted border.")]
             [Range(0f, 1f)] public float borderShrubChance = 0.12f;
-            [Tooltip("Grass tufts aren't drawn beyond about this far from the camera (m), with a 60° field of view; the lawns under them still are. They're most of the level's triangles, and a few pixels each beyond this.")]
+            [Tooltip("Grass tufts aren't drawn beyond about this far from the camera (m: about, since it's set as a size on screen, which depends on the camera's field of view); the lawns under them still are. They're most of the level's triangles, and a few pixels each beyond this.")]
             public float tuftDrawDistance = 70f;
             [Tooltip("Whether grass tufts cast shadows. Off: thousands of thin blades in the shadow maps (which reach the full shadow distance, in view or not) for shadows too fine to see.")]
             public bool tuftsCastShadows;
         }
 
+        /// <summary>
+        /// Sizes the mechanics' geometry: moving platforms' and crates' edge bands, timing gates, low beams, ladders,
+        /// ropes, ziplines, bounce pads and climbable panels.
+        /// </summary>
         [Serializable]
         public sealed class MechanicsSettings
         {
@@ -348,6 +394,7 @@ namespace CharacterShowcase.EditorTools.Level
             public Vector3 climbableHold = new(0.22f, 0.14f, 0.06f);
         }
 
+        /// <summary>Sets whether a level's occlusion culling is baked, and the bake's sizes.</summary>
         [Serializable]
         public sealed class CullingSettings
         {
@@ -361,10 +408,11 @@ namespace CharacterShowcase.EditorTools.Level
             [Range(5f, 100f)] public float backfaceThreshold = 100f;
         }
 
+        /// <summary>Sets the environment: the sun's rotation, colour and intensity, and the haze.</summary>
         [Serializable]
         public sealed class EnvironmentSettings
         {
-            [Tooltip("The sun's rotation (degrees): midday, high (65° up) in the south-south-east, so terraces and stairs cast short, readable shadows.")]
+            [Tooltip("The sun's rotation (degrees, as a light's rotation: the first is how high it is). A high sun casts short, readable shadows on terraces and stairs.")]
             public Vector3 sunRotation = new(65f, -30f, 0f);
             [Tooltip("The sun's colour.")]
             public Color sunColour = new(1f, 0.96f, 0.9f);
@@ -372,26 +420,43 @@ namespace CharacterShowcase.EditorTools.Level
             public float sunIntensity = 2f;
             [Tooltip("The haze's colour.")]
             public Color hazeColour = new(0.74f, 0.82f, 0.9f);
-            [Tooltip("The haze's density (exponential fog): 0.0015 is about 14% haze at 100 m, 45% at 400 m.")]
+            [Tooltip("The haze's density (exponential fog): the share of haze grows with distance, so a small value hazes the far distance and leaves what's near clear.")]
             public float hazeDensity = 0.0015f;
         }
 
+        [Tooltip("Stairs' steps and nosing, and the steepest the levels' ramps go.")]
         [Header("Stairs")] public StairSettings stairs = new();
+        [Tooltip("Decks, walkways and bridges, and the columns, ramp supports and trusses that hold them up.")]
         [Header("Decks, Bridges and Walkways")] public DeckSettings decks = new();
+        [Tooltip("Guardrails: their height and collider, posts, top and mid rails, and the fascia below them.")]
         [Header("Guardrails")] public RailSettings rails = new();
+        [Tooltip("Walls' detail: pilasters, the frames round openings, and underground rooms' skirting.")]
         [Header("Walls")] public WallSettings walls = new();
+        [Tooltip("The coping round platforms' top edges.")]
         [Header("Platforms")] public PlatformSettings platforms = new();
+        [Tooltip("Columns' chamfers and the accent strips up their faces.")]
         [Header("Columns")] public ColumnSettings columns = new();
+        [Tooltip("The structural pieces: I-beam columns, trusses, braced frames and knee brackets.")]
         [Header("Structure")] public StructureSettings structure = new();
+        [Tooltip("The light fixtures: underground ceiling panels and strip lights, door lights, bollards, floodlights and bridges' accent posts.")]
         [Header("Light Fixtures")] public FixtureSettings fixtures = new();
+        [Tooltip("The lights underground (spacing, intensity, colour and range), and whether fixtures in daylight cast light.")]
         [Header("Lights")] public LightSettings lights = new();
+        [Tooltip("The utilities underground: ceiling pipes and their hangers, and the utility stations' cabinets, conduits and vents.")]
         [Header("Utilities")] public UtilitySettings utilities = new();
+        [Tooltip("The markings painted on surfaces: hazard stripes, test lanes' corner brackets and the measured values on the floor.")]
         [Header("Markings")] public MarkingSettings markings = new();
+        [Tooltip("The signs: gantries over bridges, signs at areas' entrances, and their lettering.")]
         [Header("Signs and Wayfinding")] public SignSettings signs = new();
+        [Tooltip("The dressing: banners, guide lines, spawn pads, marks for mechanics to come, floor rulers and towers' bands.")]
         [Header("Dressing")] public DressingSettings dressing = new();
+        [Tooltip("The foliage: trees, shrubs, planters, lawns and their grass tufts, and how far the tufts are drawn.")]
         [Header("Foliage")] public FoliageSettings foliage = new();
+        [Tooltip("Whether a level's occlusion culling is baked, and the bake's sizes.")]
         [Header("Culling")] public CullingSettings culling = new();
+        [Tooltip("The mechanics' geometry: moving platforms' and crates' edge bands, timing gates, low beams, ladders, ropes, ziplines, bounce pads and climbable panels.")]
         [Header("Mechanics")] public MechanicsSettings mechanics = new();
+        [Tooltip("The environment: the sun's rotation, colour and intensity, and the haze.")]
         [Header("Environment")] public EnvironmentSettings environment = new();
 
         /// <summary>The settings asset, made with the defaults if there isn't one yet.</summary>

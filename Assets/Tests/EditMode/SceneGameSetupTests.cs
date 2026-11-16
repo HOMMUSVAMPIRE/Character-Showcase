@@ -1,6 +1,7 @@
 using System.Linq;
 using Character;
 using CharacterShowcase.EditorTools;
+using CharacterShowcase.EditorTools.Level;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -17,7 +18,9 @@ namespace CharacterShowcase.Tests.EditMode
     /// scene's own), the input manager copied once, and other cameras turned off rather than deleted. They need the
     /// demo scene, which the camera and input manager are copied from, and the Character prefab.
     /// </summary>
+    [Category(TestArea.Spawning)]
     [Category(PreparedModelTests.SampleContent)]
+    [TestTiming]
     public class SceneGameSetupTests
     {
         private Scene scene;
@@ -44,6 +47,14 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         private SceneGameSetup.Settings Settings() => new() { characterPrefab = prefab };
+
+        [Test]
+        public void SpawnMarkers_AreNamedTheSame_ByTheLevelBuildersAndSetUpScene()
+        {
+            // The level builders' assembly can't reference Set Up Scene's, so each names the prefix itself.
+            Assert.That(SceneGameSetup.SpawnMarkerPrefix, Is.EqualTo(Graybox.SpawnMarkerPrefix),
+                "Set Up Scene finds the levels' spawn markers by the prefix the builders name them with.");
+        }
 
         [Test]
         public void SetUp_ReplacesThePlacedCharacter_WithASpawnPointWhereItStood()

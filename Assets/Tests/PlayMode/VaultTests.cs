@@ -16,21 +16,11 @@ namespace CharacterShowcase.Tests
     /// grabbed once the character has fallen far enough to reach it. Expected values are read from the movement mode's
     /// settings.
     /// </summary>
-    public class VaultTests
+    [Category(TestArea.Abilities)]
+    public class VaultTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         // The wall's top (y), its face (z), which faces -Z, toward the character, and its far side (z).
         private float top, face, back;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private bool Vaulting => rig.InState(CharacterState.Vaulting);
         private float MinSpeed => rig.MovementSetting<float>("vaultMinSpeed") * rig.Movement.SpeedScale;
@@ -239,8 +229,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator SprintingUpAndJumpingOntoStairs_ClimbsThem_WithoutVaulting([Values(false, true)] bool jump)
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(Vector3.zero);
+            yield return rig.StandOnFloor();
             float rise = 0.85f * rig.StepHeight;
             float landing = BuildStairs(jump ? 3f : 1.5f, 8, rise, 0.3f);
             var record = new VaultRecord();

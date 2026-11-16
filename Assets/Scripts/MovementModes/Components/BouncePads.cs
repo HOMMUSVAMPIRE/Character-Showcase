@@ -14,7 +14,7 @@ namespace Character
     {
         [Tooltip("What every bounce pad's launch height is multiplied by for this character. 0 turns bounce pads off")]
         [Min(0f)] [SerializeField] private float bounceHeightMultiplier = 1f;
-        [Tooltip("How much higher a bounce goes with Jump held as the character comes down on the pad (1.5 = half as high again)")]
+        [Tooltip("How much higher a bounce goes with Jump held as the character comes down on the pad (a multiplier on the bounce's height: 1 is no boost)")]
         [Min(1f)] [SerializeField] private float bounceJumpBoost = 1.5f;
 
         // Seconds after a launch before a pad can launch the character again, so a launch can't happen twice before the
@@ -28,7 +28,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.bounce.cooldownRemaining = Mathf.Max(0f, controller.bounce.cooldownRemaining - movementData.deltaTime);
+            controller.bounce.cooldownRemaining = MovementHelpers.CountDown(controller.bounce.cooldownRemaining, movementData.deltaTime);
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace Character
             // from here (as after a jump, not the softer coyote gravity after walking off an edge).
             MovementHelpers.GiveBackJumps(controller);
             MovementHelpers.TryUseJump(controller);
-            if (boosted) { controller.jump.pressConsumed = true; }
+            if (boosted) { controller.jump.press.Use(); }
             bounce.cooldownRemaining = BounceCooldown;
             pad.NotifyLaunched();
             movementData.events |= MovementEvents.Bounced;
@@ -79,6 +79,7 @@ namespace Character
     /// <summary>The delay before a bounce pad can launch the character again, so it doesn't launch twice off one landing.</summary>
     public class BounceState
     {
+        /// <summary>Seconds before a bounce pad can launch the character again (0 when it can).</summary>
         public float cooldownRemaining;
     }
 }

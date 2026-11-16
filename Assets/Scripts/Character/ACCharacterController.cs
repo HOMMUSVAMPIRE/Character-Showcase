@@ -205,6 +205,7 @@ namespace Character
             // TODO: do any end-of frame cleanup and store data to be referenced in future frames
         }
 
+        /// <summary>A placeholder for setting up the character's subcomponents: it does nothing yet.</summary>
         public void Setup()
         {
             // TODO: setup subcomponents as needed

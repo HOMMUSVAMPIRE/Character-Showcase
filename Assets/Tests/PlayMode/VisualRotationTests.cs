@@ -13,19 +13,12 @@ namespace CharacterShowcase.Tests
     /// once, without leaning; and it turns with spinning ground. The model's turning is stepped with the physics, as
     /// ACCharacterController does each frame in the game.
     /// </summary>
-    public class VisualRotationTests
+    [Category(TestArea.Animation)]
+    public class VisualRotationTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
+        // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
+        protected override bool MovementOnly => false;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private T Setting<T>(string name)
         {

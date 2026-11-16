@@ -28,9 +28,16 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static partial class CharacterModelImporter
     {
+        /// <summary>The folder the models are in, a subfolder per model (or per model and its variants).</summary>
         public const string ModelsFolder = "Assets/Models/CharacterModels";
-        // Shared by every model: Humanoid animation plays on any Humanoid model. Built by MannequinGenerator.
+        /// <summary>
+        /// The Animator Controller, shared by every model: Humanoid animation plays on any Humanoid model. Built by
+        /// MannequinGenerator.
+        /// </summary>
         public const string ControllerPath = "Assets/Animation/Mannequin.controller";
+        /// <summary>
+        /// The translator every model's source names, shared like the controller. Built by MannequinGenerator.
+        /// </summary>
         public const string TranslatorPath = "Assets/Animation/Mannequin Animator Translator.asset";
 
         // Models outside this height range (in meters) get their definition's Scale set to bring them to TypicalHeight,
@@ -42,16 +49,23 @@ namespace CharacterShowcase.EditorTools
         /// <summary>The outcome of preparing one model file.</summary>
         public sealed class Result
         {
+            /// <summary>The model file.</summary>
             public string modelPath;
+            /// <summary>The name the model goes by (see DisplayName).</summary>
             public string name;
+            /// <summary>The model's source, saved next to it.</summary>
             public DirectCharacterModelSource definition;
-            // Why the model couldn't be prepared, or null if it was
+            /// <summary>Why the model couldn't be prepared, or null if it was.</summary>
             public string problem;
+            /// <summary>The model's measured height (m).</summary>
             public float height;
-            // Already prepared, and unchanged since, so it was left alone
+            /// <summary>Already prepared, and unchanged since, so it was left alone.</summary>
             public bool upToDate;
-            // Things worth knowing that aren't problems, such as assets moved to the model's current names
+            /// <summary>
+            /// Things worth knowing that aren't problems, such as assets moved to the model's current names.
+            /// </summary>
             public readonly List<string> notes = new();
+            /// <summary>Whether the model was prepared (or already was).</summary>
             public bool Succeeded => problem == null;
 
             public override string ToString()
@@ -63,6 +77,19 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
+        /// <summary>
+        /// For -executeMethod: prepares every model (see PrepareAll), logs how each went, and exits when it's done, with
+        /// code 1 if any couldn't be prepared.
+        /// </summary>
+        public static void PrepareAllFromCommandLine()
+        {
+            List<Result> results = PrepareAll();
+            bool ok = results != null && results.All(r => r.Succeeded);
+            if (results != null) { foreach (Result result in results) { Debug.Log($"[CharacterModelImporter] {result}"); } }
+            CommandLine.Finish(ok);
+        }
+
+        /// <summary>Prepares every model (see PrepareAll) and shows how each went.</summary>
         [MenuItem("Tools/Character Showcase/Prepare Character Models", priority = 2)]
         public static void PrepareAllFromMenu()
         {
@@ -213,6 +240,10 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
+        /// <summary>
+        /// Loads the shared Animator Controller and translator every model uses. False, with an error logged, if either
+        /// is missing or the controller is empty: the mannequin hasn't been generated.
+        /// </summary>
         public static bool LoadSharedAssets(out AnimatorController controller, out AnimatorParameterTranslator translator)
         {
             controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
@@ -246,9 +277,11 @@ namespace CharacterShowcase.EditorTools
         /// </summary>
         public static string DisplayName(string modelPath) => Path.GetFileNameWithoutExtension(modelPath);
 
+        /// <summary>Where a model's prefab is saved: "[name] Model.prefab" next to the model file.</summary>
         public static string ModelPrefabPathFor(string modelPath, string name) =>
             $"{Path.GetDirectoryName(modelPath)?.Replace('\\', '/')}/{name} Model.prefab";
 
+        /// <summary>Where a model's source is saved: "[name].asset" next to the model file.</summary>
         public static string DefinitionPathFor(string modelPath, string name) =>
             $"{Path.GetDirectoryName(modelPath)?.Replace('\\', '/')}/{name}.asset";
 

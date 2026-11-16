@@ -14,10 +14,12 @@ namespace CharacterShowcase.EditorTools.Level
     /// </summary>
     public static class MeridianComplexBuilder
     {
+        /// <summary>Where the Meridian Complex's scene is saved.</summary>
         public const string ScenePath = "Assets/Scenes/MeridianComplex/MeridianComplex.unity";
 
         private const float GroundHalf = 220f;
 
+        /// <summary>The complex's scene: its seven areas, each built by its own builder, then the ground.</summary>
         internal static readonly GrayboxScene Scene = new("Meridian Complex", ScenePath,
             ("01 Concourse", MeridianConcourseBuilder.BuildInto),
             ("02 Kinetic Gardens", MeridianKineticGardensBuilder.BuildInto),
@@ -35,8 +37,12 @@ namespace CharacterShowcase.EditorTools.Level
         [MenuItem("Tools/Character Showcase/Level/Build Meridian Complex")]
         public static void BuildFromMenu() => LevelBuildWindow.BuildFromMenu(Scene);
 
-        /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake.</summary>
-        public static void BuildFromCommandLine() => Scene.Build();
+        /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake, then exits.</summary>
+        public static void BuildFromCommandLine()
+        {
+            Scene.Build();
+            CommandLine.Finish(true);
+        }
 
         /// <summary>
         /// A placeholder ground at ±0 under the whole complex (a little over its 400 × 400 m, for the districts that

@@ -29,6 +29,7 @@ namespace CameraSystem
         public Vector3 Position { get; private set; }
         /// <summary>Estimated world-space velocity of the target.</summary>
         public Vector3 Velocity { get; private set; }
+        /// <summary>The target's estimated speed across the ground (m/s), ignoring vertical movement.</summary>
         public float HorizontalSpeed => new Vector2(Velocity.x, Velocity.z).magnitude;
         /// <summary>True for the frame in which the target teleported. Smoothing should snap.</summary>
         public bool TeleportedThisFrame { get; private set; }
@@ -43,6 +44,10 @@ namespace CameraSystem
         // The target's size relative to normal (see CameraRig.SizeScale), which the distances and speeds here scale with.
         private float sizeScale = 1f;
 
+        /// <summary>
+        /// Starts tracking a target from rest where it stands, finding its Rigidbody if it has one. Counts as a
+        /// teleport, so smoothing snaps.
+        /// </summary>
         public void Reset(Transform target)
         {
             body = target != null ? target.GetComponentInParent<Rigidbody>() : null;

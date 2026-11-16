@@ -13,19 +13,9 @@ namespace CharacterShowcase.Tests
     /// (landing from a sprint jump, walking) is carried and eases down to walking, never below it. The test camera looks
     /// down +Z.
     /// </summary>
-    public class GroundMomentumTests
+    [Category(TestArea.Movement)]
+    public class GroundMomentumTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private static Inputs Forward(bool sprint, int step) =>
             sprint ? CharacterTestRig.Sprint(Vector3.forward, step + 40) : CharacterTestRig.Move(Vector3.forward);

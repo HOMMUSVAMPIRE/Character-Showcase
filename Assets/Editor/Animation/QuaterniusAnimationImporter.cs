@@ -22,9 +22,11 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class QuaterniusAnimationImporter
     {
+        /// <summary>The folder the animation libraries are in.</summary>
         public const string LibraryFolder = "Assets/Animation/Quaternius";
         private const string TPoseTake = "A_TPose";
 
+        /// <summary>Sets up every library that isn't already, and logs when they all are.</summary>
         [MenuItem("Tools/Character Showcase/Prepare Quaternius Animations", priority = 4)]
         public static void PrepareAllFromMenu()
         {
@@ -32,31 +34,19 @@ namespace CharacterShowcase.EditorTools
             if (problems.Count == 0) { Debug.Log($"[{nameof(QuaterniusAnimationImporter)}] Every library in {LibraryFolder} is set up."); }
         }
 
-        /// <summary>For -executeMethod. Exits with code 1 if any library couldn't be set up.</summary>
+        /// <summary>For -executeMethod. Exits when it's done, with code 1 if any library couldn't be set up.</summary>
         public static void PrepareAllFromCommandLine()
         {
-            if (PrepareAll().Count > 0) { EditorApplication.Exit(1); }
+            CommandLine.Finish(PrepareAll().Count == 0);
         }
 
-        public static IEnumerable<string> FindLibraryFiles() =>
-            AssetDatabase.IsValidFolder(LibraryFolder)
-                ? AssetDatabase.FindAssets("t:Model", new[] { LibraryFolder }).Select(AssetDatabase.GUIDToAssetPath)
-                    .Where(p => p.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase)).OrderBy(p => p)
-                : Enumerable.Empty<string>();
+        /// <summary>
+        /// Every library file (.fbx) in LibraryFolder, in path order; none if the folder isn't there.
+        /// </summary>
+        public static IEnumerable<string> FindLibraryFiles() => AnimationFiles.FbxFilesIn(LibraryFolder);
 
         /// <summary>Sets up every library that isn't already, and returns what went wrong, a line per library.</summary>
-        public static List<string> PrepareAll()
-        {
-            var problems = new List<string>();
-            foreach (string path in FindLibraryFiles())
-            {
-                string problem = Prepare(path);
-                if (problem == null) { continue; }
-                problems.Add($"{path}: {problem}");
-                Debug.LogWarning($"[{nameof(QuaterniusAnimationImporter)}] {path}: {problem}");
-            }
-            return problems;
-        }
+        public static List<string> PrepareAll() => AnimationFiles.PrepareEach(FindLibraryFiles(), Prepare, nameof(QuaterniusAnimationImporter));
 
         /// <summary>A clip in the libraries by name ("Walk_Loop"), or null if there's no such clip, or no libraries.</summary>
         public static AnimationClip FindClip(string name)

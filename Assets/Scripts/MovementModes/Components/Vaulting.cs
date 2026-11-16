@@ -85,7 +85,7 @@ namespace Character
             // doesn't drift over slowly and then shoot off.
             float distance, up;
             bool over = false;
-            if (vault.elapsed < vault.riseDuration)
+            if (!MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration, movementData.deltaTime))
             {
                 float rise = vault.elapsed / vault.riseDuration;
                 distance = vault.gapDistance * rise;
@@ -97,7 +97,7 @@ namespace Character
                 float acceleration = vault.crossDuration > 0f ? (vault.exitSpeed - vault.crossStartSpeed) / vault.crossDuration : 0f;
                 distance = Mathf.Min(length, vault.gapDistance + vault.crossStartSpeed * t + 0.5f * acceleration * t * t);
                 up = 1f;
-                over = vault.elapsed >= vault.riseDuration + vault.crossDuration;
+                over = MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration + vault.crossDuration, movementData.deltaTime);
             }
             Vector3 point = start + direction * distance + Vector3.up * ((end.y - start.y) * up);
 
@@ -272,38 +272,50 @@ namespace Character
     /// </summary>
     public class VaultState
     {
+        /// <summary>Neither; vaulting over something; or stepping up onto it.</summary>
         public enum Phase { None, Vaulting, SteppingUp }
 
-        // The share of a vault's Progress spent rising: about when the Quaternius library's safety vault, played over the
-        // vault, carries its body over the hand it has planted.
+        /// <summary>
+        /// The share of a vault's Progress spent rising: about when the Quaternius library's safety vault, played over the
+        /// vault, carries its body over the hand it has planted.
+        /// </summary>
         public const float RiseShare = 0.35f;
 
+        /// <summary>Whether the character is vaulting or stepping up (None when it's doing neither).</summary>
         public Phase phase;
-        // The object vaulted over (its Rigidbody's, if it has one)
+        /// <summary>The object vaulted over (its Rigidbody's, if it has one).</summary>
         public Transform obstacle;
-        // The point on the edge vaulted over (on its top, in front of the character), and the wall's normal below it
-        // (pointing toward the character where the vault started), in the obstacle's space
+        /// <summary>The point on the edge vaulted over (on its top, in front of the character), in the obstacle's space.</summary>
         public Vector3 localEdge;
+        /// <summary>
+        /// The wall's normal below the edge vaulted over (pointing toward the character where the vault started), in the
+        /// obstacle's space.
+        /// </summary>
         public Vector3 localWallNormal;
-        // Where the character's feet start a vault and end it (over the edge, the whole body past the wall's face), in
-        // the obstacle's space
+        /// <summary>Where the character's feet start a vault, in the obstacle's space.</summary>
         public Vector3 localStart;
+        /// <summary>Where the character's feet end a vault (over the edge, the whole body past the wall's face), in the obstacle's space.</summary>
         public Vector3 localEnd;
-        // How far (m) the rise carries the character toward the wall, closing the gap to it
+        /// <summary>How far (m) the rise carries the character toward the wall, closing the gap to it.</summary>
         public float gapDistance;
-        // Seconds the rise takes, and the swing over after it
+        /// <summary>Seconds the rise takes.</summary>
         public float riseDuration;
+        /// <summary>Seconds the swing over, after the rise, takes.</summary>
         public float crossDuration;
-        // How fast (m/s) the swing over starts, and the speed it speeds up to, which the character leaves with
+        /// <summary>How fast (m/s) the swing over starts.</summary>
         public float crossStartSpeed;
+        /// <summary>The speed (m/s) the swing over speeds up to, which the character leaves with.</summary>
         public float exitSpeed;
-        // The velocity the character leaves with (and, stepping up, moves at), in world space
+        /// <summary>The velocity the character leaves with (and, stepping up, moves at), in world space.</summary>
         public Vector3 exitVelocity;
-        // Seconds since the vault or step up started
+        /// <summary>Seconds since the vault or step up started.</summary>
         public float elapsed;
 
+        /// <summary>Whether the character is vaulting or stepping up.</summary>
         public bool IsActive => phase != Phase.None;
+        /// <summary>Whether the character is vaulting over something.</summary>
         public bool IsVaulting => phase == Phase.Vaulting;
+        /// <summary>Whether the character is stepping up onto something.</summary>
         public bool IsSteppingUp => phase == Phase.SteppingUp;
 
         /// <summary>

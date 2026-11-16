@@ -36,16 +36,29 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class LevelFixtureSetup
     {
+        /// <summary>How a moving platform's name starts (Graybox.MovingPlatformPrefix).</summary>
         public const string MovingPlatformPrefix = "Moving Platform";
+        /// <summary>How a pushable crate's name starts (Graybox.PushablePrefix).</summary>
         public const string PushablePrefix = "Pushable Crate";
+        /// <summary>How a timing gate's name starts (Graybox.TimingGatePrefix).</summary>
         public const string TimingGatePrefix = "Timing Gate";
+        /// <summary>How a timing gate's sign's name starts (Graybox.TimingDisplayPrefix).</summary>
         public const string TimingDisplayPrefix = "Timing Display";
+        /// <summary>
+        /// How a ladder's name starts (Graybox.LadderPrefix): a ladder's is "Ladder |", not "Ladder (future)".
+        /// </summary>
         public const string LadderPrefix = "Ladder";
+        /// <summary>How a rope's name starts (Graybox.RopePrefix).</summary>
         public const string RopePrefix = "Rope";
+        /// <summary>How a zipline's name starts (Graybox.ZiplinePrefix).</summary>
         public const string ZiplinePrefix = "Zipline";
+        /// <summary>How a bounce pad's name starts (Graybox.BouncePadPrefix).</summary>
         public const string BouncePadPrefix = "Bounce Pad";
+        /// <summary>The name of a bounce pad's child that squashes when it launches someone.</summary>
         public const string BouncePadSpringName = "Spring";
+        /// <summary>How a climbable panel's name starts (Graybox.ClimbablePrefix).</summary>
         public const string ClimbablePrefix = "Climbable Panel";
+        /// <summary>The group under the game setup that the courses' timers are made in.</summary>
         public const string CoursesName = "Course Timers";
 
         /// <summary>Whether name is a fixture's: the prefix alone, or followed by a space ("Moving Platform (Lift) | …").</summary>

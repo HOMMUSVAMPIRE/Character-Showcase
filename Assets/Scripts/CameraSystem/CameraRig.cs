@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -29,38 +30,66 @@ namespace CameraSystem
                  "shoulder offset.")]
         [SerializeField] private Transform targetSizeReference;
 
+        [Tooltip("Where camera input comes from, and the names of its actions.")]
         [SerializeField] private CameraInputSettings input = new();
+        [Tooltip("Which view modes are allowed, the one it starts in, and the blend between them.")]
         [SerializeField] private CameraModeSettings modes = new();
+        [Tooltip("How fast the mouse and stick turn the camera, inverting, and smoothing.")]
         [SerializeField] private CameraLookSettings look = new();
+        [Tooltip("Locking the cursor during play, and releasing and re-locking it.")]
         [SerializeField] private CameraCursorSettings cursor = new();
+        [Tooltip("The first person view: eye height and offset, field of view, pitch limits, hiding the target.")]
         [SerializeField] private FirstPersonSettings firstPerson = new();
+        [Tooltip("The third person view: pivot, shoulder offset and swapping, field of view, pitch limits, follow smoothing, hiding the target up close.")]
         [SerializeField] private ThirdPersonSettings thirdPerson = new();
+        [Tooltip("Zooming the third person camera in and out, and into first person.")]
         [SerializeField] private CameraZoomSettings zoom = new();
+        [Tooltip("Aiming: how the button works, and the view while aimed.")]
         [SerializeField] private CameraAimSettings aim = new();
+        [Tooltip("Keeping the camera in front of what's between it and the target.")]
         [SerializeField] private CameraCollisionSettings collision = new();
+        [Tooltip("Following a target that moves in physics steps: interpolation, teleports, how far it may trail.")]
         [SerializeField] private CameraFollowSettings follow = new();
+        [Tooltip("Widening the field of view as the target moves faster.")]
         [SerializeField] private SpeedFovSettings speedFov = new();
+        [Tooltip("Bobbing the view while walking.")]
         [SerializeField] private HeadBobSettings headBob = new();
+        [Tooltip("Dipping the camera when the target lands.")]
         [SerializeField] private LandingSettings landing = new();
+        [Tooltip("Trauma-based camera shake.")]
         [SerializeField] private CameraShakeSettings shake = new();
+        [Tooltip("Swinging the third person camera behind the target after a while without look input.")]
         [SerializeField] private RecenterSettings recenter = new();
+        [Tooltip("Drawing the camera's pivot, shoulder point and collision probe in the Scene view.")]
         [SerializeField] private CameraDebugSettings debug = new();
 
         /// <summary>Raised whenever the active view mode changes (including when a CameraZone forces one).</summary>
         public event Action<CameraMode> ModeChanged;
 
         // Settings groups, exposed so other systems (e.g. an options menu) can tweak them at runtime.
+        /// <summary>The look settings: sensitivity, inversion and smoothing.</summary>
         public CameraLookSettings Look => look;
+        /// <summary>The view mode settings: allowed modes, starting mode and the blend between them.</summary>
         public CameraModeSettings Modes => modes;
+        /// <summary>The first person view settings.</summary>
         public FirstPersonSettings FirstPerson => firstPerson;
+        /// <summary>The third person view settings.</summary>
         public ThirdPersonSettings ThirdPerson => thirdPerson;
+        /// <summary>The third person zoom settings.</summary>
         public CameraZoomSettings Zoom => zoom;
+        /// <summary>The aiming settings.</summary>
         public CameraAimSettings Aim => aim;
+        /// <summary>The settings that keep the third person camera out of walls.</summary>
         public CameraCollisionSettings Collision => collision;
+        /// <summary>The settings that widen the field of view with the target's speed.</summary>
         public SpeedFovSettings SpeedFov => speedFov;
+        /// <summary>The head bob settings.</summary>
         public HeadBobSettings HeadBob => headBob;
+        /// <summary>The landing dip settings.</summary>
         public LandingSettings Landing => landing;
+        /// <summary>The camera shake settings.</summary>
         public CameraShakeSettings Shake => shake;
+        /// <summary>The settings for swinging the third person camera back behind the target.</summary>
         public RecenterSettings Recenter => recenter;
 
         private Camera cam;
@@ -114,7 +143,14 @@ namespace CameraSystem
 
         #region Public API
 
+        /// <summary>
+        /// The transform being followed (its origin at its feet). Change it with SetTarget or Follow.
+        /// </summary>
         public Transform Target => target;
+        /// <summary>
+        /// The transform whose scale is the target's size (see targetSizeReference). May be null: the target is then
+        /// framed at size 1.
+        /// </summary>
         public Transform TargetSizeReference { get => targetSizeReference; set => targetSizeReference = value; }
 
         /// <summary>
@@ -156,12 +192,24 @@ namespace CameraSystem
         public CameraMode RequestedMode => requestedMode;
         /// <summary>0 = fully first person, 1 = fully third person, in between while transitioning.</summary>
         public float ThirdPersonBlend => modes.transitionCurve.Evaluate(modeProgress);
+        /// <summary>Whether the camera is more than halfway into aiming.</summary>
         public bool IsAiming => aimProgress > 0.5f;
+        /// <summary>
+        /// The look direction's heading in degrees (0-360, round the world's up axis), without shake.
+        /// </summary>
         public float Yaw => yaw;
+        /// <summary>
+        /// The look direction's pitch in degrees (positive looks down), without shake, within the current mode's pitch
+        /// limits.
+        /// </summary>
         public float Pitch => pitch;
         /// <summary>The look rotation, without shake. Prefer this over transform.rotation for aiming logic.</summary>
         public Quaternion LookRotation => Quaternion.Euler(pitch, yaw, 0f);
+        /// <summary>
+        /// The third person camera distance (m) zoomed to, before smoothing and before collision pulls it in.
+        /// </summary>
         public float Distance => targetDistance;
+        /// <summary>The current shake trauma, 0 (none) to 1 (full).</summary>
         public float Trauma => shaker.Trauma;
 
         /// <summary>Follow a new target. Smoothing is snapped so the camera doesn't fly across the level.</summary>
@@ -204,20 +252,32 @@ namespace CameraSystem
             return true;
         }
 
+        /// <summary>Requests the other view mode. Returns false if that mode is disabled in the inspector.</summary>
         public bool ToggleMode() => SetMode(requestedMode == CameraMode.FirstPerson ? CameraMode.ThirdPerson : CameraMode.FirstPerson);
 
+        /// <summary>
+        /// Points the camera at the given yaw and pitch (degrees), clamping the pitch to the current mode's limits.
+        /// </summary>
         public void SetLookRotation(float newYaw, float newPitch)
         {
             yaw = Mathf.Repeat(newYaw, 360f);
             pitch = ClampPitch(newPitch);
         }
 
+        /// <summary>
+        /// Sets the third person distance (m) to zoom to, clamped to the zoom settings' range. With instant, it skips
+        /// the zoom smoothing.
+        /// </summary>
         public void SetDistance(float newDistance, bool instant = false)
         {
             targetDistance = Mathf.Clamp(newDistance, zoom.minDistance, zoom.maxDistance);
             if (instant) { distance = targetDistance; distanceVelocity = 0f; }
         }
 
+        /// <summary>
+        /// Puts the third person camera over the right shoulder (true) or the left (false). It slides across over the
+        /// shoulder swap time.
+        /// </summary>
         public void SetShoulder(bool right) => rightShoulder = right;
 
         /// <summary>Adds shake trauma (0-1) to this camera.</summary>
@@ -304,7 +364,16 @@ namespace CameraSystem
             speedFov.maxSpeed = Mathf.Max(speedFov.maxSpeed, speedFov.minSpeed);
         }
 
+        // The Profiler's CPU Usage marker for updating the camera each frame (see docs/testing.md, Performance).
+        private static readonly ProfilerMarker UpdateMarker = new("Camera.Update");
+
         private void LateUpdate()
+        {
+            using (UpdateMarker.Auto()) { UpdateCamera(); }
+        }
+
+        /// <summary>The camera's whole update for a frame: input, the target's tracking, the view mode, look, follow, collision and lens.</summary>
+        private void UpdateCamera()
         {
             float dt = Time.deltaTime;
 

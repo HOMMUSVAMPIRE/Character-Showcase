@@ -19,7 +19,7 @@ namespace Character
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class LadderIK : MonoBehaviour
+    public class LadderIK : AbilityIK
     {
         [Tooltip("How strongly the hands and feet are put on the rungs (and the body in to the ladder). 0 turns it off.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -50,27 +50,15 @@ namespace Character
         [Tooltip("How strongly the hands are turned to grip (palms to the ladder), and the feet laid flat on the rungs")]
         [Range(0f, 1f)] [SerializeField] private float rotationWeight = 0.7f;
 
-        private CharacterIK ik;
-        private ICharacterAnimationStateSource stateSource;
-        private float activeWeight;
         // The last ladder climbed, kept while easing out
         private LadderPose ladder;
         private bool hasLadder;
 
-        /// <summary>How far placement is eased in now (0 to weight).</summary>
-        public float ActiveWeight => activeWeight;
 
-        private void Awake() => ik = GetComponent<CharacterIK>();
-        private void OnEnable() => ik.BeforeSolve += Solve;
-        private void OnDisable()
-        {
-            ik.BeforeSolve -= Solve;
-            activeWeight = 0f;
-        }
+        protected override float Weight => weight;
+        protected override float FadeTime => fadeTime;
 
-        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
-
-        private void Solve(Animator animator)
+        protected override void Solve(Animator animator)
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
@@ -84,7 +72,7 @@ namespace Character
                 : state.climbEntering ? weight * state.climbStepProgress
                 : state.climbExiting ? weight * (1f - state.climbStepProgress) : weight;
             bool stepping = state.onLadder && (state.climbEntering || state.climbExiting);
-            activeWeight = stepping || fadeTime <= 0f ? goal : Mathf.MoveTowards(activeWeight, goal, Time.deltaTime / fadeTime);
+            if (stepping) { activeWeight = goal; } else { FadeTo(goal); }
             if (activeWeight <= 0f || !hasLadder) { return; }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;

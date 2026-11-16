@@ -11,19 +11,9 @@ namespace CharacterShowcase.Tests
     /// input buffer, one dash per press, the air dash limit, and not wasting jumps mid-dash.
     /// Expected values are read from the movement mode's dash settings, so retuning the dash doesn't break the tests.
     /// </summary>
-    public class DashTests
+    [Category(TestArea.Movement)]
+    public class DashTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float DashSpeed => rig.Component<Dashing>().DashSpeed;
         private float DashDuration => rig.Component<Dashing>().DashDuration;
@@ -46,6 +36,18 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(DashSteps + 1, step => step == 0 ? CharacterTestRig.Dash(0, direction) : CharacterTestRig.Idle(),
                 _ => { if (rig.Dashing) { count++; } });
             dashingSteps(count);
+        }
+
+        [UnityTest]
+        public IEnumerator ADashOfAWholeNumberOfSteps_LastsExactlyThatMany([Values(5, 10, 15)] int steps)
+        {
+            // Floating point once left a sliver of such a dash's time after its last step (0.2 s less ten 0.02 s steps
+            // isn't exactly 0), so it took a step more than it was set to: see MovementHelpers.CountDown.
+            yield return Settle();
+            rig.SetMovementSetting("dashDuration", steps * Time.fixedDeltaTime / rig.Movement.DurationScale);
+            int dashing = 0;
+            yield return DashOnce(Vector3.forward, n => dashing = n);
+            Assert.That(dashing, Is.EqualTo(steps), "A dash should last exactly its duration.");
         }
 
         [UnityTest]
@@ -178,9 +180,11 @@ namespace CharacterShowcase.Tests
                 });
             Assert.That(airDashes, Is.EqualTo(maxAirDashes), "Only the allowed number of air dashes should happen.");
 
-            // Land, then dash again.
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
+            // Land, let whatever the landing started finish (landing while moving rolls), wait out the cooldown, then
+            // dash again.
+            yield return rig.RunUntil(() => rig.Grounded && !rig.ComposedMode.AbilityInProgress(rig.Movement), _ => CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
+            yield return rig.Run(cooldownSteps, _ => CharacterTestRig.Idle());
             int groundDashSteps = 0;
             yield return DashOnce(Vector3.forward, n => groundDashSteps = n);
             Assert.That(groundDashSteps, Is.GreaterThan(0), "Landing should give back the ability to dash.");

@@ -9,12 +9,15 @@ namespace CharacterShowcase.EditorTools
     /// <summary>
     /// Builds a small obstacle course in the open scene for testing foot placement and moving ground: stairs, a gentle
     /// and a steep ramp, scattered low bumps, and moving platforms (a slider, an elevator and a spinner). Sized to stay
-    /// within the movement controller's step height (0.35 m) and slope limit (55°).
+    /// within the MovementController's Max Step Height and Max Slope Angle.
     /// </summary>
     public static class FootPlacementTestArea
     {
         private const string RootName = "Foot Placement Test Area";
 
+        /// <summary>
+        /// Builds the course a few meters in front of the scene's character, replacing one built before (undoably).
+        /// </summary>
         [MenuItem("Tools/Character Showcase/Create Foot Placement Test Area")]
         public static void Create()
         {

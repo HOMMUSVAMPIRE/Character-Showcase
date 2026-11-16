@@ -17,6 +17,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// here. Also checks the pieces of preparing that don't need a model file: ground offsets counting meshes that
     /// aren't skinned, what makes a model due to be prepared again, and sizing previews like loaded models.
     /// </summary>
+    [Category(TestArea.Models)]
+    [TestTiming]
     public class PreparedModelTests
     {
         // The category of checks of the package's own models and animations, which a team using its own can leave out.

@@ -13,6 +13,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// mode's JSON holds its components' settings (which the character's capabilities rely on to know when to measure
     /// again); and adding, removing and finding components.
     /// </summary>
+    [Category(TestArea.Movement)]
+    [TestTiming]
     public class MovementCompositionTests
     {
         private const string ModeAssetPath = "Assets/ScriptableObjects/BasicMovementMode.asset";

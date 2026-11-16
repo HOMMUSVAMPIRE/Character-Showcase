@@ -17,7 +17,7 @@ namespace Character
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class WallSlideIK : MonoBehaviour
+    public class WallSlideIK : AbilityIK
     {
         [Tooltip("How strongly the hands are placed on the wall (and the body against it). 0 turns it off.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -37,9 +37,6 @@ namespace Character
                  "wrist, toward the wall, so less than this put the wrists into the wall")]
         [SerializeField] private float climbHandFromWall = 0.1f;
 
-        private CharacterIK ik;
-        private ICharacterAnimationStateSource stateSource;
-        private float activeWeight;
         // Climbing: how far the body is eased in now, and how far (m) it's moved toward the surface.
         private float climbWeight;
         private float climbShift;
@@ -47,22 +44,18 @@ namespace Character
         // The last wall slid down, kept while easing out so the hands don't snap.
         private Vector3 wallPoint, wallNormal;
 
-        /// <summary>How far placement is eased in now (0 to weight).</summary>
-        public float ActiveWeight => activeWeight;
 
-        private void Awake() => ik = GetComponent<CharacterIK>();
-        private void OnEnable() => ik.BeforeSolve += Solve;
-        private void OnDisable()
+        protected override float Weight => weight;
+        protected override float FadeTime => fadeTime;
+
+        protected override void OnDisable()
         {
-            ik.BeforeSolve -= Solve;
-            activeWeight = 0f;
+            base.OnDisable();
             climbWeight = 0f;
             hasClimbShift = false;
         }
 
-        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
-
-        private void Solve(Animator animator)
+        protected override void Solve(Animator animator)
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
@@ -74,7 +67,7 @@ namespace Character
                 wallNormal = state.wallNormal;
             }
             float goal = sliding ? weight : 0f;
-            activeWeight = fadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, Time.deltaTime / fadeTime) : goal;
+            FadeTo(goal);
             if (activeWeight <= 0f || wallNormal == Vector3.zero) { return; }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;

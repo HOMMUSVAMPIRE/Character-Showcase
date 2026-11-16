@@ -14,6 +14,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// only some settings changes only those; a preset never adds, removes or reorders a mode's components, and reports
     /// what it couldn't set; and a component's settings are the fields Unity saves, all of kinds a preset can copy.
     /// </summary>
+    [Category(TestArea.Movement)]
+    [TestTiming]
     public class MovementTuningPresetTests
     {
         private readonly List<Object> created = new();

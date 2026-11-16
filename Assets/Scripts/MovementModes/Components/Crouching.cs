@@ -163,7 +163,7 @@ namespace Character
             slide.elapsed += movementData.deltaTime;
 
             movementData.initialInertia = new Vector3(slide.direction.x * speed, inertia.y, slide.direction.z * speed);
-            if (speed <= slideEndSpeed * controller.SpeedScale || slide.elapsed >= slideMaxDuration * controller.DurationScale)
+            if (speed <= slideEndSpeed * controller.SpeedScale || MovementHelpers.HasElapsed(slide.elapsed, slideMaxDuration * controller.DurationScale, movementData.deltaTime))
             {
                 // Over: crouched, with what's left of the slide's speed, which grounded friction then eases out.
                 EndSlide(controller, crouched: true);
@@ -238,19 +238,22 @@ namespace Character
     /// <summary>Whether the character is crouched, and whether it's waiting for room to stand up.</summary>
     public class CrouchState
     {
+        /// <summary>Whether the character is crouched (its collider lowered to the crouch height).</summary>
         public bool IsCrouched;
-        // Asked to stand, but there wasn't room yet: stands as soon as there is.
+        /// <summary>Asked to stand, but there wasn't room yet: stands as soon as there is.</summary>
         public bool wantsToStand;
+        /// <summary>The Crouch button's presses (when crouching toggles), so each press counts once.</summary>
         public readonly ButtonPress press = new();
     }
 
     /// <summary>A slide in progress.</summary>
     public class SlideState
     {
+        /// <summary>Whether the character is sliding.</summary>
         public bool IsSliding;
-        // Seconds since the slide started
+        /// <summary>Seconds since the slide started.</summary>
         public float elapsed;
-        // The direction the slide is heading (horizontal, unit length)
+        /// <summary>The direction the slide is heading (horizontal, unit length).</summary>
         public Vector3 direction;
     }
 }

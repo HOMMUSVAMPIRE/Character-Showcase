@@ -42,17 +42,20 @@ namespace Character
         public float CrouchHeight { get; internal set; } = float.NaN;
         /// <summary>Its collider's radius (m): half the width it needs to pass between things.</summary>
         public float Radius { get; internal set; } = float.NaN;
-        /// <summary>How high (m) its feet rise on the shortest jump (a tap), and on the highest (Jump held).</summary>
+        /// <summary>How high (m) its feet rise on the shortest jump (a tap).</summary>
         public float MinJumpHeight { get; internal set; } = float.NaN;
+        /// <summary>How high (m) its feet rise on the highest jump (Jump held).</summary>
         public float MaxJumpHeight { get; internal set; } = float.NaN;
         /// <summary>How far (m) a slide carries it, from a sprint (NaN without sliding).</summary>
         public float SlideLength { get; internal set; } = float.NaN;
         /// <summary>How far (m) a roll carries it (NaN without rolling).</summary>
         public float RollLength { get; internal set; } = float.NaN;
-        /// <summary>How far (m) along a wall a full wall run carries it, and how far (m) it falls doing so (NaN without wall-running).</summary>
+        /// <summary>How far (m) along a wall a full wall run carries it (NaN without wall-running).</summary>
         public float WallRunLength { get; internal set; } = float.NaN;
+        /// <summary>How far (m) it falls during a full wall run (NaN without wall-running).</summary>
         public float WallRunDrop { get; internal set; } = float.NaN;
 
+        /// <summary>The lists behind Jumps and Climbs, filled by MovementController.Capabilities.</summary>
         internal readonly List<Move> jumps = new(), climbs = new();
 
         /// <summary>The gaps (at the same height) its moves cross, shortest first: "jump", "sprint jump", "sprint jump and air dash", ...</summary>

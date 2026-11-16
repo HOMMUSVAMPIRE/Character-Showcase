@@ -221,6 +221,10 @@ namespace Level
         private static readonly int[] triangles = new int[36];
         private static readonly int[] Forward = { 0, 1, 2, 0, 2, 3 }, Reversed = { 0, 2, 1, 0, 3, 2 };
 
+        /// <summary>
+        /// Rebuilds the mesh as a bar from one world-space point to another, thickness metres square, with its vertices in
+        /// space's local space (reusing static buffers, so it allocates nothing each time it's called).
+        /// </summary>
         public static void Build(Mesh mesh, Transform space, Vector3 from, Vector3 to, float thickness)
         {
             Vector3 along = to - from;

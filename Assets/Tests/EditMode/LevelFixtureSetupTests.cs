@@ -14,6 +14,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// course timer each (one per course, under the game setup) with their displays wired to it. Fixtures are named
     /// as the level builders name them (Graybox.Mechanics).
     /// </summary>
+    [Category(TestArea.Levels)]
+    [TestTiming]
     public class LevelFixtureSetupTests
     {
         private Scene scene;

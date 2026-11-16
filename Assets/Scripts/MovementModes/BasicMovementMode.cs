@@ -20,8 +20,7 @@ namespace Character
         /// </summary>
         public override bool IsNewJumpPress(Inputs inputs, MovementController controller)
         {
-            return inputs.jump != null && inputs.jump.value && inputs.jump.holdDuration <= SettingsOf<Jumping>().JumpInputBuffer
-                   && !controller.jump.pressConsumed;
+            return controller.jump.press.IsFresh(inputs.jump, SettingsOf<Jumping>().JumpInputBuffer);
         }
 
         /// <summary>
@@ -83,7 +82,7 @@ namespace Character
         {
             // A released jump button frees the next press to start a jump (checked here, before the dash and the other
             // abilities, which can skip jump processing while they last)
-            if (inputs.jump == null || !inputs.jump.value) { controller.jump.pressConsumed = false; }
+            controller.jump.press.Track(inputs.jump);
             AdvanceAbilityTimers(ref movementData, inputs, controller);
             AdvanceComponentTimers(ref movementData, inputs, controller);
 

@@ -14,9 +14,13 @@ namespace CameraSystem
         public bool hasLookInput;
         /// <summary>Requested change in third person distance this frame. Negative = zoom in.</summary>
         public float zoomDelta;
+        /// <summary>Whether the toggle view button was pressed this frame.</summary>
         public bool toggleViewPressed;
+        /// <summary>Whether the swap shoulder button was pressed this frame.</summary>
         public bool swapShoulderPressed;
+        /// <summary>Whether the aim button was pressed this frame (for toggle aiming).</summary>
         public bool aimPressed;
+        /// <summary>Whether the aim button is down (for hold aiming).</summary>
         public bool aimHeld;
     }
 
@@ -30,8 +34,13 @@ namespace CameraSystem
         private bool ownsActions;
         private InputActionAsset ownedAsset;
 
+        /// <summary>Whether a look action was found when last bound, so the reader has input to give.</summary>
         public bool IsBound => look != null;
 
+        /// <summary>
+        /// Finds the camera's actions by name in the settings' action asset or PlayerInput (the first in the scene if
+        /// none is set), enabling them if they come from the action asset. Warns and reads nothing if there is neither.
+        /// </summary>
         public void Bind(CameraInputSettings settings)
         {
             Unbind();
@@ -66,6 +75,7 @@ namespace CameraSystem
             }
         }
 
+        /// <summary>Lets go of the actions, disabling them if Bind enabled them.</summary>
         public void Unbind()
         {
             if (ownsActions && ownedAsset != null)
@@ -88,6 +98,10 @@ namespace CameraSystem
             return action;
         }
 
+        /// <summary>
+        /// Reads this frame's camera input, converted to degrees of look and meters of zoom. Mouse look is ignored
+        /// when allowMouseLook is false (the rig passes false while the cursor is free, if set to ignore it then).
+        /// </summary>
         public CameraInputFrame Read(CameraLookSettings lookSettings, CameraZoomSettings zoomSettings, bool allowMouseLook, float deltaTime)
         {
             var frame = new CameraInputFrame();

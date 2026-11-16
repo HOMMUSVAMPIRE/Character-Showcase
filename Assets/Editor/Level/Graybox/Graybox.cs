@@ -176,6 +176,7 @@ namespace CharacterShowcase.EditorTools.Level
             return points;
         }
 
+        /// <summary>An axis-aligned rectangle from its centre and size.</summary>
         public static Vector2[] Rect(Vector2 centre, Vector2 size)
         {
             Vector2 h = size / 2f;
@@ -209,6 +210,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- Objects ----
 
+        /// <summary>An empty group under parent, for the pieces made in it.</summary>
         [Piece]
         public static Transform Group(Transform parent, string name)
         {
@@ -241,6 +243,10 @@ namespace CharacterShowcase.EditorTools.Level
             return group;
         }
 
+        /// <summary>
+        /// A box (Unity's cube with a UV2, and its box collider) centred at localCentre in the parent, turned yaw about
+        /// the vertical, in the surface's material. Static.
+        /// </summary>
         [Piece]
         public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f, Surface surface = Surface.Concrete)
         {

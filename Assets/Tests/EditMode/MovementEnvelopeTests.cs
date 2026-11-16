@@ -13,6 +13,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// so this fails after a change to the tuning, the character or its model until it's written again (Tools > Character
     /// Showcase > Level > Specs > Write Movement Envelope).
     /// </summary>
+    [Category(TestArea.Movement)]
+    [TestTiming]
     public class MovementEnvelopeTests
     {
         // Measurements repeat exactly on one machine; this allows for float differences between machines.

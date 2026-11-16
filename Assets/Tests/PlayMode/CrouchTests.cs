@@ -13,64 +13,40 @@ namespace CharacterShowcase.Tests
     /// it up, only where there's room (it waits for room, then stands by itself), the hold-to-crouch option, and
     /// jumping from a crouch. Expected values are read from the movement mode's settings.
     /// </summary>
-    public class CrouchTests
+    [Category(TestArea.Abilities)]
+    public class CrouchTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
-        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
         private float CrouchSpeed => rig.Component<Crouching>().CrouchSpeed * rig.Movement.SpeedScale;
         private bool Crouched => rig.InState(CharacterState.Crouching);
 
-        private IEnumerator Stand()
-        {
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
-        }
 
         /// <summary>Presses Crouch for one step, then lets go, with the given movement input throughout.</summary>
         private IEnumerator PressCrouch(Vector3 direction = default) =>
             rig.Run(3, step => step == 0 ? CharacterTestRig.Crouch(0, direction) : CharacterTestRig.Move(direction));
 
-        /// <summary>The character's mean horizontal speed over the given time, moving with the given input.</summary>
-        private IEnumerator MeanSpeed(float seconds, Vector3 direction, System.Action<float> result)
-        {
-            float total = 0f;
-            int steps = 0;
-            yield return rig.Run(seconds, _ => CharacterTestRig.Move(direction), _ => { total += rig.HorizontalSpeed; steps++; });
-            result(total / steps);
-        }
 
         [UnityTest]
         public IEnumerator PressingCrouch_LowersTheCollider_AndMovesAtCrouchSpeed()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             yield return PressCrouch();
 
             Assert.That(Crouched, Is.True, "Pressing Crouch should crouch.");
-            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "Crouching should lower the collider to the crouch height.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "Crouching should lower the collider to the crouch height.");
             Assert.That(rig.Grounded, Is.True, "Crouching should keep the character's feet on the ground.");
 
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
             float speed = 0f;
-            yield return MeanSpeed(0.4f, Vector3.forward, s => speed = s);
+            yield return rig.MeanSpeed(0.4f, _ => CharacterTestRig.Move(Vector3.forward), s => speed = s);
             Assert.That(speed, Is.EqualTo(CrouchSpeed).Within(0.05f * CrouchSpeed), "A crouched character should move at its crouch speed.");
         }
 
         [UnityTest]
         public IEnumerator PressingCrouchAgain_StandsUp_AndWalksAtWalkSpeed()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             yield return PressCrouch();
             yield return PressCrouch();
@@ -80,17 +56,17 @@ namespace CharacterShowcase.Tests
 
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
             float speed = 0f;
-            yield return MeanSpeed(0.4f, Vector3.forward, s => speed = s);
+            yield return rig.MeanSpeed(0.4f, _ => CharacterTestRig.Move(Vector3.forward), s => speed = s);
             Assert.That(speed, Is.EqualTo(rig.WalkSpeed).Within(0.05f * rig.WalkSpeed), "Once standing, the character should walk at its walk speed.");
         }
 
         [UnityTest]
         public IEnumerator UnderALowCeiling_StaysCrouched_UntilThereIsRoom_ThenStandsByItself()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             // A ceiling between the crouch height and the standing height, starting a little ahead of the character.
-            float underside = Mathf.Lerp(standing * CrouchHeight, standing, 0.5f);
+            float underside = Mathf.Lerp(standing * rig.CrouchHeight, standing, 0.5f);
             float start = rig.Radius + 0.5f, length = 2f;
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, start + length / 2f), new Vector3(4f, 1f, length));
 
@@ -118,7 +94,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator HoldToCrouch_CrouchesWhileHeld_AndStandsOnRelease()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             rig.SetMovementSetting("holdToCrouch", true);
 
             yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step));
@@ -132,7 +108,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator HoldingCrouch_InToggleMode_CrouchesOnlyOnce()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             int crouchStarts = 0;
             bool was = false;
             yield return rig.Run(1f, step => CharacterTestRig.Crouch(step), _ =>
@@ -147,18 +123,18 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator JumpingFromACrouch_StandsUpAndJumps_ButNotUnderALowCeiling()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             yield return PressCrouch();
             float highest = rig.Position.y;
             yield return rig.Run(0.4f, step => CharacterTestRig.Jump(step), _ => highest = Mathf.Max(highest, rig.Position.y));
             Assert.That(highest, Is.GreaterThan(0.5f), "Jumping from a crouch should jump.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f), "Jumping from a crouch should stand up.");
 
-            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
 
             // Under a ceiling too low to stand in: no jump.
-            float underside = rig.StandingHeight * Mathf.Lerp(CrouchHeight, 1f, 0.5f);
+            float underside = rig.StandingHeight * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
             yield return PressCrouch();
             rig.Box("Low Ceiling", rig.Position + Vector3.up * (underside + 0.5f), new Vector3(4f, 1f, 4f));
             float startY = rig.Position.y;
@@ -171,10 +147,10 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator JumpingDuringACrouchedDash_UnderALowCeiling_KeepsDashing()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             if (rig.Component<Dashing>().DashDuration <= 0f) { Assert.Ignore("The character can't dash."); }
             yield return PressCrouch();
-            float underside = rig.StandingHeight * Mathf.Lerp(CrouchHeight, 1f, 0.5f);
+            float underside = rig.StandingHeight * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, 10f), new Vector3(4f, 1f, 30f));
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
 
@@ -193,9 +169,9 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator Crouching_RaisesCrouchStartedAndCrouchEnded_OnceEach()
         {
-            yield return Stand();
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            yield return rig.StandOnFloor();
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
 
             yield return PressCrouch();
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
@@ -204,18 +180,18 @@ namespace CharacterShowcase.Tests
 
             Assert.That(events.Count(e => e == MovementEvents.CrouchStarted), Is.EqualTo(1));
             Assert.That(events.Count(e => e == MovementEvents.CrouchEnded), Is.EqualTo(1));
-            Assert.That(events.IndexOf(MovementEvents.CrouchStarted), Is.LessThan(events.IndexOf(MovementEvents.CrouchEnded)));
+            Assert.That(events.ToList().IndexOf(MovementEvents.CrouchStarted), Is.LessThan(events.ToList().IndexOf(MovementEvents.CrouchEnded)));
         }
 
         [UnityTest]
         public IEnumerator CrouchingAtTwiceTheSize_LowersTheColliderInProportion()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
             float standing = rig.StandingHeight;
             yield return PressCrouch();
-            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * CrouchHeight).Within(0.02f), "The crouch height is a share of the character's height at any size.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.02f), "The crouch height is a share of the character's height at any size.");
 
             yield return PressCrouch();
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.02f), "Standing up should restore the collider at the character's size.");

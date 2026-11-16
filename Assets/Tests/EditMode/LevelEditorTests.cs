@@ -16,6 +16,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// would, object for object (pieces with deferred touches, like spawn markers, included). Each builds in a new
     /// scene, replacing what's open.
     /// </summary>
+    [Category(TestArea.Levels)]
+    [TestTiming]
     public class LevelEditorTests
     {
         private const string Playground = "Assets/Levels/LevelPlayground.level.json";

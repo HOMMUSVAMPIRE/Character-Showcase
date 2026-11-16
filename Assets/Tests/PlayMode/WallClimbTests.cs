@@ -20,28 +20,15 @@ namespace CharacterShowcase.Tests
     /// climbed round its corner, but is once the face round it is painted too; and paint is for the face painted, erased
     /// as painted. Expected values are read from the movement mode's settings.
     /// </summary>
-    public class WallClimbTests
+    [Category(TestArea.Traversal)]
+    public class WallClimbTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         // The face (z) of the surface in front of the character, which faces -Z toward it.
         private float face;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
-        private float ClimbSpeed => rig.Component<WallClimbing>().WallClimbSpeed * rig.Movement.SpeedScale;
         private bool Climbing => rig.InState(CharacterState.WallClimbing);
-        private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
         // How high the character's grip is above its feet: the point that has to stay on the climbable area.
-        private float GripHeight => rig.MovementSetting<float>("wallClimbGripHeight") * rig.StandingHeight;
 
         private static Inputs Up => CharacterTestRig.Move(Vector3.forward);
         private static Inputs Down => CharacterTestRig.Move(Vector3.back);
@@ -50,8 +37,7 @@ namespace CharacterShowcase.Tests
         /// <summary>A floor, the character standing on it facing +Z, and the face of something a little in front of it.</summary>
         private IEnumerator SetUpStanding()
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(Vector3.zero);
+            yield return rig.StandOnFloor();
             face = rig.Radius + 0.3f;
         }
 
@@ -74,24 +60,18 @@ namespace CharacterShowcase.Tests
         /// </summary>
         private IEnumerator TakeHold()
         {
-            for (int step = 0; step < CharacterTestRig.StepsFor(0.5f) && !Climbing; step++)
-            {
-                yield return rig.Run(1, _ => Up);
-            }
+            yield return rig.RunUntil(() => Climbing, _ => Up, timeoutSeconds: 0.5f);
             Assert.That(Climbing, Is.True, $"Test setup: the character should be climbing (it's at {rig.Position}, " +
                                            $"{rig.Movement.lastFrameMovementData.state}).");
-            for (int step = 0; step < CharacterTestRig.StepsFor(EnterDuration + 0.1f) && rig.Movement.wallClimb.IsEntering; step++)
-            {
-                yield return rig.Run(1, _ => Up);
-            }
+            yield return rig.RunUntil(() => !rig.Movement.wallClimb.IsEntering, _ => Up, timeoutSeconds: EnterDuration + 0.1f);
         }
 
         [UnityTest]
         public IEnumerator WalkingIntoAClimbableWall_TakesHoldOfIt_AndClimbsUpIt_AgainstItAndFacingIt()
         {
             yield return SetUpWall();
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             yield return TakeHold();
             Assert.That(events.Count(e => e == MovementEvents.WallClimbStarted), Is.EqualTo(1));
 
@@ -101,7 +81,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(seconds, _ => Up, _ => { steps++; if (Climbing) { climbingSteps++; } });
 
             Assert.That(climbingSteps, Is.EqualTo(steps), "The character should keep climbing.");
-            Assert.That(rig.Position.y - start, Is.EqualTo(ClimbSpeed * seconds).Within(0.1f * ClimbSpeed * seconds),
+            Assert.That(rig.Position.y - start, Is.EqualTo(rig.ClimbSpeed * seconds).Within(0.1f * rig.ClimbSpeed * seconds),
                 "Up on the stick should climb up at the climbing speed.");
             Assert.That(rig.Position.z + rig.Radius, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(1f), "The character should face the wall.");
@@ -166,7 +146,7 @@ namespace CharacterShowcase.Tests
             const float seconds = 1f;
             yield return rig.Run(seconds, _ => Right);
             Assert.That(Climbing, Is.True);
-            Assert.That(rig.Position.x - start.x, Is.EqualTo(ClimbSpeed * seconds).Within(0.1f * ClimbSpeed * seconds),
+            Assert.That(rig.Position.x - start.x, Is.EqualTo(rig.ClimbSpeed * seconds).Within(0.1f * rig.ClimbSpeed * seconds),
                 "Right on the stick should climb to the right at the climbing speed.");
             Assert.That(rig.Position.y, Is.EqualTo(start.y).Within(0.01f), "Climbing sideways shouldn't rise or fall.");
         }
@@ -205,8 +185,8 @@ namespace CharacterShowcase.Tests
             yield return SetUpPanel();
             yield return rig.Run(4f, _ => Up);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the top of the climbable area.");
-            Assert.That(rig.Position.y + GripHeight, Is.LessThan(4f + 0.5f), "The character should stop at the panel's top, not climb on up the plain wall.");
-            Assert.That(rig.Position.y + GripHeight, Is.GreaterThan(4f - 0.5f), "The character should have climbed to the panel's top.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.LessThan(4f + 0.5f), "The character should stop at the panel's top, not climb on up the plain wall.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.GreaterThan(4f - 0.5f), "The character should have climbed to the panel's top.");
         }
 
         [UnityTest]
@@ -241,7 +221,7 @@ namespace CharacterShowcase.Tests
 
             float cornerZ = rig.Position.z;
             yield return rig.Run(1f, _ => Right);
-            Assert.That(rig.Position.z, Is.LessThan(cornerZ - 0.5f * ClimbSpeed), "Climbing on, the character should move along the side wall.");
+            Assert.That(rig.Position.z, Is.LessThan(cornerZ - 0.5f * rig.ClimbSpeed), "Climbing on, the character should move along the side wall.");
             Assert.That(side - (rig.Position.x + rig.Radius), Is.EqualTo(0f).Within(0.05f), "The character should be against the side wall.");
         }
 
@@ -253,10 +233,10 @@ namespace CharacterShowcase.Tests
             const float top = 3.5f;
             // Deep, so walking on after climbing onto it doesn't walk off its far side.
             rig.ClimbableBox("Block", new Vector3(0f, top / 2f, face + 5f), new Vector3(4f, top, 10f));
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             yield return TakeHold();
-            yield return rig.Run(top / ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up);
+            yield return rig.Run(top / rig.ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up);
             Assert.That(Climbing, Is.False);
 
             Assert.That(Climbing, Is.False, "The character should no longer be climbing.");
@@ -273,12 +253,12 @@ namespace CharacterShowcase.Tests
             yield return SetUpWall();
             yield return TakeHold();
             yield return rig.Run(0.5f, _ => Up);
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             Vector3 launch = Vector3.zero;
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
             {
-                if (step == 0) { launch = Velocity; }
+                if (step == 0) { launch = rig.Velocity; }
             });
 
             float up = rig.MovementSetting<float>("wallClimbJumpUpSpeed") * rig.Movement.SpeedScale;
@@ -313,8 +293,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator AtTheBottom_PressingDown_StepsOffOntoTheGround()
         {
             yield return SetUpWall();
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             yield return TakeHold();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should be at the bottom, on the ground.");
             float atWall = rig.Position.z;
@@ -364,8 +344,8 @@ namespace CharacterShowcase.Tests
             painted.Paint(new Vector3(0f, middle, face), Vector3.back, radius);
             yield return TakeHold();
             // Up to the patch's middle, where it's widest, before going sideways.
-            float toMiddle = middle - (rig.Position.y + GripHeight);
-            yield return rig.Run(toMiddle / ClimbSpeed, _ => Up);
+            float toMiddle = middle - (rig.Position.y + rig.WallClimbGripHeight);
+            yield return rig.Run(toMiddle / rig.ClimbSpeed, _ => Up);
 
             yield return rig.Run(3f, _ => Right);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the edge of the paint.");
@@ -374,8 +354,8 @@ namespace CharacterShowcase.Tests
 
             yield return rig.Run(4f, _ => Up);
             Assert.That(Climbing, Is.True);
-            Assert.That(rig.Position.y + GripHeight, Is.LessThan(middle + radius + 0.1f), "The character shouldn't climb up past the paint.");
-            Assert.That(rig.Position.y + GripHeight, Is.GreaterThan(middle), "The character should have climbed up the patch.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.LessThan(middle + radius + 0.1f), "The character shouldn't climb up past the paint.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.GreaterThan(middle), "The character should have climbed up the patch.");
         }
 
         [UnityTest]
@@ -448,10 +428,11 @@ namespace CharacterShowcase.Tests
         public IEnumerator TakingHoldFromTheGround_StepsUpOntoTheWallFirst_HoldingStill_ThenClimbs()
         {
             yield return SetUpWall();
-            for (int step = 0; step < CharacterTestRig.StepsFor(0.5f) && !Climbing; step++) { yield return rig.Run(1, _ => Up); }
+            // Every step spent stepping onto the wall counts, from the one it takes hold on.
+            int enteringSteps = 0;
+            yield return rig.RunUntil(() => Climbing, _ => Up, _ => { if (rig.Movement.wallClimb.IsEntering) { enteringSteps++; } }, 0.5f);
             Assert.That(rig.Movement.wallClimb.IsEntering, Is.True, "Taking hold from the ground should step up onto the wall first.");
             Vector3 start = rig.Position;
-            int enteringSteps = 0;
             yield return rig.Run(EnterDuration + 0.4f, _ => Up, _ =>
             {
                 if (rig.Movement.wallClimb.IsEntering)
@@ -461,8 +442,8 @@ namespace CharacterShowcase.Tests
                     Assert.That(Mathf.Abs(rig.Position.y - start.y) + Mathf.Abs(rig.Position.x - start.x), Is.LessThan(0.01f), "Stepping onto the wall, the character should hold still.");
                 }
             });
-            Assert.That(enteringSteps * Time.fixedDeltaTime, Is.EqualTo(EnterDuration).Within(2f * Time.fixedDeltaTime), "Stepping onto the wall should take the enter time.");
-            Assert.That(rig.Position.y - start.y, Is.GreaterThan(0.5f * ClimbSpeed * 0.4f), "Once on the wall, the character should climb.");
+            Assert.That(enteringSteps * Time.fixedDeltaTime, Is.EqualTo(EnterDuration).Within(Time.fixedDeltaTime), "Stepping onto the wall should take the enter time.");
+            Assert.That(rig.Position.y - start.y, Is.GreaterThan(0.5f * rig.ClimbSpeed * 0.4f), "Once on the wall, the character should climb.");
         }
 
         [UnityTest]
@@ -493,7 +474,7 @@ namespace CharacterShowcase.Tests
                     Assert.That(Mathf.Abs(rig.Position.y - start.y) + Mathf.Abs(rig.Position.x - start.x), Is.LessThan(0.01f), "Stepping off the wall, the character should hold still.");
                 }
             });
-            Assert.That(exitingSteps * Time.fixedDeltaTime, Is.EqualTo(ExitDuration).Within(2f * Time.fixedDeltaTime), "Stepping off should take the exit time.");
+            Assert.That(exitingSteps * Time.fixedDeltaTime, Is.EqualTo(ExitDuration).Within(Time.fixedDeltaTime), "Stepping off should take the exit time.");
             Assert.That(Climbing, Is.False);
 
             // Higher up, letting go with Crouch drops at once.
@@ -514,7 +495,7 @@ namespace CharacterShowcase.Tests
             rig.ClimbableBox("Block", new Vector3(0f, top / 2f, face + 5f), new Vector3(4f, top, 10f));
             yield return TakeHold();
             float climbStartFeet = float.NaN;
-            yield return rig.Run((top - 1f) / ClimbSpeed + 0.5f, _ => Up, _ =>
+            yield return rig.Run((top - 1f) / rig.ClimbSpeed + 0.5f, _ => Up, _ =>
             {
                 if (float.IsNaN(climbStartFeet) && rig.InState(CharacterState.LedgeClimbing)) { climbStartFeet = rig.Position.y; }
             });

@@ -15,6 +15,8 @@ namespace CharacterShowcase.Tests
     /// error) when it has no prefab or no spawn points. The prefab is a plain object, so these don't depend on the
     /// character's setup (its input manager and camera).
     /// </summary>
+    [Category(TestArea.Spawning)]
+    [TestTiming]
     public class SpawnerTests
     {
         private readonly List<Object> created = new();

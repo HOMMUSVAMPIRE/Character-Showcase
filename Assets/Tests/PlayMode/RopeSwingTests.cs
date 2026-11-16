@@ -16,33 +16,17 @@ namespace CharacterShowcase.Tests
     /// Crouch lets go, and the same rope isn't caught again straight away; and a grab reach of 0 turns ropes off. The test
     /// camera looks down +Z. Expected values are read from the movement mode's settings.
     /// </summary>
-    public class RopeSwingTests
+    [Category(TestArea.Traversal)]
+    public class RopeSwingTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         private Rope rope;
-        private readonly List<MovementEvents> events = new();
 
         private static readonly Vector3 Anchor = new Vector3(0f, 10f, 0f);
         private const float RopeLength = 8f;
 
-        [SetUp]
-        public void SetUp()
-        {
-            rig = new CharacterTestRig();
-            events.Clear();
-        }
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
         private bool Swinging => rig.InState(CharacterState.RopeSwinging);
         private float GripHeight => rig.MovementSetting<float>("ropeGripHeight") * rig.StandingHeight;
         private Vector3 Grip => rig.Position + Vector3.up * GripHeight;
-        private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
         /// <summary>How far (degrees) the character's grip is swung out from straight below the anchor.</summary>
         private float SwingAngle => Vector3.Angle(Grip - Anchor, Vector3.down);
 
@@ -58,9 +42,9 @@ namespace CharacterShowcase.Tests
             // Its grip height depends on its size, known once it's spawned.
             yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
             rig.Teleport(new Vector3(0f, gripHeight - GripHeight, -from));
-            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            rig.ClearEvents();
             yield return rig.Launch(new Vector3(0f, 0f, speed), CharacterTestRig.Idle());
-            for (int step = 0; step < CharacterTestRig.StepsFor(1f) && !Swinging; step++) { yield return rig.Run(1, _ => CharacterTestRig.Idle()); }
+            yield return rig.RunUntil(() => Swinging, _ => CharacterTestRig.Idle(), timeoutSeconds: 1f);
             Assert.That(Swinging, Is.True, $"Test setup: the character should have caught hold of the rope (it's at {rig.Position}).");
         }
 
@@ -72,7 +56,7 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpSwing();
             Assert.That(rope.IsHeld, Is.True);
-            Assert.That(events, Does.Contain(MovementEvents.RopeGrabbed));
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.RopeGrabbed));
             float radius = rig.Movement.ropeSwing.gripDistance;
             float furthestOff = 0f, furthestForward = float.NegativeInfinity, after = float.PositiveInfinity;
             yield return rig.Run(3f, _ => CharacterTestRig.Idle(), _ =>
@@ -138,14 +122,14 @@ namespace CharacterShowcase.Tests
             yield return SetUpSwing();
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Vector3 swing = rig.Movement.ropeSwing.velocity;
-            events.Clear();
+            rig.ClearEvents();
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
             Assert.That(Swinging, Is.False, "Jump should let go of the rope.");
             float jumpUp = rig.MovementSetting<float>("ropeJumpUpSpeed") * rig.Movement.SpeedScale;
-            Assert.That(Velocity.z, Is.EqualTo(swing.z).Within(0.6f), "Jumping off should keep the swing's speed.");
-            Assert.That(Velocity.y, Is.GreaterThan(swing.y + jumpUp - 0.6f), "Jumping off should jump up, on top of the swing.");
-            Assert.That(events, Does.Contain(MovementEvents.Jumped));
-            Assert.That(events, Does.Contain(MovementEvents.RopeReleased));
+            Assert.That(rig.Velocity.z, Is.EqualTo(swing.z).Within(0.6f), "Jumping off should keep the swing's speed.");
+            Assert.That(rig.Velocity.y, Is.GreaterThan(swing.y + jumpUp - 0.6f), "Jumping off should jump up, on top of the swing.");
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.Jumped));
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.RopeReleased));
             Assert.That(rope.IsHeld, Is.False);
             Vector3 released = rope.Direction;
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());

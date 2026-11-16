@@ -25,10 +25,12 @@ The Locomotion blend tree plays, by speed, each loop at the speed its strides ar
 |---|---|
 | the stance (the mannequin's) | standing still |
 | Quaternius's walk | its measured strides |
-| the mannequin's brisk walk | its measured strides, then sped up by `BriskWalkUpToPlayback` to reach `BriskWalkUpTo` (MannequinGenerator.cs), so the character's walk speed still looks like a walk |
+| the mannequin's brisk walk | its measured strides, then shown a little past them (`BriskWalkReach` times its own speed, played up to `BriskWalkPlayback` times faster: MannequinGenerator.cs), so a walk a little faster than people naturally walk still looks like a walk |
 | the mannequin's run | its measured strides |
 | Quaternius's jog (sprinting) | its measured strides |
-| Quaternius's sprint | its measured strides, then sped up to `TopSpeed` (MannequinGenerator.cs), for the momentum a dash leaves |
+| Quaternius's sprint | its measured strides: the end of the tree (see below) |
+
+**Faster than the fastest loop.** No blend tree has a top speed fixed when it's built, which a retuned character could outrun. Each speed-driven state (Locomotion, Crouch and Wall Climb) ends at its fastest loop's own speed, and past it the AnimatorParameterTranslator plays that loop faster, by however much faster the character moves, so its feet keep up with the ground at any speed: a dash's leftover momentum, a faster run, a retuned climb. The controller carries the speed each fastest loop is made for (its TopSpeed parameters' defaults, written by Generate Mannequin), and the translator sets each state's playback multiplier (the Playback past the fastest loop section of the translator asset). A controller without them plays as Unity blend trees do, holding at their last loop's speed.
 
 Each loop is offset to land its left foot at the same moment (TouchDownPhase, measured on the mannequin), so blending between them never mixes one foot's stride with the other's. The movement's walk and run speeds are tuned to suit these loops, so retune them together (see [Walking and Sprinting](movement.md#walking-and-sprinting)).
 
@@ -105,7 +107,7 @@ It runs by itself: when model files in the folder are added, changed, moved or d
 
 **Set Up Scene…** opens a window for choosing which character, model (any Prepare Character Models has set up, with previews and heights) and movement mode a scene spawns, and sets the open scene up to spawn it (see [Spawning the Character](spawning.md)). The choice is stored on the scene's Character Spawner, so the Character prefab itself, which the tests spawn, keeps the mannequin.
 
-All three also run from the command line for automation: `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAll`, and `...SceneGameSetup.SetUpFromCommandLine -scene Assets/Scenes/SampleScene.unity -model "base_basic_shaded"` (see [Spawning the Character](spawning.md)).
+All three also run from the command line for automation (each quits Unity when it's done, with code 1 if it failed, so `-quit` isn't needed): `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAllFromCommandLine`, and `...SceneGameSetup.SetUpFromCommandLine -scene Assets/Scenes/SampleScene.unity -model "base_basic_shaded"` (see [Spawning the Character](spawning.md)).
 
 ### The reference pose
 

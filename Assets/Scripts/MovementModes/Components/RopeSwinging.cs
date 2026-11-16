@@ -38,7 +38,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.ropeSwing.regrabCooldown = Mathf.Max(0f, controller.ropeSwing.regrabCooldown - movementData.deltaTime);
+            controller.ropeSwing.regrabCooldown = MovementHelpers.CountDown(controller.ropeSwing.regrabCooldown, movementData.deltaTime);
         }
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
@@ -81,14 +81,9 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jump.pressConsumed = true;
                     Vector3 launch = swing.velocity + Vector3.up * (ropeJumpUpSpeed * controller.SpeedScale);
                     LetGoOfRope(controller);
-                    MovementHelpers.GiveBackJumps(controller);
-                    MovementHelpers.TryUseJump(controller);
-                    movementData.velocityOverride = launch;
-                    movementData.directMovementVector = Vector3.zero;
-                    movementData.events |= MovementEvents.Jumped;
+                    MovementHelpers.JumpOff(ref movementData, controller, launch, MovementEvents.Jumped);
                     return true;
                 }
             }
@@ -226,20 +221,25 @@ namespace Character
     /// </summary>
     public class RopeSwingState
     {
-        // The rope held (null when not swinging)
+        /// <summary>The rope held (null when not swinging).</summary>
         public Level.Rope rope;
-        // How far (m) down the rope from its anchor the hands hold it
+        /// <summary>How far (m) down the rope from its anchor the hands hold it.</summary>
         public float gripDistance;
-        // Where the grip is, from the anchor (gripDistance long), and how fast it's moving (m/s, across the rope)
+        /// <summary>Where the grip is, from the anchor (gripDistance long).</summary>
         public Vector3 offset;
+        /// <summary>How fast the grip is moving (m/s, across the rope).</summary>
         public Vector3 velocity;
-        // Seconds since catching hold
+        /// <summary>Seconds since catching hold.</summary>
         public float elapsed;
-        // The rope last let go of, and seconds until it can be caught again (others can be caught at once, so the
-        // character can swing from rope to rope)
+        /// <summary>
+        /// The rope last let go of, which can't be caught again until regrabCooldown runs out (others can be caught at
+        /// once, so the character can swing from rope to rope).
+        /// </summary>
         public Level.Rope lastRope;
+        /// <summary>Seconds until lastRope can be caught again.</summary>
         public float regrabCooldown;
 
+        /// <summary>Whether the character is holding a rope.</summary>
         public bool IsSwinging => rope != null;
 
         /// <summary>

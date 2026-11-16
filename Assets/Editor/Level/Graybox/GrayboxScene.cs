@@ -31,8 +31,10 @@ namespace CharacterShowcase.EditorTools.Level
         public const string MaterialFolder = "Assets/Materials/Level";
         /// <summary>The shader they're made with: noise-built concrete, world-space, no textures (tint, panels, metal and all).</summary>
         public const string SurfaceShaderPath = "Assets/Materials/NoiseConcrete.shadergraph";
-        // The climbable mask every unpainted surface shares: 1 pixel of black, nothing climbable (see the shader's
-        // Climbable settings, and PaintedClimbableSurface, which gives painted objects masks of their own).
+        /// <summary>
+        /// The climbable mask every unpainted surface shares: 1 pixel of black, nothing climbable (see the shader's
+        /// Climbable settings, and PaintedClimbableSurface, which gives painted objects masks of their own).
+        /// </summary>
         public const string NoClimbableMaskPath = "Assets/Materials/ClimbableMask_None.png";
 
         // ---- The palette (tunable; only used when a material's first made, so they can be edited by hand) ----
@@ -78,6 +80,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>What it's called: its root object's name, and how the build refers to it.</summary>
         public readonly string Name;
+        /// <summary>Where the scene is saved.</summary>
         public readonly string ScenePath;
         private readonly string skyPath, profilePath, lightingPath, lightingName;
         private readonly (string name, Action<Transform, Material> build)[] parts;
@@ -127,8 +130,11 @@ namespace CharacterShowcase.EditorTools.Level
         internal sealed class BuildState
         {
             public Scene scene;
+            /// <summary>The material the parts are built in: the palette's Concrete.</summary>
             public Material concrete;
+            /// <summary>The levels' materials, indexed by Graybox.Surface (see Palette).</summary>
             public Material[] palette;
+            /// <summary>The object every part is built under, named for the scene.</summary>
             public Transform root;
         }
 
@@ -151,7 +157,9 @@ namespace CharacterShowcase.EditorTools.Level
             }
         }
 
+        /// <summary>What the lighting bake is called in the log and the build window's progress.</summary>
         internal const string BakeStepName = "Baking the environment lighting";
+        /// <summary>What the occlusion bake is called in the log and the build window's progress.</summary>
         internal const string OcclusionStepName = "Baking the occlusion culling";
 
         /// <summary>
@@ -181,6 +189,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>Starts baking the occlusion culling in the background (if the settings say to): false if it isn't, or couldn't start.</summary>
         internal bool StartOcclusionBake() => PrepareOcclusion() && StaticOcclusionCulling.GenerateInBackground();
 
+        /// <summary>Warns that the occlusion culling didn't bake, and how to bake it by hand.</summary>
         internal void WarnOcclusionNotBaked() =>
             Debug.LogWarning($"[{Name} build] The occlusion culling didn't bake: use Window > Rendering > Occlusion Culling > Bake.");
 
@@ -238,8 +247,10 @@ namespace CharacterShowcase.EditorTools.Level
             Log($"Built the {Name} graybox in '{ScenePath}'.");
         }
 
+        /// <summary>Logs a line about the build, headed with the scene's name.</summary>
         internal void Log(string message) => Debug.Log($"[{Name} build] {message}");
 
+        /// <summary>Warns that the environment lighting didn't bake, and how to bake it by hand.</summary>
         internal void WarnLightingNotBaked() =>
             Debug.LogWarning($"[{Name} build] The environment lighting didn't bake: use Window > Rendering > Lighting > Generate Lighting.");
 

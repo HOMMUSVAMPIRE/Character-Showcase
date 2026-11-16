@@ -22,8 +22,13 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class SceneGameSetup
     {
+        /// <summary>
+        /// The demo scene, whose camera and input manager are copied into scenes that haven't their own.
+        /// </summary>
         public const string DemoScenePath = "Assets/Scenes/SampleScene.unity";
+        /// <summary>The character prefab the command line spawns unless it's given another (-prefab).</summary>
         public const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        /// <summary>The name of the object the setup makes (and finds again) at the scene's root.</summary>
         public const string SetupName = "Game Setup";
         /// <summary>
         /// Objects whose names start with this are spawn markers: places a level marks for a character to start, facing
@@ -95,6 +100,9 @@ namespace CharacterShowcase.EditorTools
         public static List<Transform> SpawnMarkers(Scene scene) =>
             OutsideSetup<Transform>(scene).Where(t => IsSpawnMarkerName(t.name)).ToList();
 
+        /// <summary>
+        /// Whether name is a spawn marker's: SpawnMarkerPrefix alone, or followed by a space and more.
+        /// </summary>
         public static bool IsSpawnMarkerName(string name) =>
             name == SpawnMarkerPrefix || name.StartsWith(SpawnMarkerPrefix + " ", System.StringComparison.Ordinal);
 
@@ -219,19 +227,19 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// For -executeMethod: sets up and saves the scene given by -scene [path], spawning -prefab [path] (the
         /// Character prefab without it), optionally with -model [a prepared model's name or source path] and
-        /// -movementMode [asset path]. Exits with code 1 on failure.
+        /// -movementMode [asset path]. Exits when it's done, with code 1 on failure.
         /// </summary>
         public static void SetUpFromCommandLine()
         {
-            string scenePath = Argument("-scene");
-            string prefabPath = Argument("-prefab") ?? CharacterPrefabPath;
-            string modelName = Argument("-model");
-            string modePath = Argument("-movementMode");
+            string scenePath = CommandLine.Argument("-scene");
+            string prefabPath = CommandLine.Argument("-prefab") ?? CharacterPrefabPath;
+            string modelName = CommandLine.Argument("-model");
+            string modePath = CommandLine.Argument("-movementMode");
 
             if (scenePath == null || AssetDatabase.LoadAssetAtPath<SceneAsset>(scenePath) == null)
             {
                 Debug.LogError($"[{nameof(SceneGameSetup)}] " + (scenePath == null ? "Give the scene to set up with -scene [path]." : $"There's no scene at '{scenePath}'."));
-                EditorApplication.Exit(1);
+                CommandLine.Finish(false);
                 return;
             }
             // Opened before loading the assets: opening a scene unloads assets nothing loaded uses, which would leave
@@ -258,19 +266,14 @@ namespace CharacterShowcase.EditorTools
             if (problem != null)
             {
                 Debug.LogError($"[{nameof(SceneGameSetup)}] {problem}");
-                EditorApplication.Exit(1);
+                CommandLine.Finish(false);
                 return;
             }
 
-            if (!SetUp(scene, settings, withUndo: false) || !EditorSceneManager.SaveScene(scene)) { EditorApplication.Exit(1); }
+            bool ok = SetUp(scene, settings, withUndo: false) && EditorSceneManager.SaveScene(scene);
+            CommandLine.Finish(ok);
         }
 
-        private static string Argument(string name)
-        {
-            string[] args = System.Environment.GetCommandLineArgs();
-            int index = System.Array.IndexOf(args, name);
-            return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
-        }
 
         private static string Count(int count, string noun) => $"{count} {noun}{(count == 1 ? "" : "s")}";
 
@@ -305,6 +308,7 @@ namespace CharacterShowcase.EditorTools
             if (withUndo) { serialized.ApplyModifiedProperties(); } else { serialized.ApplyModifiedPropertiesWithoutUndo(); }
         }
 
+        /// <summary>The scene's name for showing, or "Untitled" if it hasn't been saved.</summary>
         public static string SceneName(Scene scene) => string.IsNullOrEmpty(scene.name) ? "Untitled" : scene.name;
 
         /// <summary>

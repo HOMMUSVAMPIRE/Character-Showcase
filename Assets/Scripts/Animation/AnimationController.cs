@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Character
@@ -169,9 +170,15 @@ namespace Character
         public void UpdateAnimator(MovementData movementData, float deltaTime)
         {
             if (movementData == null) { return; }
-            AnimationState = BuildState(movementData, deltaTime);
-            driver?.UpdateAnimation(AnimationState, deltaTime);
+            using (UpdateMarker.Auto())
+            {
+                AnimationState = BuildState(movementData, deltaTime);
+                driver?.UpdateAnimation(AnimationState, deltaTime);
+            }
         }
+
+        // The Profiler's CPU Usage marker for animating the character each frame (see docs/testing.md, Performance).
+        private static readonly ProfilerMarker UpdateMarker = new("Animation.Update");
 
         private void HandleMovementEvent(MovementEvents movementEvent, MovementData movementData)
         {
@@ -422,8 +429,9 @@ namespace Character
 
         /// <summary>The model's facing (yaw, degrees) as SmoothRotateVisuals has turned it, without its lean.</summary>
         public float VisualYaw => visualYaw;
-        /// <summary>How far the model leans into a turn (degrees, positive into a right turn) and forward (degrees, positive forward).</summary>
+        /// <summary>How far the model leans into a turn (degrees, positive into a right turn).</summary>
         public float Bank => bank;
+        /// <summary>How far the model leans forward with acceleration (degrees, positive forward).</summary>
         public float Pitch => pitch;
     }
 }

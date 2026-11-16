@@ -18,6 +18,7 @@ namespace Character
                  "character in a step, the one higher in the list does")]
         [SerializeReference] private List<MovementComponent> components;
 
+        /// <summary>A new mode starts with the default components (DefaultComponents), in their order.</summary>
         protected ComposedMovementMode()
         {
             components = new List<MovementComponent>(DefaultComponents());
@@ -66,6 +67,7 @@ namespace Character
         /// <summary>A component type's default settings, shared, for SettingsOf: never changed.</summary>
         internal static class DefaultsOf<T> where T : MovementComponent, new()
         {
+            /// <summary>The shared instance holding T's default settings.</summary>
             public static readonly T Instance = new();
         }
 
@@ -177,7 +179,7 @@ namespace Character
                 MovementComponent component = components[i];
                 if (component == null) { continue; }
                 component.Mode = this;
-                if (component.Enabled) { component.AdvanceTimers(ref movementData, inputs, controller); }
+                if (component.Enabled) { using (component.Marker.Auto()) { component.AdvanceTimers(ref movementData, inputs, controller); } }
                 else if (component.IsActive(controller)) { component.Interrupt(ref movementData, controller); }
             }
         }
@@ -191,7 +193,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { component.BeforeAbilities(ref movementData, inputs, controller); }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeAbilities(ref movementData, inputs, controller); } }
             }
         }
 
@@ -204,7 +206,10 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled && component.TakeOver(ref movementData, inputs, controller)) { return true; }
+                if (component == null || !component.Enabled) { continue; }
+                bool hasCharacter;
+                using (component.Marker.Auto()) { hasCharacter = component.TakeOver(ref movementData, inputs, controller); }
+                if (hasCharacter) { return true; }
             }
             return false;
         }
@@ -217,7 +222,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { component.BeforeLocomotion(ref movementData, inputs, controller); }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeLocomotion(ref movementData, inputs, controller); } }
             }
         }
 
@@ -230,7 +235,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { component.Locomotion(ref movementData, inputs, controller); }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.Locomotion(ref movementData, inputs, controller); } }
             }
         }
 
@@ -240,7 +245,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { component.AfterWalking(ref movementData, inputs, controller); }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.AfterWalking(ref movementData, inputs, controller); } }
             }
         }
 
@@ -250,7 +255,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { component.FinishStep(ref movementData, controller); }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.FinishStep(ref movementData, controller); } }
             }
         }
 
@@ -273,7 +278,7 @@ namespace Character
                 MovementComponent component = components[i];
                 if (component == null || !component.Enabled) { continue; }
                 component.Mode = this;
-                component.AfterMovementResolved(movementData, controller);
+                using (component.Marker.Auto()) { component.AfterMovementResolved(movementData, controller); }
             }
         }
 
@@ -289,6 +294,9 @@ namespace Character
             }
         }
 
+        /// <summary>
+        /// Points each component at this mode and warns of a component type listed more than once.
+        /// </summary>
         protected virtual void OnValidate()
         {
             components ??= new List<MovementComponent>();

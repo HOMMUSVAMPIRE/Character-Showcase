@@ -12,19 +12,9 @@ namespace CharacterShowcase.Tests
     /// match what the character itself does in the world (a jump, a sprint jump, a slide, a roll), follow its settings and
     /// its size, leave out what's turned off, and add double jumps when it has air jumps. The test camera looks down +Z.
     /// </summary>
-    public class MovementCapabilitiesTests
+    [Category(TestArea.Movement)]
+    public class MovementCapabilitiesTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private MovementCapabilities Capabilities => rig.Movement.Capabilities;
         private float Reach(string move) => Capabilities.Jumps.Concat(Capabilities.Climbs).First(m => m.Name == move).Reach;
@@ -42,17 +32,12 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.8f, Forward);
             float start = rig.Position.z;
             bool left = false, landed = false;
-            for (int i = 0; i < CharacterTestRig.StepsFor(4f) && !landed; i++)
+            yield return rig.RunUntil(() => landed, step =>
             {
-                int step = i;
-                yield return rig.Run(1, _ =>
-                {
-                    Inputs inputs = Forward(step);
-                    inputs.jump = CharacterTestRig.Held(step);
-                    return inputs;
-                });
-                if (!rig.Grounded) { left = true; } else if (left) { landed = true; }
-            }
+                Inputs inputs = Forward(step);
+                inputs.jump = CharacterTestRig.Held(step);
+                return inputs;
+            }, _ => { if (!rig.Grounded) { left = true; } else if (left) { landed = true; } }, 4f);
             distance(landed ? rig.Position.z - start : float.NaN);
         }
 
@@ -67,6 +52,25 @@ namespace CharacterShowcase.Tests
             Assert.That(Capabilities.StepHeight, Is.EqualTo(rig.StepHeight).Within(1e-4f));
             Assert.That(Capabilities.StandHeight, Is.EqualTo(rig.StandingHeight).Within(1e-4f));
             Assert.That(Capabilities.MaxJumpHeight, Is.EqualTo(rig.MovementSetting<float>("maxJumpHeight") * rig.Movement.HeightScale).Within(1e-4f));
+        }
+
+        [UnityTest]
+        public IEnumerator AMeasurement_IsShared_ByTheSameTuning_AndRemadeForAnyChange()
+        {
+            yield return OnALongFloor();
+            MovementCapabilities first = Capabilities;
+            Assert.That(Capabilities, Is.SameAs(first), "Asked again with nothing changed, it shouldn't measure again.");
+
+            // No jumps: the same tuning WhatsTurnedOff_IsLeftOut measures, so the two share one measurement.
+            int jumps = rig.MovementSetting<int>("maxJumps");
+            rig.SetMovementSetting("maxJumps", 0);
+            Assert.That(Capabilities, Is.Not.SameAs(first), "A change of tuning should be measured.");
+            rig.SetMovementSetting("maxJumps", jumps);
+            Assert.That(Capabilities, Is.SameAs(first), "Tuned back as it was, it should share the measurement made then.");
+
+            // Even a tiny change of size counts.
+            rig.Controller.SetScale(new Vector3(1.002f, 1.002f, 1.002f), immediately: true);
+            Assert.That(Capabilities, Is.Not.SameAs(first), "A change of size should be measured.");
         }
 
         [UnityTest]
@@ -97,13 +101,18 @@ namespace CharacterShowcase.Tests
         public IEnumerator WhatsTurnedOff_IsLeftOut()
         {
             yield return OnALongFloor();
-            rig.SetMovementSetting("slideMaxDuration", 0f);
-            rig.SetMovementSetting("wallRunMaxDuration", 0f);
-            Assert.That(float.IsNaN(Capabilities.SlideLength), Is.True, "With sliding off, there's no slide length.");
-            Assert.That(float.IsNaN(Capabilities.WallRunLength), Is.True, "With wall-running off, there's no wall-run length.");
+            // Without jumps first (the tuning AMeasurement_IsShared… measures too, so they share it).
+            int jumps = rig.MovementSetting<int>("maxJumps");
             rig.SetMovementSetting("maxJumps", 0);
             Assert.That(Capabilities.Jumps, Is.Empty, "Without jumps, nothing is jumped across.");
             Assert.That(Capabilities.Climbs.Select(c => c.Name), Is.EqualTo(new[] { "step up" }), "Without jumps, only steps are climbed.");
+            // Then with jumps back, so it's wall-running off, not the jumps, that leaves out the wall run.
+            rig.SetMovementSetting("maxJumps", jumps);
+            rig.SetMovementSetting("slideMaxDuration", 0f);
+            rig.SetMovementSetting("wallRunMaxDuration", 0f);
+            Assume.That(Capabilities.Jumps, Is.Not.Empty, "Test setup: the character should jump again.");
+            Assert.That(float.IsNaN(Capabilities.SlideLength), Is.True, "With sliding off, there's no slide length.");
+            Assert.That(float.IsNaN(Capabilities.WallRunLength), Is.True, "With wall-running off, there's no wall-run length.");
         }
 
         [UnityTest]

@@ -80,4 +80,6 @@ Every tunable value is a setting in the inspector: the BasicMovementMode asset (
 ### Low Priority Changes (these would be really cool but realistically I won't get to them for a while)
 - Add Juice and polish
 - Coordinate system re-centering to avoid floating point precision related bugs
+- Respawning: putting a character back at a spawn point with its movement reset (its momentum, and any ability it's in the middle of), rather than destroying it and spawning another
+- Gravity in any direction: the movement assumes it's straight down (gravity, the grounded check and the ground's carry all do)
 - Add AI system which uses the same character scripts to pathfind and perform actions

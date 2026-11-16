@@ -258,16 +258,16 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         public static void ExportFromCommandLine()
         {
-            string level = Argument("-level");
+            string level = CommandLine.Argument("-level");
             if (level != null && !Levels.ContainsKey(level))
             {
                 Debug.LogError($"[Level specs] There's no level '{level}': {string.Join(", ", LevelNames)}.");
-                EditorApplication.Exit(1);
+                CommandLine.Finish(false);
                 return;
             }
-            bool force = Environment.GetCommandLineArgs().Contains("-force");
+            bool force = CommandLine.Has("-force");
             bool ok = Export(level != null ? new[] { level } : LevelNames, (_, _) => force);
-            if (Application.isBatchMode) { EditorApplication.Exit(ok ? 0 : 1); }
+            CommandLine.Finish(ok);
         }
 
         // ---- Building from a spec ----
@@ -287,17 +287,18 @@ namespace CharacterShowcase.EditorTools.Level
             LevelBuildWindow.BuildFromMenu(SceneFor(spec));
         }
 
-        /// <summary>For -executeMethod: builds the level in the spec at -spec (its scene, environment and bakes), as its builder would.</summary>
+        /// <summary>For -executeMethod: builds the level in the spec at -spec (its scene, environment and bakes), as its builder would, then exits.</summary>
         public static void BuildFromCommandLine()
         {
-            string path = Argument("-spec");
+            string path = CommandLine.Argument("-spec");
             if (path == null)
             {
                 Debug.LogError("[Level specs] Give the spec to build with -spec <path>.");
-                EditorApplication.Exit(1);
+                CommandLine.Finish(false);
                 return;
             }
             SceneFor(LevelSpec.FromJson(File.ReadAllText(path))).Build();
+            CommandLine.Finish(true);
         }
 
         // ---- The schema ----
@@ -305,8 +306,12 @@ namespace CharacterShowcase.EditorTools.Level
         [MenuItem("Tools/Character Showcase/Level/Specs/Write Spec Schema")]
         private static void WriteSchemaFromMenu() => WriteSchema();
 
-        /// <summary>For -executeMethod: writes the specs' JSON Schema.</summary>
-        public static void WriteSchemaFromCommandLine() => WriteSchema();
+        /// <summary>For -executeMethod: writes the specs' JSON Schema, then exits.</summary>
+        public static void WriteSchemaFromCommandLine()
+        {
+            WriteSchema();
+            CommandLine.Finish(true);
+        }
 
         /// <summary>Writes the specs' JSON Schema (draft 2020-12), from the pieces' parameters, to SchemaPath.</summary>
         public static void WriteSchema()
@@ -422,11 +427,5 @@ namespace CharacterShowcase.EditorTools.Level
                 ("$defs", defs));
         }
 
-        private static string Argument(string name)
-        {
-            string[] args = Environment.GetCommandLineArgs();
-            int i = Array.IndexOf(args, name);
-            return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
-        }
     }
 }

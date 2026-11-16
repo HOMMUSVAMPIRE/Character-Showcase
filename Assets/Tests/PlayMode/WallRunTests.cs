@@ -16,24 +16,13 @@ namespace CharacterShowcase.Tests
     /// reach down to the feet. The
     /// character is launched in mid-air beside a long wall on its right. Expected values are read from the movement mode.
     /// </summary>
-    public class WallRunTests
+    [Category(TestArea.Abilities)]
+    public class WallRunTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         private float wallFace;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float WallRunSpeed => rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
         private float WallRunMaxDuration => rig.Component<WallRunning>().WallRunMaxDuration * rig.Movement.DurationScale;
-        private float Gravity => rig.MovementSetting<float>("gravityStrength") * rig.Movement.AccelerationScale;
         private bool WallRunning => rig.InState(CharacterState.WallRunning);
 
         /// <summary>
@@ -66,7 +55,7 @@ namespace CharacterShowcase.Tests
             });
 
             float drop = start.y - rig.Position.y;
-            float freeFall = 0.5f * Gravity * seconds * seconds;
+            float freeFall = 0.5f * rig.Gravity * seconds * seconds;
             Assert.That(wallRunningSteps, Is.EqualTo(steps), "The character should run along the wall.");
             Assert.That(drop, Is.LessThan(0.5f * freeFall), "A wall run should fall much slower than falling freely.");
             Assert.That(rig.Position.z - start.z, Is.GreaterThan(0.8f * WallRunSpeed * seconds), "A wall run should keep going along the wall.");
@@ -95,8 +84,8 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
 
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             Vector3 velocity = Vector3.zero;
             yield return rig.Run(3, step => CharacterTestRig.Jump(step, Vector3.forward),
                 step => { if (step == 0) { velocity = rig.Movement.lastFrameMovementData.finalVelocity; } });

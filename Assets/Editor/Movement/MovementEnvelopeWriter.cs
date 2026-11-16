@@ -20,7 +20,9 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class MovementEnvelopeWriter
     {
+        /// <summary>Where the envelope is written.</summary>
         public const string EnvelopePath = "Tools/LevelSpec/envelope.json";
+        /// <summary>The default character, whose movement the envelope is measured from.</summary>
         public const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
         // The level generation settings (the level editor assembly's GrayboxSettings, read by name: this assembly can't
         // reference it).
@@ -38,7 +40,7 @@ namespace CharacterShowcase.EditorTools
         public static void WriteFromCommandLine()
         {
             Write();
-            if (Application.isBatchMode) { EditorApplication.Exit(0); }
+            CommandLine.Finish(true);
         }
 
         /// <summary>Measures the default character and writes the envelope, returning what it wrote.</summary>

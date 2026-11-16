@@ -33,6 +33,7 @@ namespace CharacterShowcase.EditorTools.Level
         private const float RopeMaxSpacing = 10f; // The furthest apart ropes are along a chain.
         private const float RopeMastOffset = 2.8f; // The gantry's masts, beside the line of ropes.
 
+        /// <summary>A tower: an octagonal platform of its own height, and where its guardrail is open.</summary>
         private sealed class Tower
         {
             public string Name;

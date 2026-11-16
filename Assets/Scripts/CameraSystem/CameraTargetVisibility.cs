@@ -18,6 +18,10 @@ namespace CameraSystem
         // The size of the target's hierarchy when its renderers were collected, to notice objects added or removed later
         private int collectedHierarchyCount;
 
+        /// <summary>
+        /// Restores the previous target's renderers, then collects the new target's (including inactive ones) and
+        /// remembers their shadow modes.
+        /// </summary>
         public void Collect(Transform target)
         {
             Restore();
@@ -43,6 +47,9 @@ namespace CameraSystem
             Apply(mode);
         }
 
+        /// <summary>
+        /// Hides, shadow-only renders or shows the collected renderers. Does nothing if that mode is already applied.
+        /// </summary>
         public void Apply(TargetHideMode mode)
         {
             if (mode == applied) { return; }
@@ -72,6 +79,7 @@ namespace CameraSystem
             }
         }
 
+        /// <summary>Shows the collected renderers again, as they were.</summary>
         public void Restore() => Apply(TargetHideMode.None);
     }
 }

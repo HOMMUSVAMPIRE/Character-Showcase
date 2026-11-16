@@ -66,9 +66,9 @@ namespace CharacterShowcase.EditorTools
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
 
             // Each loop at the speed its strides are made for (measured on the mannequin), so its planted feet stay put
-            // there, from walking to sprinting. The brisk walk is also sped up to BriskWalkUpTo, so the character's
-            // default speed looks like a walk (see BriskWalkUpTo); past the fastest loop's own speed, it's sped up to
-            // match, up to the top speed. Each loop is offset to land its left foot at the same moment as the others
+            // there, from walking to sprinting. The brisk walk is also shown a little past its own speed (see
+            // BriskWalkReach); past the fastest loop's own speed, the translator plays it faster to match, however fast
+            // (see SetPlayback). Each loop is offset to land its left foot at the same moment as the others
             // (see TouchDownPhase), so blending between them never mixes one foot's stride with the other's.
             (AnimationClip clip, float speed, float phase) Measure(AnimationClip clip)
             {
@@ -87,22 +87,18 @@ namespace CharacterShowcase.EditorTools
                 // and run fill the speeds between.
                 Add(Measure(library["Walk_Loop"]));
                 Add(brisk);
-                Add(brisk, BriskWalkUpTo, BriskWalkUpToPlayback);
+                Add(brisk, brisk.speed * BriskWalkReach, BriskWalkPlayback);
                 Add(Measure(clips["Run"]));
                 Add(Measure(library["Jog_Fwd_Loop"]));
-                var sprint = Measure(library["Sprint_Loop"]);
-                Add(sprint);
-                Add(sprint, TopSpeed, TopSpeed / sprint.speed);
+                Add(Measure(library["Sprint_Loop"]));
             }
             else
             {
                 Add(Measure(clips["Walk"]));
                 Add(brisk);
-                Add(brisk, BriskWalkUpTo, BriskWalkUpToPlayback);
+                Add(brisk, brisk.speed * BriskWalkReach, BriskWalkPlayback);
                 Add(Measure(clips["Run"]));
-                var sprint = Measure(clips["Sprint"]);
-                Add(sprint);
-                Add(sprint, TopSpeed, TopSpeed / sprint.speed);
+                Add(Measure(clips["Sprint"]));
             }
             for (int i = 1; i < loops.Count; i++)
             {
@@ -122,6 +118,7 @@ namespace CharacterShowcase.EditorTools
             // placement plants them at the goals, corrected, instead.
             AnimatorState locomotion = stateMachine.AddState("Locomotion");
             locomotion.motion = locomotionTree;
+            PlaysPastItsTop(controller, locomotion, LocomotionPlaybackParameter, (LocomotionTopSpeedParameter, loops[^1].speed));
             AnimatorState airborne = stateMachine.AddState("Airborne");
             stateMachine.defaultState = locomotion;
 
@@ -243,6 +240,35 @@ namespace CharacterShowcase.EditorTools
         /// deleting it would leave them all without a controller until it was recreated, and a recreated asset can be
         /// given a new GUID, which they wouldn't find.
         /// </summary>
+        /// <summary>
+        /// Lets a speed-driven state play faster than its fastest loop, by however much faster the character moves (see
+        /// AnimatorParameterTranslator's Playback section): its speed is multiplied by the playback parameter, which the
+        /// translator sets from the speeds its loops are made for, carried as the given parameters' defaults. The playback
+        /// parameter defaults to 1, so the state plays as it should if nothing sets it.
+        /// </summary>
+        private static void PlaysPastItsTop(AnimatorController controller, AnimatorState state, string playbackParameter,
+            params (string name, float speed)[] topSpeeds)
+        {
+            AddFloat(controller, playbackParameter, 1f);
+            foreach (var (name, speed) in topSpeeds) { AddFloat(controller, name, speed); }
+            state.speedParameterActive = true;
+            state.speedParameter = playbackParameter;
+        }
+
+        /// <summary>Adds a float parameter with the given default value, or sets the default of the one the controller has.</summary>
+        private static void AddFloat(AnimatorController controller, string name, float value)
+        {
+            AnimatorControllerParameter[] parameters = controller.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].name != name) { continue; }
+                parameters[i].defaultFloat = value;
+                controller.parameters = parameters;
+                return;
+            }
+            controller.AddParameter(new AnimatorControllerParameter { name = name, type = AnimatorControllerParameterType.Float, defaultFloat = value });
+        }
+
         private static AnimatorController LoadEmptyController()
         {
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);

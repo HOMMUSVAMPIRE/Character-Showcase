@@ -8,6 +8,28 @@ namespace Character
     /// </summary>
     public static class MovementHelpers
     {
+        // How close (as a share of a physics step) a timer must come to its end to count as there: see CountDown.
+        private const float TimerTolerance = 1e-3f;
+
+        /// <summary>
+        /// A countdown (a duration or a cooldown, in seconds) one physics step on, never below 0. Subtracting a step's
+        /// time over and over from a duration that's a whole number of steps can leave a sliver rather than 0 (0.2 s less
+        /// ten 0.02 s steps isn't exactly 0 in floating point), which made what it times last a step longer than it was
+        /// set to (a 0.2 s dash took 11 steps); within a thousandth of a step of 0 counts as run out.
+        /// </summary>
+        public static float CountDown(float remaining, float deltaTime)
+        {
+            float left = remaining - deltaTime;
+            return left > deltaTime * TimerTolerance ? left : 0f;
+        }
+
+        /// <summary>
+        /// Whether a timer counting up has reached a duration, allowing for the same floating point slivers as
+        /// CountDown (ten 0.02 s steps can add up to just under 0.2 s, which would take a step more).
+        /// </summary>
+        public static bool HasElapsed(float elapsed, float duration, float deltaTime) =>
+            elapsed >= duration - deltaTime * TimerTolerance;
+
         /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
         public static Vector3 InputDirection(MovementData movementData, Inputs inputs)
         {
@@ -48,6 +70,40 @@ namespace Character
         }
 
         /// <summary>
+        /// Jumps the character off whatever was holding it (a rope, a zipline, a wall): uses up the press of Jump, gives
+        /// back its jumps less the one this uses (unless givesBackJumps is false), and launches it at the given velocity,
+        /// outright, with no walking on top, raising the given event (Jumped, or WallJumped).
+        /// </summary>
+        public static void JumpOff(ref MovementData movementData, MovementController controller, Vector3 velocity,
+            MovementEvents jumpEvent, bool givesBackJumps = true)
+        {
+            controller.jump.press.Use();
+            if (givesBackJumps)
+            {
+                GiveBackJumps(controller);
+                TryUseJump(controller);
+            }
+            movementData.velocityOverride = velocity;
+            movementData.directMovementVector = Vector3.zero;
+            movementData.events |= jumpEvent;
+        }
+
+        /// <summary>
+        /// Jumps the character off a wall (a wall run, a climb, a slide down it), as JumpOff does, facing the given way
+        /// (if there is one): it also remembers the wall (see JumpedOffThisWallLast) and starts air steering coming back
+        /// gradually (see StartWallJumpSteeringRecovery), so the push away carries the character off the wall.
+        /// </summary>
+        public static void JumpOffWall(ref MovementData movementData, MovementController controller, Vector3 velocity, Vector3 wallNormal,
+            Vector3 facing, bool givesBackJumps = true)
+        {
+            JumpOff(ref movementData, controller, velocity, MovementEvents.WallJumped, givesBackJumps);
+            RememberWallJumpedOff(controller, wallNormal);
+            StartWallJumpSteeringRecovery(controller);
+            if (facing.sqrMagnitude > 1e-6f) { movementData.targetRotation = Quaternion.LookRotation(facing, Vector3.up); }
+            movementData.state |= CharacterState.Moving;
+        }
+
+        /// <summary>
         /// Gives back the character's jumps and air dashes, as touching the ground does. For the abilities that count as
         /// touching it (starting a wall run, taking hold of a climbable surface, a ledge, a rope or a zipline, vaulting), and
         /// for a kick off a wall slid down that gives them back (off a different wall from the last one jumped off).
@@ -71,13 +127,17 @@ namespace Character
             controller.crouch.wantsToStand = false;
         }
 
-        // A wall facing within this many degrees of the last one run along, slid down or jumped off counts as the same
-        // wall, which can't be run along (or slid down, or given jumps back by) again before touching the ground (so a
-        // wall run's longest time means something).
+        /// <summary>
+        /// A wall facing within this many degrees of the last one run along, slid down or jumped off counts as the same
+        /// wall, which can't be run along (or slid down, or given jumps back by) again before touching the ground (so a
+        /// wall run's longest time means something).
+        /// </summary>
         public const float SameWallAngle = 30f;
 
-        // How fast (m/s, at the authored size) the character is pressed toward a wall it's running along or sliding down,
-        // so it stays against it as the wall curves. Collision removes it each step, so it never builds up.
+        /// <summary>
+        /// How fast (m/s, at the authored size) the character is pressed toward a wall it's running along or sliding down,
+        /// so it stays against it as the wall curves. Collision removes it each step, so it never builds up.
+        /// </summary>
         public const float WallStickSpeed = 1f;
 
         /// <summary>
@@ -161,10 +221,13 @@ namespace Character
     /// </summary>
     public class WallJumpState
     {
+        /// <summary>Whether air steering is still coming back after a jump off a wall (cleared on landing).</summary>
         public bool recovering;
-        // Seconds since the jump
+        /// <summary>Seconds since the jump.</summary>
         public float elapsed;
+        /// <summary>The normal of the last wall run along, slid down or jumped off since landing (see SameWallAngle).</summary>
         public Vector3 lastWallNormal;
+        /// <summary>Whether lastWallNormal holds a wall (cleared on landing).</summary>
         public bool hasLastWall;
     }
 }

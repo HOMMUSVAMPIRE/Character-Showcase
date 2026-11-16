@@ -11,23 +11,12 @@ namespace CharacterShowcase.Tests
     /// the character can't stand under, slowing down until it ends in a crouch; walking and crouching doesn't slide,
     /// jumping out of a slide keeps its speed, and a wall stops it. Expected values are read from the movement mode.
     /// </summary>
-    public class SlideTests
+    [Category(TestArea.Abilities)]
+    public class SlideTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float SlideStartSpeed => rig.Component<Crouching>().SlideStartSpeed * rig.Movement.SpeedScale;
         private float SlideMaxDuration => rig.Component<Crouching>().SlideMaxDuration;
-        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
         private bool Sliding => rig.InState(CharacterState.Sliding);
 
         /// <summary>Stands the character on a floor and gets it sprinting forward, skipping the test if it can't slide from a sprint.</summary>
@@ -72,7 +61,7 @@ namespace CharacterShowcase.Tests
             Assert.That(slowedDown, Is.True, "A slide should only slow down.");
             Assert.That(lastSlidingSpeed, Is.LessThan(firstSpeed), "A slide should slow down.");
             Assert.That(slidingSteps, Is.LessThanOrEqualTo(CharacterTestRig.StepsFor(SlideMaxDuration) + 1), "A slide should last no longer than its longest time.");
-            Assert.That(lowest, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "A slide should be low, at the crouch height.");
+            Assert.That(lowest, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "A slide should be low, at the crouch height.");
             Assert.That(Sliding, Is.False, "The slide should have ended.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "A slide should end in a crouch.");
         }
@@ -80,8 +69,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator CrouchingWhileWalking_JustCrouches()
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+            yield return rig.StandOnFloor();
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
             bool slid = false;
             yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
@@ -96,7 +84,7 @@ namespace CharacterShowcase.Tests
             yield return SprintForward();
             float standing = rig.StandingHeight;
             // A bar between the crouch height and the standing height, a little ahead.
-            float underside = standing * Mathf.Lerp(CrouchHeight, 1f, 0.5f);
+            float underside = standing * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
             float barZ = rig.Position.z + rig.Radius + 1.5f;
             rig.Box("Low Bar", new Vector3(0f, underside + 0.25f, barZ), new Vector3(6f, 0.5f, 0.3f));
 

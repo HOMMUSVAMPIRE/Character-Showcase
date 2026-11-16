@@ -1,4 +1,5 @@
 using System;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Character
@@ -18,9 +19,24 @@ namespace Character
         [SerializeField] private bool enabled = true;
 
         [NonSerialized] private ComposedMovementMode mode;
+        [NonSerialized] private ProfilerMarker marker;
+        [NonSerialized] private bool hasMarker;
 
         /// <summary>Whether the character uses this part of its movement.</summary>
         public bool Enabled { get => enabled; set => enabled = value; }
+
+        /// <summary>
+        /// The profiler marker the mode times this component's hooks under, together ("Movement.ClassName" in the
+        /// Profiler's CPU Usage), made the first time it's asked for.
+        /// </summary>
+        internal ProfilerMarker Marker
+        {
+            get
+            {
+                if (!hasMarker) { marker = new ProfilerMarker($"Movement.{GetType().Name}"); hasMarker = true; }
+                return marker;
+            }
+        }
 
         /// <summary>The movement mode this is a component of (set by the mode before it calls the component).</summary>
         public ComposedMovementMode Mode { get => mode; internal set => mode = value; }

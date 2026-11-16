@@ -22,7 +22,8 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 
 - Ask the component's `Mode` for the shared rules: `GravityAcceleration`, `AirAcceleration`, `MoveSpeed`, `IsNewJumpPress`, `ConsumeCrouchPress`, `AbilityInProgress` (or `AbilityInProgressExcept<T>`, for an ability that may take over from a T) and `InterruptOthers` (when it takes the character).
 - Read another component's settings with `SettingsOf<T>()` (they apply whether it's turned on or not, or its defaults if it's been removed). Hand the character to another component with `Mode.Get<T>()` (only found turned on). Never reach into another component otherwise.
-- The rules several abilities share are in `MovementHelpers`: using up and giving back jumps (`TryUseJump`, `GiveBackJumps`, `GiveBackAirMoves`), catching hold of a line (`TakeHoldOfALine`), and wall jumps.
+- The rules several abilities share are in `MovementHelpers`: using up and giving back jumps (`TryUseJump`, `GiveBackJumps`, `GiveBackAirMoves`), catching hold of a line (`TakeHoldOfALine`), jumping off what the character holds (`JumpOff`, and `JumpOffWall` for a wall, which also starts air steering coming back), and the timers' countdowns (`CountDown`, `HasElapsed`).
+- A button that starts the ability once per press, within an input buffer, uses a `ButtonPress` in its state (`Track` it every step, `Consume` it to start), as Jump, Dash, Crouch and Roll do.
 - Query the world through the `MovementController` (`SweepCapsule`, `Raycast`, `OverlapSphere`, `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders, and read the physics pose, not the Transform.
 - Time things by `controller.StepTime`, never global time, so the capability measurements (which step a copy of the character faster than real time) behave the same.
 - Multiply speeds by `controller.SpeedScale`, distances by `HeightScale`, accelerations by `AccelerationScale` and durations by `DurationScale`, so it works at any size.
@@ -48,7 +49,7 @@ Movement modes are shared assets, so what each character is doing lives on its `
 2. A parameter on `AnimatorParameterTranslator`: its default name, field, hash, and where it's set.
 3. In `MannequinGenerator`: the parameter, the crouch state's exclusions, and a state in `MannequinGenerator.AbilityStates.cs`.
 4. A clip in `Tools/Mannequin/mannequin_animations.py`, if it needs one.
-5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one.
+5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one: a subclass of `AbilityIK`, which hooks it into CharacterIK and eases it in and out, so it only places the limbs (`Solve`).
 6. Then regenerate the mannequin (Generate Mannequin) and prepare the character models (Prepare Character Models). See [Character Model and Animations](animation.md).
 
 ## 6. Level side, if it uses something in the level
@@ -63,10 +64,12 @@ For an ability used on something in the level (as ropes and ziplines are):
 The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
 
 ## 7. Tests and docs
-- **PlayMode tests on `CharacterTestRig`.**
+- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `CharacterRigFixture` (which makes and disposes the rig for each test). Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
   - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.
+  - Wait for what the movement does rather than a fixed time chosen for one tuning: `rig.RunUntil(condition, inputs)`, `rig.RunUntilLanded()` after a jump or fall, `rig.RunUntilBackOnTheGround(inputs)` for a whole jump. Use these rather than a loop of `rig.Run(1, …)`: each yield costs a frame, which in the editor is long.
+  - The rig records the character's movement events from spawn (`rig.EventsRaised`, `rig.Count(event)`, `rig.StepOf(event)`; `rig.ClearEvents()` to record from a point), and has the common readings (`rig.Velocity`, `rig.Gravity`, `rig.HorizontalSpeed`, `rig.MeanSpeed`, `rig.StandOnFloor()`...): add to it rather than to one fixture.
 - **The turned-off cases.** Cover the component turned off with its toggle, and turned off by its 0 setting.
 - **Docs.**
   - Add a section for it in [abilities.md](abilities.md) or [traversal.md](traversal.md), and add it to the component list in [movement.md](movement.md#movement-components).

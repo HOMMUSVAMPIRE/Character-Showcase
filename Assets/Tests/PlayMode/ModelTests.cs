@@ -15,18 +15,17 @@ namespace CharacterShowcase.Tests
     /// if the character goes away first, sources release the models they made, and translators turn animation state
     /// and events into Animator parameters.
     /// </summary>
-    public class ModelTests
+    [Category(TestArea.Models)]
+    public class ModelTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-        private readonly List<Object> created = new();
+        // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
+        protected override bool MovementOnly => false;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
+        private readonly List<Object> created = new();
 
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            rig.Dispose();
             foreach (Object obj in created) { if (obj != null) { Object.Destroy(obj); } }
             created.Clear();
             yield return null;
@@ -365,7 +364,6 @@ namespace CharacterShowcase.Tests
             if (models.EyePoint != null) { Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-4f)); }
         }
 
-        private CapsuleCollider Capsule => rig.Character.GetComponent<CapsuleCollider>();
 
         /// <summary>
         /// Collider Fit makes the collider as tall as the model, standing on the character's feet: its width in proportion
@@ -380,15 +378,15 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
-            float radius = Capsule.radius, height = Capsule.height;
+            float radius = rig.Capsule.radius, height = rig.Capsule.height;
             rig.Models.ColliderFitting = fit;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
 
-            Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "The collider should be as tall as the model.");
-            Assert.That(Capsule.center.y, Is.EqualTo(Capsule.height / 2f).Within(1e-4f), "It should stand on the character's feet.");
+            Assert.That(rig.Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "The collider should be as tall as the model.");
+            Assert.That(rig.Capsule.center.y, Is.EqualTo(rig.Capsule.height / 2f).Within(1e-4f), "It should stand on the character's feet.");
             if (fit == ColliderFit.Height)
             {
-                Assert.That(Capsule.radius, Is.EqualTo(radius * 1.2f / height).Within(0.005f), "Its width should keep its proportions.");
+                Assert.That(rig.Capsule.radius, Is.EqualTo(radius * 1.2f / height).Within(0.005f), "Its width should keep its proportions.");
             }
             else
             {
@@ -396,7 +394,7 @@ namespace CharacterShowcase.Tests
                 if (animator == null || !animator.isHuman) { Assert.Ignore("The character's model isn't a humanoid, so it has no shoulders to fit."); }
                 float shoulders = Vector3.Distance(animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position,
                     animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position);
-                Assert.That(Capsule.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
+                Assert.That(rig.Capsule.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
                     "The collider should be as wide as the shoulders, times the margin.");
             }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
@@ -404,9 +402,9 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
 
             // The character's size still multiplies it.
-            float fitted = Capsule.height;
+            float fitted = rig.Capsule.height;
             rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
-            Assert.That(Capsule.height, Is.EqualTo(2f * fitted).Within(0.02f));
+            Assert.That(rig.Capsule.height, Is.EqualTo(2f * fitted).Within(0.02f));
         }
 
         [UnityTest]
@@ -420,12 +418,12 @@ namespace CharacterShowcase.Tests
             rig.Models.ColliderFitting = ColliderFit.Height;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter collider should fit.");
+            Assert.That(rig.Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter collider should fit.");
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.8f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Models.IsFittingCollider, Is.True, "Under the ceiling, it should wait to grow.");
-            Assert.That(Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
+            Assert.That(rig.Capsule.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f), "It shouldn't be pushed through the floor.");
 
             AnimationController animation = rig.Animation;
@@ -434,7 +432,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(rig.SecondsToWalk(3f + rig.Radius, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingCollider, Is.False);
-            Assert.That(Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
+            Assert.That(rig.Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
         }
 
         /// <summary>A source for the character's own model (or the given prefab), as its own, but a separate asset.</summary>
@@ -696,6 +694,54 @@ namespace CharacterShowcase.Tests
 
             LogAssert.NoUnexpectedReceived();
             Assert.That(translator.CreateDriver(model, null), Is.Null, "There's nothing to drive without an Animator.");
+        }
+
+        /// <summary>
+        /// Past the speed a state's fastest loop is made for (a TopSpeed parameter's default, which the controller
+        /// carries), the translator plays the state faster by however much faster the character moves, and never slower
+        /// than its own speed; a controller without the top speed is left playing as it is. Climbing goes by whichever
+        /// of across and up the climb is further past its loop.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AnimatorParameterTranslator_PlaysPastTheFastestLoop_ByHowMuchFasterTheCharacterMoves()
+        {
+            var controller = Track(new UnityEditor.Animations.AnimatorController());
+            controller.AddLayer("Base");
+            controller.layers[0].stateMachine.AddState("Idle");
+            void Float(string name, float value) => controller.AddParameter(new AnimatorControllerParameter { name = name, type = AnimatorControllerParameterType.Float, defaultFloat = value });
+            Float(AnimatorParameterTranslator.DefaultSpeedParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultLocomotionTopSpeedParameter, 4f);
+            Float(AnimatorParameterTranslator.DefaultCrouchPlaybackParameter, 1f); // No crouch top speed: left as it is.
+            Float(AnimatorParameterTranslator.DefaultClimbRightParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultClimbUpParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultClimbPlaybackParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbUpTopSpeedParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbDownTopSpeedParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbLeftTopSpeedParameter, 0.5f);
+            Float(AnimatorParameterTranslator.DefaultClimbRightTopSpeedParameter, 0.5f);
+
+            var model = Track(new GameObject("Playback Test Model"));
+            var animator = model.AddComponent<Animator>();
+            animator.runtimeAnimatorController = controller;
+            var translator = Track(ScriptableObject.CreateInstance<AnimatorParameterTranslator>());
+            var serialized = new UnityEditor.SerializedObject(translator);
+            serialized.FindProperty("speedDampTime").floatValue = 0f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            yield return null;
+            ICharacterAnimationDriver driver = translator.CreateDriver(model, animator);
+
+            float Locomotion() => animator.GetFloat(AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter);
+            driver.UpdateAnimation(new CharacterAnimationState { horizontalSpeed = 2f, grounded = true }, 0.02f);
+            Assert.That(Locomotion(), Is.EqualTo(1f).Within(1e-4f), "Within the tree, the loops play at their own speeds.");
+            driver.UpdateAnimation(new CharacterAnimationState { horizontalSpeed = 10f, grounded = true }, 0.02f);
+            Assert.That(Locomotion(), Is.EqualTo(2.5f).Within(1e-4f), "Past the fastest loop, it plays as much faster as the character moves.");
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultCrouchPlaybackParameter), Is.EqualTo(1f), "Without a top speed, a state plays as it is.");
+
+            // Climbing up and right at once: twice the across loop's speed, and the same as the up loop's.
+            driver.UpdateAnimation(new CharacterAnimationState { wallClimbing = true, localVelocity = new Vector3(1f, 1f, 0f) }, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultClimbPlaybackParameter), Is.EqualTo(2f).Within(1e-4f));
+            LogAssert.NoUnexpectedReceived();
         }
 #endif
     }

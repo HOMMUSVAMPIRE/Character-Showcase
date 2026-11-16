@@ -13,6 +13,7 @@ namespace CharacterShowcase.Tests
     /// hands reach up to the ledge, the rope or the cable. In the
     /// SampleContent category, as they check the package's own controller and model.
     /// </summary>
+    [Category(TestArea.Animation)]
     [Category("SampleContent")]
     public class AbilityAnimationTests : AnimationTestsBase
     {

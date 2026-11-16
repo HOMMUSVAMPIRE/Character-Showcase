@@ -12,18 +12,25 @@ namespace CameraSystem
     [RequireComponent(typeof(Collider))]
     public class CameraZone : MonoBehaviour
     {
+        /// <summary>The enabled zones, which Find searches.</summary>
         internal static readonly List<CameraZone> Active = new();
 
         [Tooltip("When zones overlap, the highest priority zone wins.")]
         public int priority = 0;
 
+        /// <summary>Force the view mode below while the target is inside this zone.</summary>
         [Header("View mode")]
+        [Tooltip("Force the view mode below while the target is inside this zone.")]
         public bool forceMode = false;
+        /// <summary>The view mode forced while inside, if Force Mode is on.</summary>
+        [Tooltip("The view mode forced while inside, if Force Mode is on.")]
         public CameraMode mode = CameraMode.FirstPerson;
 
         [Header("Third person distance")]
         [Tooltip("Cap the third person distance while inside this zone.")]
         public bool limitDistance = false;
+        /// <summary>The furthest the third person camera may be (m) while inside, if Limit Distance is on.</summary>
+        [Tooltip("The furthest the third person camera may be (m) while inside, if Limit Distance is on.")]
         [Min(0.1f)] public float maxDistance = 2f;
 
         [Header("Field of view")]
@@ -41,6 +48,7 @@ namespace CameraSystem
         private void OnEnable() => Active.Add(this);
         private void OnDisable() => Active.Remove(this);
 
+        /// <summary>Whether the point is inside this zone's enabled collider.</summary>
         public bool Contains(Vector3 point)
         {
             if (zoneCollider == null || !zoneCollider.enabled) { return false; }

@@ -64,7 +64,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.wallRun.cooldownRemaining = Mathf.Max(0f, controller.wallRun.cooldownRemaining - movementData.deltaTime);
+            controller.wallRun.cooldownRemaining = MovementHelpers.CountDown(controller.wallRun.cooldownRemaining, movementData.deltaTime);
             if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; }
         }
 
@@ -236,18 +236,9 @@ namespace Character
         private void WallJump(ref MovementData movementData, MovementController controller, Vector3 alongWall, Vector3 normal)
         {
             EndWallRun(controller);
-            controller.jump.pressConsumed = true;
-            MovementHelpers.GiveBackJumps(controller);
-            MovementHelpers.TryUseJump(controller);
-            RememberWallJumpedOff(controller, normal);
-            StartWallJumpSteeringRecovery(controller);
             Vector3 velocity = alongWall + normal * (wallJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallJumpUpSpeed * controller.SpeedScale);
-            movementData.velocityOverride = velocity;
-            movementData.directMovementVector = Vector3.zero;
-            Vector3 heading = new Vector3(velocity.x, 0f, velocity.z);
-            if (heading.sqrMagnitude > 1e-6f) { movementData.targetRotation = Quaternion.LookRotation(heading, Vector3.up); }
-            movementData.events |= MovementEvents.WallJumped;
-            movementData.state |= CharacterState.Moving;
+            // Facing the way it's launched.
+            MovementHelpers.JumpOffWall(ref movementData, controller, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
         }
 
         private void EndWallRun(MovementController controller)
@@ -288,28 +279,15 @@ namespace Character
                 {
                     simulation.ClearObstacles();
                     simulation.Reset(Vector3.zero);
-                    float face = simulation.Controller.Radius + outFromWall;
-                    simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
+                    WallBeside(simulation, outFromWall);
                     Vector3 input = Quaternion.Euler(0f, steer, 0f) * Vector3.forward;
                     simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, true));
-                    float startZ = float.NaN, startY = float.NaN;
-                    for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+                    MeasureRun(simulation, i =>
                     {
-                        Vector3 before = simulation.Position;
                         Inputs inputs = MovementSimulation.Move(input, true);
                         inputs.jump = MovementSimulation.Held(i);
-                        simulation.Step(inputs);
-                        bool running = (simulation.State & CharacterState.WallRunning) != 0;
-                        if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
-                        if (!running && !float.IsNaN(startZ))
-                        {
-                            float run = simulation.Position.z - startZ, fall = startY - simulation.Position.y;
-                            if (float.IsNaN(length) || run > length) { length = run; }
-                            if (float.IsNaN(drop) || fall > drop) { drop = fall; }
-                            break;
-                        }
-                        if (simulation.Grounded && i > 2) { break; }
-                    }
+                        return inputs;
+                    }, groundedFrom: 3, ref length, ref drop);
                 }
             }
             // And one started level: in mid-air beside the wall, well above the ground, moving along it at the run speed.
@@ -317,47 +295,66 @@ namespace Character
             {
                 simulation.ClearObstacles();
                 simulation.Reset(new Vector3(0f, 4f * simulation.Controller.StandingHeight, 0f));
-                float face = simulation.Controller.Radius + 0.1f;
-                simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
+                WallBeside(simulation, 0.1f);
                 simulation.Controller.OverrideVelocity(Vector3.forward * (SettingsOf<WalkingAndRunning>().RunSpeed * simulation.Controller.SpeedScale));
                 Vector3 input = Quaternion.Euler(0f, 10f, 0f) * Vector3.forward;
-                float startZ = float.NaN, startY = float.NaN;
-                for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
-                {
-                    Vector3 before = simulation.Position;
-                    simulation.Step(MovementSimulation.Move(input, true));
-                    bool running = (simulation.State & CharacterState.WallRunning) != 0;
-                    if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
-                    if (!running && !float.IsNaN(startZ))
-                    {
-                        float run = simulation.Position.z - startZ, fall = startY - simulation.Position.y;
-                        if (float.IsNaN(length) || run > length) { length = run; }
-                        if (float.IsNaN(drop) || fall > drop) { drop = fall; }
-                        break;
-                    }
-                    if (simulation.Grounded) { break; }
-                }
+                MeasureRun(simulation, _ => MovementSimulation.Move(input, true), groundedFrom: 0, ref length, ref drop);
             }
             simulation.ClearObstacles();
             return (length, drop);
+        }
+
+        /// <summary>A long, tall wall along the character's right, its face outFromWall (m) beyond the character's side.</summary>
+        private static void WallBeside(MovementSimulation simulation, float outFromWall)
+        {
+            float face = simulation.Controller.Radius + outFromWall;
+            simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
+        }
+
+        /// <summary>
+        /// Steps the simulation with the given inputs until a wall run starts and ends (keeping the longest run along the
+        /// wall and the largest fall over one seen so far in length and drop), or it gives up: on the ground from step
+        /// groundedFrom on (before it, it may still be taking off), or after the measuring timeout.
+        /// </summary>
+        private static void MeasureRun(MovementSimulation simulation, Func<int, Inputs> inputsFor, int groundedFrom, ref float length, ref float drop)
+        {
+            float startZ = float.NaN, startY = float.NaN;
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+            {
+                Vector3 before = simulation.Position;
+                simulation.Step(inputsFor(i));
+                bool running = (simulation.State & CharacterState.WallRunning) != 0;
+                if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
+                if (!running && !float.IsNaN(startZ))
+                {
+                    float run = simulation.Position.z - startZ, fall = startY - simulation.Position.y;
+                    if (float.IsNaN(length) || run > length) { length = run; }
+                    if (float.IsNaN(drop) || fall > drop) { drop = fall; }
+                    return;
+                }
+                if (simulation.Grounded && i >= groundedFrom) { return; }
+            }
         }
     }
 
     /// <summary>A wall run in progress, and the cooldown before the next.</summary>
     public class WallRunState
     {
+        /// <summary>Whether the character is running along a wall.</summary>
         public bool IsWallRunning;
-        // Seconds since the wall run started, and how long the character has been steering off it (see the release delay)
+        /// <summary>Seconds since the wall run started.</summary>
         public float elapsed;
+        /// <summary>How long, in seconds, the character has been steering off the wall (see the release delay).</summary>
         public float releaseTime;
-        // Seconds until another wall run may start
+        /// <summary>Seconds until another wall run may start.</summary>
         public float cooldownRemaining;
-        // The wall's normal (horizontal, unit length, pointing away from the wall toward the character)
+        /// <summary>The wall's normal (horizontal, unit length, pointing away from the wall toward the character).</summary>
         public Vector3 wallNormal;
-        // Which side of the character the wall is on: 1 = right, -1 = left (0 when not wall-running)
+        /// <summary>Which side of the character the wall is on: 1 = right, -1 = left (0 when not wall-running).</summary>
         public float side;
-        // The wall last run along (its normal), which can't be run along again until the character touches the ground
+        /// <summary>The wall last run along (its normal), which can't be run along again until the character touches the ground.</summary>
         public Vector3 lastWallNormal;
+        /// <summary>Whether lastWallNormal holds a wall.</summary>
         public bool hasLastWall;
     }
 }

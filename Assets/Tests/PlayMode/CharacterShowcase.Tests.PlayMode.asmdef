@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "CharacterShowcase",
+        "CharacterShowcase.Tests.Shared",
         "CameraSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

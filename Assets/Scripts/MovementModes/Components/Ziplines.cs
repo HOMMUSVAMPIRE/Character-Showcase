@@ -39,7 +39,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.zipline.regrabCooldown = Mathf.Max(0f, controller.zipline.regrabCooldown - movementData.deltaTime);
+            controller.zipline.regrabCooldown = MovementHelpers.CountDown(controller.zipline.regrabCooldown, movementData.deltaTime);
         }
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
@@ -83,13 +83,9 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jump.pressConsumed = true;
                     LetGoOfZipline(controller);
-                    MovementHelpers.GiveBackJumps(controller);
-                    MovementHelpers.TryUseJump(controller);
-                    movementData.velocityOverride = direction * ride.speed + Vector3.up * (ziplineJumpUpSpeed * controller.SpeedScale);
-                    movementData.directMovementVector = Vector3.zero;
-                    movementData.events |= MovementEvents.Jumped;
+                    MovementHelpers.JumpOff(ref movementData, controller,
+                        direction * ride.speed + Vector3.up * (ziplineJumpUpSpeed * controller.SpeedScale), MovementEvents.Jumped);
                     return true;
                 }
             }
@@ -198,16 +194,20 @@ namespace Character
     /// </summary>
     public class ZiplineState
     {
-        // The zipline ridden (null when not riding one)
+        /// <summary>The zipline ridden (null when not riding one).</summary>
         public Level.Zipline line;
+        /// <summary>How far (m) along the cable from its start the character hangs.</summary>
         public float along;
+        /// <summary>How fast (m/s) the character moves along the cable, positive toward its end.</summary>
         public float speed;
-        // Seconds since catching hold
+        /// <summary>Seconds since catching hold.</summary>
         public float elapsed;
-        // The zipline last let go of, and seconds until it can be caught again
+        /// <summary>The zipline last let go of, which can't be caught again until regrabCooldown runs out.</summary>
         public Level.Zipline lastLine;
+        /// <summary>Seconds until lastLine can be caught again.</summary>
         public float regrabCooldown;
 
+        /// <summary>Whether the character is riding a zipline.</summary>
         public bool IsRiding => line != null;
 
         /// <summary>

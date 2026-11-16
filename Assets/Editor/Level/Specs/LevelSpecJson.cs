@@ -15,7 +15,9 @@ namespace CharacterShowcase.EditorTools.Level
         private readonly List<string> keys = new();
         private readonly Dictionary<string, object> values = new();
 
+        /// <summary>Its keys, in the order they were added.</summary>
         public IReadOnlyList<string> Keys => keys;
+        /// <summary>How many keys it has.</summary>
         public int Count => keys.Count;
 
         public object this[string key]
@@ -28,7 +30,9 @@ namespace CharacterShowcase.EditorTools.Level
             }
         }
 
+        /// <summary>Gets a key's value, if it has the key.</summary>
         public bool TryGetValue(string key, out object value) => values.TryGetValue(key, out value);
+        /// <summary>Whether it has the key.</summary>
         public bool ContainsKey(string key) => values.ContainsKey(key);
 
         /// <summary>Removes a key (and its value); returns whether it was there.</summary>

@@ -17,6 +17,7 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class MotionCaptureClipImporter
     {
+        /// <summary>The folder the motion-capture clips are in, a subfolder per kind of motion.</summary>
         public const string ClipsFolder = "Assets/Animation/CMU";
 
         /// <summary>The CMU skeleton's bones, by the Humanoid bone each is. Its buttock bones (between hip and thigh) aren't any.</summary>
@@ -65,6 +66,7 @@ namespace CharacterShowcase.EditorTools
             ["rPinky2"] = HumanBodyBones.RightLittleIntermediate,
         };
 
+        /// <summary>Sets up every clip that isn't already, and logs when they all are.</summary>
         [MenuItem("Tools/Character Showcase/Prepare Motion Capture Clips", priority = 4)]
         public static void PrepareAllFromMenu()
         {
@@ -72,37 +74,18 @@ namespace CharacterShowcase.EditorTools
             if (problems.Count == 0) { Debug.Log($"[{nameof(MotionCaptureClipImporter)}] Every clip in {ClipsFolder} is set up as a Humanoid animation."); }
         }
 
-        /// <summary>For -executeMethod. Exits with code 1 if any clip couldn't be set up.</summary>
+        /// <summary>For -executeMethod. Exits when it's done, with code 1 if any clip couldn't be set up.</summary>
         public static void PrepareAllFromCommandLine()
         {
-            if (PrepareAll().Count > 0) { EditorApplication.Exit(1); }
+            CommandLine.Finish(PrepareAll().Count == 0);
         }
 
-        public static IEnumerable<string> FindClipFiles() =>
-            AssetDatabase.FindAssets("t:Model", new[] { ClipsFolder })
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Where(path => path.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase))
-                .Distinct()
-                .OrderBy(path => path, System.StringComparer.Ordinal);
+        /// <summary>Every clip file (.fbx) in ClipsFolder and its subfolders, in path order.</summary>
+        public static IEnumerable<string> FindClipFiles() => AnimationFiles.FbxFilesIn(ClipsFolder);
 
         /// <summary>Sets up every clip that isn't already, and returns what went wrong, a line per clip.</summary>
-        public static List<string> PrepareAll()
-        {
-            var problems = new List<string>();
-            List<string> paths = FindClipFiles().ToList();
-            for (int i = 0; i < paths.Count; i++)
-            {
-                if (EditorUtility.DisplayCancelableProgressBar("Preparing motion capture clips", Path.GetFileName(paths[i]), (float)i / paths.Count)) { break; }
-                string problem = Prepare(paths[i]);
-                if (problem != null)
-                {
-                    problems.Add($"{paths[i]}: {problem}");
-                    Debug.LogWarning($"[{nameof(MotionCaptureClipImporter)}] {paths[i]}: {problem}");
-                }
-            }
-            EditorUtility.ClearProgressBar();
-            return problems;
-        }
+        public static List<string> PrepareAll() =>
+            AnimationFiles.PrepareEach(FindClipFiles(), Prepare, nameof(MotionCaptureClipImporter), "Preparing motion capture clips");
 
         /// <summary>Sets up one clip as a Humanoid animation if it isn't already. Returns what went wrong, or null.</summary>
         public static string Prepare(string path)
@@ -233,6 +216,7 @@ namespace CharacterShowcase.EditorTools
             clip.keepOriginalPositionXZ = true;
         }
 
+        /// <summary>Whether a clip's root is set up as SetRoot sets it.</summary>
         public static bool HasRootSetUp(ModelImporterClipAnimation clip) =>
             !clip.lockRootRotation && !clip.keepOriginalOrientation && clip.lockRootHeightY && !clip.keepOriginalPositionY
             && clip.heightFromFeet && clip.lockRootPositionXZ && clip.keepOriginalPositionXZ && !clip.mirror;

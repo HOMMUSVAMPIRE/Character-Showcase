@@ -13,6 +13,7 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class ClimbablePaintAssets
     {
+        /// <summary>The folder the painted masks and meshes are saved in, a subfolder per scene.</summary>
         public const string Folder = "Assets/ClimbablePaint";
         /// <summary>Unity's cube, with a UV2 (every face of Unity's own has the same UVs), for the cubes painted onto.</summary>
         public const string CubePath = Folder + "/Cube (UV2).asset";

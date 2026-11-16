@@ -154,15 +154,16 @@ namespace Character
     /// <summary>An object held to push or pull.</summary>
     public class GrabState
     {
-        // The object held (null when not grabbing)
+        /// <summary>The object held (null when not grabbing).</summary>
         public Level.PushableObject target;
-        // The normal of the object's face the character holds (horizontal, unit length, pointing toward the character)
+        /// <summary>The normal of the object's face the character holds (horizontal, unit length, pointing toward the character).</summary>
         public Vector3 faceNormal;
-        // Where the character's feet are relative to the object, in the object's space: kept while holding it
+        /// <summary>Where the character's feet are relative to the object, in the object's space: kept while holding it.</summary>
         public Vector3 localHoldOffset;
-        // This step's move back to where the character holds the object, which the object doesn't share
+        /// <summary>This step's move back to where the character holds the object, which the object doesn't share.</summary>
         public Vector3 holdCorrection;
 
+        /// <summary>Whether the character is holding an object.</summary>
         public bool IsGrabbing => target != null;
     }
 }

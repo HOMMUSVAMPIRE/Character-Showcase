@@ -6,19 +6,9 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>Tests that the character rides moving and spinning platforms and keeps their momentum when leaving.</summary>
-    public class MovingGroundTests
+    [Category(TestArea.Movement)]
+    public class MovingGroundTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         [UnityTest]
         public IEnumerator StandingOnSlidingPlatform_MovesWithIt()

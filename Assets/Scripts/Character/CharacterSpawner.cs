@@ -92,6 +92,7 @@ namespace Character
         /// <summary>The spawn point the most recent character was spawned at, or -1 if none has been.</summary>
         public int LastSpawnIndex { get; private set; } = -1;
 
+        /// <summary>The character prefab to spawn.</summary>
         public GameObject CharacterPrefab { get => characterPrefab; set => characterPrefab = value; }
 
         /// <summary>The model spawned characters use instead of the prefab's own, or null to keep the prefab's.</summary>
@@ -103,6 +104,7 @@ namespace Character
         /// <summary>The spawn points. Change the list to add, move or remove them.</summary>
         public List<SpawnPoint> SpawnPoints => spawnPoints;
 
+        /// <summary>Whether the character spawns automatically when the scene starts (otherwise call Spawn).</summary>
         public bool SpawnOnStart { get => spawnOnStart; set => spawnOnStart = value; }
 
         /// <summary>The inspector's spawn event, called with each spawned character's root transform.</summary>

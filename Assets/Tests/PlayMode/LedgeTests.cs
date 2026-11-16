@@ -14,21 +14,11 @@ namespace CharacterShowcase.Tests
     /// lets go; ledges out of reach, or passed while rising fast, aren't grabbed; a moving ledge carries the character
     /// hanging from it; and a jump up to a ledge grabs it. Expected values are read from the movement mode's settings.
     /// </summary>
-    public class LedgeTests
+    [Category(TestArea.Abilities)]
+    public class LedgeTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         // The ledge's top (y) and its wall's face (z), which faces -Z, toward the character.
         private float top, face;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float HangHeight => rig.MovementSetting<float>("ledgeHangHeight") * rig.StandingHeight;
         private float ClimbDuration => rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale;
@@ -184,12 +174,11 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator JumpingUpToALedge_GrabsIt_ThenClimbsOntoIt()
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+            yield return rig.StandOnFloor();
             // How high the character's feet get in a full jump.
             float apex = 0f;
             yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), _ => apex = Mathf.Max(apex, rig.Position.y));
-            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
 
             // A wall whose top is a standing height above the top of the jump.
@@ -197,8 +186,8 @@ namespace CharacterShowcase.Tests
             face = rig.Position.z + rig.Radius + 0.15f;
             rig.Box("Tall Wall", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
 
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             bool hung = false;
             yield return rig.Run(1f, step => CharacterTestRig.Jump(step, Vector3.forward), _ => hung |= Hanging);
             Assert.That(hung, Is.True, "Jumping at a wall whose top is within reach at the top of the jump should grab it.");

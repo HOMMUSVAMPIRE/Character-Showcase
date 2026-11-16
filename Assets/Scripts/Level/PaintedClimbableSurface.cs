@@ -28,6 +28,7 @@ namespace Level
     {
         /// <summary>The name of the texture property a material shows climbable areas with, white where they are.</summary>
         public const string MaskPropertyName = "_ClimbableMask";
+        /// <summary>The shader property ID of MaskPropertyName.</summary>
         public static readonly int MaskProperty = Shader.PropertyToID(MaskPropertyName);
 
         /// <summary>A mesh renderer of the object's, and the mask texture painted for it.</summary>
@@ -470,7 +471,7 @@ namespace Level
 
         public void OnBeforeSerialize() { }
 
-        // Loading, and undoing a stroke, replaces the cells: the lookup is rebuilt from them when next needed.
+        /// <summary>Loading, and undoing a stroke, replaces the cells: the lookup is rebuilt from them when next needed.</summary>
         public void OnAfterDeserialize()
         {
             lookup = null;

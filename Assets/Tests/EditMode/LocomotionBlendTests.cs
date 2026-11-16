@@ -11,11 +11,14 @@ namespace CharacterShowcase.Tests.EditMode
     /// <summary>
     /// Checks of the shared Animator Controller's Locomotion blend tree, as MannequinGenerator builds it, played on the
     /// mannequin: every loop is offset to land its left foot at the same moment, so blending between them doesn't mix
-    /// one foot's stride with the other's; and each loop shown at the speed its strides are made for (the walk, the
-    /// sprint, and the sprint sped up to the top) keeps its planted feet in step with the ground there. In the
+    /// one foot's stride with the other's; and each loop shown at the speed its strides are made for (from the walk to
+    /// the sprint, the tree's last: past it, the translator plays the sprint faster) keeps its planted feet in step with
+    /// the ground there. In the
     /// SampleContent category, and skipped where the controller (or the mannequin) isn't there.
     /// </summary>
+    [Category(TestArea.Animation)]
     [Category(PreparedModelTests.SampleContent)]
+    [TestTiming]
     public class LocomotionBlendTests
     {
         private static (BlendTree tree, GameObject mannequin) Load()
@@ -56,7 +59,7 @@ namespace CharacterShowcase.Tests.EditMode
             (BlendTree tree, GameObject mannequin) = Load();
             var problems = new List<string>();
             ChildMotion[] loops = Loops(tree).ToArray();
-            // The walk at its own speed, the sprint at its own speed, and the top of the tree (the sprint sped up).
+            // Each loop at its own speed, the sprint (the tree's last) included.
             IEnumerable<ChildMotion> atOwnStrides = loops.Where(c => Mathf.Approximately(c.timeScale, 1f)).Append(loops.Last());
             foreach (ChildMotion child in atOwnStrides.Distinct())
             {

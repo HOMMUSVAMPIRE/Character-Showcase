@@ -9,29 +9,15 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>What the animation tests share: a rig, stepping the model's animation with the physics, and measuring it.</summary>
-    public abstract class AnimationTestsBase
+    [Category(TestArea.Animation)]
+    public abstract class AnimationTestsBase : CharacterRigFixture
     {
-        protected CharacterTestRig rig;
+        // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
+        protected override bool MovementOnly => false;
+
         protected AnimationController animation;
         protected Animator animator;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
-        /// <summary>Starts again with a new rig, for a test comparing two runs.</summary>
-        protected IEnumerator Restart()
-        {
-            rig.Dispose();
-            yield return null;
-            rig = new CharacterTestRig();
-        }
 
         /// <summary>Feeds the latest movement to the animator, as ACCharacterController does each frame in the game.</summary>
         protected void FeedAnimator(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
@@ -246,7 +232,7 @@ namespace CharacterShowcase.Tests
             {
                 yield return SpawnWithOwnModel();
                 yield return MeasureStandingSoles(Vector3.one, footPlacementWeight, s => normal = s);
-                yield return Restart();
+                yield return ReplaceRig();
             }
             yield return SpawnWithOwnModel();
             yield return MeasureStandingSoles(scale, footPlacementWeight, s => soles = s);
@@ -319,7 +305,7 @@ namespace CharacterShowcase.Tests
             yield return SpawnWithOwnModel();
             float speed = 0.1f * rig.WalkSpeed;
             yield return MeasureFootSlide(speed, s => normal = s);
-            yield return Restart();
+            yield return ReplaceRig();
             yield return SpawnWithOwnModel();
             yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
             Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
@@ -359,7 +345,7 @@ namespace CharacterShowcase.Tests
                 result(Vector3.Distance(foot.position, before));
             }
             yield return Measure(Vector3.one, m => normal = m);
-            yield return Restart();
+            yield return ReplaceRig();
             yield return Measure(new Vector3(1f, 2f, 1f), m => stretched = m);
             TestContext.WriteLine($"The foot moved {stretched * 1000f:0.0} mm stretched, {normal * 1000f:0.0} mm unstretched.");
             Assert.That(stretched, Is.LessThan(2f * normal + 0.01f), "Stretched, the hint should move the foot no more than unstretched (for its height).");

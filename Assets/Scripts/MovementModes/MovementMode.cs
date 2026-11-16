@@ -2,9 +2,14 @@ using UnityEngine;
 
 namespace Character
 {
-    // The base class for scriptable objects which control the ways characters move.
+    /// <summary>The base class for scriptable objects which control the ways characters move.</summary>
     public abstract class MovementMode : ScriptableObject
     {
+        /// <summary>
+        /// One physics step of the mode's movement, called by the MovementController: turns the inputs into how the
+        /// character means to move this step (movementData's direct movement, velocity change or override, rotation and
+        /// state), before it's resolved against the world.
+        /// </summary>
         public virtual void ProcessMovementData(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             return;

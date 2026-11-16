@@ -1,3 +1,4 @@
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Character
@@ -36,13 +37,23 @@ namespace Character
         /// </summary>
         public event System.Action<MovementEvents, MovementData> MovementEventRaised;
 
-        // The previous and current movement data information for this character
+        /// <summary>
+        /// The movement data of the last physics step to finish (null before the first): what animation and the next
+        /// step read the character's state, velocity and collisions from.
+        /// </summary>
         [HideInInspector] public MovementData lastFrameMovementData = null;
+        /// <summary>The movement data of the physics step in progress (null between steps: MovementCleanup moves it to lastFrameMovementData).</summary>
         [HideInInspector] public MovementData currentMovementData = null;
 
-        // A change in velocity to be applied to the character on the next update loop (like if the character gets thrown by an explosion)
+        /// <summary>
+        /// A change in velocity, in m/s, to be applied to the character in the next physics step (like if the character
+        /// gets thrown by an explosion); added to with AddVelocityChange, and cleared once applied.
+        /// </summary>
         [HideInInspector] public Vector3 pendingVelocityChange;
-        // A complete override on the character's velocity to be applied next frame
+        /// <summary>
+        /// A complete override on the character's velocity, in m/s, to be applied in the next physics step (set with
+        /// OverrideVelocity), or null for none. Cleared once applied.
+        /// </summary>
         public Vector3? velocityOverride = null;
 
         [Tooltip("A multiplier on the character's movement speed")]
@@ -180,20 +191,35 @@ namespace Character
 
         // The state of the character's abilities, which persists between physics steps (each kept with its component, in
         // Components/: movement modes are shared assets, so it lives here, one per character).
+        /// <summary>The character's jumping state (Jumping).</summary>
         public JumpState jump { get; } = new JumpState();
+        /// <summary>The character's dashing state (Dashing).</summary>
         public DashState dash { get; } = new DashState();
+        /// <summary>The character's crouching state (Crouching).</summary>
         public CrouchState crouch { get; } = new CrouchState();
+        /// <summary>The character's sliding state (Crouching, which slides when Crouch is pressed while sprinting).</summary>
         public SlideState slide { get; } = new SlideState();
+        /// <summary>The character's rolling state (Rolling).</summary>
         public RollState roll { get; } = new RollState();
+        /// <summary>The character's wall running state (WallRunning).</summary>
         public WallRunState wallRun { get; } = new WallRunState();
+        /// <summary>The character's wall sliding state (WallSliding).</summary>
         public WallSlideState wallSlide { get; } = new WallSlideState();
+        /// <summary>The state shared by the wall jumps of every ability that wall jumps (see MovementHelpers).</summary>
         public WallJumpState wallJump { get; } = new WallJumpState();
+        /// <summary>The character's ledge hanging and climbing state (Ledges).</summary>
         public LedgeState ledge { get; } = new LedgeState();
+        /// <summary>The character's vaulting and stepping-up state (Vaulting).</summary>
         public VaultState vault { get; } = new VaultState();
+        /// <summary>The character's state grabbing an object to push or pull it (PushingAndPulling).</summary>
         public GrabState grab { get; } = new GrabState();
+        /// <summary>The character's wall and ladder climbing state (WallClimbing).</summary>
         public WallClimbState wallClimb { get; } = new WallClimbState();
+        /// <summary>The character's rope swinging state (RopeSwinging).</summary>
         public RopeSwingState ropeSwing { get; } = new RopeSwingState();
+        /// <summary>The character's zipline riding state (Ziplines).</summary>
         public ZiplineState zipline { get; } = new ZiplineState();
+        /// <summary>The character's bounce pad state (BouncePads).</summary>
         public BounceState bounce { get; } = new BounceState();
 
         /// <summary>
@@ -203,8 +229,8 @@ namespace Character
         /// </summary>
         public float StepTime { get; private set; }
 
-        // The time (StepTime) at which the character was last on the ground (negative infinity until they first touch it)
         // Runtime state, so not serialized: a saved value (the prefab used to store 0) would override "never grounded".
+        /// <summary>The time (StepTime) at which the character was last on the ground (negative infinity until they first touch it).</summary>
         [System.NonSerialized] public float lastGroundedTime = float.NegativeInfinity;
 
         /// <summary>Whether the character has started a jump since they were last on the ground.</summary>
@@ -213,13 +239,33 @@ namespace Character
         // Caps time since grounded so "never grounded" stays a finite number when evaluating curves with it.
         private const float MaxTimeSinceGrounded = 1000f;
 
+        // Profiler markers for the parts of a step (the Profiler's CPU Usage; each movement component has its own too,
+        // "Movement.<Component>": see MovementComponent.Marker). See docs/testing.md, Performance.
+        private static readonly ProfilerMarker StepMarker = new("Movement.Step");
+        private static readonly ProfilerMarker ModeMarker = new("Movement.Mode");
+        private static readonly ProfilerMarker CollisionMarker = new("Movement.Collision");
+
         /// <summary>
-        /// Transforms inputs into character movement
-        /// Called by the parent character controller to ensure consistent execution order
-        /// TODO: Break this up into smaller & cleaner functions
+        /// One physics step of the character's movement, called by the ACCharacterController in FixedUpdate (so every
+        /// character steps in the same order): the step's starting state (StartStep), what the movement mode makes of the
+        /// inputs (RunMovementMode), then resolving that against the world and moving the Rigidbody (ResolveAndApply).
         /// </summary>
-        /// <param name="inputs"></param>
         public void ProcessMovementInputs(Inputs inputs)
+        {
+            using (StepMarker.Auto())
+            {
+                MovementData data = StartStep();
+                RunMovementMode(ref data, inputs);
+                ResolveAndApply(data);
+            }
+        }
+
+        /// <summary>
+        /// Advances the character's clock and starts the step's movement data from where the last step left the
+        /// character: its pose, momentum and state, carried by the ground it stood on, whether it's on the ground now, and
+        /// any forces added between steps.
+        /// </summary>
+        private MovementData StartStep()
         {
             StepTime += Time.fixedDeltaTime;
             // Whether the last frame's movement data is valid to be used (will be false on the first frame)
@@ -245,7 +291,6 @@ namespace Character
 
             // Move with whatever the character was standing on, then check whether the character is starting on the
             // ground this frame via spherecast downwards
-            // TODO: avoid hard coding gravity direction
             data.initialGrounded = ApplyGroundCarry(ref data);
             data.initialGroundTransform = groundTransform;
 
@@ -279,15 +324,30 @@ namespace Character
 
             data.velocityOverride = velocityOverride;
             velocityOverride = null;
+            return data;
+        }
 
-            // Use a scriptable object to process inputs and apply them to the character's movement data
-            if (movementHandler != null)
+        /// <summary>Has the movement mode fill in how the character means to move this step, from the inputs.</summary>
+        private void RunMovementMode(ref MovementData data, Inputs inputs)
+        {
+            if (movementHandler == null) { return; }
+            using (ModeMarker.Auto())
             {
                 movementHandler.ProcessMovementData(ref data, inputs, this);
             }
+        }
 
-            // Check whether the character can currently move in the way that is called for by their movement data, and fix it if not
-            CheckMovementValid(ref data);
+        /// <summary>
+        /// Resolves the step's movement against the world (fixing whatever can't move as called for), lets the movement
+        /// mode move what goes with the character, moves the Rigidbody, and raises the step's events.
+        /// </summary>
+        private void ResolveAndApply(MovementData data)
+        {
+            bool hasLastFrameMovement = lastFrameMovementData != null;
+            using (CollisionMarker.Auto())
+            {
+                CheckMovementValid(ref data);
+            }
             if (movementHandler != null) { movementHandler.AfterMovementResolved(data, this); }
 
             // Save this frame's complete movement data

@@ -11,21 +11,10 @@ namespace CharacterShowcase.Tests
     /// Several guard against specific regressions: hovering above the ground, falling faster than gravity, and
     /// gravity accumulating while standing so walking off a ledge drops like a stone.
     /// </summary>
-    public class MovementTests
+    [Category(TestArea.Movement)]
+    public class MovementTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null; // Let Destroy finish before the next test builds its world.
-        }
-
-        private float Gravity => rig.MovementSetting<float>("gravityStrength");
 
         [UnityTest]
         public IEnumerator SettlesOnGround_WithoutHoveringOrSinking()
@@ -65,9 +54,9 @@ namespace CharacterShowcase.Tests
             float dt = Time.fixedDeltaTime;
             float seconds = steps * dt;
             // Exact fall for this integration (velocity updated before position, each step): g·dt²·n(n+1)/2.
-            float maxFall = Gravity * dt * dt * steps * (steps + 1) / 2f;
+            float maxFall = rig.Gravity * dt * dt * steps * (steps + 1) / 2f;
             Assert.That(fallen, Is.LessThanOrEqualTo(maxFall + 1e-3f), "Character fell faster than gravity allows.");
-            Assert.That(fallen, Is.GreaterThan(0.25f * 0.5f * Gravity * seconds * seconds), "Character barely fell; gravity isn't being applied.");
+            Assert.That(fallen, Is.GreaterThan(0.25f * 0.5f * rig.Gravity * seconds * seconds), "Character barely fell; gravity isn't being applied.");
         }
 
         [UnityTest]
@@ -98,7 +87,7 @@ namespace CharacterShowcase.Tests
                 if (previousY.HasValue && dropStartStep >= 0)
                 {
                     float downwardSpeed = -(y - previousY.Value) / dt;
-                    float limit = Gravity * (step - dropStartStep + 1) * dt + snapAllowance;
+                    float limit = rig.Gravity * (step - dropStartStep + 1) * dt + snapAllowance;
                     if (limit - downwardSpeed < worstMargin)
                     {
                         worstMargin = limit - downwardSpeed;
@@ -145,7 +134,7 @@ namespace CharacterShowcase.Tests
                 "timeSinceGrounded should measure time since leaving the ground.");
             // The coyote gravity curve eases gravity in after leaving the ground, so the first 0.1 s of the drop is
             // much shallower than full-gravity free fall (which would be ~0.2 m).
-            float fullGravityFall = 0.5f * Gravity * (window * dt) * (window * dt);
+            float fullGravityFall = 0.5f * rig.Gravity * (window * dt) * (window * dt);
             Assert.That(yWhenLeft - yAfterCoyoteWindow, Is.LessThan(0.5f * fullGravityFall),
                 "Gravity applied at full strength immediately; the coyote gravity curve isn't being used.");
         }
@@ -174,7 +163,7 @@ namespace CharacterShowcase.Tests
 
             float apex = 0f;
             int holdSteps = CharacterTestRig.StepsFor(0.2f);
-            yield return rig.Run(3f, step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle(),
+            yield return rig.RunUntilBackOnTheGround(step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle(),
                 _ => apex = Mathf.Max(apex, rig.Position.y));
 
             Assert.That(apex, Is.GreaterThan(rig.StepHeight), "Jump barely left the ground (not even a step's height).");

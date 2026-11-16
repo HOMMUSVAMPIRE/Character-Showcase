@@ -58,9 +58,13 @@ namespace Character
         [System.NonSerialized] internal Quaternion proceduralRotation = Quaternion.identity;
         [System.NonSerialized] internal float proceduralPositionWeight, proceduralRotationWeight;
 
+        /// <summary>The goal position weight applied this frame (0 to 1), eased toward Position Weight over the blend time.</summary>
         public float CurrentPositionWeight => currentPositionWeight;
+        /// <summary>The goal rotation weight applied this frame (0 to 1), eased toward Rotation Weight over the blend time.</summary>
         public float CurrentRotationWeight => currentRotationWeight;
+        /// <summary>The hint weight applied this frame (0 to 1), eased toward Hint Weight over the blend time.</summary>
         public float CurrentHintWeight => currentHintWeight;
+        /// <summary>Whether the limb has IK to apply: a weight set, or one still fading out.</summary>
         internal bool IsActive => positionWeight > 0f || rotationWeight > 0f || hintWeight > 0f
                                   || currentPositionWeight > 0f || currentRotationWeight > 0f || currentHintWeight > 0f;
     }
@@ -80,9 +84,13 @@ namespace Character
         [Tooltip("Scales every limb's IK weights. Set to 0 to turn all IK off without losing per-limb settings.")]
         [Range(0f, 1f)] public float masterWeight = 1f;
 
+        [Tooltip("The left foot's IK: its weights, and how quickly they blend in and out.")]
         [SerializeField] private IKLimbSettings leftFoot = new();
+        [Tooltip("The right foot's IK: its weights, and how quickly they blend in and out.")]
         [SerializeField] private IKLimbSettings rightFoot = new();
+        [Tooltip("The left hand's IK: its weights, and how quickly they blend in and out.")]
         [SerializeField] private IKLimbSettings leftHand = new();
+        [Tooltip("The right hand's IK: its weights, and how quickly they blend in and out.")]
         [SerializeField] private IKLimbSettings rightHand = new();
 
         [Tooltip("Draw targets, hints, and lines from the limbs to them in the Scene view.")]

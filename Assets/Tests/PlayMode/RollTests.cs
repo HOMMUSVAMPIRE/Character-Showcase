@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -12,31 +13,15 @@ namespace CharacterShowcase.Tests
     /// crouched where there's no room to stand; and it scales with the character's size. Expected values are read from
     /// the movement mode's settings.
     /// </summary>
-    public class RollTests
+    [Category(TestArea.Abilities)]
+    public class RollTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float RollSpeed => rig.Component<Rolling>().RollSpeed * rig.Movement.SpeedScale;
         private float RollDuration => rig.Component<Rolling>().RollDuration * rig.Movement.DurationScale;
         private int RollSteps => CharacterTestRig.StepsFor(RollDuration);
-        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
         private bool Rolling => rig.InState(CharacterState.Rolling);
 
-        private IEnumerator Stand()
-        {
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
-        }
 
         /// <summary>Presses roll for one step with the given input, keeps the input up for the roll, and counts the steps spent rolling.</summary>
         private IEnumerator RollOnce(Vector3 direction, System.Action<int> rollingSteps, Vector3? inputDuringRoll = null)
@@ -51,7 +36,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator Roll_GoesInTheInputDirection_LowAndFast_ForItsDuration()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             Vector3 start = rig.Position;
             float lowest = float.PositiveInfinity;
@@ -68,19 +53,19 @@ namespace CharacterShowcase.Tests
             Assert.That(travelled.x, Is.GreaterThan(1.2f * rig.WalkSpeed * RollDuration), "A roll should be faster than walking.");
             Assert.That(Mathf.Abs(travelled.z), Is.LessThan(0.01f), "A roll should go straight in the input direction.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.right), Is.LessThan(1f), "The character should face the roll.");
-            Assert.That(lowest, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "A roll should be low, at the crouch height.");
+            Assert.That(lowest, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "A roll should be low, at the crouch height.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "After a roll the character should stand up again.");
         }
 
         [UnityTest]
         public IEnumerator WithCrouchingTurnedOff_ARollStillGoesLow_AndCrouchDoesNothing()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             rig.Component<Crouching>().Enabled = false;
             float standing = rig.StandingHeight, lowest = float.PositiveInfinity;
             yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(),
                 _ => { if (Rolling) { lowest = Mathf.Min(lowest, rig.CurrentHeight); } });
-            Assert.That(lowest, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "The character's posture is the mode's: a roll should still be low.");
+            Assert.That(lowest, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "The character's posture is the mode's: a roll should still be low.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "After the roll it should stand up again.");
             yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step));
             Assert.That(rig.Movement.crouch.IsCrouched, Is.False, "With Crouching turned off, Crouch shouldn't crouch.");
@@ -90,7 +75,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator RollWithoutInput_GoesTheWayTheCharacterFaces_AndCantBeSteered()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             Vector3 start = rig.Position;
             // No input on the press, then steering hard to the right through the roll.
             int steps = 0;
@@ -105,7 +90,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator HoldingRoll_OnlyRollsOnce_AndAnotherWaitsForTheCooldown()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             int rollStarts = 0;
             bool was = false;
             yield return rig.Run(RollDuration * 4f, step => CharacterTestRig.Roll(step), _ =>
@@ -133,7 +118,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator RollingWhileMoving_HandsStraightOverToWalking_WithoutABurstOfSpeed()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float endSpeed = RollSpeed * rig.MovementSetting<AnimationCurve>("rollSpeedCurve").Evaluate(1f);
             float fastest = 0f, slowest = float.PositiveInfinity;
             bool rolled = false;
@@ -162,10 +147,10 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator RollingUnderALowCeiling_EndsCrouched_ThenStandsOnceThereIsRoom()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             // A short low ceiling the roll ends under: from just ahead to past where the roll ends.
-            float underside = standing * Mathf.Lerp(CrouchHeight, 1f, 0.5f);
+            float underside = standing * Mathf.Lerp(rig.CrouchHeight, 1f, 0.5f);
             float start = rig.Radius + 0.2f, length = RollSpeed * RollDuration + 1f;
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, start + length / 2f), new Vector3(4f, 1f, length));
 
@@ -182,7 +167,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator RollAtTwiceTheSize_GoesTwiceAsFar()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             Vector3 start = rig.Position;
             yield return RollOnce(Vector3.forward, _ => { }, Vector3.zero);
             float normal = rig.Position.z - start.z;
@@ -268,8 +253,8 @@ namespace CharacterShowcase.Tests
         {
             yield return SpawnAbove(1.2f);
             yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
-            var events = new System.Collections.Generic.List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             // Fall, pressing Jump just before landing (within its buffer), and holding it.
             bool rolled = false;
             int held = -1;
@@ -285,7 +270,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator AJumpOnFlatGround_DoesNotRollOnLanding()
         {
-            yield return Stand();
+            yield return rig.StandOnFloor();
             bool rolled = false;
             yield return rig.Run(2f, step => CharacterTestRig.Jump(step, Vector3.right), _ => rolled |= Rolling);
             Assert.That(rolled, Is.False, "Landing from an ordinary jump on flat ground shouldn't roll.");
@@ -314,8 +299,8 @@ namespace CharacterShowcase.Tests
             if (rig.MaxJumps < 1) { Assert.Ignore("The character has no jumps."); }
             yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
             rig.Movement.jump.remaining = rig.MaxJumps; // Never on the ground yet: as if it had walked off a ledge.
-            var events = new System.Collections.Generic.List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             bool rolled = false;
             int jumpStep = -1;
             yield return rig.Run(3f, step =>

@@ -43,6 +43,7 @@ namespace Character
         public Vector3 Position => body.position - WorldOrigin;
         /// <summary>The character's state in the last step.</summary>
         public CharacterState State => Controller.lastFrameMovementData != null ? Controller.lastFrameMovementData.state : CharacterState.Idle;
+        /// <summary>Whether the character was on the ground in the last step.</summary>
         public bool Grounded => (State & CharacterState.Grounded) != 0;
         /// <summary>The character's velocity in the last step (m/s).</summary>
         public Vector3 Velocity => Controller.lastFrameMovementData != null ? Controller.lastFrameMovementData.finalVelocity : Vector3.zero;
@@ -194,6 +195,7 @@ namespace Character
             sprint = sprint ? Held(1) : new InputButton(),
         };
 
+        /// <summary>Destroys the simulation's world and its copies of the movement modes.</summary>
         public void Dispose()
         {
             if (root != null) { Object.DestroyImmediate(root); }

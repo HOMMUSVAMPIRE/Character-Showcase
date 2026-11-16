@@ -32,11 +32,17 @@ namespace CharacterShowcase.EditorTools.Level
             }
         }
 
+        /// <summary>The level's root object in the preview scene, named for the spec.</summary>
         public Transform Root { get; private set; }
+        /// <summary>The unsaved scene the preview is built in.</summary>
         public Scene Scene { get; private set; }
         /// <summary>What went wrong building each piece that failed (they're skipped, so the rest still shows).</summary>
         public readonly Dictionary<JsonObject, string> Problems = new();
+        /// <summary>
+        /// The plan's outlines, a footprint for each visible mesh, lowest top first so what's higher is drawn over it.
+        /// </summary>
         public readonly List<Footprint> Footprints = new();
+        /// <summary>The bounds of everything on the plan, for framing it.</summary>
         public Bounds PlanBounds { get; private set; }
 
         private LevelSpec spec;

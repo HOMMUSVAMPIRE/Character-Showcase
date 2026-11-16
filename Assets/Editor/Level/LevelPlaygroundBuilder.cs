@@ -39,6 +39,7 @@ namespace CharacterShowcase.EditorTools.Level
     /// </summary>
     public static class LevelPlaygroundBuilder
     {
+        /// <summary>Where the Level Playground's scene is saved.</summary>
         public const string ScenePath = "Assets/Scenes/LevelPlayground/LevelPlayground.unity";
 
         // ---- The layout (tunable) ----
@@ -50,6 +51,7 @@ namespace CharacterShowcase.EditorTools.Level
         private const float StairWidth = 6f;
         private const float TowerApothem = 8f;         // Wide enough across each flat for a stair-wide bridge.
 
+        /// <summary>The playground's scene and its parts, in build order.</summary>
         internal static readonly GrayboxScene Scene = new("Level Playground", ScenePath,
             ("the start", BuildStart),
             ("the terrace and ramp", BuildTerrace),
@@ -81,8 +83,12 @@ namespace CharacterShowcase.EditorTools.Level
         [MenuItem("Tools/Character Showcase/Level/Build Level Playground")]
         public static void BuildFromMenu() => LevelBuildWindow.BuildFromMenu(Scene);
 
-        /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake.</summary>
-        public static void BuildFromCommandLine() => Scene.Build();
+        /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake, then exits.</summary>
+        public static void BuildFromCommandLine()
+        {
+            Scene.Build();
+            CommandLine.Finish(true);
+        }
 
         /// <summary>A section of the playground: the pieces reset to their default dimensions, under a group of its own.</summary>
         private static Transform Section(Transform root, Material material, string name)

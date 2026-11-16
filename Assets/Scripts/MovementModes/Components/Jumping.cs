@@ -75,7 +75,7 @@ namespace Character
             Vector3 inertia = movementData.initialInertia;
             if (startingJump)
             {
-                controller.jump.pressConsumed = true;
+                controller.jump.press.Use();
                 controller.jump.startHeight = movementData.initialPosition.y;
                 movementData.events |= fromGround ? MovementEvents.Jumped : MovementEvents.AirJumped;
                 // The launch speed outright, replacing whatever the character was rising or falling at (horizontal
@@ -128,9 +128,9 @@ namespace Character
         /// <summary>How high the character's feet were when it last started a jump (for cutting a jump short: see Jumping).</summary>
         public float startHeight;
         /// <summary>
-        /// Whether the current press of Jump has already started something, so one press never starts two (for example
-        /// when a jump ends early against a ceiling while the press is still within the jump buffer).
+        /// The press of Jump: one press starts one thing, never two (for example when a jump ends early against a ceiling
+        /// while the press is still within the jump buffer), and only within Jumping's Jump Input Buffer of being made.
         /// </summary>
-        public bool pressConsumed;
+        public readonly ButtonPress press = new();
     }
 }

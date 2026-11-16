@@ -12,16 +12,18 @@ namespace CharacterShowcase.Tests
     /// the next (ignoring passes too soon after the start), and only the racer counts once there is one. The run
     /// speed is read from the movement mode, so retuning it doesn't break the tests.
     /// </summary>
-    public class TimingGateTests
+    [Category(TestArea.Levels)]
+    public class TimingGateTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
+        // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
+        protected override bool MovementOnly => false;
+
         private GameObject timerObject;
         private CourseTimer timer;
 
         [SetUp]
         public void SetUp()
         {
-            rig = new CharacterTestRig();
             timerObject = new GameObject("Course Timer");
             timer = timerObject.AddComponent<CourseTimer>();
         }
@@ -30,7 +32,6 @@ namespace CharacterShowcase.Tests
         public IEnumerator TearDown()
         {
             Object.Destroy(timerObject);
-            rig.Dispose();
             yield return null;
         }
 

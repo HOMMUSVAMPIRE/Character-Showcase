@@ -17,7 +17,9 @@ namespace CharacterShowcase.Tests.EditMode
     /// goes through every clip and lists every one that fails it. In the SampleContent category, and skipped where the
     /// clips (or the mannequin) aren't there.
     /// </summary>
+    [Category(TestArea.Animation)]
     [Category(PreparedModelTests.SampleContent)]
+    [TestTiming]
     public class MotionCaptureClipTests
     {
         // Folders whose clips move about on their feet, so should stay on the spot and face forward. Getting up, sitting

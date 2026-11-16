@@ -11,6 +11,7 @@ namespace CharacterShowcase.Tests
     /// feet round with it; locking holds a planted foot where it was put down, so the feet stay put as the model turns.
     /// Compared with locking turned off on the same model.
     /// </summary>
+    [Category(TestArea.Animation)]
     public class FootLockTests : AnimationTestsBase
     {
         private void TurnAndAnimate(int step)

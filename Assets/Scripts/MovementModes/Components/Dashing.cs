@@ -51,7 +51,7 @@ namespace Character
         private bool CanDash(MovementData data, Inputs inputs, MovementController controller)
         {
             DashState dash = controller.dash;
-            bool pressed = inputs.dash != null && inputs.dash.value && !dash.pressConsumed && inputs.dash.holdDuration <= dashInputBuffer;
+            bool pressed = dash.press.IsFresh(inputs.dash, dashInputBuffer);
             bool hasAirDash = data.initialGrounded || dash.airDashesUsed < maxAirDashes;
             // A dash with no length would start (raising DashStarted, using the cooldown and an air dash) and be over
             // before its first step, so it would never raise DashEnded: no length means no dashing.
@@ -65,9 +65,9 @@ namespace Character
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             DashState dash = controller.dash;
-            dash.cooldownRemaining = Mathf.Max(0f, dash.cooldownRemaining - movementData.deltaTime);
+            dash.cooldownRemaining = MovementHelpers.CountDown(dash.cooldownRemaining, movementData.deltaTime);
             if (movementData.initialGrounded) { dash.airDashesUsed = 0; }
-            if (inputs.dash == null || !inputs.dash.value) { dash.pressConsumed = false; }
+            dash.press.Track(inputs.dash);
         }
 
         /// <summary>
@@ -89,7 +89,7 @@ namespace Character
                 dash.direction = direction.normalized;
                 dash.timeRemaining = dashDuration * controller.DurationScale;
                 dash.cooldownRemaining = dashCooldown;
-                dash.pressConsumed = true;
+                dash.press.Use();
                 if (!movementData.initialGrounded) { dash.airDashesUsed++; }
                 movementData.events |= MovementEvents.DashStarted;
             }
@@ -118,7 +118,7 @@ namespace Character
             // Dash: take over the character's velocity entirely (no gravity, no steering), and face the dash
             float progress = 1f - dash.timeRemaining / Mathf.Max(duration, 1e-4f);
             float speed = topSpeed * dashSpeedCurve.Evaluate(progress);
-            dash.timeRemaining = Mathf.Max(0f, dash.timeRemaining - deltaTime);
+            dash.timeRemaining = MovementHelpers.CountDown(dash.timeRemaining, deltaTime);
 
             // On the final frame of the dash, hand over to momentum rather than stopping dead
             if (!dash.IsDashing)
@@ -140,17 +140,18 @@ namespace Character
     /// </summary>
     public class DashState
     {
-        // Seconds left in the current dash (0 when not dashing)
+        /// <summary>Seconds left in the current dash (0 when not dashing).</summary>
         public float timeRemaining;
-        // Seconds until another dash may start
+        /// <summary>Seconds until another dash may start.</summary>
         public float cooldownRemaining;
-        // Air dashes used since last touching the ground
+        /// <summary>Air dashes used since last touching the ground.</summary>
         public int airDashesUsed;
-        // The direction of the current dash
+        /// <summary>The direction of the current dash.</summary>
         public Vector3 direction;
-        // Whether the current press of the dash button has already started a dash, so holding it doesn't repeat
-        public bool pressConsumed;
+        /// <summary>The press of Dash: one press starts one dash, so holding it doesn't repeat, within the Dash Input Buffer.</summary>
+        public readonly ButtonPress press = new();
 
+        /// <summary>Whether a dash is in progress.</summary>
         public bool IsDashing => timeRemaining > 0f;
     }
 }

@@ -14,21 +14,11 @@ namespace CharacterShowcase.Tests
     /// character lets go; and without holding grab, an object is just an obstacle. Expected values are read from the
     /// movement mode's settings.
     /// </summary>
-    public class PushPullTests
+    [Category(TestArea.Traversal)]
+    public class PushPullTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         private PushableObject box;
         private const float BoxSize = 1.5f;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float PushPullSpeed => rig.Component<PushingAndPulling>().PushPullSpeed * rig.Movement.SpeedScale;
         private bool Grabbing => rig.InState(CharacterState.Grabbing);

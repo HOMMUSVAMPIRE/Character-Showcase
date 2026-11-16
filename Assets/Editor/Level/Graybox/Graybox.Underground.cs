@@ -100,6 +100,7 @@ namespace CharacterShowcase.EditorTools.Level
                 Open = open;
             }
 
+            /// <summary>How high the cell's walls rise: to its ceiling, or to openTop if it's open above.</summary>
             public float Top(float openTop) => Open ? openTop : Ceiling;
         }
 

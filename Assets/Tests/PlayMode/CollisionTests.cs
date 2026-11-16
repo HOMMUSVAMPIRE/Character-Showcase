@@ -11,19 +11,9 @@ namespace CharacterShowcase.Tests
     /// rather than stored up, steep surfaces can't be stood on, and moving geometry pushes the character instead of
     /// passing through them.
     /// </summary>
-    public class CollisionTests
+    [Category(TestArea.Movement)]
+    public class CollisionTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float CapsuleRadius => rig.Character.GetComponent<CapsuleCollider>().radius;
         private float CapsuleHeight => rig.Character.GetComponent<CapsuleCollider>().height;
@@ -107,7 +97,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Steep Slope", Vector3.zero, new Vector3(6f, 1f, 10f), Quaternion.Euler(angle, 0f, 0f));
             float foot = 0.5f / Mathf.Sin(angle * Mathf.Deg2Rad);
 
-            yield return rig.Run(3f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntilLanded();
 
             Assert.That(rig.Grounded, Is.True, "Character should end up on the floor.");
             Assert.That(rig.Position.y, Is.LessThan(0.05f), "Character stayed perched on a slope too steep to stand on.");

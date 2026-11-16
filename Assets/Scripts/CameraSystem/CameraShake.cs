@@ -12,10 +12,13 @@ namespace CameraSystem
         private float seed = -1f;
         private float time;
 
+        /// <summary>The current trauma, 0 (none) to 1 (full).</summary>
         public float Trauma { get; private set; }
 
+        /// <summary>Adds trauma, keeping the total within 0-1. Negative amounts are ignored.</summary>
         public void AddTrauma(float amount) => Trauma = Mathf.Clamp01(Trauma + Mathf.Max(0f, amount));
 
+        /// <summary>Stops the shake at once.</summary>
         public void Clear() => Trauma = 0f;
 
         /// <summary>Advances the shake and returns the positional (camera-local) and rotational offsets for this frame.</summary>

@@ -35,12 +35,14 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
 | `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor |
 | `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
+| `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`) |
 
 ## How to verify your work
 
 1. **Fast check, no Unity needed (before every commit):** `python3 Tools/CI/check_project_hygiene.py`. It catches
-   missing or orphaned `.meta` files, duplicate GUIDs, the camera assembly depending on character code, and fields
-   the tests read by name that no longer exist.
+   missing or orphaned `.meta` files, duplicate GUIDs, the camera assembly depending on character code, fields the
+   tests read by name that no longer exist, two movement settings sharing a name, and a test fixture without
+   `[TestTiming]` or a test area (`[Category(TestArea.…)]`), on it or on a class it derives from.
 2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run:
    ```
    <Unity> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
@@ -50,7 +52,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
    both suites (a new push cancels the run in progress, so batch pushes; Markdown-only and `docs/` changes don't
    trigger it).
 3. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
-   e.g. `"LedgeTests|AbilityAnimationTests"`), plus those of what depends on it: movement reaches the movement,
+   e.g. `"LedgeTests|AbilityAnimationTests"`, or a whole area with `-testCategory`: every fixture is in a `TestArea`, as the docs are), plus those of what depends on it: movement reaches the movement,
    ability and scale fixtures; animation, IK and models reach `AnimationTests`, `AbilityAnimationTests`, `ModelTests`,
    `ModelVariantTests` and the EditMode model checks; the camera reaches `CameraRigTests`. Before committing, run both
    full suites and the hygiene check, and only commit on green.
@@ -61,7 +63,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 
 - The hygiene check passes, the tests the change can affect pass, and, before a commit, both full suites pass (or
   you've said you couldn't run them).
-- New behaviour has PlayMode tests, built on `CharacterTestRig` (character) or the camera tests' plain-Transform
+- New behaviour has PlayMode tests, built on `CharacterTestRig` (character; fixtures derive from `CharacterRigFixture`, and every fixture has `[TestTiming]`, itself or through its base: the hygiene check makes sure) or the camera tests' plain-Transform
   setup (camera). Tests read expected values from the settings (`rig.MovementSetting<T>("fieldName")`) rather than
   hard-coding tuning, so retuning doesn't break them.
 - The docs (README.md and docs/) are updated when behaviour, controls, settings or workflows change: they're how the

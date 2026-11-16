@@ -29,7 +29,11 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static partial class MannequinGenerator
     {
+        /// <summary>Where the generated mannequin's file (mesh, rig and clips) is saved.</summary>
         public const string ModelPath = CharacterModelImporter.ModelsFolder + "/Mannequin/Mannequin.fbx";
+        /// <summary>
+        /// Where the mannequin's model prefab is saved, as Prepare Character Models saves every model's.
+        /// </summary>
         public const string ModelPrefabPath = CharacterModelImporter.ModelsFolder + "/Mannequin/Mannequin Model.prefab";
         private const string ControllerPath = CharacterModelImporter.ControllerPath;
         private const string TranslatorPath = CharacterModelImporter.TranslatorPath;
@@ -65,6 +69,19 @@ namespace CharacterShowcase.EditorTools
         private const string VaultProgressParameter = AnimatorParameterTranslator.DefaultVaultProgressParameter;
         private const string RopeSwingingParameter = AnimatorParameterTranslator.DefaultRopeSwingingParameter;
         private const string ZipliningParameter = AnimatorParameterTranslator.DefaultZipliningParameter;
+        // Past the end of the Locomotion, Crouch and Wall Climb blend trees, the translator plays the fastest loop faster
+        // through these speed multipliers, from the speeds each loop is made for, which the controller carries as the
+        // TopSpeed parameters' defaults (see AnimatorParameterTranslator's Playback section). So no top speed, which a
+        // retuned character could outrun, is fixed here.
+        private const string LocomotionPlaybackParameter = AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter;
+        private const string LocomotionTopSpeedParameter = AnimatorParameterTranslator.DefaultLocomotionTopSpeedParameter;
+        private const string CrouchPlaybackParameter = AnimatorParameterTranslator.DefaultCrouchPlaybackParameter;
+        private const string CrouchTopSpeedParameter = AnimatorParameterTranslator.DefaultCrouchTopSpeedParameter;
+        private const string ClimbPlaybackParameter = AnimatorParameterTranslator.DefaultClimbPlaybackParameter;
+        private const string ClimbUpTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbUpTopSpeedParameter;
+        private const string ClimbDownTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbDownTopSpeedParameter;
+        private const string ClimbLeftTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbLeftTopSpeedParameter;
+        private const string ClimbRightTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbRightTopSpeedParameter;
         // Fired by the translator on every jump, from the ground, in the air, off a wall or a rope or a zipline, and on
         // every launch off a bounce pad (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
@@ -79,12 +96,6 @@ namespace CharacterShowcase.EditorTools
         private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop",
             "Climb_Idle_Loop", "Climb_Up_Loop", "Climb_Down_Loop", "Climb_Left_Loop", "Climb_Right_Loop", "Climb_Enter", "Climb_Exit", "ClimbLedge" };
         private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
-        // The top of the Crouch blend tree, in m/s: well above BasicMovementMode's crouch speed (2 m/s). Past the crouch
-        // walk's own speed, it plays sped up to reach it.
-        private const float CrouchTopSpeed = 3f;
-        // The edge of the Wall Climb blend tree, in m/s each way: well above BasicMovementMode's climbing speed (2.5 m/s,
-        // and up to twice that on a quick surface). Past each climbing loop's own speed, it plays sped up to reach it.
-        private const float ClimbTopSpeed = 6f;
         // A climbing loop's speed (m/s) if it can't be measured on the mannequin (see MotionCaptureLocomotion.ClimbSpeed).
         private const float ClimbLoopFallbackSpeed = 1f;
         // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
@@ -93,21 +104,21 @@ namespace CharacterShowcase.EditorTools
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
-        // The top of the Locomotion blend tree, in m/s: well above the character's sprint (BasicMovementMode's run
-        // speed), for the momentum a dash leaves it with. Past the sprint loop's own speed, the loop plays sped up to
-        // reach it, so its planted feet keep up with the ground.
-        public const float TopSpeed = 10f;
-        // The brisk walk is shown up to this speed rather than handing over to the run: it reaches it played this much
-        // faster than its strides are made for, so it quickens a little and its planted feet slide a little. Few people
-        // walk faster than about 2 m/s (they break into a run), so a walk past that must hurry or slide; this keeps both
-        // small. The run takes over past it. Set for a walk speed near it (BasicMovementMode's Walk Speed): with a faster
-        // walk, walking shows the run.
-        private const float BriskWalkUpTo = 3.2f, BriskWalkUpToPlayback = 1.25f;
+        // The brisk walk is also shown past the speed its strides are made for, up to this many times it, played up to
+        // the second this many times faster: so it quickens a little and its planted feet slide a little (it reaches
+        // further than it's sped up). Few people walk much faster than a brisk walk (they break into a run), so a walk
+        // past it must hurry or slide; this keeps both small. The run takes over past it, so a walking speed beyond it
+        // shows the run. Both are shares of the clip's own speed, so they hold whatever it's measured at.
+        private const float BriskWalkReach = 1.5f, BriskWalkPlayback = 1.25f;
         // Airborne, by vertical speed (m/s): rising at take-off (a jump leaves the ground faster than RiseThreshold), tucked at the top,
         // falling. Falling locks in quickly, so walking off a ledge only passes through the tuck.
         private const float FallThreshold = -5f;
         private const float RiseThreshold = 8f;
 
+        /// <summary>
+        /// Generates the mannequin in Blender and builds everything from it. If Blender isn't found, offers to locate
+        /// it or to rebuild from the Mannequin.fbx already in the project.
+        /// </summary>
         [MenuItem("Tools/Character Showcase/Generate Mannequin", priority = 1)]
         public static void GenerateFromMenu()
         {
@@ -134,21 +145,19 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// For -executeMethod. Pass -blender [path] to use a particular Blender, or -skipBlender to rebuild from the
-        /// existing Mannequin.fbx. Exits with code 1 on failure.
+        /// existing Mannequin.fbx. Exits when it's done, with code 1 on failure.
         /// </summary>
         public static void GenerateFromCommandLine()
         {
-            string[] args = System.Environment.GetCommandLineArgs();
-            int blenderArg = System.Array.IndexOf(args, "-blender");
-            string blender = args.Contains("-skipBlender") ? null
-                : blenderArg >= 0 && blenderArg + 1 < args.Length ? args[blenderArg + 1] : FindBlender();
-            if (blender == null && !args.Contains("-skipBlender"))
+            bool skipBlender = CommandLine.Has("-skipBlender");
+            string blender = skipBlender ? null : CommandLine.Argument("-blender") ?? FindBlender();
+            if (blender == null && !skipBlender)
             {
                 Debug.LogError("[MannequinGenerator] Blender wasn't found. Pass -blender <path>, or -skipBlender to use the existing Mannequin.fbx.");
-                EditorApplication.Exit(1);
+                CommandLine.Finish(false);
                 return;
             }
-            if (!Generate(blender)) { EditorApplication.Exit(1); }
+            CommandLine.Finish(Generate(blender));
         }
 
         /// <summary>Generates the mannequin with Blender (or, given null, reuses the existing file) and sets it all up.</summary>

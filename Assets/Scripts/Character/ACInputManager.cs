@@ -8,13 +8,14 @@ namespace Character
     /// </summary>
     public class ACInputManager : MonoBehaviour
     {
-        // The singleton instance of the input manager
+        /// <summary>The singleton instance of the input manager (set in Awake; a second one destroys itself).</summary>
         public static ACInputManager instance;
 
-        // The PlayerInput component that allows access to the unity input system
+        /// <summary>The PlayerInput component that allows access to the unity input system.</summary>
+        [Tooltip("The PlayerInput the character's actions are read from.")]
         public PlayerInput inputSource = null;
 
-        // the current movement input data for the player
+        /// <summary>The current movement input data for the player, read anew each frame (Update).</summary>
         public Inputs inputs { get; private set; }
 
         /// <summary>

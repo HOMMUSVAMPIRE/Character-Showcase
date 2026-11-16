@@ -107,7 +107,6 @@ MonoBehaviour:
   rotateWithGround: 1
   inheritGroundVelocity: 1
   maxGroundCarryPerStep: 2
-  jumpsRemaining: 0
 --- !u!114 &1999695637673396473
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -15,7 +15,7 @@ namespace Character
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class LineGripIK : MonoBehaviour
+    public class LineGripIK : AbilityIK
     {
         [Tooltip("How strongly the hands are placed on the line (and the body moved to them). 0 turns it off.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -35,27 +35,15 @@ namespace Character
         [Tooltip("The furthest (m, at the character's authored size) the body is moved, up or down, so the hands reach the line.")]
         [Min(0f)] [SerializeField] private float maxBodyShift = 0.4f;
 
-        private CharacterIK ik;
-        private ICharacterAnimationStateSource stateSource;
-        private float activeWeight;
         // The last line held, kept while easing out after letting go so the hands don't snap.
         private Vector3 point, direction;
         private bool onRope;
 
-        /// <summary>How far hand placement is eased in now (0 to weight).</summary>
-        public float ActiveWeight => activeWeight;
 
-        private void Awake() => ik = GetComponent<CharacterIK>();
-        private void OnEnable() => ik.BeforeSolve += Solve;
-        private void OnDisable()
-        {
-            ik.BeforeSolve -= Solve;
-            activeWeight = 0f;
-        }
+        protected override float Weight => weight;
+        protected override float FadeTime => fadeTime;
 
-        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
-
-        private void Solve(Animator animator)
+        protected override void Solve(Animator animator)
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
@@ -67,7 +55,7 @@ namespace Character
                 onRope = state.swinging;
             }
             float goal = holding ? weight : 0f;
-            activeWeight = fadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, Time.deltaTime / fadeTime) : goal;
+            FadeTo(goal);
             if (activeWeight <= 0f || direction == Vector3.zero) { return; }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;

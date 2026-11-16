@@ -26,6 +26,15 @@ MonoBehaviour:
   rollProgressParameter: RollProgress
   climbProgressParameter: ClimbProgress
   vaultProgressParameter: VaultProgress
+  locomotionPlaybackParameter: LocomotionPlayback
+  locomotionTopSpeedParameter: LocomotionTopSpeed
+  crouchPlaybackParameter: CrouchPlayback
+  crouchTopSpeedParameter: CrouchTopSpeed
+  climbPlaybackParameter: ClimbPlayback
+  climbUpTopSpeedParameter: ClimbUpTopSpeed
+  climbDownTopSpeedParameter: ClimbDownTopSpeed
+  climbLeftTopSpeedParameter: ClimbLeftTopSpeed
+  climbRightTopSpeedParameter: ClimbRightTopSpeed
   groundedParameter: Grounded
   jumpingParameter: 
   dashingParameter: Dashing

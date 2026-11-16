@@ -15,27 +15,15 @@ namespace CharacterShowcase.Tests
     /// just a moment), Crouch, landing or the slide's longest time end it. The character is in mid-air facing a tall wall just in front of it. Expected values
     /// are read from the movement mode's settings.
     /// </summary>
-    public class WallSlideTests
+    [Category(TestArea.Abilities)]
+    public class WallSlideTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         // The wall's face (z); it faces -Z, toward the character.
         private float face;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
         private float SlideSpeed => rig.Component<WallSliding>().WallSlideSpeed * rig.Movement.SpeedScale;
         private float MaxDuration => rig.Component<WallSliding>().WallSlideMaxDuration * rig.Movement.DurationScale;
-        private float Gravity => rig.MovementSetting<float>("gravityStrength") * rig.Movement.AccelerationScale;
         private bool Sliding => rig.InState(CharacterState.WallSliding);
-        private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
 
         /// <summary>A floor, the character in mid-air (its model loaded) facing +Z, and a tall wall just in front of it.</summary>
         private IEnumerator SetUpWall(float height = 12f)
@@ -65,13 +53,13 @@ namespace CharacterShowcase.Tests
             {
                 steps++;
                 if (Sliding) { slidingSteps++; }
-                fastestFall = Mathf.Max(fastestFall, -Velocity.y);
+                fastestFall = Mathf.Max(fastestFall, -rig.Velocity.y);
             });
 
             float drop = start.y - rig.Position.y;
             Assert.That(slidingSteps, Is.EqualTo(steps), "Falling into the wall head-on should slide down it.");
             Assert.That(fastestFall, Is.LessThanOrEqualTo(SlideSpeed + 0.01f), "The slide should be no faster than the slide speed.");
-            Assert.That(drop, Is.LessThan(0.5f * 0.5f * Gravity * seconds * seconds), "Sliding down a wall should be much slower than falling.");
+            Assert.That(drop, Is.LessThan(0.5f * 0.5f * rig.Gravity * seconds * seconds), "Sliding down a wall should be much slower than falling.");
             Assert.That(drop, Is.GreaterThan(0.5f * SlideSpeed * seconds), "The character should slide down, not stick.");
             Assert.That(rig.Position.z + rig.Radius, Is.EqualTo(face).Within(0.05f), "The character should stay against the wall.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(1f), "The character should face the wall.");
@@ -85,7 +73,7 @@ namespace CharacterShowcase.Tests
             float braking = rig.MovementSetting<float>("wallSlideBraking") * rig.Movement.AccelerationScale;
             yield return rig.Run(3f * SlideSpeed / braking + 0.2f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding.");
-            Assert.That(-Velocity.y, Is.EqualTo(SlideSpeed).Within(0.01f), "A fast fall should be braked down to the slide speed.");
+            Assert.That(-rig.Velocity.y, Is.EqualTo(SlideSpeed).Within(0.01f), "A fast fall should be braked down to the slide speed.");
         }
 
         [UnityTest]
@@ -93,15 +81,15 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpWall();
             yield return SlideDown();
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
 
             float jumpedFrom = rig.Position.y, highest = jumpedFrom;
             Vector3 launch = Vector3.zero;
             int jumpsAfter = -1;
             yield return rig.Run(0.8f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
             {
-                if (step == 0) { launch = Velocity; jumpsAfter = rig.Movement.jump.remaining; }
+                if (step == 0) { launch = rig.Velocity; jumpsAfter = rig.Movement.jump.remaining; }
                 highest = Mathf.Max(highest, rig.Position.y);
             });
 
@@ -109,7 +97,7 @@ namespace CharacterShowcase.Tests
             float away = rig.MovementSetting<float>("wallSlideJumpAwaySpeed") * rig.Movement.SpeedScale;
             Assert.That(launch.y, Is.EqualTo(up).Within(0.05f * up), "Jumping off the wall should launch upward.");
             Assert.That(-launch.z, Is.EqualTo(away).Within(0.05f * away), "Jumping off the wall should push away from it.");
-            Assert.That(highest - jumpedFrom, Is.GreaterThan(0.25f * up * up / Gravity), "Jumping off the wall should gain height.");
+            Assert.That(highest - jumpedFrom, Is.GreaterThan(0.25f * up * up / rig.Gravity), "Jumping off the wall should gain height.");
             Assert.That(jumpsAfter, Is.EqualTo(rig.MaxJumps - 1), "Jumping off the wall should give back the character's jumps, less itself.");
             Assert.That(events.Count(e => e == MovementEvents.WallJumped), Is.EqualTo(1));
             Assert.That(events.Count(e => e == MovementEvents.WallSlideEnded), Is.EqualTo(1));
@@ -289,10 +277,10 @@ namespace CharacterShowcase.Tests
             float away = rig.MovementSetting<float>("wallSlideJumpAwaySpeed") * rig.Movement.SpeedScale;
             // Jump, then steer straight back into the wall.
             yield return rig.Run(0.15f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Move(Vector3.forward));
-            Assert.That(-Velocity.z, Is.GreaterThan(0.8f * away), "Steering back right after jumping off shouldn't undo the push away from the wall.");
+            Assert.That(-rig.Velocity.z, Is.GreaterThan(0.8f * away), "Steering back right after jumping off shouldn't undo the push away from the wall.");
             float recovery = rig.MovementSetting<float>("wallJumpSteeringRecovery") * rig.Movement.DurationScale;
             yield return rig.Run(recovery, _ => CharacterTestRig.Move(Vector3.forward));
-            Assert.That(Velocity.z, Is.GreaterThan(-0.3f * away), "Once air steering has come back, steering should turn the character back.");
+            Assert.That(rig.Velocity.z, Is.GreaterThan(-0.3f * away), "Once air steering has come back, steering should turn the character back.");
         }
 
         [UnityTest]

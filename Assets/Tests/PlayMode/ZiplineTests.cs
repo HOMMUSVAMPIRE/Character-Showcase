@@ -15,30 +15,12 @@ namespace CharacterShowcase.Tests
     /// up; Crouch lets go; and a grab reach of 0 turns ziplines off. The test camera looks down +Z. Expected values are
     /// read from the movement mode's settings and the ziplines'.
     /// </summary>
-    public class ZiplineTests
+    [Category(TestArea.Traversal)]
+    public class ZiplineTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         private Zipline line;
-        private readonly List<MovementEvents> events = new();
 
-        [SetUp]
-        public void SetUp()
-        {
-            rig = new CharacterTestRig();
-            events.Clear();
-        }
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
-        private bool Riding => rig.InState(CharacterState.Ziplining);
-        private float HangHeight => rig.MovementSetting<float>("ziplineHangHeight") * rig.StandingHeight;
         private float SlowestSpeed => rig.MovementSetting<float>("ziplineMinSpeed") * rig.Movement.SpeedScale;
-        private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
 
         /// <summary>
@@ -51,22 +33,22 @@ namespace CharacterShowcase.Tests
             line = rig.Zipline(start, end, maxSpeed);
             // Its hang height depends on its size, known once it's spawned.
             yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
-            rig.Teleport(line.PointAt(2f) - Vector3.up * (HangHeight - 0.15f));
-            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
-            for (int step = 0; step < CharacterTestRig.StepsFor(0.5f) && !Riding; step++) { yield return rig.Run(1, _ => CharacterTestRig.Idle()); }
-            Assert.That(Riding, Is.True, $"Test setup: the character should have caught hold of the cable (it's at {rig.Position}).");
+            rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f));
+            rig.ClearEvents();
+            yield return rig.RunUntil(() => rig.Ziplining, _ => CharacterTestRig.Idle(), timeoutSeconds: 0.5f);
+            Assert.That(rig.Ziplining, Is.True, $"Test setup: the character should have caught hold of the cable (it's at {rig.Position}).");
         }
 
         [UnityTest]
         public IEnumerator CatchingACable_RidesItDownhillToItsEnd_AndLetsGo()
         {
             yield return SetUpRide(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
-            for (int step = 0; step < CharacterTestRig.StepsFor(8f) && Riding; step++) { yield return rig.Run(1, _ => CharacterTestRig.Idle()); }
-            Assert.That(Riding, Is.False, "The ride should end at the cable's end.");
+            yield return rig.RunUntil(() => !rig.Ziplining, _ => CharacterTestRig.Idle(), timeoutSeconds: 8f);
+            Assert.That(rig.Ziplining, Is.False, "The ride should end at the cable's end.");
             Assert.That(rig.Position.z, Is.GreaterThan(line.End.z - 1f), "The character should have ridden the cable to its end.");
-            Assert.That(Velocity.z, Is.GreaterThan(SlowestSpeed * 0.9f), "Off the end, it should carry on at the ride's speed.");
-            Assert.That(events, Does.Contain(MovementEvents.ZiplineStarted));
-            Assert.That(events, Does.Contain(MovementEvents.ZiplineEnded));
+            Assert.That(rig.Velocity.z, Is.GreaterThan(SlowestSpeed * 0.9f), "Off the end, it should carry on at the ride's speed.");
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.ZiplineStarted));
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.ZiplineEnded));
         }
 
         [UnityTest]
@@ -74,9 +56,9 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpRide(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
-            Assert.That(Riding, Is.True);
+            Assert.That(rig.Ziplining, Is.True);
             Vector3 cable = line.PointAbove(rig.Position);
-            Assert.That(cable.y - rig.Position.y, Is.EqualTo(HangHeight).Within(0.05f), "The character's feet should hang the hang height below the cable.");
+            Assert.That(cable.y - rig.Position.y, Is.EqualTo(rig.ZiplineHangHeight).Within(0.05f), "The character's feet should hang the hang height below the cable.");
             Assert.That(rig.Position.x, Is.EqualTo(0f).Within(0.02f), "The character should hang straight below the cable.");
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(2f), "The character should face the way it rides.");
         }
@@ -89,11 +71,8 @@ namespace CharacterShowcase.Tests
             // The ride's own speed along the cable (the character's velocity also closes in on hanging below it, at first).
             float early = Mathf.Abs(rig.Movement.zipline.speed);
             float fastest = 0f;
-            for (int step = 0; step < CharacterTestRig.StepsFor(3f) && Riding; step++)
-            {
-                yield return rig.Run(1, _ => CharacterTestRig.Idle());
-                if (Riding) { fastest = Mathf.Max(fastest, Mathf.Abs(rig.Movement.zipline.speed)); }
-            }
+            yield return rig.RunUntil(() => !rig.Ziplining, _ => CharacterTestRig.Idle(),
+                _ => { if (rig.Ziplining) { fastest = Mathf.Max(fastest, Mathf.Abs(rig.Movement.zipline.speed)); } }, 3f);
             Assert.That(fastest, Is.GreaterThan(early + 1f), "Riding downhill should speed the character up.");
             Assert.That(fastest, Is.LessThanOrEqualTo(topSpeed + 0.05f), "The ride should go no faster than the zipline's top speed.");
         }
@@ -103,8 +82,8 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpRide(new Vector3(0f, 6f, 0f), new Vector3(0f, 6f, 30f));
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
-            Assert.That(Riding, Is.True);
-            Assert.That(Velocity.z, Is.EqualTo(SlowestSpeed).Within(0.1f), "A level cable should carry the character at the slowest ride speed.");
+            Assert.That(rig.Ziplining, Is.True);
+            Assert.That(rig.Velocity.z, Is.EqualTo(SlowestSpeed).Within(0.1f), "A level cable should carry the character at the slowest ride speed.");
         }
 
         [UnityTest]
@@ -112,14 +91,14 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpRide(new Vector3(0f, 10f, 0f), new Vector3(0f, 6f, 40f));
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
-            Vector3 ride = Velocity;
-            events.Clear();
+            Vector3 ride = rig.Velocity;
+            rig.ClearEvents();
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
-            Assert.That(Riding, Is.False, "Jump should let go of the cable.");
+            Assert.That(rig.Ziplining, Is.False, "Jump should let go of the cable.");
             float jumpUp = rig.MovementSetting<float>("ziplineJumpUpSpeed") * rig.Movement.SpeedScale;
-            Assert.That(Velocity.y, Is.EqualTo(ride.y + jumpUp).Within(0.5f), "Jumping off should send the character up on top of the ride's speed.");
-            Assert.That(Velocity.z, Is.EqualTo(ride.z).Within(0.5f), "Jumping off should keep the ride's speed along the cable.");
-            Assert.That(events, Does.Contain(MovementEvents.Jumped));
+            Assert.That(rig.Velocity.y, Is.EqualTo(ride.y + jumpUp).Within(0.5f), "Jumping off should send the character up on top of the ride's speed.");
+            Assert.That(rig.Velocity.z, Is.EqualTo(ride.z).Within(0.5f), "Jumping off should keep the ride's speed along the cable.");
+            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.Jumped));
         }
 
         [UnityTest]
@@ -129,7 +108,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
-            Assert.That(Riding, Is.False, "Crouch should let go of the cable.");
+            Assert.That(rig.Ziplining, Is.False, "Crouch should let go of the cable.");
         }
 
         [UnityTest]
@@ -138,10 +117,10 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
             yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
-            rig.Teleport(line.PointAt(2f) - Vector3.up * (HangHeight - 0.15f));
+            rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f));
             rig.SetMovementSetting("ziplineGrabReach", 0f);
             bool rode = false;
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), _ => rode |= Riding);
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), _ => rode |= rig.Ziplining);
             Assert.That(rode, Is.False);
         }
     }

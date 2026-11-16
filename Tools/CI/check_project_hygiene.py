@@ -105,6 +105,35 @@ def check_unique_movement_settings():
             declared.setdefault(name, path)
 
 
+def check_test_fixtures():
+    # Every test fixture logs how long each test ran and where the time went (TestTimingAttribute), and is in an area
+    # ([Category(TestArea.X)], so an area can be run on its own): each on the fixture or on a class it derives from
+    # (CharacterRigFixture carries the timing).
+    classes = {}  # name -> (base, attributes, has tests, file)
+    for path in sorted((ASSETS / "Tests").rglob("*.cs")):
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"((?:^[ \t]*\[[^\n]*\][ \t]*\n)*)^[ \t]*(?:public |internal )?(?:abstract |sealed )?class (\w+)(?:\s*:\s*(\w+))?", text, re.M):
+            body_start = match.end()
+            next_class = re.search(r"^[ \t]*(?:public |internal )?(?:abstract |sealed )?class \w+", text[body_start:], re.M)
+            body = text[body_start: body_start + next_class.start()] if next_class else text[body_start:]
+            classes[match.group(2)] = (match.group(3), match.group(1),
+                                       bool(re.search(r"^[ \t]*\[(Test|UnityTest|TestCase)\b", body, re.M)), path)
+
+    def has(name, attribute, seen=()):
+        if name not in classes or name in seen:
+            return False
+        base, attributes, _, _ = classes[name]
+        return attribute in attributes or has(base, attribute, seen + (name,))
+
+    for name, (_, _, has_tests, path) in classes.items():
+        if not has_tests:
+            continue
+        if not has(name, "TestTiming"):
+            problems.append(f"{path.relative_to(ROOT)}: test fixture {name} has no [TestTiming] (nor a base class with it)")
+        if not has(name, "Category(TestArea."):
+            problems.append(f"{path.relative_to(ROOT)}: test fixture {name} is in no area: give it [Category(TestArea.…)] (see TestArea)")
+
+
 def main():
     if not ASSETS.is_dir():
         print(f"No Assets folder at {ASSETS}; run this from the repository.", file=sys.stderr)
@@ -114,6 +143,7 @@ def main():
     check_camera_independence()
     check_reflected_settings()
     check_unique_movement_settings()
+    check_test_fixtures()
     if problems:
         print(f"{len(problems)} problem(s) found:")
         for problem in problems:

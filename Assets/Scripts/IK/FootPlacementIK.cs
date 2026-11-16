@@ -88,6 +88,7 @@ namespace Character
         [Min(0f)] [SerializeField] private float stepUpFadeTime = 0.05f;
 
         [Header("Debug")]
+        [Tooltip("Draw the feet's ground probes and targets in the Scene view.")]
         [SerializeField] private bool drawGizmos = true;
 
         private struct FootState

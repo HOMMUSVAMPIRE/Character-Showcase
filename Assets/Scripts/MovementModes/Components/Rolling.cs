@@ -43,7 +43,7 @@ namespace Character
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.roll.press.Track(inputs.roll);
-            controller.roll.cooldownRemaining = Mathf.Max(0f, controller.roll.cooldownRemaining - movementData.deltaTime);
+            controller.roll.cooldownRemaining = MovementHelpers.CountDown(controller.roll.cooldownRemaining, movementData.deltaTime);
             TrackFall(movementData, controller);
         }
 
@@ -85,7 +85,7 @@ namespace Character
             float duration = rollDuration * controller.DurationScale;
             float progress = 1f - roll.timeRemaining / Mathf.Max(duration, 1e-4f);
             float speed = rollSpeed * controller.SpeedScale * rollSpeedCurve.Evaluate(progress);
-            roll.timeRemaining = Mathf.Max(0f, roll.timeRemaining - movementData.deltaTime);
+            roll.timeRemaining = MovementHelpers.CountDown(roll.timeRemaining, movementData.deltaTime);
             if (!roll.IsRolling) { roll.cooldownRemaining = rollCooldown; }
 
             // Momentum rather than a velocity override, so gravity keeps the character on the ground (down slopes too),
@@ -198,22 +198,27 @@ namespace Character
     /// <summary>A roll in progress, and the cooldown between rolls.</summary>
     public class RollState
     {
-        // Seconds left in the current roll (0 when not rolling)
+        /// <summary>Seconds left in the current roll (0 when not rolling).</summary>
         public float timeRemaining;
-        // Seconds until another roll may start
+        /// <summary>Seconds until another roll may start.</summary>
         public float cooldownRemaining;
-        // The direction of the current roll (horizontal, unit length)
+        /// <summary>The direction of the current roll (horizontal, unit length).</summary>
         public Vector3 direction;
-        // How long the current roll lasts, in seconds
+        /// <summary>How long the current roll lasts, in seconds.</summary>
         public float duration;
+        /// <summary>The Roll button's presses, so each press starts at most one roll.</summary>
         public readonly ButtonPress press = new();
-        // Where the character's current fall started (its feet's y, m: where it last wasn't falling, or was on the ground
-        // or held by a wall or a ledge), and, on the step it lands, how far it fell from there (0 on every other step):
-        // for rolling on landing
+        /// <summary>
+        /// Where the character's current fall started (its feet's y, m: where it last wasn't falling, or was on the
+        /// ground or held by a wall or a ledge), for rolling on landing.
+        /// </summary>
         public float fallTop;
+        /// <summary>Whether fallTop holds the start of a fall.</summary>
         public bool hasFallTop;
+        /// <summary>On the step the character lands, how far (m) it fell from fallTop (0 on every other step): for rolling on landing.</summary>
         public float landingFall;
 
+        /// <summary>Whether a roll is in progress.</summary>
         public bool IsRolling => timeRemaining > 0f;
         /// <summary>How far through the roll the character is: 0 at its start, 1 at its end.</summary>
         public float Progress => duration > 0f ? Mathf.Clamp01(1f - timeRemaining / duration) : 0f;

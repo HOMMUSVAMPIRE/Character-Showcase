@@ -5,14 +5,14 @@ using UnityEngine;
 namespace Character
 {
     /// <summary>
-    /// Where a character's model comes from, and how to set it up on the character. The AnimationController asks its
+    /// Where a character's model comes from, and how to set it up on the character. The CharacterModelHost asks its
     /// source for a model at runtime with CreateModelAsync, so a character's look is changed by giving it a different
     /// source, and nothing about the character depends on how the model is stored.
     ///
     /// Subclasses decide how the model is obtained: DirectCharacterModelSource instantiates a prefab it references;
     /// others could load one from Addressables or an asset bundle (releasing it again in ReleaseModel), or assemble one
     /// from a character creator's choices. The settings here (placement, IK, the translator that animates the model)
-    /// apply however the model is obtained, and SetUpModel applies them, so a subclass only has to produce the model.
+    /// apply however the model is obtained, and SetUpModelAsync applies them, so a subclass only has to produce the model.
     /// </summary>
     public abstract class CharacterModelSource : ScriptableObject
     {
@@ -71,17 +71,47 @@ namespace Character
         [Tooltip("Keep animating while the model can't be seen (e.g. hidden in first person), so its shadow still animates")]
         [SerializeField] private bool alwaysAnimate = true;
 
+        /// <summary>
+        /// Turns the character's movement into this source's models' animations, through the CharacterModel it creates.
+        /// </summary>
         public CharacterAnimationTranslator Translator { get => translator; set => translator = value; }
+        /// <summary>Replaces the model's Animator Controller when it's set up; null keeps the model's own.</summary>
         public RuntimeAnimatorController AnimatorController { get => animatorController; set => animatorController = value; }
+        /// <summary>Replaces the model's Avatar when it's set up; null keeps the model's own.</summary>
         public Avatar Avatar { get => avatar; set => avatar = value; }
+        /// <summary>The model's offset from the character's feet (m), in the character's space.</summary>
         public Vector3 PositionOffset { get => positionOffset; set => positionOffset = value; }
+        /// <summary>
+        /// The model's rotation relative to the character (Euler angles, degrees), applied after Facing Correction.
+        /// </summary>
         public Vector3 RotationOffset { get => rotationOffset; set => rotationOffset = value; }
+        /// <summary>The uniform scale given to the model when Height is Keep Model Size (at least 0.001).</summary>
         public float Scale { get => scale; set => scale = Mathf.Max(0.001f, value); }
+        /// <summary>
+        /// How far above its origin the model's soles are as it stands, with its feet where foot placement holds them,
+        /// in the model's own units: the model is lowered by this. Used unless Measure Ground On Load is on.
+        /// </summary>
         public float GroundOffset { get => groundOffset; set => groundOffset = value; }
+        /// <summary>
+        /// The same as Ground Offset, with the feet where the animation puts them; foot placement makes up the
+        /// difference while it's off or fading.
+        /// </summary>
         public float AnimatedGroundOffset { get => animatedGroundOffset; set => animatedGroundOffset = value; }
+        /// <summary>
+        /// Whether the soles' height and the facing correction are measured when the model loads, rather than taken
+        /// from Ground Offset, Animated Ground Offset and Facing Correction.
+        /// </summary>
         public bool MeasureGroundOnLoad { get => measureGroundOnLoad; set => measureGroundOnLoad = value; }
+        /// <summary>
+        /// Degrees the model is turned about the up axis so it faces the character's forward (+Z), before Rotation
+        /// Offset.
+        /// </summary>
         public float FacingCorrection { get => facingCorrection; set => facingCorrection = value; }
+        /// <summary>Whether the model keeps its own size (times Scale) or is scaled to stand Fit Height tall.</summary>
         public ModelHeight Height { get => height; set => height = value; }
+        /// <summary>
+        /// How tall (m) the model is scaled to stand when Height is Fit To Height, at the character's authored size.
+        /// </summary>
         public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
         /// <summary>Records the model's measurements, unscaled (see Measured Height). Done by Prepare Character Models.</summary>
@@ -218,6 +248,9 @@ namespace Character
         /// <summary>Drops the measurement kept on load (see ModelTemplate), so the next model loaded is measured.</summary>
         public void ForgetMeasurement() => lastMeasurement = default;
 
+        /// <summary>
+        /// Drops the measurement kept on load, as an edit to the source may change it. Overrides call the base.
+        /// </summary>
         protected virtual void OnValidate() => ForgetMeasurement();
 
         /// <summary>Measures how the model stands, or reuses the measurement of the last model, if it's a copy of the same.</summary>
@@ -252,12 +285,14 @@ namespace Character
         /// <summary>A mesh of the model and where it sits relative to the character's model parent.</summary>
         public struct PreviewMesh
         {
+            /// <summary>The mesh, in its bind pose.</summary>
             public Mesh mesh;
+            /// <summary>From the mesh's space to the character's model parent's.</summary>
             public Matrix4x4 matrix;
         }
 
         /// <summary>
-        /// The model's meshes in their default pose, placed as SetUpModel would place them, for showing the model where
+        /// The model's meshes in their default pose, placed as SetUpModelAsync would place them, for showing the model where
         /// it isn't loaded (in the editor, or a character select screen). Sources whose model isn't at hand without
         /// loading it give none.
         /// </summary>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using CharacterShowcase.EditorTools;
 using CharacterShowcase.EditorTools.Level;
 using Level;
 using NUnit.Framework;
@@ -16,10 +17,12 @@ namespace CharacterShowcase.Tests.EditMode
     /// material (and taken off when the masks are turned off), and a renderer whose material shows no climbable areas
     /// gets none; and the level's boxes and prisms have a UV2 giving each face its own space. On a new, unsaved scene.
     /// </summary>
+    [Category(TestArea.Levels)]
+    [TestTiming]
     public class ClimbablePaintTests
     {
         private const string ShaderPath = "Assets/Materials/NoiseConcrete.shadergraph";
-        private const string NoMaskPath = "Assets/Materials/ClimbableMask_None.png";
+        private const string NoMaskPath = ClimbablePaintAssets.NoMaskPath;
 
         // The look settings the shader has a climbable twin of (_ClimbableTint for _Tint, and so on).
         private static readonly string[] LookSettings =
@@ -62,6 +65,17 @@ namespace CharacterShowcase.Tests.EditMode
                 string twin = "_Climbable" + setting.TrimStart('_');
                 Assert.That(shader.FindPropertyIndex(twin), Is.GreaterThanOrEqualTo(0), $"The shader should have {twin}, the climbable look's {setting}.");
             }
+        }
+
+        [Test]
+        public void TheUnpaintedMasksPath_IsTheSameForTheLevelBuildersAndThePaintTools()
+        {
+            // The level builders' assembly can't reference the paint tools', so each names the path itself; GrayboxScene
+            // is internal to it, so it's read by name.
+            var field = typeof(Graybox).Assembly.GetType("CharacterShowcase.EditorTools.Level.GrayboxScene")?.GetField("NoClimbableMaskPath");
+            Assert.That(field, Is.Not.Null, "GrayboxScene.NoClimbableMaskPath has moved or been renamed: update this test.");
+            Assert.That(field.GetValue(null), Is.EqualTo(ClimbablePaintAssets.NoMaskPath),
+                "The level builders and the paint tools should name the same unpainted mask.");
         }
 
         [Test]

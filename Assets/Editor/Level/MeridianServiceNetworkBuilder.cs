@@ -19,6 +19,7 @@ namespace CharacterShowcase.EditorTools.Level
     {
         // ---- The sheet's dimensions (tunable: see the notes) ----
 
+        /// <summary>The network's floor height.</summary>
         public const float Level = -12f;           // The network's floor.
         private const float CorridorHeight = 6f;   // Main corridors: 6 m wide, 6 m high.
         private const float RoomHeight = 8f;
@@ -28,6 +29,9 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>Where the Fabrication Hall's basement door is (world x, z): the service tunnel's stair comes up to it at -8.</summary>
         public static readonly UnityEngine.Rect HallDoor = UnityEngine.Rect.MinMaxRect(66f, -43f, 67f, -37f);
+        /// <summary>
+        /// The floor and top of the Fabrication Hall's basement door, where the service tunnel's stair comes up.
+        /// </summary>
         public const float HallDoorFloor = -8f, HallDoorTop = Level + RoomHeight; // The tunnel's ceiling there.
 
         private static float Corridor(float floor = Level) => floor + CorridorHeight;

@@ -47,13 +47,14 @@ namespace CharacterShowcase.EditorTools
             AnimationClip crouchWalk = Library("Crouch_Fwd_Loop", clips["Crouch"]);
             AnimationClip push = Library("Push_Loop", clips["Walk"]);
 
-            // Crouch: still, then crouch-walking at the speed its strides are made for, sped up past it to the top.
+            // Crouch: still, then crouch-walking at the speed its strides are made for, played faster past it (see
+            // PlaysPastItsTop).
             AnimatorState crouch = stateMachine.AddState("Crouch");
             float crouchStrides = crouchWalk != crouchIdle ? Strides(crouchWalk) : 0f;
-            if (crouchStrides > 0f && crouchStrides < CrouchTopSpeed)
+            if (crouchStrides > 0f)
             {
-                crouch.motion = CreateBlendTree(controller, "Crouch", SpeedParameter,
-                    (crouchIdle, 0f, 1f, 0f), (crouchWalk, crouchStrides, 1f, 0f), (crouchWalk, CrouchTopSpeed, CrouchTopSpeed / crouchStrides, 0f));
+                crouch.motion = CreateBlendTree(controller, "Crouch", SpeedParameter, (crouchIdle, 0f, 1f, 0f), (crouchWalk, crouchStrides, 1f, 0f));
+                PlaysPastItsTop(controller, crouch, CrouchPlaybackParameter, (CrouchTopSpeedParameter, crouchStrides));
             }
             else { crouch.motion = crouchIdle; }
 
@@ -101,7 +102,8 @@ namespace CharacterShowcase.EditorTools
 
             // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
             // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at
-            // the speed its holding hands are made for, sped up past it, and the climbing idle in the middle. Without them,
+            // the speed its holding hands are made for, played faster past it (see PlaysPastItsTop), and the climbing idle
+            // in the middle. Without them,
             // the mannequin's hang, held still.
             AnimatorState wallClimb = stateMachine.AddState("Wall Climb");
             AnimationClip climbIdle = Library("Climb_Idle_Loop", null);
@@ -114,16 +116,19 @@ namespace CharacterShowcase.EditorTools
             {
                 var children = new List<(Motion, Vector2, float)> { (climbIdle, Vector2.zero, 1f) };
                 var measured = new List<string>();
-                foreach (var (clip, direction) in climbLoops)
+                var topSpeeds = new List<(string, float)>();
+                string[] topSpeedParameters = { ClimbUpTopSpeedParameter, ClimbDownTopSpeedParameter, ClimbLeftTopSpeedParameter, ClimbRightTopSpeedParameter };
+                for (int i = 0; i < climbLoops.Length; i++)
                 {
+                    var (clip, direction) = climbLoops[i];
                     float loopSpeed = MotionCaptureLocomotion.ClimbSpeed(measuringModel, clip, new Vector3(direction.x, direction.y, 0f));
                     if (!float.IsFinite(loopSpeed) || loopSpeed < 0.05f) { loopSpeed = ClimbLoopFallbackSpeed; }
-                    loopSpeed = Mathf.Min(loopSpeed, ClimbTopSpeed);
                     children.Add((clip, direction * loopSpeed, 1f));
-                    children.Add((clip, direction * ClimbTopSpeed, ClimbTopSpeed / loopSpeed));
+                    topSpeeds.Add((topSpeedParameters[i], loopSpeed));
                     measured.Add($"{clip.name} {loopSpeed:0.00} m/s");
                 }
                 wallClimb.motion = CreateBlendTree2D(controller, "Wall Climb", ClimbRightParameter, ClimbUpParameter, children.ToArray());
+                PlaysPastItsTop(controller, wallClimb, ClimbPlaybackParameter, topSpeeds.ToArray());
                 Debug.Log($"[MannequinGenerator] Climbing loops' speeds: {string.Join(", ", measured)}.");
             }
             else { wallClimb.motion = clips["Hang"]; }

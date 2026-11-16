@@ -104,8 +104,8 @@ namespace Character
         }
 
         /// <summary>
-        /// Checks whether the character is on the ground via spherecast downwards
-        /// TODO: Implement variable gravity directions
+        /// Checks whether the character is on the ground via spherecast downwards (gravity is always down: other
+        /// directions are a future change, in the README).
         /// </summary>
         /// <param name="position"></param>
         /// <param name="groundTransform"></param>

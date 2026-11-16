@@ -32,6 +32,7 @@ namespace CharacterShowcase.EditorTools
         private readonly Dictionary<GameObject, float> heights = new();
         private Vector2 scroll;
 
+        /// <summary>Opens the Scene Setup window on the open scene.</summary>
         [MenuItem("Tools/Character Showcase/Set Up Scene…", priority = 3)]
         public static void Open() => GetWindow<SceneSetupWindow>("Scene Setup").Refresh();
 

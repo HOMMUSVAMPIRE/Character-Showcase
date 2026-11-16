@@ -65,7 +65,7 @@ namespace Character
         {
             WallSlideState slide = controller.wallSlide;
             if (movementData.initialGrounded) { slide.jumpsUsed = 0; slide.hasLastWall = false; }
-            slide.cooldownRemaining = Mathf.Max(0f, slide.cooldownRemaining - movementData.deltaTime);
+            slide.cooldownRemaining = MovementHelpers.CountDown(slide.cooldownRemaining, movementData.deltaTime);
         }
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
@@ -253,21 +253,13 @@ namespace Character
         {
             EndWallSlide(controller);
             controller.wallSlide.jumpsUsed++;
-            controller.jump.pressConsumed = true;
             // Air dashes come back with the jumps, under the same rule (off a different wall from the last): given back
             // for every slide, hopping up one wall would have a dash each time on top of the character's own jumps.
-            if (!JumpedOffThisWallLast(controller, normal))
-            {
-                GiveBackAirMoves(controller);
-                MovementHelpers.TryUseJump(controller);
-            }
-            RememberWallJumpedOff(controller, normal);
-            StartWallJumpSteeringRecovery(controller);
-            movementData.velocityOverride = normal * (wallSlideJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallSlideJumpUpSpeed * controller.SpeedScale);
-            movementData.directMovementVector = Vector3.zero;
-            movementData.targetRotation = Quaternion.LookRotation(normal, Vector3.up);
-            movementData.events |= MovementEvents.WallJumped;
-            movementData.state |= CharacterState.Moving;
+            bool newWall = !JumpedOffThisWallLast(controller, normal);
+            if (newWall) { GiveBackAirMoves(controller); }
+            MovementHelpers.JumpOffWall(ref movementData, controller,
+                normal * (wallSlideJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallSlideJumpUpSpeed * controller.SpeedScale),
+                normal, normal, givesBackJumps: newWall);
         }
 
         private void EndWallSlide(MovementController controller)
@@ -280,24 +272,33 @@ namespace Character
     /// <summary>A slide down a wall in progress, the cooldown before the next, and the jumps off walls made since landing.</summary>
     public class WallSlideState
     {
+        /// <summary>Whether the character is sliding down a wall.</summary>
         public bool IsWallSliding;
-        // Seconds since the slide started, and how long the character has been steering away from the wall
+        /// <summary>Seconds since the slide started.</summary>
         public float elapsed;
+        /// <summary>How long, in seconds, the character has been steering away from the wall.</summary>
         public float releaseTime;
-        // Seconds until the character can slide down a wall again
+        /// <summary>Seconds until the character can slide down a wall again.</summary>
         public float cooldownRemaining;
-        // The wall's normal (horizontal, unit length, pointing away from the wall toward the character), and the point
-        // of the wall in front of the character
+        /// <summary>The wall's normal (horizontal, unit length, pointing away from the wall toward the character).</summary>
         public Vector3 wallNormal;
+        /// <summary>The point of the wall in front of the character.</summary>
         public Vector3 wallPoint;
-        // Jumps in a row off the same wall while sliding down it since the character last touched the ground
+        /// <summary>Jumps in a row off the same wall while sliding down it since the character last touched the ground.</summary>
         public int jumpsUsed;
-        // How the character was last moving (horizontally) in mid-air, and when (MovementController.StepTime): what it hit a wall
-        // with, after the wall stopped it
+        /// <summary>
+        /// How the character was last moving (horizontally, m/s) in mid-air: what it hit a wall with, after the wall
+        /// stopped it.
+        /// </summary>
         public Vector3 approachVelocity;
+        /// <summary>When (MovementController.StepTime) approachVelocity was last recorded.</summary>
         public float approachTime = float.NegativeInfinity;
-        // A wall the character slid off the end of, or dropped from: not slid down again until it touches the ground
+        /// <summary>
+        /// A wall (its normal) the character slid off the end of, or dropped from: not slid down again until it touches
+        /// the ground.
+        /// </summary>
         public Vector3 lastWallNormal;
+        /// <summary>Whether lastWallNormal holds a wall.</summary>
         public bool hasLastWall;
     }
 }

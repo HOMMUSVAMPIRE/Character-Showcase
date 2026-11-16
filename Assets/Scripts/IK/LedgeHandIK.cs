@@ -19,7 +19,7 @@ namespace Character
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class LedgeHandIK : MonoBehaviour
+    public class LedgeHandIK : AbilityIK
     {
         [Tooltip("How strongly the hands are placed on the ledge (and the body against the wall). 0 turns it off.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -30,8 +30,8 @@ namespace Character
         [Tooltip("How far (m, at the character's authored size) the wrists sit back from the edge, on top of the ledge, so the " +
                  "fingers hook over the edge.")]
         [SerializeField] private float wristBackFromEdge = 0.04f;
-        [Tooltip("How far apart the hands are along the edge, as a share of the model's shoulder width (about 0.8 m on the " +
-                 "mannequin, within the 0.75 to 1.4 m the Quaternius library's climbs grip ledges at).")]
+        [Tooltip("How far apart the hands are along the edge, as a share of the model's shoulder width (keep it within the " +
+                 "grip the climbing animations are made for, or the arms stretch or bunch).")]
         [SerializeField] private float handSpacing = 2.35f;
         [Tooltip("How far (m, at the character's authored size) the body's centre hangs from the wall: about half the body's depth.")]
         [SerializeField] private float bodyFromWall = 0.12f;
@@ -48,26 +48,14 @@ namespace Character
                  "start of this and off at the end.")]
         [SerializeField] private Vector2 vaultPlantedBetween = new Vector2(0.05f, 0.75f);
 
-        private CharacterIK ik;
-        private ICharacterAnimationStateSource stateSource;
-        private float activeWeight;
         // The last ledge held, kept while easing out after letting go so the hands don't snap.
         private Vector3 edge, wallNormal;
 
-        /// <summary>How far hand placement is eased in now (0 to weight).</summary>
-        public float ActiveWeight => activeWeight;
 
-        private void Awake() => ik = GetComponent<CharacterIK>();
-        private void OnEnable() => ik.BeforeSolve += Solve;
-        private void OnDisable()
-        {
-            ik.BeforeSolve -= Solve;
-            activeWeight = 0f;
-        }
+        protected override float Weight => weight;
+        protected override float FadeTime => fadeTime;
 
-        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
-
-        private void Solve(Animator animator)
+        protected override void Solve(Animator animator)
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
@@ -91,7 +79,7 @@ namespace Character
                     ? weight * (1f - Mathf.InverseLerp(0.5f, climbReleaseAt, state.climbProgress))
                     : weight;
             }
-            activeWeight = fadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, Time.deltaTime / fadeTime) : goal;
+            FadeTo(goal);
             if (activeWeight <= 0f || wallNormal == Vector3.zero) { return; }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;

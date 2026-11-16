@@ -12,16 +12,27 @@ namespace CharacterShowcase.EditorTools.Level
     // Fixtures that move are never static.
     public static partial class Graybox
     {
+        /// <summary>How a moving platform's name starts.</summary>
         public const string MovingPlatformPrefix = "Moving Platform";
+        /// <summary>How a pushable crate's name starts.</summary>
         public const string PushablePrefix = "Pushable Crate";
+        /// <summary>How a timing gate's name starts: the gates at a timed course's start and finish.</summary>
         public const string TimingGatePrefix = "Timing Gate";
+        /// <summary>How a timing gate's sign's name starts: the lettering that shows the course's times.</summary>
         public const string TimingDisplayPrefix = "Timing Display";
-        // A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders. The same goes for ropes ("Rope
-        // Anchor" placeholders and "Rope Swing (future)" markers aren't ropes), ziplines and bounce pads.
+        /// <summary>
+        /// How a ladder's name starts. A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders.
+        /// The same goes for ropes ("Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes), ziplines
+        /// and bounce pads.
+        /// </summary>
         public const string LadderPrefix = "Ladder";
+        /// <summary>How a rope's name starts (as "Rope |", like a ladder's).</summary>
         public const string RopePrefix = "Rope";
+        /// <summary>How a zipline's name starts (as "Zipline |", like a ladder's).</summary>
         public const string ZiplinePrefix = "Zipline";
+        /// <summary>How a bounce pad's name starts (as "Bounce Pad |", like a ladder's).</summary>
         public const string BouncePadPrefix = "Bounce Pad";
+        /// <summary>How a climbable panel's name starts.</summary>
         public const string ClimbablePrefix = "Climbable Panel";
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);

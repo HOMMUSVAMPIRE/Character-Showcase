@@ -24,6 +24,20 @@ namespace CharacterShowcase.Tests
         private readonly List<Object> created = new();
         private readonly float previousTimeScale;
 
+        /// <summary>
+        /// How much faster than real time Unity's physics steps run while the rig waits for them (see StepsPhysicsItself
+        /// for when it doesn't): the steps stay the same size, so only how long a test takes changes. The fastest the whole
+        /// suite passes at reliably (at twice this, a model test's per-frame updates fall too far behind its steps).
+        /// </summary>
+        public const float TimeScale = 50f;
+
+        /// <summary>
+        /// The most game time (s) one frame may cover while the rig waits for Unity's steps (see FrameTimeLimit): what's
+        /// done once a frame (animation, IK, foot placement) is checked against the steps, and needs frames about as small
+        /// as batch mode's at TimeScale. Sped up as much, a frame of the editor's would cover most of a second or more.
+        /// </summary>
+        public const float MaxFrameTime = 0.05f;
+
         public GameObject Character { get; private set; }
         public MovementController Movement { get; private set; }
         public Rigidbody Body { get; private set; }
@@ -37,12 +51,19 @@ namespace CharacterShowcase.Tests
         {
             // Run the simulation faster than real time. Physics steps stay the same size, so results are unchanged.
             previousTimeScale = Time.timeScale;
-            Time.timeScale = 4f;
+            created.Add(FrameTimeLimit.Start(TimeScale, MaxFrameTime).gameObject);
 
             // MovementController makes inputs relative to Camera.main.
             var camera = new GameObject("Test Camera") { tag = "MainCamera" };
             camera.AddComponent<Camera>();
             created.Add(camera);
+        }
+
+        /// <summary>A floor, and the character standing on it at the origin, its model loaded and settled.</summary>
+        public IEnumerator StandOnFloor()
+        {
+            Floor();
+            yield return SpawnSettled(new Vector3(0f, 0.05f, 0f));
         }
 
         public void SpawnCharacter(Vector3 position)
@@ -56,6 +77,12 @@ namespace CharacterShowcase.Tests
             Character.GetComponent<ACCharacterController>().enabled = false;
             Movement = Character.GetComponent<MovementController>();
             Body = Character.GetComponent<Rigidbody>();
+            ClearEvents();
+            Movement.MovementEventRaised += (movementEvent, _) =>
+            {
+                events.Add((runStep, movementEvent));
+                eventsRaised.Add(movementEvent);
+            };
             // The character moves with its own copy of its movement mode, so a test can change settings on it (see
             // SetMovementSetting) without changing the asset: in the editor, a change to the asset itself would stay.
             // The copy starts from the asset, so the tests still check the movement as it's tuned.
@@ -64,6 +91,34 @@ namespace CharacterShowcase.Tests
                 Movement.movementHandler = Object.Instantiate(Movement.movementHandler);
                 created.Add(Movement.movementHandler);
             }
+        }
+
+        // ---- The character's movement events ----
+
+        // Every movement event since the character was spawned (or ClearEvents), with the step of the latest Run it was
+        // raised on (counted from 0, for StepOf); and that step, as the rig runs.
+        private readonly List<(int step, MovementEvents movementEvent)> events = new();
+        private readonly List<MovementEvents> eventsRaised = new();
+        private int runStep;
+
+        /// <summary>The movement events raised since the character was spawned (or ClearEvents), in order: a live list.</summary>
+        public IReadOnlyList<MovementEvents> EventsRaised => eventsRaised;
+
+        /// <summary>How many times the event has been raised since the character was spawned (or ClearEvents).</summary>
+        public int Count(MovementEvents movementEvent) => events.Count(e => e.movementEvent == movementEvent);
+
+        /// <summary>The step (of the latest Run) the event was first raised on, or -1 if it hasn't been.</summary>
+        public int StepOf(MovementEvents movementEvent)
+        {
+            foreach (var (step, raised) in events) { if (raised == movementEvent) { return step; } }
+            return -1;
+        }
+
+        /// <summary>Forgets the events recorded so far, to record from here on.</summary>
+        public void ClearEvents()
+        {
+            events.Clear();
+            eventsRaised.Clear();
         }
 
         /// <summary>The character prefab the tests run on: a CharacterTestSettings asset's, or the package's own.</summary>
@@ -212,6 +267,7 @@ namespace CharacterShowcase.Tests
         /// <summary>A rope hanging from anchor, the given length, drawing itself.</summary>
         public Rope Rope(Vector3 anchor, float length)
         {
+            needsUnityPhysicsSteps = true;
             var obj = new GameObject("Rope");
             created.Add(obj);
             obj.transform.position = anchor;
@@ -228,6 +284,7 @@ namespace CharacterShowcase.Tests
         /// <summary>A box the character can grab, push and pull (a PushableObject), resting with its bottom at center.y - size.y / 2.</summary>
         public PushableObject PushableBox(Vector3 center, Vector3 size, float speedMultiplier = 1f, bool canBePulled = true)
         {
+            needsUnityPhysicsSteps = true;
             GameObject box = Box("Pushable Box", center, size);
             box.AddComponent<Rigidbody>();
             var pushable = box.AddComponent<PushableObject>();
@@ -238,6 +295,7 @@ namespace CharacterShowcase.Tests
 
         public MovingPlatform Platform(Vector3 topCenter, Vector3 size, Vector3 travel, float period, Vector3 spin)
         {
+            needsUnityPhysicsSteps = true;
             GameObject box = Box("Platform", topCenter - Vector3.up * (size.y / 2f), size);
             box.AddComponent<Rigidbody>();
             var platform = box.AddComponent<MovingPlatform>();
@@ -255,12 +313,18 @@ namespace CharacterShowcase.Tests
         /// </summary>
         public IEnumerator Run(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep = null)
         {
+            if (CanStepPhysicsItself)
+            {
+                RunDirectly(steps, inputsForStep, afterStep);
+                yield break;
+            }
             for (int i = 0; i < steps; i++)
             {
                 yield return new WaitForFixedUpdate();
                 // The previous step's Rigidbody.Move has now been simulated, so Position reflects it.
                 if (i > 0) { afterStep?.Invoke(i - 1); }
                 // As ACCharacterController does each physics step: any change of size first, then movement.
+                runStep = i;
                 Controller.UpdateScale(Time.fixedDeltaTime);
                 Movement.ProcessMovementInputs(inputsForStep(i));
                 Movement.MovementCleanup();
@@ -271,6 +335,95 @@ namespace CharacterShowcase.Tests
 
         public IEnumerator Run(float seconds, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
             Run(StepsFor(seconds), inputsForStep, afterStep);
+
+        /// <summary>
+        /// Whether the rig may step the physics itself (Physics.Simulate, in a loop) rather than wait for each of
+        /// Unity's physics steps, which takes real time even sped up: far faster, and the same steps, since the movement
+        /// times everything by its own clock (MovementController.StepTime). For tests of the movement alone: a test that
+        /// needs Unity's frames (animation, IK, the model's or camera's per-frame updates) leaves it off. Even on, the rig
+        /// waits for Unity's steps while the world has something that moves in them (a moving platform, a pushable
+        /// object, a rope). It does what Unity's steps would for the character itself (fitting its collider to its model).
+        /// </summary>
+        public bool StepsPhysicsItself { get; set; }
+
+        // Whether the world has something only Unity's own physics steps move (made by Platform, PushableBox or Rope).
+        private bool needsUnityPhysicsSteps;
+
+        private bool CanStepPhysicsItself => StepsPhysicsItself && !needsUnityPhysicsSteps && Character != null;
+
+        /// <summary>Runs the steps at once, stepping the physics itself (see StepsPhysicsItself), in the same order as Run.</summary>
+        private void RunDirectly(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep)
+        {
+            SimulationMode previous = Physics.simulationMode;
+            Physics.simulationMode = SimulationMode.Script;
+            try
+            {
+                // Objects made or moved since the last step reach the physics scene first, as Unity's own step would.
+                Physics.SyncTransforms();
+                CharacterModelHost models = Models;
+                for (int i = 0; i < steps; i++)
+                {
+                    runStep = i;
+                    Controller.UpdateScale(Time.fixedDeltaTime);
+                    Movement.ProcessMovementInputs(inputsForStep(i));
+                    Movement.MovementCleanup();
+                    // As the model host's FixedUpdate would, before the physics step.
+                    if (models != null) { models.TryFitColliderNow(); }
+                    Physics.Simulate(Time.fixedDeltaTime);
+                    afterStep?.Invoke(i);
+                }
+            }
+            finally
+            {
+                Physics.simulationMode = previous;
+            }
+        }
+
+        /// <summary>
+        /// Runs the character until done says so (checked after each step) or the timeout passes, so a test waits as
+        /// long as the movement takes, however it's tuned, rather than a time chosen for one tuning. Doesn't fail by
+        /// itself on the timeout: assert what should then be true.
+        /// </summary>
+        public IEnumerator RunUntil(Func<bool> done, Func<int, Inputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
+        {
+            for (int step = 0; step < StepsFor(timeoutSeconds) && !done(); step++)
+            {
+                int i = step;
+                // Stepping the physics itself, the steps run back to back: a yield costs a frame however little it waits
+                // for, and in the editor a frame is long.
+                if (CanStepPhysicsItself) { RunDirectly(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
+                else { yield return Run(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
+            }
+        }
+
+        /// <summary>
+        /// Runs the character, without input, until it's on the ground (after a jump, a fall or a slide), or the timeout
+        /// passes; afterStep, if given, is called after each step.
+        /// </summary>
+        public IEnumerator RunUntilLanded(Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout) =>
+            RunUntil(() => Grounded, _ => Idle(), afterStep, timeoutSeconds);
+
+        /// <summary>
+        /// Runs the character with the given inputs until it has left the ground and landed again (a jump, from the
+        /// ground), or the timeout passes; afterStep, if given, is called after each step.
+        /// </summary>
+        public IEnumerator RunUntilBackOnTheGround(Func<int, Inputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
+        {
+            bool left = false;
+            yield return RunUntil(() => left && Grounded, inputsForStep, step => { left |= !Grounded; afterStep?.Invoke(step); }, timeoutSeconds);
+        }
+
+        /// <summary>How long (s) RunUntil waits at most by default: far longer than any move should take.</summary>
+        public const float DefaultTimeout = 10f;
+
+        /// <summary>The character's horizontal speed (m/s), averaged over the steps of the given time with the given inputs, passed to result.</summary>
+        public IEnumerator MeanSpeed(float seconds, Func<int, Inputs> inputsForStep, Action<float> result)
+        {
+            float total = 0f;
+            int steps = 0;
+            yield return Run(seconds, inputsForStep, _ => { total += HorizontalSpeed; steps++; });
+            result(steps > 0 ? total / steps : 0f);
+        }
 
         /// <summary>
         /// Physics steps covering the given time. The small tolerance stops float division (0.6 / 0.02 = 30.000002)
@@ -349,6 +502,20 @@ namespace CharacterShowcase.Tests
         public float CurrentHeight => Capsule.height;
         /// <summary>The character's collider height standing up, in metres at its size.</summary>
         public float StandingHeight => Movement.StandingHeight;
+        /// <summary>The character's velocity (m/s) as its last step left it.</summary>
+        public Vector3 Velocity => Movement.lastFrameMovementData.finalVelocity;
+        /// <summary>The character's gravity (m/s²) at its size: Fall &amp; Air Handling's Gravity Strength, scaled.</summary>
+        public float Gravity => MovementSetting<float>("gravityStrength") * Movement.AccelerationScale;
+        /// <summary>How low (as a share of its standing height) the character crouches: Crouching's Crouch Height.</summary>
+        public float CrouchHeight => Component<Crouching>().CrouchHeight;
+        /// <summary>How fast (m/s) the character climbs a climbable surface at full input, at its size.</summary>
+        public float ClimbSpeed => Component<WallClimbing>().WallClimbSpeed * Movement.SpeedScale;
+        /// <summary>How high (m) the character's hands hold a climbable surface or ladder above its feet, at its size.</summary>
+        public float WallClimbGripHeight => MovementSetting<float>("wallClimbGripHeight") * StandingHeight;
+        /// <summary>How far (m) below a zipline's cable the character's feet hang, at its size.</summary>
+        public float ZiplineHangHeight => MovementSetting<float>("ziplineHangHeight") * StandingHeight;
+        /// <summary>Whether the character is riding a zipline.</summary>
+        public bool Ziplining => InState(CharacterState.Ziplining);
 
         /// <summary>
         /// Spawns the character, waits for its model to load (which fits its collider to the model, so its size is

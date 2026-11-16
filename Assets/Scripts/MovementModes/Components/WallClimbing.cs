@@ -85,7 +85,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.wallClimb.regrabCooldown = Mathf.Max(0f, controller.wallClimb.regrabCooldown - movementData.deltaTime);
+            controller.wallClimb.regrabCooldown = MovementHelpers.CountDown(controller.wallClimb.regrabCooldown, movementData.deltaTime);
         }
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
@@ -145,14 +145,16 @@ namespace Character
             Vector3 normal = climb.normal;
 
             // Stepping off the bottom onto the ground: held still until it's done, then on the ground.
+            // The time is checked before this step is added to it, so the character holds still for exactly the exit
+            // (and below, the enter) time, counting the step it began on.
             if (climb.IsExiting)
             {
-                climb.stepElapsed += movementData.deltaTime;
-                if (climb.stepElapsed >= climb.stepDuration)
+                if (MovementHelpers.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
                 {
                     LetGoOfWall(controller, normal);
                     return false;
                 }
+                climb.stepElapsed += movementData.deltaTime;
                 HoldStill(ref movementData, controller, here, carry);
                 return true;
             }
@@ -171,9 +173,9 @@ namespace Character
             // Stepping onto the surface from the ground: held still until it's done, then climbing.
             if (climb.IsEntering)
             {
-                climb.stepElapsed += movementData.deltaTime;
-                if (climb.stepElapsed < climb.stepDuration)
+                if (!MovementHelpers.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
                 {
+                    climb.stepElapsed += movementData.deltaTime;
                     HoldStill(ref movementData, controller, here, carry);
                     return true;
                 }
@@ -528,16 +530,8 @@ namespace Character
         {
             EndWallClimb(controller);
             Vector3 away = FlatNormal(normal, movementData);
-            controller.jump.pressConsumed = true;
-            MovementHelpers.GiveBackJumps(controller);
-            MovementHelpers.TryUseJump(controller);
-            RememberWallJumpedOff(controller, away);
-            StartWallJumpSteeringRecovery(controller);
-            movementData.velocityOverride = away * (wallClimbJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallClimbJumpUpSpeed * controller.SpeedScale);
-            movementData.directMovementVector = Vector3.zero;
-            movementData.targetRotation = Quaternion.LookRotation(away, Vector3.up);
-            movementData.events |= MovementEvents.WallJumped;
-            movementData.state |= CharacterState.Moving;
+            MovementHelpers.JumpOffWall(ref movementData, controller,
+                away * (wallClimbJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallClimbJumpUpSpeed * controller.SpeedScale), away, away);
         }
 
         /// <summary>
@@ -577,30 +571,39 @@ namespace Character
         /// </summary>
         public enum Phase { Climbing, Entering, Exiting }
 
+        /// <summary>Whether the character is holding on to a climbable surface (in any phase).</summary>
         public bool IsClimbing;
+        /// <summary>What the character is doing on the surface, while IsClimbing.</summary>
         public Phase phase;
-        // Seconds since stepping on or off started, and how long it takes
+        /// <summary>Seconds since stepping on or off started.</summary>
         public float stepElapsed;
+        /// <summary>How long stepping on or off takes, in seconds.</summary>
         public float stepDuration;
-        // The surface held: its normal at the point nearest the character's grip (unit length, pointing toward the
-        // character; it turns smoothly round an outside corner), and that point
+        /// <summary>
+        /// The surface held: its normal at the point nearest the character's grip (unit length, pointing toward the
+        /// character; it turns smoothly round an outside corner).
+        /// </summary>
         public Vector3 normal;
+        /// <summary>The point on the surface held nearest the character's grip.</summary>
         public Vector3 point;
-        // The object climbed (its Rigidbody's, if it has one), and the character's feet in its space at the end of the
-        // last step, to move along with it
+        /// <summary>The object climbed (its Rigidbody's, if it has one).</summary>
         public Transform surface;
+        /// <summary>The character's feet in the surface's space at the end of the last step, to move along with it.</summary>
         public Vector3 localFeet;
+        /// <summary>Whether localFeet holds the feet from the last step.</summary>
         public bool hasLocalFeet;
-        // The surface's speed multiplier (see Level.ClimbableSurface)
+        /// <summary>The surface's speed multiplier (see Level.ClimbableSurface).</summary>
         public float speedMultiplier = 1f;
-        // The ladder climbed, if it's one (see Level.Ladder): straight up and down it, on its middle; null otherwise
+        /// <summary>The ladder climbed, if it's one (see Level.Ladder): straight up and down it, on its middle; null otherwise.</summary>
         public Level.Ladder ladder;
-        // Seconds since the climb started
+        /// <summary>Seconds since the climb started.</summary>
         public float elapsed;
-        // Seconds until a climbable surface can be taken hold of again, after letting go of one or jumping off it
+        /// <summary>Seconds until a climbable surface can be taken hold of again, after letting go of one or jumping off it.</summary>
         public float regrabCooldown;
 
+        /// <summary>Whether the character is stepping onto the surface from the ground.</summary>
         public bool IsEntering => IsClimbing && phase == Phase.Entering;
+        /// <summary>Whether the character is stepping off the surface onto the ground.</summary>
         public bool IsExiting => IsClimbing && phase == Phase.Exiting;
         /// <summary>How far through stepping onto the surface or off it the character is: 0 at its start, 1 at its end (0 otherwise).</summary>
         public float StepProgress => (IsEntering || IsExiting) && stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;

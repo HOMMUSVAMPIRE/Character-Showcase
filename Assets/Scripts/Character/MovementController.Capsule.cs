@@ -72,12 +72,13 @@ namespace Character
             center.y = bottom + height * 0.5f;
         }
 
-        /// <summary>The capsule's radius and height at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         /// <summary>The tallest step or ledge the character steps up by itself at its authored size (see StepHeight for its current size).</summary>
         public float MaxStepHeight => maxStepHeight;
         /// <summary>The steepest slope, in degrees, the character treats as walkable ground.</summary>
         public float MaxSlopeAngle => maxSlopeAngle;
+        /// <summary>The capsule's radius (m) at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         public float BaseRadius { get { RememberBaseCapsule(); return baseRadius; } }
+        /// <summary>The capsule's height (m) at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         public float BaseHeight { get { RememberBaseCapsule(); return baseHeight; } }
 
         /// <summary>

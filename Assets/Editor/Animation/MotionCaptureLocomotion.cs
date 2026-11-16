@@ -24,9 +24,13 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public static class MotionCaptureLocomotion
     {
+        /// <summary>The walk loop's clip name.</summary>
         public const string WalkName = "Walk Cycle";
+        /// <summary>The run loop's clip name.</summary>
         public const string RunName = "Run Cycle";
+        /// <summary>The name of the clip from leaving the ground to the top of the jump.</summary>
         public const string RiseName = "Jump Rise";
+        /// <summary>The name of the clip from the top of the jump to touching down.</summary>
         public const string FallName = "Jump Fall";
         private static readonly string[] Names = { WalkName, RunName, RiseName, FallName };
 
@@ -43,13 +47,22 @@ namespace CharacterShowcase.EditorTools
         }
         private static readonly LoopKind WalkLoop = new(0.8f, 1.5f), RunLoop = new(0.5f, 0.95f);
 
+        /// <summary>
+        /// What Prepare made: the four clips and the loops' stride speeds, or, if it failed, the problem.
+        /// </summary>
         public sealed class Result
         {
+            /// <summary>The clips cut, each a clip of its take's file.</summary>
             public AnimationClip walk, run, rise, fall;
             /// <summary>The speeds (m/s) the walk and run loops' strides are made for, on the model they were measured on.</summary>
             public float walkSpeed, runSpeed;
+            /// <summary>
+            /// A line per clip on which take and frames it was cut from, and the stride speeds, for the log.
+            /// </summary>
             public readonly List<string> notes = new();
+            /// <summary>What went wrong, or null if everything was made.</summary>
             public string problem;
+            /// <summary>Whether everything was made.</summary>
             public bool Succeeded => problem == null;
         }
 

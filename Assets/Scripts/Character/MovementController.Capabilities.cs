@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Globalization;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace Character
@@ -5,8 +8,16 @@ namespace Character
     // Capabilities: what the character can do, measured with its own movement (see MovementSimulation).
     public partial class MovementController
     {
+        private static readonly ProfilerMarker MeasureMarker = new("Movement.MeasureCapabilities");
         private MovementCapabilities capabilities;
         private string capabilitiesKey;
+
+        // Capabilities already measured, by everything they depend on (CapabilitiesKey), shared by every character: one
+        // with the same tuning, size and collider as one measured before (another character, or this one back as it
+        // was) reuses its measurement. Measurements are deterministic, so they're the same however often they're made,
+        // and read-only, so they can be shared. Forgotten once it holds MaxSharedCapabilities, to stay small.
+        private static readonly Dictionary<string, MovementCapabilities> sharedCapabilities = new();
+        private const int MaxSharedCapabilities = 64;
 
         /// <summary>
         /// What the character can do as it's tuned and sized now: how far it jumps, how high it climbs, how far it slides,
@@ -23,20 +34,35 @@ namespace Character
                 string key = CapabilitiesKey();
                 if (capabilities == null || key != capabilitiesKey)
                 {
-                    capabilities = MovementSimulation.Measure(this);
+                    if (!sharedCapabilities.TryGetValue(key, out capabilities))
+                    {
+                        using (MeasureMarker.Auto()) { capabilities = MovementSimulation.Measure(this); }
+                        if (sharedCapabilities.Count >= MaxSharedCapabilities) { sharedCapabilities.Clear(); }
+                        sharedCapabilities[key] = capabilities;
+                    }
                     capabilitiesKey = key;
                 }
                 return capabilities;
             }
         }
 
-        /// <summary>Everything the capabilities depend on, to know when they need measuring again.</summary>
+        /// <summary>
+        /// Everything the capabilities depend on, to know when they need measuring again, and which measurements another
+        /// character can share: the movement mode (its type and settings), and everything MovementSimulation copies from
+        /// the character (see CopyForSimulation, and its layer). Numbers are written in full, so a tiny change of size
+        /// counts as a change. Something new that a measurement depends on must be added here.
+        /// </summary>
         private string CapabilitiesKey()
         {
             RememberBaseCapsule();
-            string mode = movementHandler != null ? JsonUtility.ToJson(movementHandler) : "";
-            return $"{mode}|{Scale}|{baseRadius}|{baseHeight}|{baseCenter}|{sizeScaling}|{maxStepHeight}|{maxSlopeAngle}|{skinWidth}|" +
-                   $"{groundSnapDistance}|{groundCheckRadius}|{movementSpeedMultiplier}|{jumpStrengthModifier}";
+            CultureInfo invariant = CultureInfo.InvariantCulture;
+            string F(float value) => value.ToString("R", invariant);
+            string V(Vector3 value) => $"{F(value.x)},{F(value.y)},{F(value.z)}";
+            string mode = movementHandler != null ? $"{movementHandler.GetType().FullName}:{JsonUtility.ToJson(movementHandler)}" : "";
+            return string.Join("|", mode, V(Scale), F(baseRadius), F(baseHeight), V(baseCenter), sizeScaling.ToString(), F(maxStepHeight),
+                F(maxSlopeAngle), F(skinWidth), F(groundSnapDistance), F(groundCheckRadius), F(movementSpeedMultiplier), F(jumpStrengthModifier),
+                movementLayerMask.value.ToString(invariant), moveWithGround.ToString(), rotateWithGround.ToString(),
+                inheritGroundVelocity.ToString(), F(maxGroundCarryPerStep), gameObject.layer.ToString(invariant));
         }
 
         /// <summary>

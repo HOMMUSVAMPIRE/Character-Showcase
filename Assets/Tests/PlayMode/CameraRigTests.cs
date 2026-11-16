@@ -13,10 +13,25 @@ namespace CharacterShowcase.Tests
     /// mirroring how it is decoupled from the character code, and is driven through its public API rather than input.
     /// Expected positions are derived from the rig's own settings, so retuning the camera doesn't break the tests.
     /// </summary>
+    [Category(TestArea.Camera)]
+    [TestTiming]
     public class CameraRigTests
     {
+        /// <summary>
+        /// How much faster than real time the camera tests run, at most: the fastest they all pass at reliably (as the
+        /// character tests' CharacterTestRig.TimeScale).
+        /// </summary>
+        private const float TimeScale = 50f;
+        /// <summary>
+        /// The most game time (s) one frame may cover (see FrameTimeLimit). The camera smooths and eases frame by frame,
+        /// and the tests watch it do so, which needs small frames: sped up 50 times, a frame of the editor's (drawn 60
+        /// times a second, say) would otherwise cover most of a second, finishing a blend or a landing's dip before it
+        /// could be seen. In batch mode, whose frames are far shorter, this doesn't slow anything.
+        /// </summary>
+        private const float MaxFrameTime = 0.05f;
+
         private readonly List<Object> created = new();
-        private float previousTimeScale;
+        private FrameTimeLimit timeLimit;
         private Transform target;
         private CameraRig rig;
         private Camera cam;
@@ -24,8 +39,8 @@ namespace CharacterShowcase.Tests
         [SetUp]
         public void SetUp()
         {
-            previousTimeScale = Time.timeScale;
-            Time.timeScale = 4f; // Run faster than real time; the rig uses scaled time throughout.
+            // Faster than real time: the rig uses scaled time throughout, so only how long a test takes changes.
+            timeLimit = FrameTimeLimit.Start(TimeScale, MaxFrameTime);
 
             target = Track(new GameObject("Camera Target")).transform;
             var cameraObject = Track(new GameObject("Test Camera"));
@@ -39,7 +54,7 @@ namespace CharacterShowcase.Tests
         {
             foreach (Object obj in created) { if (obj != null) { Object.Destroy(obj); } }
             created.Clear();
-            Time.timeScale = previousTimeScale;
+            Object.Destroy(timeLimit.gameObject);
             yield return null;
         }
 
@@ -410,9 +425,13 @@ namespace CharacterShowcase.Tests
 
             CameraRig.ShakeAll(0.5f);
             Assert.That(rig.Trauma, Is.EqualTo(0.5f).Within(1e-4f));
+            // The rig updates after this, this frame: its trauma decays over this frame's time, however long it is (a
+            // frame's game time varies, in the editor especially).
+            float decayed = 0.5f - rig.Shake.decayPerSecond * Time.deltaTime;
             yield return null;
 
-            Assert.That(rig.Trauma, Is.GreaterThan(0.4f), "Enabled rig should be shaking.");
+            Assume.That(decayed, Is.GreaterThan(0f), "Test setup: the frame should be short enough for the trauma to last it.");
+            Assert.That(rig.Trauma, Is.EqualTo(decayed).Within(1e-4f), "Enabled rig should be shaking, its trauma decaying at its decay rate.");
             Assert.That(secondRig.Trauma, Is.EqualTo(0f), "A rig with shake disabled should ignore trauma.");
         }
 

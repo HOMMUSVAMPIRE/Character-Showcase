@@ -17,6 +17,7 @@ namespace Character
         [Tooltip("The model to instantiate: a model file or a prefab. Its origin should be at its feet, facing +Z.")]
         [SerializeField] private GameObject modelPrefab;
 
+        /// <summary>The model file or prefab instantiated for each model (its origin at its feet, facing +Z).</summary>
         public GameObject ModelPrefab { get => modelPrefab; set => modelPrefab = value; }
 
         // The prefab's unscaled height, measured once (previews are drawn every frame), and the prefab it's for.
@@ -78,7 +79,7 @@ namespace Character
             results.Clear();
             if (modelPrefab == null) { return; }
 
-            // Measured relative to the prefab's root, as its meshes are placed below, and as SetUpModel measures it.
+            // Measured relative to the prefab's root, as its meshes are placed below, and as SetUpModelAsync measures it.
             Matrix4x4 placement = PlacementFor(Height == ModelHeight.FitToHeight ? OwnHeight() : 0f);
             Matrix4x4 fromWorld = modelPrefab.transform.worldToLocalMatrix;
             foreach (SkinnedMeshRenderer skinned in modelPrefab.GetComponentsInChildren<SkinnedMeshRenderer>(true))

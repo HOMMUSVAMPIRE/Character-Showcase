@@ -12,33 +12,100 @@ namespace Character
     public class AnimatorParameterTranslator : CharacterAnimationTranslator
     {
         // The parameter names the mannequin's Animator Controller is built with
+        /// <summary>
+        /// The Speed parameter's default name (float): horizontal speed (m/s), as the model would move at its authored
+        /// size.
+        /// </summary>
         public const string DefaultSpeedParameter = "Speed";
+        /// <summary>
+        /// The VerticalSpeed parameter's default name (float): vertical speed (m/s, positive rising), as at the
+        /// authored size.
+        /// </summary>
         public const string DefaultVerticalSpeedParameter = "VerticalSpeed";
+        /// <summary>The Grounded parameter's default name (bool): animated as on the ground.</summary>
         public const string DefaultGroundedParameter = "Grounded";
+        /// <summary>The Dashing parameter's default name (bool): dashing.</summary>
         public const string DefaultDashingParameter = "Dashing";
+        /// <summary>The Crouching parameter's default name (bool): crouched.</summary>
         public const string DefaultCrouchingParameter = "Crouching";
+        /// <summary>The Sliding parameter's default name (bool): sliding.</summary>
         public const string DefaultSlidingParameter = "Sliding";
+        /// <summary>The Rolling parameter's default name (bool): rolling.</summary>
         public const string DefaultRollingParameter = "Rolling";
+        /// <summary>The WallRunning parameter's default name (bool): running along a wall.</summary>
         public const string DefaultWallRunningParameter = "WallRunning";
+        /// <summary>The WallSliding parameter's default name (bool): sliding down a wall.</summary>
         public const string DefaultWallSlidingParameter = "WallSliding";
+        /// <summary>The WallClimbing parameter's default name (bool): climbing a climbable surface or ladder.</summary>
         public const string DefaultWallClimbingParameter = "WallClimbing";
+        /// <summary>
+        /// The ClimbRight parameter's default name (float): climbing speed (m/s) to the right across the surface.
+        /// </summary>
         public const string DefaultClimbRightParameter = "ClimbRight";
+        /// <summary>The ClimbUp parameter's default name (float): climbing speed (m/s) up the surface.</summary>
         public const string DefaultClimbUpParameter = "ClimbUp";
+        /// <summary>
+        /// The ClimbEntering parameter's default name (bool): stepping onto a climbable surface from the ground.
+        /// </summary>
         public const string DefaultClimbEnteringParameter = "ClimbEntering";
+        /// <summary>The OnLadder parameter's default name (bool): climbing a ladder.</summary>
         public const string DefaultOnLadderParameter = "OnLadder";
+        /// <summary>
+        /// The ClimbExiting parameter's default name (bool): stepping off a climbable surface's bottom onto the ground.
+        /// </summary>
         public const string DefaultClimbExitingParameter = "ClimbExiting";
+        /// <summary>
+        /// The ClimbStepProgress parameter's default name (float): how far through stepping onto or off a climbable
+        /// surface (0 to 1).
+        /// </summary>
         public const string DefaultClimbStepProgressParameter = "ClimbStepProgress";
+        /// <summary>The WallSide parameter's default name (float): the wall run's side (1 right, -1 left).</summary>
         public const string DefaultWallSideParameter = "WallSide";
+        /// <summary>The Hanging parameter's default name (bool): hanging from a ledge.</summary>
         public const string DefaultHangingParameter = "Hanging";
+        /// <summary>The Climbing parameter's default name (bool): climbing up from a ledge onto it.</summary>
         public const string DefaultClimbingParameter = "Climbing";
+        /// <summary>The Grabbing parameter's default name (bool): holding an object to push or pull.</summary>
         public const string DefaultGrabbingParameter = "Grabbing";
+        /// <summary>
+        /// The GrabSpeed parameter's default name (float): push (positive) or pull (negative) speed (m/s) while holding
+        /// an object.
+        /// </summary>
         public const string DefaultGrabSpeedParameter = "GrabSpeed";
+        /// <summary>The RollProgress parameter's default name (float): how far through a roll (0 to 1).</summary>
         public const string DefaultRollProgressParameter = "RollProgress";
+        /// <summary>
+        /// The ClimbProgress parameter's default name (float): how far through a climb onto a ledge (0 to 1).
+        /// </summary>
         public const string DefaultClimbProgressParameter = "ClimbProgress";
+        /// <summary>The Vaulting parameter's default name (bool): vaulting over something low.</summary>
         public const string DefaultVaultingParameter = "Vaulting";
+        /// <summary>
+        /// The VaultProgress parameter's default name (float): about how far through a vault (0 to 1).
+        /// </summary>
         public const string DefaultVaultProgressParameter = "VaultProgress";
+        /// <summary>The RopeSwinging parameter's default name (bool): swinging on a rope.</summary>
         public const string DefaultRopeSwingingParameter = "RopeSwinging";
+        /// <summary>The Ziplining parameter's default name (bool): riding a zipline.</summary>
         public const string DefaultZipliningParameter = "Ziplining";
+        /// <summary>The LocomotionPlayback parameter's default name (float): how much faster than its fastest loop the Locomotion state plays (see the Playback section).</summary>
+        public const string DefaultLocomotionPlaybackParameter = "LocomotionPlayback";
+        /// <summary>The LocomotionTopSpeed parameter's default name (float, read, not set): the speed (m/s) the Locomotion state's fastest loop is made for.</summary>
+        public const string DefaultLocomotionTopSpeedParameter = "LocomotionTopSpeed";
+        /// <summary>The CrouchPlayback parameter's default name (float): how much faster than the crouch walk is made for the Crouch state plays.</summary>
+        public const string DefaultCrouchPlaybackParameter = "CrouchPlayback";
+        /// <summary>The CrouchTopSpeed parameter's default name (float, read, not set): the speed (m/s) the crouch walk is made for.</summary>
+        public const string DefaultCrouchTopSpeedParameter = "CrouchTopSpeed";
+        /// <summary>The ClimbPlayback parameter's default name (float): how much faster than its climbing loops the Wall Climb state plays.</summary>
+        public const string DefaultClimbPlaybackParameter = "ClimbPlayback";
+        /// <summary>The ClimbUpTopSpeed parameter's default name (float, read, not set): the speed (m/s) the climbing-up loop is made for.</summary>
+        public const string DefaultClimbUpTopSpeedParameter = "ClimbUpTopSpeed";
+        /// <summary>The ClimbDownTopSpeed parameter's default name (float, read, not set): the speed (m/s) the climbing-down loop is made for.</summary>
+        public const string DefaultClimbDownTopSpeedParameter = "ClimbDownTopSpeed";
+        /// <summary>The ClimbLeftTopSpeed parameter's default name (float, read, not set): the speed (m/s) the climbing-left loop is made for.</summary>
+        public const string DefaultClimbLeftTopSpeedParameter = "ClimbLeftTopSpeed";
+        /// <summary>The ClimbRightTopSpeed parameter's default name (float, read, not set): the speed (m/s) the climbing-right loop is made for.</summary>
+        public const string DefaultClimbRightTopSpeedParameter = "ClimbRightTopSpeed";
 
         /// <summary>A trigger to fire when any of the given movement events happens.</summary>
         [Serializable]
@@ -55,6 +122,7 @@ namespace Character
             /// <summary>The movement events that fire the trigger.</summary>
             public MovementEvents Events { get => (MovementEvents)events; set => events = (long)value; }
 
+            /// <summary>A trigger parameter, by name, fired by any of the given events.</summary>
             public EventTrigger(MovementEvents events, string trigger)
             {
                 this.events = (long)events;
@@ -92,20 +160,51 @@ namespace Character
         [Tooltip("About how far through a vault over something low (0 to 1), for a vaulting animation timed to it")]
         [SerializeField] private string vaultProgressParameter = DefaultVaultProgressParameter;
 
+        [Header("Playback past the fastest loop")]
+        [Tooltip("Set to how much faster than its fastest loop is made for the character moves (at least 1), for the " +
+                 "Locomotion state's speed multiplier: so past the end of its blend tree, the fastest loop plays faster, its feet " +
+                 "keeping up with the ground, however fast the character goes")]
+        [SerializeField] private string locomotionPlaybackParameter = DefaultLocomotionPlaybackParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the Locomotion state's fastest loop is made " +
+                 "for, written there by whatever built the Animator Controller (Generate Mannequin does)")]
+        [SerializeField] private string locomotionTopSpeedParameter = DefaultLocomotionTopSpeedParameter;
+        [Tooltip("As Locomotion Playback, for the crouch walk (from the same speed)")]
+        [SerializeField] private string crouchPlaybackParameter = DefaultCrouchPlaybackParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the crouch walk is made for")]
+        [SerializeField] private string crouchTopSpeedParameter = DefaultCrouchTopSpeedParameter;
+        [Tooltip("As Locomotion Playback, for climbing a climbable surface (from Climb Right and Climb Up): past the speed a " +
+                 "climbing loop is made for, the way the character climbs, it plays faster")]
+        [SerializeField] private string climbPlaybackParameter = DefaultClimbPlaybackParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-up loop is made for")]
+        [SerializeField] private string climbUpTopSpeedParameter = DefaultClimbUpTopSpeedParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-down loop is made for")]
+        [SerializeField] private string climbDownTopSpeedParameter = DefaultClimbDownTopSpeedParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-left loop is made for")]
+        [SerializeField] private string climbLeftTopSpeedParameter = DefaultClimbLeftTopSpeedParameter;
+        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-right loop is made for")]
+        [SerializeField] private string climbRightTopSpeedParameter = DefaultClimbRightTopSpeedParameter;
+
         [Header("Bool parameters")]
         [Tooltip("Whether the character should be animated as on the ground")]
         [SerializeField] private string groundedParameter = DefaultGroundedParameter;
+        [Tooltip("Rising from a jump (until it starts falling or is cut short)")]
         [SerializeField] private string jumpingParameter = "";
+        [Tooltip("Dashing")]
         [SerializeField] private string dashingParameter = DefaultDashingParameter;
+        [Tooltip("The character's own movement ran this step (walking on the ground, even standing still, or steering in the air) rather than an ability taking it over")]
         [SerializeField] private string movingParameter = "";
+        [Tooltip("Crouched (not while sliding or rolling)")]
         [SerializeField] private string crouchingParameter = DefaultCrouchingParameter;
+        [Tooltip("Sliding along the ground")]
         [SerializeField] private string slidingParameter = DefaultSlidingParameter;
+        [Tooltip("Rolling")]
         [SerializeField] private string rollingParameter = DefaultRollingParameter;
+        [Tooltip("Running along a wall")]
         [SerializeField] private string wallRunningParameter = DefaultWallRunningParameter;
         [Tooltip("Sliding down a wall")]
         [SerializeField] private string wallSlidingParameter = DefaultWallSlidingParameter;
-        [Tooltip("Climbing a climbable surface (the forward and sideways speed parameters, if set, give the climb's " +
-                 "speed up the surface and to the right)")]
+        [Tooltip("Climbing a climbable surface (the Climb Right and Climb Up parameters give the climb's speed across and " +
+                 "up it)")]
         [SerializeField] private string wallClimbingParameter = DefaultWallClimbingParameter;
         [Tooltip("Climbing a ladder (WallClimbing is set too)")]
         [SerializeField] private string onLadderParameter = DefaultOnLadderParameter;
@@ -139,6 +238,9 @@ namespace Character
             private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
             private readonly int grounded, jumping, dashing, moving;
             private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing, ropeSwinging, ziplining;
+            private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
+            // The speeds (m/s) the controller's fastest loops are made for (its parameters' defaults), or 0 if it has none.
+            private readonly float locomotionTop, crouchTop, climbUpTop, climbDownTop, climbLeftTop, climbRightTop;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -192,6 +294,26 @@ namespace Character
                 ropeSwinging = Find(settings.ropeSwingingParameter, AnimatorControllerParameterType.Bool);
                 ziplining = Find(settings.zipliningParameter, AnimatorControllerParameterType.Bool);
 
+                locomotionPlayback = Find(settings.locomotionPlaybackParameter, AnimatorControllerParameterType.Float);
+                crouchPlayback = Find(settings.crouchPlaybackParameter, AnimatorControllerParameterType.Float);
+                climbPlayback = Find(settings.climbPlaybackParameter, AnimatorControllerParameterType.Float);
+                // A parameter's default value, as the controller was built with it (not what it's been set to since).
+                float DefaultOf(string name)
+                {
+                    if (string.IsNullOrEmpty(name)) { return 0f; }
+                    foreach (AnimatorControllerParameter parameter in parameters)
+                    {
+                        if (parameter.name == name && parameter.type == AnimatorControllerParameterType.Float) { return Mathf.Max(0f, parameter.defaultFloat); }
+                    }
+                    return 0f;
+                }
+                locomotionTop = DefaultOf(settings.locomotionTopSpeedParameter);
+                crouchTop = DefaultOf(settings.crouchTopSpeedParameter);
+                climbUpTop = DefaultOf(settings.climbUpTopSpeedParameter);
+                climbDownTop = DefaultOf(settings.climbDownTopSpeedParameter);
+                climbLeftTop = DefaultOf(settings.climbLeftTopSpeedParameter);
+                climbRightTop = DefaultOf(settings.climbRightTopSpeedParameter);
+
                 triggers = new (MovementEvents, int)[settings.eventTriggers.Length];
                 for (int i = 0; i < triggers.Length; i++)
                 {
@@ -227,6 +349,7 @@ namespace Character
                 // right, y up. As the authored model would climb (see speed, above), so its hands keep their holds.
                 if (climbRight != 0) { animator.SetFloat(climbRight, state.wallClimbing ? state.localVelocity.x / scale.x : 0f, speedDampTime, deltaTime); }
                 if (climbUp != 0) { animator.SetFloat(climbUp, state.wallClimbing ? state.localVelocity.y / scale.y : 0f, speedDampTime, deltaTime); }
+                SetPlayback(state);
                 if (crouching != 0) { animator.SetBool(crouching, state.crouching); }
                 if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
                 if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
@@ -244,6 +367,30 @@ namespace Character
                 if (ropeSwinging != 0) { animator.SetBool(ropeSwinging, state.swinging); }
                 if (ziplining != 0) { animator.SetBool(ziplining, state.ziplining); }
             }
+
+            /// <summary>
+            /// How much faster than their fastest loops the speed-driven states play: a blend tree ends at the speed its
+            /// fastest loop is made for, and past it the loop plays faster by however much faster the character moves, so
+            /// its feet keep up with the ground at any speed (rather than up to a top speed fixed when the controller was
+            /// built, which a retuned character could outrun). From the speeds as the animator shows them (smoothed).
+            /// </summary>
+            private void SetPlayback(in CharacterAnimationState state)
+            {
+                float shownSpeed = speed != 0 ? animator.GetFloat(speed) : state.horizontalSpeed / state.StrideScale;
+                if (locomotionPlayback != 0) { animator.SetFloat(locomotionPlayback, Past(shownSpeed, locomotionTop)); }
+                if (crouchPlayback != 0) { animator.SetFloat(crouchPlayback, Past(shownSpeed, crouchTop)); }
+                if (climbPlayback != 0)
+                {
+                    // Past the loop the climb is heading toward: whichever of across and up it's further past.
+                    float right = climbRight != 0 ? animator.GetFloat(climbRight) : 0f, up = climbUp != 0 ? animator.GetFloat(climbUp) : 0f;
+                    float across = Past(Mathf.Abs(right), right >= 0f ? climbRightTop : climbLeftTop);
+                    float along = Past(Mathf.Abs(up), up >= 0f ? climbUpTop : climbDownTop);
+                    animator.SetFloat(climbPlayback, Mathf.Max(across, along));
+                }
+            }
+
+            /// <summary>How many times faster than a loop's own speed (top) the given speed is, never below 1 (and 1 with no top).</summary>
+            private static float Past(float value, float top) => top > 0f ? Mathf.Max(1f, value / top) : 1f;
 
             public void HandleMovementEvent(MovementEvents movementEvent, in CharacterAnimationState state)
             {

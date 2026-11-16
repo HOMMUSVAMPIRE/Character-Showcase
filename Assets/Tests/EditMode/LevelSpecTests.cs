@@ -13,6 +13,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// entries included); mistakes in a spec are reported with where they are; numbers round-trip exactly; and the
     /// schema covers every piece. Each builds in a new scene, replacing what's open.
     /// </summary>
+    [Category(TestArea.Levels)]
+    [TestTiming]
     public class LevelSpecTests
     {
         [TearDown]

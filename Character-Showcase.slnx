@@ -4,5 +4,6 @@
   <Project Path="CharacterShowcase.Editor.csproj" />
   <Project Path="CharacterShowcase.csproj" />
   <Project Path="CameraSystem.csproj" />
+  <Project Path="CharacterShowcase.Tests.Shared.csproj" />
   <Project Path="CharacterShowcase.Tests.EditMode.csproj" />
 </Solution>

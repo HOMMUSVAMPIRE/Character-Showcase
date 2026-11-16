@@ -55,7 +55,7 @@ namespace Character
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            controller.ledge.regrabCooldown = Mathf.Max(0f, controller.ledge.regrabCooldown - movementData.deltaTime);
+            controller.ledge.regrabCooldown = MovementHelpers.CountDown(controller.ledge.regrabCooldown, movementData.deltaTime);
         }
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
@@ -100,7 +100,7 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jump.pressConsumed = true;
+                    controller.jump.press.Use();
                     TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
                 }
             }
@@ -317,7 +317,8 @@ namespace Character
         {
             LedgeState ledge = controller.ledge;
             ledge.climbElapsed += movementData.deltaTime;
-            float t = ledge.ClimbProgress;
+            // At the end on the step its time runs out (see MovementHelpers.HasElapsed), not a step after.
+            float t = MovementHelpers.HasElapsed(ledge.climbElapsed, ledge.climbDuration, movementData.deltaTime) ? 1f : ledge.ClimbProgress;
 
             Vector3 start = ledgePosition + ledgeRotation * ledge.localHangPosition;
             Vector3 end = ledgePosition + ledgeRotation * ledge.localClimbTarget;
@@ -357,28 +358,34 @@ namespace Character
     /// </summary>
     public class LedgeState
     {
+        /// <summary>Not on a ledge; hanging from one; or climbing up onto it.</summary>
         public enum Phase { None, Hanging, Climbing }
 
+        /// <summary>What the character is doing on the ledge (None when it isn't on one).</summary>
         public Phase phase;
-        // The object the ledge belongs to (its Rigidbody's, if it has one)
+        /// <summary>The object the ledge belongs to (its Rigidbody's, if it has one).</summary>
         public Transform ledge;
-        // Where the character's feet hang, in the ledge's space
+        /// <summary>Where the character's feet hang, in the ledge's space.</summary>
         public Vector3 localHangPosition;
-        // The wall's normal below the ledge, in the ledge's space (pointing out, toward the character)
+        /// <summary>The wall's normal below the ledge, in the ledge's space (pointing out, toward the character).</summary>
         public Vector3 localWallNormal;
-        // The point on the ledge's edge the character grabbed (on its top, straight in front of the character), in the
-        // ledge's space: where its hands hold on
+        /// <summary>
+        /// The point on the ledge's edge the character grabbed (on its top, straight in front of the character), in the
+        /// ledge's space: where its hands hold on.
+        /// </summary>
         public Vector3 localEdge;
-        // Where the character's feet end up on top of the ledge after climbing, in the ledge's space
+        /// <summary>Where the character's feet end up on top of the ledge after climbing, in the ledge's space.</summary>
         public Vector3 localClimbTarget;
-        // Seconds since the climb started, and how long it takes
+        /// <summary>Seconds since the climb started.</summary>
         public float climbElapsed;
+        /// <summary>How long the climb takes, in seconds.</summary>
         public float climbDuration;
-        // Whether the climb ends crouched (there's room on top to crouch, but not to stand)
+        /// <summary>Whether the climb ends crouched (there's room on top to crouch, but not to stand).</summary>
         public bool climbToCrouch;
-        // Seconds until a ledge can be grabbed again after letting go of one
+        /// <summary>Seconds until a ledge can be grabbed again after letting go of one.</summary>
         public float regrabCooldown;
 
+        /// <summary>Whether the character is hanging from or climbing a ledge.</summary>
         public bool IsActive => phase != Phase.None;
 
         /// <summary>
@@ -397,7 +404,9 @@ namespace Character
             wallNormal.Normalize();
             return true;
         }
+        /// <summary>Whether the character is hanging from a ledge.</summary>
         public bool IsHanging => phase == Phase.Hanging;
+        /// <summary>Whether the character is climbing up onto a ledge.</summary>
         public bool IsClimbing => phase == Phase.Climbing;
         /// <summary>How far through the climb the character is: 0 at its start, 1 on top.</summary>
         public float ClimbProgress => climbDuration > 0f ? Mathf.Clamp01(climbElapsed / climbDuration) : 0f;

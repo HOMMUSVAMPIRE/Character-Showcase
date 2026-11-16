@@ -22,6 +22,7 @@ namespace CameraSystem
         ShadowsOnly,
     }
 
+    /// <summary>How the aim button turns aiming on and off.</summary>
     public enum AimInputMode
     {
         [Tooltip("Aim while the aim button is held.")]
@@ -30,6 +31,7 @@ namespace CameraSystem
         Toggle,
     }
 
+    /// <summary>Which way the third person camera swings behind the target when it recenters.</summary>
     public enum RecenterHeading
     {
         [Tooltip("Swing behind the direction the target is moving.")]
@@ -40,6 +42,10 @@ namespace CameraSystem
 
     // Each settings group below is drawn as its own foldout in the CameraRig inspector.
 
+    /// <summary>
+    /// Where the camera reads its input from: the PlayerInput or action asset, and the names of the look, zoom, view,
+    /// shoulder and aim actions.
+    /// </summary>
     [Serializable]
     public class CameraInputSettings
     {
@@ -61,6 +67,10 @@ namespace CameraSystem
         public string aimAction = "Aim";
     }
 
+    /// <summary>
+    /// How look input turns the camera: mouse and gamepad sensitivity, the stick's response curve, inversion and
+    /// smoothing.
+    /// </summary>
     [Serializable]
     public class CameraLookSettings
     {
@@ -72,12 +82,17 @@ namespace CameraSystem
         [Range(1f, 4f)] public float gamepadResponseExponent = 1.6f;
         [Tooltip("Ratio of vertical to horizontal sensitivity.")]
         [Range(0.1f, 2f)] public float verticalSensitivityScale = 0.8f;
+        [Tooltip("Reverse horizontal look: moving the mouse or stick right turns the camera left.")]
         public bool invertX = false;
+        [Tooltip("Reverse vertical look: moving the mouse or stick up looks down.")]
         public bool invertY = false;
         [Tooltip("Smooths rotation input over time. 0 disables smoothing (most responsive).")]
         [Range(0f, 0.2f)] public float smoothing = 0f;
     }
 
+    /// <summary>
+    /// Whether the rig locks and hides the cursor during play, and how it is released and locked again.
+    /// </summary>
     [Serializable]
     public class CameraCursorSettings
     {
@@ -91,12 +106,17 @@ namespace CameraSystem
         public bool ignoreMouseWhileUnlocked = true;
     }
 
+    /// <summary>
+    /// Which view modes are allowed, the one the camera starts in, and how it blends between first and third person.
+    /// </summary>
     [Serializable]
     public class CameraModeSettings
     {
         [Tooltip("The view mode the camera starts in.")]
         public CameraMode startMode = CameraMode.ThirdPerson;
+        [Tooltip("Whether the camera can be in first person (toggling and zooming in can reach it). If neither mode is allowed, third person is.")]
         public bool allowFirstPerson = true;
+        [Tooltip("Whether the camera can be in third person. If neither mode is allowed, third person is.")]
         public bool allowThirdPerson = true;
         [Tooltip("Seconds taken to blend between first and third person.")]
         [Min(0f)] public float transitionDuration = 0.35f;
@@ -104,6 +124,10 @@ namespace CameraSystem
         public AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
     }
 
+    /// <summary>
+    /// The first person view: where the eyes sit on the target, the field of view, pitch limits and near clip plane,
+    /// and how the target's own renderers are hidden.
+    /// </summary>
     [Serializable]
     public class FirstPersonSettings
     {
@@ -114,8 +138,11 @@ namespace CameraSystem
         public Transform eyeAnchor;
         [Tooltip("Forward offset of the eyes from the target's origin, so the view isn't from the center of the head.")]
         public float eyeForwardOffset = 0.1f;
+        [Tooltip("Vertical field of view in first person, in degrees.")]
         [Range(20f, 120f)] public float fieldOfView = 75f;
+        [Tooltip("How far up the view can look in first person, in degrees (pitch is negative looking up).")]
         [Range(-89f, 0f)] public float minPitch = -85f;
+        [Tooltip("How far down the view can look in first person, in degrees (pitch is positive looking down).")]
         [Range(0f, 89f)] public float maxPitch = 85f;
         [Tooltip("Near clip plane for a target of normal size (scaled with its size).")]
         [Min(0.01f)] public float nearClipPlane = 0.05f;
@@ -125,6 +152,10 @@ namespace CameraSystem
         [Range(0f, 0.3f)] public float verticalDamping = 0.05f;
     }
 
+    /// <summary>
+    /// The over-the-shoulder third person view: the orbit pivot, shoulder offset and swapping, field of view, pitch
+    /// limits, follow damping, and hiding the target when the camera gets close.
+    /// </summary>
     [Serializable]
     public class ThirdPersonSettings
     {
@@ -138,8 +169,11 @@ namespace CameraSystem
         [Min(0f)] public float shoulderSwapTime = 0.2f;
         [Tooltip("Swap shoulders temporarily when the current side is blocked by a wall and the other is free.")]
         public bool autoSwapWhenBlocked = true;
+        [Tooltip("Vertical field of view in third person, in degrees.")]
         [Range(20f, 120f)] public float fieldOfView = 60f;
+        [Tooltip("How far up the camera can look in third person, in degrees (pitch is negative looking up).")]
         [Range(-89f, 0f)] public float minPitch = -60f;
+        [Tooltip("How far down the camera can look in third person, in degrees (pitch is positive looking down).")]
         [Range(0f, 89f)] public float maxPitch = 75f;
         [Tooltip("Near clip plane for a target of normal size (scaled with its size).")]
         [Min(0.01f)] public float nearClipPlane = 0.1f;
@@ -153,12 +187,20 @@ namespace CameraSystem
         [Min(0f)] public float hideDistance = 0.6f;
     }
 
+    /// <summary>
+    /// Third person zoom: the default, closest and furthest camera distances (m), how fast scrolling and analog input
+    /// zoom, and zooming into first person.
+    /// </summary>
     [Serializable]
     public class CameraZoomSettings
     {
+        [Tooltip("Allow zooming the third person camera in and out.")]
         public bool enabled = true;
+        [Tooltip("The third person distance (m) the camera starts at, for a target of normal size; kept between the min and max distance.")]
         [Min(0.1f)] public float defaultDistance = 3.5f;
+        [Tooltip("The closest the third person camera can be zoomed (m), for a target of normal size.")]
         [Min(0.1f)] public float minDistance = 1.5f;
+        [Tooltip("The furthest the third person camera can be zoomed (m), for a target of normal size.")]
         [Min(0.1f)] public float maxDistance = 8f;
         [Tooltip("Distance zoomed per scroll-wheel notch.")]
         [Min(0f)] public float scrollStep = 0.75f;
@@ -170,10 +212,15 @@ namespace CameraSystem
         public bool zoomIntoFirstPerson = true;
     }
 
+    /// <summary>
+    /// Aiming: how the button works, and the field of view, distance, shoulder offset and look sensitivity while aimed.
+    /// </summary>
     [Serializable]
     public class CameraAimSettings
     {
+        [Tooltip("Allow aiming with the aim button.")]
         public bool enabled = true;
+        [Tooltip("Whether aiming lasts while the button is held, or each press turns it on or off.")]
         public AimInputMode inputMode = AimInputMode.Hold;
         [Tooltip("Field of view while fully aimed (both modes).")]
         [Range(10f, 120f)] public float fieldOfView = 40f;
@@ -187,6 +234,10 @@ namespace CameraSystem
         [Min(0f)] public float blendTime = 0.12f;
     }
 
+    /// <summary>
+    /// Keeping the third person camera out of walls: the sphere swept from the pivot to the camera, the layers it hits,
+    /// and how it eases back out.
+    /// </summary>
     [Serializable]
     public class CameraCollisionSettings
     {
@@ -200,9 +251,14 @@ namespace CameraSystem
         [Min(0f)] public float minDistance = 0.25f;
         [Tooltip("Seconds to ease back out once an obstacle is gone. Pulling in is always instant to avoid clipping.")]
         [Range(0f, 1f)] public float returnSmoothTime = 0.25f;
+        [Tooltip("Whether trigger colliders block the camera.")]
         public QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
     }
 
+    /// <summary>
+    /// How the camera follows the target's position: interpolation between physics steps, teleport detection, and how
+    /// far smoothing may let it lag behind.
+    /// </summary>
     [Serializable]
     public class CameraFollowSettings
     {
@@ -219,6 +275,7 @@ namespace CameraSystem
         [Min(0f)] public float maxVerticalLag = 0.5f;
     }
 
+    /// <summary>Widening the field of view as the target moves faster.</summary>
     [Serializable]
     public class SpeedFovSettings
     {
@@ -230,9 +287,13 @@ namespace CameraSystem
         [Min(0f)] public float maxSpeed = 10f;
         [Tooltip("Degrees of field of view added at full strength.")]
         [Range(0f, 30f)] public float extraFov = 8f;
+        [Tooltip("Seconds to smooth changes to the field of view, so it eases wider and back rather than jumping.")]
         [Range(0f, 1f)] public float smoothTime = 0.3f;
     }
 
+    /// <summary>
+    /// Bobbing the view while the target walks on the ground, in first person and optionally in third.
+    /// </summary>
     [Serializable]
     public class HeadBobSettings
     {
@@ -248,9 +309,11 @@ namespace CameraSystem
         [Range(0f, 0.5f)] public float fadeTime = 0.15f;
         [Tooltip("Also apply a gentler bob in third person.")]
         public bool applyInThirdPerson = false;
+        [Tooltip("The share of the first person bob applied in third person, if third person bob is on.")]
         [Range(0f, 1f)] public float thirdPersonScale = 0.3f;
     }
 
+    /// <summary>The dip and spring back when the target lands from a fall, and the shake it adds.</summary>
     [Serializable]
     public class LandingSettings
     {
@@ -260,6 +323,7 @@ namespace CameraSystem
         [Min(0f)] public float minImpactSpeed = 4f;
         [Tooltip("Meters of dip per m/s of impact speed above the minimum.")]
         [Min(0f)] public float dipPerSpeed = 0.025f;
+        [Tooltip("The deepest a landing can dip the camera (m), for a target of normal size, however hard the landing.")]
         [Min(0f)] public float maxDip = 0.35f;
         [Tooltip("Spring stiffness pulling the camera back up after a landing.")]
         [Min(1f)] public float springStiffness = 140f;
@@ -269,6 +333,7 @@ namespace CameraSystem
         [Min(0f)] public float traumaPerSpeed = 0.02f;
     }
 
+    /// <summary>Trauma-based camera shake: how fast trauma decays and how far it moves and turns the camera.</summary>
     [Serializable]
     public class CameraShakeSettings
     {
@@ -287,11 +352,13 @@ namespace CameraSystem
         [Min(0f)] public float frequency = 22f;
     }
 
+    /// <summary>Swinging the third person camera back behind the target after a while without look input.</summary>
     [Serializable]
     public class RecenterSettings
     {
         [Tooltip("Automatically swing the third person camera behind the target after a period without look input.")]
         public bool enabled = false;
+        [Tooltip("What the camera swings behind: the direction the target is moving, or the way it faces.")]
         public RecenterHeading heading = RecenterHeading.MovementDirection;
         [Tooltip("Seconds without look input before recentering starts.")]
         [Min(0f)] public float delay = 1.5f;
@@ -301,9 +368,11 @@ namespace CameraSystem
         [Min(0f)] public float minTargetSpeed = 1f;
         [Tooltip("Also ease the pitch to the resting pitch below.")]
         public bool recenterPitch = false;
+        [Tooltip("The pitch (degrees, positive looking down) recentering eases to, if it eases the pitch.")]
         [Range(-60f, 60f)] public float restingPitch = 10f;
     }
 
+    /// <summary>Scene view gizmos for the rig's pivot, shoulder point and collision probe.</summary>
     [Serializable]
     public class CameraDebugSettings
     {

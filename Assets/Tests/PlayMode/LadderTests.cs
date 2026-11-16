@@ -16,35 +16,22 @@ namespace CharacterShowcase.Tests
     /// further, while one against a platform is climbed off onto it; and Jump kicks off it. The test camera looks down +Z,
     /// so up on the stick is +Z input. Expected values are read from the movement mode's settings.
     /// </summary>
-    public class LadderTests
+    [Category(TestArea.Traversal)]
+    public class LadderTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
         private Ladder ladder;
         // The ladder's front face (z), toward the character.
         private float face;
 
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
-
-        private float ClimbSpeed => rig.Component<WallClimbing>().WallClimbSpeed * rig.Movement.SpeedScale;
         private bool Climbing => rig.InState(CharacterState.WallClimbing);
         private bool OnLadder => Climbing && rig.Movement.wallClimb.ladder != null;
-        private float GripHeight => rig.MovementSetting<float>("wallClimbGripHeight") * rig.StandingHeight;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
         private static Inputs Up => CharacterTestRig.Move(Vector3.forward);
 
         /// <summary>A floor, the character standing on it facing +Z, and a ladder of the given height a little in front of it, offset to its side.</summary>
         private IEnumerator SetUpLadder(float height = 6f, float sideways = 0.15f)
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(Vector3.zero);
+            yield return rig.StandOnFloor();
             face = rig.Radius + 0.3f;
             ladder = rig.Ladder(new Vector3(sideways, 0f, face + 0.03f), height);
         }
@@ -52,9 +39,9 @@ namespace CharacterShowcase.Tests
         /// <summary>Walks into the ladder until on it, and waits out stepping onto it.</summary>
         private IEnumerator TakeHold()
         {
-            for (int step = 0; step < CharacterTestRig.StepsFor(0.5f) && !Climbing; step++) { yield return rig.Run(1, _ => Up); }
+            yield return rig.RunUntil(() => Climbing, _ => Up, timeoutSeconds: 0.5f);
             Assert.That(OnLadder, Is.True, $"Test setup: the character should be on the ladder (it's at {rig.Position}).");
-            for (int step = 0; step < CharacterTestRig.StepsFor(1f) && rig.Movement.wallClimb.IsEntering; step++) { yield return rig.Run(1, _ => Up); }
+            yield return rig.RunUntil(() => !rig.Movement.wallClimb.IsEntering, _ => Up, timeoutSeconds: 1f);
         }
 
         [UnityTest]
@@ -66,7 +53,7 @@ namespace CharacterShowcase.Tests
             const float seconds = 1f;
             yield return rig.Run(seconds, _ => Up);
             Assert.That(OnLadder, Is.True);
-            Assert.That(rig.Position.y - start, Is.EqualTo(ClimbSpeed * seconds).Within(0.1f * ClimbSpeed * seconds), "Up should climb the ladder at the climbing speed.");
+            Assert.That(rig.Position.y - start, Is.EqualTo(rig.ClimbSpeed * seconds).Within(0.1f * rig.ClimbSpeed * seconds), "Up should climb the ladder at the climbing speed.");
             Assert.That(rig.Position.x, Is.EqualTo(ladder.transform.position.x).Within(0.02f), "The character should climb on the ladder's middle.");
             Assert.That(face - (rig.Position.z + rig.Radius), Is.InRange(-0.01f, 0.08f), "The character should be against the ladder.");
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(1f), "The character should face the ladder.");
@@ -87,8 +74,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator ALadder_IsNotTakenHoldOfFromBehind()
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(Vector3.zero);
+            yield return rig.StandOnFloor();
             face = rig.Radius + 0.3f;
             // Facing +Z: the character comes at its back.
             rig.Ladder(new Vector3(0f, 0f, face + 0.03f), 6f, Quaternion.identity);
@@ -103,10 +89,10 @@ namespace CharacterShowcase.Tests
             const float height = 4f;
             yield return SetUpLadder(height);
             yield return TakeHold();
-            yield return rig.Run(height / ClimbSpeed + 1.5f, _ => Up);
+            yield return rig.Run(height / rig.ClimbSpeed + 1.5f, _ => Up);
             Assert.That(OnLadder, Is.True, "The character should still be on the ladder at its top, with nothing to climb off onto.");
-            Assert.That(rig.Position.y + GripHeight, Is.LessThanOrEqualTo(height + 0.05f), "The character shouldn't climb past the ladder's top.");
-            Assert.That(rig.Position.y + GripHeight, Is.GreaterThan(height - 0.3f), "The character should have climbed to the ladder's top.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.LessThanOrEqualTo(height + 0.05f), "The character shouldn't climb past the ladder's top.");
+            Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.GreaterThan(height - 0.3f), "The character should have climbed to the ladder's top.");
         }
 
         // Of all heights: the climb off the top once missed the floor there by float rounding at some heights (3, 8, 10
@@ -118,7 +104,7 @@ namespace CharacterShowcase.Tests
             // A platform behind the ladder, its top level with the ladder's (deep, so walking on doesn't walk off it).
             rig.Box("Platform", new Vector3(0f, height / 2f, face + 0.06f + 15f), new Vector3(6f, height, 30f));
             yield return TakeHold();
-            yield return rig.Run(height / ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 1f, _ => Up);
+            yield return rig.Run(height / rig.ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 1f, _ => Up);
             Assert.That(Climbing, Is.False, "The character should have climbed off the ladder.");
             Assert.That(rig.Grounded, Is.True, "The character should be standing on the platform.");
             Assert.That(rig.Position.y, Is.EqualTo(height).Within(0.05f), "The character should be on top of the platform.");
@@ -131,8 +117,8 @@ namespace CharacterShowcase.Tests
             yield return SetUpLadder();
             yield return TakeHold();
             yield return rig.Run(0.6f, _ => Up);
-            var events = new List<MovementEvents>();
-            rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
             Assert.That(Climbing, Is.False);
             Assert.That(rig.Position.z + rig.Radius, Is.LessThan(face - 0.5f), "Jumping off should push the character away from the ladder.");

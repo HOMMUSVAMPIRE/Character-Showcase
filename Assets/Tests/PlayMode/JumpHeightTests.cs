@@ -12,19 +12,9 @@ namespace CharacterShowcase.Tests
     /// follow the settings (so retuning them retunes the jump), and a max height of 0 turns jumping off. Heights are read
     /// from the movement mode's settings.
     /// </summary>
-    public class JumpHeightTests
+    [Category(TestArea.Movement)]
+    public class JumpHeightTests : CharacterRigFixture
     {
-        private CharacterTestRig rig;
-
-        [SetUp]
-        public void SetUp() => rig = new CharacterTestRig();
-
-        [UnityTearDown]
-        public IEnumerator TearDown()
-        {
-            rig.Dispose();
-            yield return null;
-        }
 
         private float MinHeight => rig.MovementSetting<float>("minJumpHeight") * rig.Movement.HeightScale;
         private float MaxHeight => rig.MovementSetting<float>("maxJumpHeight") * rig.Movement.HeightScale;
@@ -45,8 +35,7 @@ namespace CharacterShowcase.Tests
 
         private IEnumerator OnTheFloor()
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(Vector3.zero);
+            yield return rig.StandOnFloor();
         }
 
         [UnityTest]
