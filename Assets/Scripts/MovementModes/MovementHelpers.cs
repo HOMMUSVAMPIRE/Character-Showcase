@@ -25,13 +25,36 @@ namespace Character
         }
 
         /// <summary>
+        /// How many jumps the character gets before landing again: its movement mode's Jumping's Max Jumps, or none if it
+        /// has no Jumping turned on.
+        /// </summary>
+        public static int MaxJumps(MovementController controller) =>
+            controller.movementHandler is ComposedMovementMode mode && mode.Get<Jumping>() is { } jumping ? jumping.MaxJumps : 0;
+
+        /// <summary>Gives back all of the character's jumps (see MaxJumps), as touching the ground does.</summary>
+        public static void GiveBackJumps(MovementController controller) => controller.jump.remaining = MaxJumps(controller);
+
+        /// <summary>
+        /// Uses up one of the character's jumps, if it has one left, returning whether it did (and noting when, for
+        /// MovementController.HasJumpedSinceGrounded). Jumps off walls, ropes and ziplines use one up too.
+        /// </summary>
+        public static bool TryUseJump(MovementController controller)
+        {
+            JumpState jump = controller.jump;
+            if (jump.remaining <= 0) { return false; }
+            jump.remaining--;
+            jump.lastJumpTime = controller.StepTime;
+            return true;
+        }
+
+        /// <summary>
         /// Gives back the character's jumps and air dashes, as touching the ground does. For the abilities that count as
         /// touching it (starting a wall run, taking hold of a climbable surface, a ledge, a rope or a zipline, vaulting), and
         /// for a kick off a wall slid down that gives them back (off a different wall from the last one jumped off).
         /// </summary>
         public static void GiveBackAirMoves(MovementController controller)
         {
-            controller.ResetJumps();
+            GiveBackJumps(controller);
             controller.dash.airDashesUsed = 0;
         }
 
@@ -130,5 +153,18 @@ namespace Character
             }
             return (p1 + d1 * s - (p2 + d2 * t)).sqrMagnitude;
         }
+    }
+
+    /// <summary>
+    /// Air steering coming back after a jump off a wall (a wall run or a wall slide), and the last wall jumped off since
+    /// landing (a kick off a wall slid down gives back air jumps only off a different one).
+    /// </summary>
+    public class WallJumpState
+    {
+        public bool recovering;
+        // Seconds since the jump
+        public float elapsed;
+        public Vector3 lastWallNormal;
+        public bool hasLastWall;
     }
 }

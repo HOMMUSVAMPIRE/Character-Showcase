@@ -142,7 +142,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should still be in the air.");
             Assert.That(Count(MovementEvents.Jumped), Is.EqualTo(1), "The first jump should be from the ground.");
             Assert.That(Count(MovementEvents.AirJumped), Is.EqualTo(maxJumps - 1), $"{presses} presses should give exactly {maxJumps} jumps.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(0));
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(0));
         }
 
         // ---- Gravity ----

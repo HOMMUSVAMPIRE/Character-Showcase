@@ -6,18 +6,15 @@ namespace Character
     // Capabilities: what this movement lets a character do, measured by running it (see MovementController.Capabilities).
     public partial class BasicMovementMode
     {
-        // How far (m) each binary search for a height narrows down to, and how long (s) a measurement may run at most.
+        // How far (m) each binary search for a height narrows down to.
         private const float MeasureHeightPrecision = 0.01f;
-        private const float MeasureTimeout = 8f;
-        // How long (s) the character runs up before a jump is measured: long enough to be at full speed.
-        private const float MeasureRunUp = 0.8f;
 
         /// <summary>
-        /// Measures the jumps (plain, sprinting, with an air dash, and double jumps if there are air jumps), the climbs
-        /// (stepping up, jumping up, jumping to a ledge, and double-jump versions), and how far a slide, a roll and a wall
-        /// run carry the character, by running each in the simulation (searching for the best timing where a move has a
-        /// choice of when to dash or jump again). Heights that are exact by construction (the jump heights, the crouch
-        /// height) come from the settings.
+        /// Measures the jumps (plain, sprinting, with an air dash, and double jumps if there are air jumps) and the climbs
+        /// (stepping up, jumping up, jumping to a ledge, and double-jump versions), which combine several components, by
+        /// running each in the simulation (searching for the best timing where a move has a choice of when to dash or jump
+        /// again); the jump heights, exact by construction, come from the settings. Then each component measures its own
+        /// (see MovementComponent.MeasureCapabilities: Crouching, Rolling and Wall Running).
         /// </summary>
         public override void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
         {
@@ -29,9 +26,6 @@ namespace Character
             Dashing dashing = Get<Dashing>();
             capabilities.MinJumpHeight = maxJumpHeight > 0f ? Mathf.Min(minJumpHeight, maxJumpHeight) * heightScale : float.NaN;
             capabilities.MaxJumpHeight = maxJumpHeight > 0f ? maxJumpHeight * heightScale : float.NaN;
-            // How low the character gets: crouched (NaN if it can't crouch).
-            Crouching crouching = Get<Crouching>();
-            capabilities.CrouchHeight = crouching != null ? crouching.CrouchHeight * capabilities.StandHeight : float.NaN;
 
             bool canJump = maxJumpHeight > 0f && maxJumps > 0;
             bool canDash = dashing is { DashDuration: > 0f, MaxAirDashes: > 0 };
@@ -94,17 +88,7 @@ namespace Character
                 }
             }
 
-            // ---- Abilities' reach ----
-            capabilities.SlideLength = crouching is { SlidingEnabled: true, SlideMaxDuration: > 0f } ? SlideLength(simulation) : float.NaN;
-            capabilities.RollLength = Get<Rolling>() is { RollDuration: > 0f } ? RollLength(simulation) : float.NaN;
-            if (Get<WallRunning>() is { WallRunMaxDuration: > 0f } && canJump)
-            {
-                (float length, float drop) = WallRun(simulation);
-                capabilities.WallRunLength = length;
-                capabilities.WallRunDrop = drop;
-            }
-
-            // ---- The components' ----
+            // ---- Each ability's own (the crouch height, how far a slide, a roll and a wall run carry the character) ----
             base.MeasureCapabilities(simulation, capabilities);
         }
 
@@ -147,11 +131,11 @@ namespace Character
         {
             airtime = 0;
             simulation.Reset(Vector3.zero);
-            simulation.Run(MovementSimulation.StepsFor(MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, sprint));
+            simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, sprint));
             if (!simulation.Grounded) { return float.NaN; }
             float start = simulation.Position.z;
             bool left = false;
-            for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
             {
                 Inputs inputs = MovementSimulation.Move(Vector3.forward, sprint);
                 // Jump held from the first step; let go for a step before a second press, then held again.
@@ -200,7 +184,7 @@ namespace Character
             bool airborne = false;
             // Hanging from the top's edge, Jump is let go of for a step and pressed again, to climb up.
             int climbPressAt = -1;
-            for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
             {
                 Inputs inputs = MovementSimulation.Move(Vector3.forward, sprint);
                 inputs.jump = secondJumpAt < 0 || i < secondJumpAt - 1 ? MovementSimulation.Held(i)
@@ -219,112 +203,5 @@ namespace Character
             return false;
         }
 
-        /// <summary>How far (m) a slide from a sprint carries the character, from where it starts to where it ends.</summary>
-        private float SlideLength(MovementSimulation simulation)
-        {
-            simulation.Reset(Vector3.zero);
-            simulation.Run(MovementSimulation.StepsFor(MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, true));
-            float start = float.NaN;
-            for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
-            {
-                float before = simulation.Position.z;
-                Inputs inputs = MovementSimulation.Move(Vector3.forward, true);
-                inputs.crouch = MovementSimulation.Held(i);
-                simulation.Step(inputs);
-                bool sliding = (simulation.State & CharacterState.Sliding) != 0;
-                if (sliding && float.IsNaN(start)) { start = before; }
-                if (!sliding && !float.IsNaN(start)) { return simulation.Position.z - start; }
-            }
-            return float.NaN;
-        }
-
-        /// <summary>How far (m) a roll carries the character, from where it starts to where it ends.</summary>
-        private float RollLength(MovementSimulation simulation)
-        {
-            simulation.Reset(Vector3.zero);
-            simulation.Run(MovementSimulation.StepsFor(MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward));
-            float start = float.NaN;
-            for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
-            {
-                float before = simulation.Position.z;
-                Inputs inputs = MovementSimulation.Move(Vector3.forward);
-                inputs.roll = MovementSimulation.Held(i);
-                simulation.Step(inputs);
-                bool rolling = (simulation.State & CharacterState.Rolling) != 0;
-                if (rolling && float.IsNaN(start)) { start = before; }
-                if (!rolling && !float.IsNaN(start)) { return simulation.Position.z - start; }
-            }
-            return float.NaN;
-        }
-
-        /// <summary>
-        /// How far (m) along a wall a full wall run carries the character, and how far (m) it falls over one: sprinting
-        /// along a long wall and jumping, steering into it, from a few distances out from it and steering at a few angles,
-        /// so it meets the wall at different points of the jump. The length is the longest run; the drop is the largest
-        /// fall, which is a run's started falling or level (a fall is caught as a run starts and it then sinks slowly;
-        /// one started rising carries on up for a while). NaN if no way starts one.
-        /// </summary>
-        private (float length, float drop) WallRun(MovementSimulation simulation)
-        {
-            float length = float.NaN, drop = float.NaN;
-            foreach (float outFromWall in new[] { 0.1f, 1f, 2f, 3f })
-            {
-                foreach (float steer in new[] { 10f, 20f, 30f })
-                {
-                    simulation.ClearObstacles();
-                    simulation.Reset(Vector3.zero);
-                    float face = simulation.Controller.Radius + outFromWall;
-                    simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
-                    Vector3 input = Quaternion.Euler(0f, steer, 0f) * Vector3.forward;
-                    simulation.Run(MovementSimulation.StepsFor(MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, true));
-                    float startZ = float.NaN, startY = float.NaN;
-                    for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
-                    {
-                        Vector3 before = simulation.Position;
-                        Inputs inputs = MovementSimulation.Move(input, true);
-                        inputs.jump = MovementSimulation.Held(i);
-                        simulation.Step(inputs);
-                        bool running = (simulation.State & CharacterState.WallRunning) != 0;
-                        if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
-                        if (!running && !float.IsNaN(startZ))
-                        {
-                            float run = simulation.Position.z - startZ, fall = startY - simulation.Position.y;
-                            if (float.IsNaN(length) || run > length) { length = run; }
-                            if (float.IsNaN(drop) || fall > drop) { drop = fall; }
-                            break;
-                        }
-                        if (simulation.Grounded && i > 2) { break; }
-                    }
-                }
-            }
-            // And one started level: in mid-air beside the wall, well above the ground, moving along it at the run speed.
-            // A run started level (or falling: a fall is caught) sinks the furthest: its drop is the run's.
-            {
-                simulation.ClearObstacles();
-                simulation.Reset(new Vector3(0f, 4f * simulation.Controller.StandingHeight, 0f));
-                float face = simulation.Controller.Radius + 0.1f;
-                simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
-                simulation.Controller.OverrideVelocity(Vector3.forward * (SettingsOf<WalkingAndRunning>().RunSpeed * simulation.Controller.SpeedScale));
-                Vector3 input = Quaternion.Euler(0f, 10f, 0f) * Vector3.forward;
-                float startZ = float.NaN, startY = float.NaN;
-                for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)
-                {
-                    Vector3 before = simulation.Position;
-                    simulation.Step(MovementSimulation.Move(input, true));
-                    bool running = (simulation.State & CharacterState.WallRunning) != 0;
-                    if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
-                    if (!running && !float.IsNaN(startZ))
-                    {
-                        float run = simulation.Position.z - startZ, fall = startY - simulation.Position.y;
-                        if (float.IsNaN(length) || run > length) { length = run; }
-                        if (float.IsNaN(drop) || fall > drop) { drop = fall; }
-                        break;
-                    }
-                    if (simulation.Grounded) { break; }
-                }
-            }
-            simulation.ClearObstacles();
-            return (length, drop);
-        }
     }
 }

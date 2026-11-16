@@ -83,10 +83,10 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jumpPressConsumed = true;
+                    controller.jump.pressConsumed = true;
                     LetGoOfZipline(controller);
-                    controller.ResetJumps();
-                    controller.TryUseJump();
+                    MovementHelpers.GiveBackJumps(controller);
+                    MovementHelpers.TryUseJump(controller);
                     movementData.velocityOverride = direction * ride.speed + Vector3.up * (ziplineJumpUpSpeed * controller.SpeedScale);
                     movementData.directMovementVector = Vector3.zero;
                     movementData.events |= MovementEvents.Jumped;
@@ -144,7 +144,7 @@ namespace Character
         {
             ZiplineState ride = controller.zipline;
             if (ziplineGrabReach <= 0f || movementData.initialGrounded
-                || Mode.AbilityInProgress(controller, exceptWallSlide: true, exceptDash: true)) { return false; }
+                || Mode.AbilityInProgressExcept<WallSliding, Dashing>(controller)) { return false; }
 
             float dt = movementData.deltaTime;
             float hangHeight = ziplineHangHeight * controller.StandingHeight;
@@ -188,6 +188,40 @@ namespace Character
             ride.lastLine = ride.line;
             ride.line = null;
             ride.regrabCooldown = ziplineRegrabDelay;
+        }
+    }
+
+    /// <summary>
+    /// A zipline being ridden, and the delay before the last one let go of can be caught again. The character hangs from
+    /// a point on the cable, the given distance along it from its start, moving along it at speed (m/s, positive toward
+    /// its end).
+    /// </summary>
+    public class ZiplineState
+    {
+        // The zipline ridden (null when not riding one)
+        public Level.Zipline line;
+        public float along;
+        public float speed;
+        // Seconds since catching hold
+        public float elapsed;
+        // The zipline last let go of, and seconds until it can be caught again
+        public Level.Zipline lastLine;
+        public float regrabCooldown;
+
+        public bool IsRiding => line != null;
+
+        /// <summary>
+        /// Where the hands hold the cable for a character whose feet are at feet (its rendered pose: the cable doesn't
+        /// move, but the character's rendered position lags its physics one): the point straight above them. And the way
+        /// it's riding along the cable (unit length). False when not riding.
+        /// </summary>
+        public bool TryGetGrip(Vector3 feet, out Vector3 point, out Vector3 travel)
+        {
+            point = travel = Vector3.zero;
+            if (line == null) { return false; }
+            point = line.PointAbove(feet);
+            travel = line.Direction * (speed < 0f ? -1f : 1f);
+            return true;
         }
     }
 }

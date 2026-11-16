@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static Character.CharacterUtilities;
-using static Character.MovementHelpers;
 
 namespace Character
 {
@@ -23,7 +21,7 @@ namespace Character
         public override bool IsNewJumpPress(Inputs inputs, MovementController controller)
         {
             return inputs.jump != null && inputs.jump.value && inputs.jump.holdDuration <= SettingsOf<Jumping>().JumpInputBuffer
-                   && !controller.jumpPressConsumed;
+                   && !controller.jump.pressConsumed;
         }
 
         /// <summary>
@@ -85,7 +83,7 @@ namespace Character
         {
             // A released jump button frees the next press to start a jump (checked here, before the dash and the other
             // abilities, which can skip jump processing while they last)
-            if (inputs.jump == null || !inputs.jump.value) { controller.jumpPressConsumed = false; }
+            if (inputs.jump == null || !inputs.jump.value) { controller.jump.pressConsumed = false; }
             AdvanceAbilityTimers(ref movementData, inputs, controller);
             AdvanceComponentTimers(ref movementData, inputs, controller);
 

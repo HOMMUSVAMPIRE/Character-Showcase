@@ -65,7 +65,7 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.That(mode, Is.Not.Null, $"There's no movement mode made of components at {ModeAssetPath}.");
             Assert.That(mode.Components, Has.None.Null, "A component's type is missing (renamed or deleted?).");
             Assert.That(mode.Components.Select(c => c.GetType()), Is.Unique, "A mode should have one of each component.");
-            Assert.That(mode.Components.Count, Is.GreaterThan(0), "The asset has no components: was it migrated (Move Settings Into Components)?");
+            Assert.That(mode.Components.Count, Is.GreaterThan(0), "The asset has no components.");
         }
 
         [Test]

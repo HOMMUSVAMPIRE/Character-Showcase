@@ -107,7 +107,7 @@ namespace CharacterShowcase.Tests
             Assert.That(-velocity.x, Is.EqualTo(away).Within(0.1f * away), "A wall jump should push away from the wall.");
             Assert.That(velocity.y, Is.EqualTo(up).Within(0.1f * up), "A wall jump should launch upward.");
             Assert.That(velocity.z, Is.GreaterThan(0.5f * WallRunSpeed), "A wall jump should keep the run's speed along the wall.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps - 1), "A wall jump should give back the character's jumps, less itself.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps - 1), "A wall jump should give back the character's jumps, less itself.");
             Assert.That(events.Count(e => e == MovementEvents.WallJumped), Is.EqualTo(1));
             Assert.That(events.Count(e => e == MovementEvents.WallRunEnded), Is.EqualTo(1));
         }
@@ -265,7 +265,7 @@ namespace CharacterShowcase.Tests
             Assert.That(dashesUsed, Is.EqualTo(1), "Test setup: the character should have used an air dash.");
             Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
             Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "A wall run should give back the character's air dashes.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps), "A wall run should give back the character's jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps), "A wall run should give back the character's jumps.");
 
             // Dropping off the wall, the character can dash again in mid-air.
             yield return rig.Run(1, _ => CharacterTestRig.Crouch(0, Vector3.forward));

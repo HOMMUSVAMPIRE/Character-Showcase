@@ -22,6 +22,11 @@ namespace Character
         private static readonly Vector3 WorldOrigin = new(0f, -2000f, 0f);
         private const float FloorSize = 1000f;
 
+        /// <summary>How long (s) a measured move may run at most, before it's given up on.</summary>
+        public const float MeasureTimeout = 8f;
+        /// <summary>How long (s) the character runs up before a move is measured: long enough to be at full speed.</summary>
+        public const float MeasureRunUp = 0.8f;
+
         private readonly MovementController source;
         private readonly float? baseRadius, baseHeight;
         private readonly GameObject root;

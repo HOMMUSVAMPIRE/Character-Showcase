@@ -7,7 +7,7 @@ namespace Character
     /// One part of a character's movement (an ability such as riding ziplines), in a ComposedMovementMode's list of
     /// components: it holds its own settings, and the mode calls it at each point of a physics step. A component keeps no
     /// per-character state of its own (modes are shared assets: that's on the MovementController, see
-    /// MovementAbilityStates.cs), and asks its mode for what the rest of the movement knows (gravity, the jump press, other
+    /// the state classes beside each component), and asks its mode for what the rest of the movement knows (gravity, the jump press, other
     /// abilities in progress). Turned off (Enabled), or removed from the list, the movement goes on as if it weren't
     /// there. A mode has one component of each type; another mode type reuses the same components by listing them.
     /// </summary>

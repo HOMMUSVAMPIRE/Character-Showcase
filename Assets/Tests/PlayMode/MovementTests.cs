@@ -195,7 +195,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(CharacterTestRig.StepsFor(rig.MovementSetting<float>("coyoteTime")), _ => CharacterTestRig.Idle());
 
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should be in the air.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(maxJumps - 1), "The jump just used should stay used.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(maxJumps - 1), "The jump just used should stay used.");
         }
 
         [UnityTest]
@@ -213,7 +213,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(rig.SecondsToWalk(0.8f, 0.3f), _ => CharacterTestRig.Move(Vector3.forward), _ =>
             {
                 if (rig.Grounded) { return; }
-                if (++airborneSteps == 2) { jumpsShortlyAfterLeaving = rig.Movement.jumpsRemaining; }
+                if (++airborneSteps == 2) { jumpsShortlyAfterLeaving = rig.Movement.jump.remaining; }
             });
 
             Assert.That(jumpsShortlyAfterLeaving, Is.EqualTo(maxJumps), "Walking off a ledge should keep every jump.");

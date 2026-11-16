@@ -47,13 +47,13 @@ namespace CharacterShowcase.Tests
             {
                 highest = Mathf.Max(highest, rig.Position.y);
                 if (rig.Position.y > headroom - 0.03f) { stepsAtCeiling++; }
-                fewestJumps = Mathf.Min(fewestJumps, rig.Movement.jumpsRemaining);
+                fewestJumps = Mathf.Min(fewestJumps, rig.Movement.jump.remaining);
             });
 
             Assert.That(highest, Is.LessThanOrEqualTo(headroom + 0.01f), "Character pushed into the ceiling.");
             Assert.That(highest, Is.GreaterThan(headroom - 0.05f), "Jump should reach the ceiling.");
             Assert.That(stepsAtCeiling, Is.LessThanOrEqualTo(3), "Character stuck to the ceiling instead of falling away from it.");
-            Assert.That(fewestJumps, Is.EqualTo(rig.Movement.maxJumps - 1),
+            Assert.That(fewestJumps, Is.EqualTo(rig.MaxJumps - 1),
                 "The press that bumped the ceiling started another jump (it should only ever start one).");
         }
 

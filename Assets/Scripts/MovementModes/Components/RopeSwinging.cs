@@ -81,11 +81,11 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jumpPressConsumed = true;
+                    controller.jump.pressConsumed = true;
                     Vector3 launch = swing.velocity + Vector3.up * (ropeJumpUpSpeed * controller.SpeedScale);
                     LetGoOfRope(controller);
-                    controller.ResetJumps();
-                    controller.TryUseJump();
+                    MovementHelpers.GiveBackJumps(controller);
+                    MovementHelpers.TryUseJump(controller);
                     movementData.velocityOverride = launch;
                     movementData.directMovementVector = Vector3.zero;
                     movementData.events |= MovementEvents.Jumped;
@@ -161,7 +161,7 @@ namespace Character
         {
             RopeSwingState swing = controller.ropeSwing;
             if (ropeGrabReach <= 0f || movementData.initialGrounded
-                || Mode.AbilityInProgress(controller, exceptWallSlide: true, exceptDash: true)) { return false; }
+                || Mode.AbilityInProgressExcept<WallSliding, Dashing>(controller)) { return false; }
 
             float dt = movementData.deltaTime;
             Vector3 grip = movementData.initialPosition + Vector3.up * (ropeGripHeight * controller.StandingHeight);
@@ -217,6 +217,43 @@ namespace Character
             swing.lastRope = swing.rope;
             swing.rope = null;
             swing.regrabCooldown = ropeRegrabDelay;
+        }
+    }
+
+    /// <summary>
+    /// A rope being swung on, and the delay before the last rope let go of can be caught again. The swing is a pendulum
+    /// about the rope's anchor: the character's grip (where its hands hold the rope) stays the grip distance from it.
+    /// </summary>
+    public class RopeSwingState
+    {
+        // The rope held (null when not swinging)
+        public Level.Rope rope;
+        // How far (m) down the rope from its anchor the hands hold it
+        public float gripDistance;
+        // Where the grip is, from the anchor (gripDistance long), and how fast it's moving (m/s, across the rope)
+        public Vector3 offset;
+        public Vector3 velocity;
+        // Seconds since catching hold
+        public float elapsed;
+        // The rope last let go of, and seconds until it can be caught again (others can be caught at once, so the
+        // character can swing from rope to rope)
+        public Level.Rope lastRope;
+        public float regrabCooldown;
+
+        public bool IsSwinging => rope != null;
+
+        /// <summary>
+        /// Where the hands hold the rope now, and the way up the rope from there (unit length), from the rope's rendered
+        /// pose: for placing the hands on it. False when not swinging.
+        /// </summary>
+        public bool TryGetGrip(out Vector3 point, out Vector3 upTheRope)
+        {
+            point = upTheRope = Vector3.zero;
+            if (rope == null) { return false; }
+            Vector3 down = rope.RenderDirection;
+            point = rope.Anchor + down * gripDistance;
+            upTheRope = -down;
+            return true;
         }
     }
 }

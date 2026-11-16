@@ -311,9 +311,9 @@ namespace CharacterShowcase.Tests
         public IEnumerator AnAirJumpJustBeforeLanding_StartsTheFallAgain_SoTheLandingDoesNotRoll()
         {
             yield return SpawnAbove(1.5f);
-            if (rig.Movement.maxJumps < 1) { Assert.Ignore("The character has no jumps."); }
+            if (rig.MaxJumps < 1) { Assert.Ignore("The character has no jumps."); }
             yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
-            rig.Movement.jumpsRemaining = rig.Movement.maxJumps; // Never on the ground yet: as if it had walked off a ledge.
+            rig.Movement.jump.remaining = rig.MaxJumps; // Never on the ground yet: as if it had walked off a ledge.
             var events = new System.Collections.Generic.List<MovementEvents>();
             rig.Movement.MovementEventRaised += (e, _) => events.Add(e);
             bool rolled = false;

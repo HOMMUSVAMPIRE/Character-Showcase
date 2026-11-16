@@ -29,9 +29,9 @@ All of the runtime code is in the Assets/Scripts folder:
 
 The editor tools that generate the character, its animations and the levels are in Assets/Editor, and the tests in Assets/Tests.
 
-If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/Scripts/MovementModes/BasicMovementMode.cs and its ability files
+If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/Scripts/Character/MovementController.cs and the movement components in Assets/Scripts/MovementModes/Components
 
-If you intend to get a full understanding of the project, start with Character/ACCharacterController.cs, then go through Character/MovementController.cs, MovementModes/MovementMode.cs, and MovementModes/BasicMovementMode.cs and from there, read through anything you like.
+If you intend to get a full understanding of the project, start with Character/ACCharacterController.cs, then go through Character/MovementController.cs, MovementModes/ComposedMovementMode.cs and MovementComponent.cs, and MovementModes/BasicMovementMode.cs and its components, and from there, read through anything you like.
 
 ## Controls
 | Action | Keyboard & Mouse | Gamepad |

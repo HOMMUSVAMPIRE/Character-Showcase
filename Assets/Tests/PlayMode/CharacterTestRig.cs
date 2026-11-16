@@ -101,6 +101,8 @@ namespace CharacterShowcase.Tests
         public float WalkSpeed => Component<WalkingAndRunning>().WalkSpeed * Movement.SpeedScale;
         /// <summary>The character's sprinting speed (its run speed) at its current size.</summary>
         public float RunSpeed => Component<WalkingAndRunning>().RunSpeed * Movement.SpeedScale;
+        /// <summary>How many jumps the character gets before landing (its Jumping's Max Jumps; 0 with Jumping turned off).</summary>
+        public int MaxJumps => MovementHelpers.MaxJumps(Movement);
         /// <summary>Seconds to walk the given distance at full stick, plus a margin for speeding up and settling.</summary>
         public float SecondsToWalk(float metres, float margin = 0.5f) => metres / WalkSpeed + margin;
 

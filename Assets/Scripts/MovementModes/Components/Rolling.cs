@@ -168,5 +168,54 @@ namespace Character
             controller.roll.timeRemaining = 0f;
             controller.roll.cooldownRemaining = rollCooldown;
         }
+
+        /// <summary>How far a roll carries the character, if it rolls.</summary>
+        public override void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
+        {
+            if (rollDuration > 0f) { capabilities.RollLength = RollLength(simulation); }
+        }
+
+        /// <summary>How far (m) a roll carries the character, from where it starts to where it ends.</summary>
+        private static float RollLength(MovementSimulation simulation)
+        {
+            simulation.Reset(Vector3.zero);
+            simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward));
+            float start = float.NaN;
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+            {
+                float before = simulation.Position.z;
+                Inputs inputs = MovementSimulation.Move(Vector3.forward);
+                inputs.roll = MovementSimulation.Held(i);
+                simulation.Step(inputs);
+                bool rolling = (simulation.State & CharacterState.Rolling) != 0;
+                if (rolling && float.IsNaN(start)) { start = before; }
+                if (!rolling && !float.IsNaN(start)) { return simulation.Position.z - start; }
+            }
+            return float.NaN;
+        }
+    }
+
+    /// <summary>A roll in progress, and the cooldown between rolls.</summary>
+    public class RollState
+    {
+        // Seconds left in the current roll (0 when not rolling)
+        public float timeRemaining;
+        // Seconds until another roll may start
+        public float cooldownRemaining;
+        // The direction of the current roll (horizontal, unit length)
+        public Vector3 direction;
+        // How long the current roll lasts, in seconds
+        public float duration;
+        public readonly ButtonPress press = new();
+        // Where the character's current fall started (its feet's y, m: where it last wasn't falling, or was on the ground
+        // or held by a wall or a ledge), and, on the step it lands, how far it fell from there (0 on every other step):
+        // for rolling on landing
+        public float fallTop;
+        public bool hasFallTop;
+        public float landingFall;
+
+        public bool IsRolling => timeRemaining > 0f;
+        /// <summary>How far through the roll the character is: 0 at its start, 1 at its end.</summary>
+        public float Progress => duration > 0f ? Mathf.Clamp01(1f - timeRemaining / duration) : 0f;
     }
 }

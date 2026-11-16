@@ -63,7 +63,7 @@ namespace Character
             if (!movementData.previousState.HasFlag(CharacterState.Jumping) && (movementData.timeSinceGrounded <= coyoteTime)
                 && (movementData.initialGrounded || !controller.HasJumpedSinceGrounded))
             {
-                controller.ResetJumps();
+                MovementHelpers.GiveBackJumps(controller);
             }
 
             float g = Mode.GravityAcceleration(controller);
@@ -71,12 +71,12 @@ namespace Character
             // A jump from the ground or within coyote time, rather than in mid-air (checked before the jump is used)
             bool fromGround = movementData.initialGrounded || (movementData.timeSinceGrounded <= coyoteTime && !controller.HasJumpedSinceGrounded);
             // Check the jump has height first, since starting one uses up a jump.
-            bool startingJump = maxJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller) && controller.TryUseJump();
+            bool startingJump = maxJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller) && MovementHelpers.TryUseJump(controller);
             Vector3 inertia = movementData.initialInertia;
             if (startingJump)
             {
-                controller.jumpPressConsumed = true;
-                controller.jumpStartHeight = movementData.initialPosition.y;
+                controller.jump.pressConsumed = true;
+                controller.jump.startHeight = movementData.initialPosition.y;
                 movementData.events |= fromGround ? MovementEvents.Jumped : MovementEvents.AirJumped;
                 // The launch speed outright, replacing whatever the character was rising or falling at (horizontal
                 // momentum is carried into the air by the movement controller as it leaves the ground).
@@ -95,7 +95,7 @@ namespace Character
 
             // Let go of: no faster than it takes to rise the rest of the min jump height. Once cut, the rise under
             // gravity keeps to that from step to step on its own (see LaunchSpeedFor), so this changes it only once.
-            float risen = movementData.initialPosition.y - controller.jumpStartHeight;
+            float risen = movementData.initialPosition.y - controller.jump.startHeight;
             float remaining = minJumpHeight * heightScale - risen;
             float cut = remaining > 0f ? JumpSpeedFor(remaining, g, movementData.deltaTime) : 0f;
             float rise = inertia.y + movementData.velocityChange.y;
@@ -112,5 +112,25 @@ namespace Character
         /// </summary>
         private static float JumpSpeedFor(float height, float g, float deltaTime) =>
             g > 0f ? MovementHelpers.LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * 9.81f * Mathf.Max(0f, height));
+    }
+
+    /// <summary>
+    /// The character's jumps: how many it has left before landing, when it last started one (and from what height, for
+    /// cutting it short), and whether the current press of Jump has started something already. Jumps off walls, ropes and
+    /// ziplines, and bounce pads, use and give back the same jumps (see MovementHelpers.TryUseJump and GiveBackJumps).
+    /// </summary>
+    public class JumpState
+    {
+        /// <summary>How many more times the character can start a jump before landing (given back on the ground).</summary>
+        public int remaining;
+        /// <summary>The time (StepTime) the character last started a jump (negative infinity if it never has).</summary>
+        public float lastJumpTime = float.NegativeInfinity;
+        /// <summary>How high the character's feet were when it last started a jump (for cutting a jump short: see Jumping).</summary>
+        public float startHeight;
+        /// <summary>
+        /// Whether the current press of Jump has already started something, so one press never starts two (for example
+        /// when a jump ends early against a ceiling while the press is still within the jump buffer).
+        /// </summary>
+        public bool pressConsumed;
     }
 }

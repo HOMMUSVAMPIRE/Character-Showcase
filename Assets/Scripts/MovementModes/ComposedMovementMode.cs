@@ -129,17 +129,28 @@ namespace Character
         /// </summary>
         public abstract float MoveSpeed(Inputs inputs, MovementController controller);
 
+        /// <summary>Whether an ability has the character, so no other may start: any turned-on component under way.</summary>
+        public bool AbilityInProgress(MovementController controller) => AbilityInProgressExcept(controller, null, null);
+
         /// <summary>
-        /// Whether an ability has the character, so no other may start: any turned-on component under way (leaving out a
-        /// slide down a wall, or a dash, if asked, for an ability that may take over from one: those two are the only
-        /// abilities others take over from).
+        /// Whether an ability other than a T has the character: for an ability that may take over from a T (a ledge
+        /// grabbed out of a slide down its wall).
         /// </summary>
-        public virtual bool AbilityInProgress(MovementController controller, bool exceptWallSlide = false, bool exceptDash = false)
+        public bool AbilityInProgressExcept<T>(MovementController controller) where T : MovementComponent =>
+            AbilityInProgressExcept(controller, typeof(T), null);
+
+        /// <summary>Whether an ability other than a T1 or a T2 has the character (see AbilityInProgressExcept&lt;T&gt;).</summary>
+        public bool AbilityInProgressExcept<T1, T2>(MovementController controller) where T1 : MovementComponent where T2 : MovementComponent =>
+            AbilityInProgressExcept(controller, typeof(T1), typeof(T2));
+
+        private bool AbilityInProgressExcept(MovementController controller, Type except, Type orExcept)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component == null || !component.Enabled || (exceptWallSlide && component is WallSliding) || (exceptDash && component is Dashing)) { continue; }
+                if (component == null || !component.Enabled) { continue; }
+                Type type = component.GetType();
+                if (type == except || type == orExcept) { continue; }
                 if (component.IsActive(controller)) { return true; }
             }
             return false;
@@ -153,12 +164,6 @@ namespace Character
                 MovementComponent component = components[i];
                 if (component != null && component != except && component.Enabled) { component.Interrupt(ref movementData, controller); }
             }
-            InterruptOwnAbilities(ref movementData, controller);
-        }
-
-        /// <summary>Ends the abilities the mode has of its own, outside its components, for InterruptOthers.</summary>
-        protected virtual void InterruptOwnAbilities(ref MovementData movementData, MovementController controller)
-        {
         }
 
         /// <summary>

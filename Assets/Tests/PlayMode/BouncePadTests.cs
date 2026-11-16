@@ -121,7 +121,7 @@ namespace CharacterShowcase.Tests
             yield return SetUpPad(4f);
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(events.Exists(e => e.movementEvent == MovementEvents.Bounced), Is.True, "Test setup: the character should have bounced.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(Mathf.Max(0, rig.Component<Jumping>().MaxJumps - 1)), "The bounce should use the ground jump and leave the air jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(Mathf.Max(0, rig.Component<Jumping>().MaxJumps - 1)), "The bounce should use the ground jump and leave the air jumps.");
         }
 
         [UnityTest]

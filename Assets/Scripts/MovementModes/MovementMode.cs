@@ -1,5 +1,4 @@
 using UnityEngine;
-using static Character.CharacterUtilities;
 
 namespace Character
 {

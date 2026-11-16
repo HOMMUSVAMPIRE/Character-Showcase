@@ -101,7 +101,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.5f, step => CharacterTestRig.Jump(step), _ => leftTheGround |= !rig.Grounded);
             Assert.That(leftTheGround, Is.False, "With Jumping turned off, Jump shouldn't leave the ground.");
             Assert.That(events, Has.No.Member(MovementEvents.Jumped));
-            Assert.That(rig.Movement.maxJumps, Is.EqualTo(0), "Without Jumping, the character has no jumps.");
+            Assert.That(rig.MaxJumps, Is.EqualTo(0), "Without Jumping, the character has no jumps.");
         }
 
         [UnityTest]

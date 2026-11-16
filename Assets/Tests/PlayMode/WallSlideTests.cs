@@ -101,7 +101,7 @@ namespace CharacterShowcase.Tests
             int jumpsAfter = -1;
             yield return rig.Run(0.8f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
             {
-                if (step == 0) { launch = Velocity; jumpsAfter = rig.Movement.jumpsRemaining; }
+                if (step == 0) { launch = Velocity; jumpsAfter = rig.Movement.jump.remaining; }
                 highest = Mathf.Max(highest, rig.Position.y);
             });
 
@@ -110,7 +110,7 @@ namespace CharacterShowcase.Tests
             Assert.That(launch.y, Is.EqualTo(up).Within(0.05f * up), "Jumping off the wall should launch upward.");
             Assert.That(-launch.z, Is.EqualTo(away).Within(0.05f * away), "Jumping off the wall should push away from it.");
             Assert.That(highest - jumpedFrom, Is.GreaterThan(0.25f * up * up / Gravity), "Jumping off the wall should gain height.");
-            Assert.That(jumpsAfter, Is.EqualTo(rig.Movement.maxJumps - 1), "Jumping off the wall should give back the character's jumps, less itself.");
+            Assert.That(jumpsAfter, Is.EqualTo(rig.MaxJumps - 1), "Jumping off the wall should give back the character's jumps, less itself.");
             Assert.That(events.Count(e => e == MovementEvents.WallJumped), Is.EqualTo(1));
             Assert.That(events.Count(e => e == MovementEvents.WallSlideEnded), Is.EqualTo(1));
         }
@@ -303,13 +303,13 @@ namespace CharacterShowcase.Tests
             rig.SetMovementSetting("wallSlideJumpAwaySpeed", 0f);
             yield return SlideDown();
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps - 1), "Test setup: the first jump off the wall should give back jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps - 1), "Test setup: the first jump off the wall should give back jumps.");
             // Use an air jump, then slide down the same wall again and jump off it.
-            rig.Movement.jumpsRemaining = 0;
+            rig.Movement.jump.remaining = 0;
             yield return rig.Run(1.2f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding down the wall again.");
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
-            Assert.That(rig.Movement.jumpsRemaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");
         }
 
         [UnityTest]

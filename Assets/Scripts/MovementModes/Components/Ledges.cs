@@ -100,7 +100,7 @@ namespace Character
                 }
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
-                    controller.jumpPressConsumed = true;
+                    controller.jump.pressConsumed = true;
                     TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
                 }
             }
@@ -124,7 +124,7 @@ namespace Character
             LedgeState ledge = controller.ledge;
             // A wall being slid down doesn't stop its top being grabbed, once the slide has brought it within reach.
             if (ledgeClimbDuration <= 0f || movementData.initialGrounded || ledge.regrabCooldown > 0f
-                || Mode.AbilityInProgress(controller, exceptWallSlide: true)) { return false; }
+                || Mode.AbilityInProgressExcept<WallSliding>(controller)) { return false; }
             if (movementData.initialVelocity.y > ledgeMaxGrabRiseSpeed * controller.SpeedScale) { return false; }
 
             Vector3 heading = InputDirection(movementData, inputs);
@@ -349,5 +349,57 @@ namespace Character
             ledge.ledge = null;
             ledge.regrabCooldown = ledgeRegrabDelay;
         }
+    }
+
+    /// <summary>
+    /// A ledge being hung from or climbed. Positions are kept in the ledge's own space (the object it belongs to), so
+    /// the character hangs on and climbs ledges that move.
+    /// </summary>
+    public class LedgeState
+    {
+        public enum Phase { None, Hanging, Climbing }
+
+        public Phase phase;
+        // The object the ledge belongs to (its Rigidbody's, if it has one)
+        public Transform ledge;
+        // Where the character's feet hang, in the ledge's space
+        public Vector3 localHangPosition;
+        // The wall's normal below the ledge, in the ledge's space (pointing out, toward the character)
+        public Vector3 localWallNormal;
+        // The point on the ledge's edge the character grabbed (on its top, straight in front of the character), in the
+        // ledge's space: where its hands hold on
+        public Vector3 localEdge;
+        // Where the character's feet end up on top of the ledge after climbing, in the ledge's space
+        public Vector3 localClimbTarget;
+        // Seconds since the climb started, and how long it takes
+        public float climbElapsed;
+        public float climbDuration;
+        // Whether the climb ends crouched (there's room on top to crouch, but not to stand)
+        public bool climbToCrouch;
+        // Seconds until a ledge can be grabbed again after letting go of one
+        public float regrabCooldown;
+
+        public bool IsActive => phase != Phase.None;
+
+        /// <summary>
+        /// Where the grabbed edge is now, in world space, and the wall's normal below it (horizontal, toward the
+        /// character), from the ledge's transform: its rendered pose, for visuals such as placing the hands on it.
+        /// False when not on a ledge.
+        /// </summary>
+        public bool TryGetEdge(out Vector3 edge, out Vector3 wallNormal)
+        {
+            edge = wallNormal = Vector3.zero;
+            if (!IsActive || ledge == null) { return false; }
+            edge = ledge.position + ledge.rotation * localEdge;
+            wallNormal = ledge.rotation * localWallNormal;
+            wallNormal.y = 0f;
+            if (wallNormal.sqrMagnitude < 1e-6f) { return false; }
+            wallNormal.Normalize();
+            return true;
+        }
+        public bool IsHanging => phase == Phase.Hanging;
+        public bool IsClimbing => phase == Phase.Climbing;
+        /// <summary>How far through the climb the character is: 0 at its start, 1 on top.</summary>
+        public float ClimbProgress => climbDuration > 0f ? Mathf.Clamp01(climbElapsed / climbDuration) : 0f;
     }
 }

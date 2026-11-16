@@ -268,7 +268,7 @@ namespace CharacterShowcase.Tests
             int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
             // In mid-air, never on the ground yet (no jumps), and as if its air dashes had been used.
             rig.Movement.dash.airDashesUsed = maxAirDashes;
-            rig.Movement.jumpsRemaining = 0;
+            rig.Movement.jump.remaining = 0;
             int dashesWhileVaulting = -1, jumpsWhileVaulting = -1;
             yield return rig.Launch(Vector3.forward * rig.RunSpeed, CharacterTestRig.Sprint(Vector3.forward));
             yield return rig.Run(1f, _ => CharacterTestRig.Sprint(Vector3.forward), _ =>
@@ -276,12 +276,12 @@ namespace CharacterShowcase.Tests
                 if (Vaulting && dashesWhileVaulting < 0)
                 {
                     dashesWhileVaulting = rig.Movement.dash.airDashesUsed;
-                    jumpsWhileVaulting = rig.Movement.jumpsRemaining;
+                    jumpsWhileVaulting = rig.Movement.jump.remaining;
                 }
             });
             Assert.That(dashesWhileVaulting, Is.Not.EqualTo(-1), "Test setup: the character should vault over the low wall.");
             Assert.That(dashesWhileVaulting, Is.EqualTo(0), "Vaulting should give back the character's air dashes.");
-            Assert.That(jumpsWhileVaulting, Is.EqualTo(rig.Movement.maxJumps), "Vaulting should give back the character's jumps.");
+            Assert.That(jumpsWhileVaulting, Is.EqualTo(rig.MaxJumps), "Vaulting should give back the character's jumps.");
         }
     }
 }

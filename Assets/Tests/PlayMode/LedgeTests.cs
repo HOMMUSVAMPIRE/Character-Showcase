@@ -261,10 +261,10 @@ namespace CharacterShowcase.Tests
             int maxAirDashes = rig.MovementSetting<int>("maxAirDashes");
             // Never on the ground yet (no jumps), and as if its air dashes had been used.
             rig.Movement.dash.airDashesUsed = maxAirDashes;
-            rig.Movement.jumpsRemaining = 0;
+            rig.Movement.jump.remaining = 0;
             yield return GrabAndHang();
             Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "Grabbing a ledge should give back the character's air dashes.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps), "Grabbing a ledge should give back the character's jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps), "Grabbing a ledge should give back the character's jumps.");
         }
     }
 }

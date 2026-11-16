@@ -90,7 +90,7 @@ def check_reflected_settings():
 
 
 def check_unique_movement_settings():
-    # The tests (CharacterTestRig.MovementSetting) and MovementModeMigration find a setting by its name alone, across
+    # The tests (CharacterTestRig.MovementSetting) find a setting by its name alone, across
     # the mode and its components, so no two may share one.
     declared = {}
     for path in movement_setting_sources():

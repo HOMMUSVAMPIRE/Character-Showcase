@@ -104,7 +104,7 @@ namespace Character
             float dashElapsed = duration - dash.timeRemaining;
             bool jumpPressedDuringDash = Mode.IsNewJumpPress(inputs, controller) && inputs.jump.holdDuration < dashElapsed;
             // Not while crouched with no room to stand up for the jump (it's skipped then, so the dash would just stop).
-            bool hasJump = (movementData.initialGrounded || controller.jumpsRemaining > 0) && !controller.crouch.IsCrouched;
+            bool hasJump = (movementData.initialGrounded || controller.jump.remaining > 0) && !controller.crouch.IsCrouched;
             if (jumpPressedDuringDash && hasJump)
             {
                 dash.timeRemaining = 0f;
@@ -132,5 +132,25 @@ namespace Character
             movementData.targetRotation = Quaternion.LookRotation(dash.direction, Vector3.up);
             movementData.state = movementData.state | CharacterState.Dashing;
         }
+    }
+
+    /// <summary>
+    /// A character's dash state, which persists between frames. Lives on the MovementController (one per character),
+    /// since movement modes are shared assets.
+    /// </summary>
+    public class DashState
+    {
+        // Seconds left in the current dash (0 when not dashing)
+        public float timeRemaining;
+        // Seconds until another dash may start
+        public float cooldownRemaining;
+        // Air dashes used since last touching the ground
+        public int airDashesUsed;
+        // The direction of the current dash
+        public Vector3 direction;
+        // Whether the current press of the dash button has already started a dash, so holding it doesn't repeat
+        public bool pressConsumed;
+
+        public bool IsDashing => timeRemaining > 0f;
     }
 }

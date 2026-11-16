@@ -441,7 +441,7 @@ namespace CharacterShowcase.Tests
             Assert.That(dashesUsed, Is.EqualTo(1), "Test setup: the character should have used an air dash.");
             Assert.That(Climbing, Is.True, "Test setup: the character should have taken hold of the wall.");
             Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "Taking hold of a wall should give back the character's air dashes.");
-            Assert.That(rig.Movement.jumpsRemaining, Is.EqualTo(rig.Movement.maxJumps), "Taking hold of a wall should give back the character's jumps.");
+            Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps), "Taking hold of a wall should give back the character's jumps.");
         }
 
         [UnityTest]

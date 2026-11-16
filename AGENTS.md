@@ -14,7 +14,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | Folder | What's there |
 | --- | --- |
 | `Assets/Scripts/Character` | `ACCharacterController`, `ACInputManager`, `CharacterSpawner`, `MovementController` and the types it works on (`MovementData`, `Inputs`, `CharacterState`, `MovementEvents`, `MovementSizeScaling`) |
-| `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `MovementAbilityStates`, `MovementHelpers`, `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
+| `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `ButtonPress`, `MovementHelpers` (shared rules: jumps, wall jumps), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
 | `Assets/Scripts/Models` | `CharacterModelHost` and the model sources |
@@ -87,7 +87,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Movement modes are ScriptableObjects made of components.** A `ComposedMovementMode` holds a list of
   `MovementComponent`s (`[SerializeReference]`), each an ability with its own settings, run in list order (higher
   takes over first); a component asks its `Mode` for shared rules (gravity, air acceleration, the jump and crouch
-  presses, `AbilityInProgress`, `InterruptOthers`) rather than reaching into other abilities. One shaped by another's
+  presses, `AbilityInProgress` or `AbilityInProgressExcept<T>` for one that may take over from a T, `InterruptOthers`)
+  rather than reaching into other abilities. One shaped by another's
   settings reads them with `SettingsOf<T>()` (the mode's, on or off, else T's defaults); one handing the character to
   another finds it with `Mode.Get<T>()` (turned-on only). Shared state rules (wall jumps) are in `MovementHelpers`.
   Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall speed limit, air
@@ -97,7 +98,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (lowered
   while any component's `KeepsLow` says so) and `FinishStep` (the fall speed limit). Within each point, list order
   decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
-  assets, so per-character state lives on the `MovementController` (`MovementAbilityStates.cs`). See the recipe for
+  assets, so per-character state lives on the `MovementController` (each state class in its component's file). See the recipe for
   adding an ability.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
@@ -117,12 +118,15 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 
 ## Files to treat with care
 
-**Hotspots.** `Assets/Scripts/Character/MovementController.cs` and `Assets/Scripts/MovementModes/BasicMovementMode.cs`
-are where most movement features land. If several agents work at once, only one should own each at a time.
+**Hotspots.** A movement feature lands mostly in its own component file, but also in `MovementController.cs` (its
+state's property, `StateEvents`) and `BasicMovementMode.DefaultComponents`. If several agents work at once, only one
+should own each at a time.
 
 **Serialized field names are part of the interface.** Renaming a serialized field (`[SerializeField]`, or public on a
 MonoBehaviour/ScriptableObject) silently drops its saved value everywhere; if a rename is really needed, add
-`[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`. Tests also read the movement mode's and its components'
+`[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`, which can't follow a setting into another component:
+moving one drops its saved value, so set it again on the asset (and in tuning presets, which name settings by
+component and field). Tests also read the movement mode's and its components'
 fields by name through reflection, so a rename compiles but fails at runtime: the hygiene check finds every name the
 tests use and fails if one disappears. A movement component's class name is saved in the asset too
 (`[SerializeReference]`): renaming or moving one needs `[UnityEngine.Scripting.APIUpdating.MovedFrom]`, or the asset
@@ -168,7 +172,7 @@ regenerates them.
    another ability takes the character, or it's turned off), `AdvanceTimers` for its cooldowns, and
    `AfterMovementResolved` if it moves something with the character. Add it to `BasicMovementMode.DefaultComponents` at
    its place in the order (most committed first), and to the asset with Add Component.
-2. A state class in `MovementAbilityStates.cs` and a property for it on `MovementController`.
+2. A state class in the component's file and a property for it on `MovementController`.
 3. A `CharacterState` flag, `MovementEvents` for its start and end, and an entry in `MovementController.StateEvents`
    (which raises them from the flag).
 4. Tests reach its settings by name as before (`rig.MovementSetting`, which searches the components) and the component
@@ -179,11 +183,6 @@ regenerates them.
    needed; an IK component added in `CharacterModelImporter.SaveModelPrefab` if needed. Then regenerate the mannequin
    and prepare the character models.
 6. PlayMode tests, a docs section, and its turned-off-at-0 case.
-
-**Moving a mode's settings into a component** (a new mode type's own movement, made into components): keep the
-settings' field names (that's how their values are carried over), move the code into the component as above, and take
-it out of the mode's step. Then run Move Settings Into Components (`MovementModeMigration`) on the assets and check
-their diffs: every value should reappear under the component.
 
 **A new level mechanic** (a fixture): a piece in `Graybox.Mechanics.cs` naming its geometry "Name | key=value | …"; a
 set-up step in `LevelFixtureSetup` (the prefixes in both must match, and match only "Name |", since "(future)" markers
@@ -250,7 +249,7 @@ Match the existing code:
 - Comments explain *why*, especially non-obvious physics or timing decisions, in full sentences.
 - No allocation in per-step code: reuse buffers (see `castHits`, `overlaps`).
 - PascalCase types and methods, camelCase fields, the namespaces in the table above.
-- Big classes are partial, a file per area of responsibility (`BasicMovementMode.<Ability>.cs`, `Graybox.<Kind>.cs`,
+- Big classes are partial, a file per area of responsibility (`MovementController.<Area>.cs`, `Graybox.<Kind>.cs`,
   `MannequinGenerator.<Part>.cs`): add to the file that fits, or start a new one, rather than growing one file.
 
 ## Git

@@ -204,5 +204,53 @@ namespace Character
             controller.crouch.IsCrouched = crouched;
             controller.crouch.wantsToStand = false;
         }
+
+        /// <summary>
+        /// How low the character gets crouched (the crouch height's share of its standing height), and how far a slide
+        /// from a sprint carries it, if it slides.
+        /// </summary>
+        public override void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
+        {
+            capabilities.CrouchHeight = crouchHeight * capabilities.StandHeight;
+            if (slidingEnabled && slideMaxDuration > 0f) { capabilities.SlideLength = SlideLength(simulation); }
+        }
+
+        /// <summary>How far (m) a slide from a sprint carries the character, from where it starts to where it ends.</summary>
+        private static float SlideLength(MovementSimulation simulation)
+        {
+            simulation.Reset(Vector3.zero);
+            simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, true));
+            float start = float.NaN;
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+            {
+                float before = simulation.Position.z;
+                Inputs inputs = MovementSimulation.Move(Vector3.forward, true);
+                inputs.crouch = MovementSimulation.Held(i);
+                simulation.Step(inputs);
+                bool sliding = (simulation.State & CharacterState.Sliding) != 0;
+                if (sliding && float.IsNaN(start)) { start = before; }
+                if (!sliding && !float.IsNaN(start)) { return simulation.Position.z - start; }
+            }
+            return float.NaN;
+        }
+    }
+
+    /// <summary>Whether the character is crouched, and whether it's waiting for room to stand up.</summary>
+    public class CrouchState
+    {
+        public bool IsCrouched;
+        // Asked to stand, but there wasn't room yet: stands as soon as there is.
+        public bool wantsToStand;
+        public readonly ButtonPress press = new();
+    }
+
+    /// <summary>A slide in progress.</summary>
+    public class SlideState
+    {
+        public bool IsSliding;
+        // Seconds since the slide started
+        public float elapsed;
+        // The direction the slide is heading (horizontal, unit length)
+        public Vector3 direction;
     }
 }

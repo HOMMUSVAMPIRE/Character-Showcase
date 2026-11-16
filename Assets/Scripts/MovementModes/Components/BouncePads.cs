@@ -65,14 +65,20 @@ namespace Character
 
             // The launch is the jump from the ground: the character's air jumps are left, and gravity is at full strength
             // from here (as after a jump, not the softer coyote gravity after walking off an edge).
-            controller.ResetJumps();
-            controller.TryUseJump();
-            if (boosted) { controller.jumpPressConsumed = true; }
+            MovementHelpers.GiveBackJumps(controller);
+            MovementHelpers.TryUseJump(controller);
+            if (boosted) { controller.jump.pressConsumed = true; }
             bounce.cooldownRemaining = BounceCooldown;
             pad.NotifyLaunched();
             movementData.events |= MovementEvents.Bounced;
             movementData.state &= ~CharacterState.Grounded;
             return true;
         }
+    }
+
+    /// <summary>The delay before a bounce pad can launch the character again, so it doesn't launch twice off one landing.</summary>
+    public class BounceState
+    {
+        public float cooldownRemaining;
     }
 }
