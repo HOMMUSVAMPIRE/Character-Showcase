@@ -31,8 +31,8 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float SlideSpeed => rig.Mode<WallSlideMode>().wallSlideSpeed * rig.Movement.SpeedScale;
-        private float MaxDuration => rig.Mode<WallSlideMode>().wallSlideMaxDuration * rig.Movement.DurationScale;
+        private float SlideSpeed => rig.Component<WallSliding>().WallSlideSpeed * rig.Movement.SpeedScale;
+        private float MaxDuration => rig.Component<WallSliding>().WallSlideMaxDuration * rig.Movement.DurationScale;
         private float Gravity => rig.MovementSetting<float>("gravityStrength") * rig.Movement.AccelerationScale;
         private bool Sliding => rig.InState(CharacterState.WallSliding);
         private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
@@ -167,7 +167,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator AChimney_CanBeClimbedByKickingBetweenItsWalls()
         {
-            // As the Proving Ground's: a slot 2.5 m wide, 10.5 m deep from its floor to its top.
+            // A slot 2.5 m wide, 10.5 m deep from its floor to its top.
             const float width = 2.5f, depth = 10.5f;
             rig.Floor();
             rig.Box("Chimney (West)", new Vector3(-width / 2f - 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f));
@@ -262,6 +262,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator HoppingUpAWall_WithoutJumpsOfItsOwn_DoesNotClimbIt()
         {
             yield return SetUpWall(height: 20f);
+            // Without air jumps of its own (however many it's tuned to have), only the kicks off the wall.
+            rig.SetMovementSetting("maxJumps", 1);
             // Keep steering into the wall, pressing Jump again and again: each kick carries the character away, and with
             // no jumps of its own given back, it comes back to the wall lower each time.
             var kickHeights = new List<float>();

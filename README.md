@@ -15,12 +15,12 @@ Once the project meets my standards for completion, I may release it as a Unity 
 7. Open the project
 8. Click "Play" (in Assets/Scenes/SampleScene, the character's demo scene)
 
-The test levels are in Assets/Scenes: the Meridian Complex, the Proving Ground and the Level Playground (see [docs/levels.md](docs/levels.md)).
+The test levels are in Assets/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)).
 
 ## How to see the code in this project
 All of the runtime code is in the Assets/Scripts folder:
 - Character: the character's controller, input, spawner, and the MovementController with the data it works on (MovementData, Inputs, CharacterState, MovementEvents)
-- MovementModes: the movement modes, BasicMovementMode and its abilities (one file per ability)
+- MovementModes: the movement modes, BasicMovementMode and its movement components (Components/: one file per part of the movement, walking and falling included)
 - Animation: the AnimationController, the animation state it builds, and the translators that drive an Animator from it
 - IK: CharacterIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
 - Models: the character's model host and the sources it gets models from
@@ -56,7 +56,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads
 - [Camera system](docs/camera.md)
 - [Character model and animations](docs/animation.md): the mannequin, replacing the model, the animation libraries, IK
-- [Test levels](docs/levels.md): the Meridian Complex, the Proving Ground, the Level Playground, level mechanics
+- [Test levels](docs/levels.md): the Meridian Complex, the Level Playground, level mechanics
 - [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Spawning the character](docs/spawning.md)
 - [Automated tests](docs/testing.md)

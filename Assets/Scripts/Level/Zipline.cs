@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A zipline a character can ride (see BasicMovementMode's Ziplines settings): a straight cable from this object's
+    /// A zipline a character can ride (see the movement mode's Ziplines component): a straight cable from this object's
     /// position to its end point (in this object's space). A character reaching the cable in mid-air catches hold of it
     /// and rides along it, speeding up downhill, to whichever end it's heading for, and lets go there.
     ///

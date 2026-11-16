@@ -188,7 +188,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            int maxJumps = rig.Mode<JumpMode>().maxJumps;
+            int maxJumps = rig.Component<Jumping>().MaxJumps;
 
             // A one-step tap, released while still inside the coyote window.
             yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
@@ -205,7 +205,7 @@ namespace CharacterShowcase.Tests
             rig.Floor(-5f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -0.8f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            int maxJumps = rig.Mode<JumpMode>().maxJumps;
+            int maxJumps = rig.Component<Jumping>().MaxJumps;
 
             // Walk off, then check the jumps just after leaving the ground.
             int airborneSteps = 0;
@@ -226,7 +226,7 @@ namespace CharacterShowcase.Tests
             rig.Floor(-2f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float walkSpeed = rig.Mode<WalkRunMode>().walkSpeed;
+            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
 
             float dt = Time.fixedDeltaTime;
             float slowestInAir = float.PositiveInfinity;
@@ -262,7 +262,7 @@ namespace CharacterShowcase.Tests
             }
             rig.Body.position = new Vector3(0f, top + 0.05f, -1.5f);
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float walkSpeed = rig.Mode<WalkRunMode>().walkSpeed;
+            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
 
             float dt = Time.fixedDeltaTime;
             float slowest = float.PositiveInfinity, biggestGap = 0f;
@@ -293,7 +293,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float walkSpeed = rig.Mode<WalkRunMode>().walkSpeed;
+            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
 
             // Run, jump while running, and keep steering forward through the jump.
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
@@ -315,7 +315,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             // Use up every jump, so the buffered press can only be honoured by landing.
-            int jumps = rig.Mode<JumpMode>().maxJumps;
+            int jumps = rig.Component<Jumping>().MaxJumps;
             for (int i = 0; i < jumps; i++)
             {
                 if (i > 0) { yield return rig.Run(2, _ => CharacterTestRig.Idle()); }

@@ -33,7 +33,7 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float ClimbSpeed => rig.Mode<WallClimbMode>().wallClimbSpeed * rig.Movement.SpeedScale;
+        private float ClimbSpeed => rig.Component<WallClimbing>().WallClimbSpeed * rig.Movement.SpeedScale;
         private bool Climbing => rig.InState(CharacterState.WallClimbing);
         private bool OnLadder => Climbing && rig.Movement.wallClimb.ladder != null;
         private float GripHeight => rig.MovementSetting<float>("wallClimbGripHeight") * rig.StandingHeight;
@@ -118,7 +118,7 @@ namespace CharacterShowcase.Tests
             // A platform behind the ladder, its top level with the ladder's (deep, so walking on doesn't walk off it).
             rig.Box("Platform", new Vector3(0f, height / 2f, face + 0.06f + 15f), new Vector3(6f, height, 30f));
             yield return TakeHold();
-            yield return rig.Run(height / ClimbSpeed + rig.Mode<LedgeMode>().ledgeClimbDuration * rig.Movement.DurationScale + 1f, _ => Up);
+            yield return rig.Run(height / ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 1f, _ => Up);
             Assert.That(Climbing, Is.False, "The character should have climbed off the ladder.");
             Assert.That(rig.Grounded, Is.True, "The character should be standing on the platform.");
             Assert.That(rig.Position.y, Is.EqualTo(height).Within(0.05f), "The character should be on top of the platform.");

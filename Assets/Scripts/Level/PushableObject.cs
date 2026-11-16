@@ -3,8 +3,8 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A large box a character can take hold of and push or pull along the ground (see BasicMovementMode's Pushing &
-    /// Pulling settings). It's a kinematic, interpolated Rigidbody, so it's moved only by whoever holds it and by its own
+    /// A large box a character can take hold of and push or pull along the ground (see the movement mode's
+    /// PushingAndPulling component). It's a kinematic, interpolated Rigidbody, so it's moved only by whoever holds it and by its own
     /// simple gravity (pushed off an edge, it falls), never shoved around by the physics solver. Its moves are swept
     /// against the world first, so it stops at walls instead of passing through them. Its collision is its BoxCollider.
     /// </summary>

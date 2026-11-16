@@ -18,17 +18,17 @@ namespace CharacterShowcase.Tests.EditMode
     /// </summary>
     public class LevelEditorTests
     {
-        private const string ProvingGround = "Assets/Levels/ProvingGround.level.json";
+        private const string Playground = "Assets/Levels/LevelPlayground.level.json";
 
         [TearDown]
         public void TearDown() => EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
         private static JsonObject Piece(string json) => (JsonObject)LevelSpecJson.Parse(json);
 
-        private static LevelSpec LoadProvingGround()
+        private static LevelSpec LoadPlayground()
         {
-            if (!File.Exists(ProvingGround)) { Assert.Ignore("No Proving Ground spec exported."); }
-            return LevelSpec.FromJson(File.ReadAllText(ProvingGround));
+            if (!File.Exists(Playground)) { Assert.Ignore("No Level Playground spec exported."); }
+            return LevelSpec.FromJson(File.ReadAllText(Playground));
         }
 
         [Test]
@@ -71,35 +71,35 @@ namespace CharacterShowcase.Tests.EditMode
         [Test]
         public void ThePreview_KnowsWhichPieceMadeWhat()
         {
-            LevelSpec spec = LoadProvingGround();
+            LevelSpec spec = LoadPlayground();
             LevelSpecPreview preview = LevelSpecPreview.Build(spec);
             Assert.IsEmpty(preview.Problems, string.Join("\n", preview.Problems.Values));
-            JsonObject platformA = spec.Parts.SelectMany(p => p.Pieces).First(p => p.TryGetValue("name", out object n) && (string)n == "Platform A (+4)");
+            JsonObject platformA = spec.Parts.SelectMany(p => p.Pieces).First(p => p.TryGetValue("name", out object n) && (string)n == "Beam Start (+4)");
             List<GameObject> made = preview.ObjectsOf(platformA);
             Assert.IsNotEmpty(made);
             Assert.AreSame(platformA, preview.PieceOf(made[0]));
             Assert.IsTrue(preview.BoundsOf(platformA, out Bounds b));
             Assert.That(b.max.y, Is.EqualTo(4f).Within(0.2f));
-            Assert.IsTrue(preview.GroupPaths().Contains("P2 Gap Run/Stairs"));
+            Assert.IsTrue(preview.GroupPaths().Contains("Building/Catwalk (+4)"));
             Assert.IsNotEmpty(preview.Footprints);
         }
 
         [Test]
         public void TheEditor_MovesAPieceAndUndoesIt()
         {
-            LoadProvingGround();
+            LoadPlayground();
             var window = ScriptableObject.CreateInstance<LevelEditorWindow>();
             try
             {
-                window.OpenSpec(ProvingGround);
+                window.OpenSpec(Playground);
                 string before = window.Json;
                 window.Preview();
                 Assert.IsNotNull(window.CurrentPreview);
                 List<string> built = LevelSpecTools.Snapshot(window.CurrentPreview.Root);
 
-                Assert.IsTrue(window.SelectPiece("Platform A (+4)"));
+                Assert.IsTrue(window.SelectPiece("Beam Start (+4)"));
                 window.MovePicked(new Vector3(2f, 0f, 0f));
-                StringAssert.Contains("\"name\": \"Platform A (+4)\", \"x0\": 138, \"x1\": 150", window.Json);
+                StringAssert.Contains("\"name\": \"Beam Start (+4)\", \"x0\": -36, \"x1\": -32", window.Json);
                 Assert.AreNotEqual(built, LevelSpecTools.Snapshot(window.CurrentPreview.Root));
 
                 Undo.PerformUndo();
@@ -117,9 +117,9 @@ namespace CharacterShowcase.Tests.EditMode
 
         private static LevelEditorWindow OpenWithPreview()
         {
-            LoadProvingGround();
+            LoadPlayground();
             var window = ScriptableObject.CreateInstance<LevelEditorWindow>();
-            window.OpenSpec(ProvingGround);
+            window.OpenSpec(Playground);
             window.Preview();
             Assert.IsNotNull(window.CurrentPreview);
             return window;
@@ -133,15 +133,15 @@ namespace CharacterShowcase.Tests.EditMode
             {
                 int before = Count(window);
                 List<string> built = LevelSpecTools.Snapshot(window.CurrentPreview.Root);
-                Assert.IsTrue(window.SelectPiece("Platform A (+4)"));
+                Assert.IsTrue(window.SelectPiece("Beam Start (+4)"));
 
-                // Placed on top of platform A (+4), in its group, after it.
-                JsonObject block = window.AddPieceAt("Block", new Vector3(140f, 4f, 30f));
+                // Placed on top of Beam Start (+4), in its group, after it.
+                JsonObject block = window.AddPieceAt("Block", new Vector3(-37f, 4f, -39f));
                 Assert.AreEqual(before + 1, Count(window));
                 Assert.AreSame(block, window.Picked, "The new piece should be picked.");
-                StringAssert.Contains("{\"piece\": \"Block\", \"parent\": \"P2 Gap Run\", \"name\": \"New Block\", \"x0\": 140, \"x1\": 144, \"z0\": 30, \"z1\": 34, \"y0\": 4, \"y1\": 5}", window.Json);
+                StringAssert.Contains("{\"piece\": \"Block\", \"parent\": \"Movement Tests\", \"name\": \"New Block\", \"x0\": -37, \"x1\": -33, \"z0\": -39, \"z1\": -35, \"y0\": 4, \"y1\": 5}", window.Json);
                 Assert.IsTrue(window.CurrentPreview.BoundsOf(block, out Bounds b), "The new piece should be built in the preview.");
-                Assert.That(Vector3.Distance(b.center, new Vector3(142f, 4.5f, 32f)), Is.LessThan(0.01f));
+                Assert.That(Vector3.Distance(b.center, new Vector3(-35f, 4.5f, -37f)), Is.LessThan(0.01f));
 
                 // Delete, as the Delete key does.
                 Assert.IsTrue(window.RunCommand("SoftDelete"));
@@ -164,10 +164,10 @@ namespace CharacterShowcase.Tests.EditMode
             try
             {
                 int before = Count(window);
-                Assert.IsTrue(window.SelectPiece("Platform B (+4)"));
+                Assert.IsTrue(window.SelectPiece("Beam End (+4)"));
                 Assert.IsTrue(window.RunCommand("Duplicate"));
                 Assert.AreEqual(before + 1, Count(window));
-                StringAssert.Contains("\"name\": \"Platform B (+4) (Copy)\", \"x0\": 138, \"x1\": 150, \"z0\": 45, \"z1\": 57", window.Json);
+                StringAssert.Contains("\"name\": \"Beam End (+4) (Copy)\", \"x0\": -22, \"x1\": -18, \"z0\": -38, \"z1\": -34", window.Json);
                 Assert.IsNotEmpty(window.CurrentPreview.ObjectsOf(window.Picked));
             }
             finally { Object.DestroyImmediate(window); }
@@ -180,24 +180,25 @@ namespace CharacterShowcase.Tests.EditMode
             try
             {
                 int before = Count(window);
-                Assert.IsTrue(window.SelectPiece("Platform C (+4)"));
+                Assert.IsTrue(window.SelectPiece("Lift Landing (+4)"));
                 foreach (GameObject o in window.CurrentPreview.ObjectsOf(window.Picked)) { Object.DestroyImmediate(o); }
                 window.SyncWithScene();
                 Assert.AreEqual(before - 1, Count(window));
-                StringAssert.DoesNotContain("Platform C (+4)\"", window.Json);
+                StringAssert.DoesNotContain("Lift Landing (+4)\"", window.Json);
             }
             finally { Object.DestroyImmediate(window); }
         }
 
-        [TestCase("Platform A (+4)")]
-        [TestCase("Start South West")]
-        [TestCase("Turntable")]
+        [TestCase("Beam Start (+4)")]
+        [TestCase("Start")]
+        [TestCase("Lift")]
         public void RebuildingOneEditedPiece_IsTheSameAsBuildingTheEditedSpec(string name)
         {
-            LevelSpec spec = LoadProvingGround();
+            LevelSpec spec = LoadPlayground();
             LevelSpecPreview preview = LevelSpecPreview.Build(spec);
             JsonObject piece = spec.Parts.SelectMany(p => p.Pieces)
-                .First(p => (p.TryGetValue("name", out object n) && (string)n == name) || (p.TryGetValue("label", out object l) && (string)l == name));
+                .First(p => (string)p["piece"] != "Group"
+                            && ((p.TryGetValue("name", out object n) && (string)n == name) || (p.TryGetValue("label", out object l) && (string)l == name)));
             Assert.IsTrue(LevelSpecEdit.Translate(piece, 3f, 0.5f, -2f));
             Assert.IsTrue(preview.Rebuild(piece), "Only the piece should have been rebuilt.");
             List<string> incremental = LevelSpecTools.Snapshot(preview.Root);

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A bounce pad (see BasicMovementMode's Bounce Pads settings): a character standing on it (any collider on this
+    /// A bounce pad (see the movement mode's BouncePads component): a character standing on it (any collider on this
     /// object or its children) is launched along its up, rising as high as its launch height above the pad (higher, holding
     /// Jump). It keeps a share of the character's own horizontal speed, so running across one carries the run on.
     ///

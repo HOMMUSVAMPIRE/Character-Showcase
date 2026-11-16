@@ -14,7 +14,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | Folder | What's there |
 | --- | --- |
 | `Assets/Scripts/Character` | `ACCharacterController`, `ACInputManager`, `CharacterSpawner`, `MovementController` and the types it works on (`MovementData`, `Inputs`, `CharacterState`, `MovementEvents`, `MovementSizeScaling`) |
-| `Assets/Scripts/MovementModes` | `MovementMode` and its capability interfaces, `BasicMovementMode` (one partial file per ability), `MovementAbilityStates` |
+| `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `MovementAbilityStates`, `MovementHelpers`, `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
 | `Assets/Scripts/Models` | `CharacterModelHost` and the model sources |
@@ -84,9 +84,21 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Movement and animation are separate.** Movement produces `MovementData` and raises `MovementEvents`; animation
   reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code never touches
   Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
-- **Movement modes are ScriptableObjects implementing capability interfaces** (in `MovementMode.cs`), with tunables
-  as serialized fields on the asset. Modes are shared assets, so per-character state lives on the `MovementController`
-  (`MovementAbilityStates.cs`). See the recipe for adding an ability.
+- **Movement modes are ScriptableObjects made of components.** A `ComposedMovementMode` holds a list of
+  `MovementComponent`s (`[SerializeReference]`), each an ability with its own settings, run in list order (higher
+  takes over first); a component asks its `Mode` for shared rules (gravity, air acceleration, the jump and crouch
+  presses, `AbilityInProgress`, `InterruptOthers`) rather than reaching into other abilities. One shaped by another's
+  settings reads them with `SettingsOf<T>()` (the mode's, on or off, else T's defaults); one handing the character to
+  another finds it with `Mode.Get<T>()` (turned-on only). Shared state rules (wall jumps) are in `MovementHelpers`.
+  Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall speed limit, air
+  steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the collider's posture and the
+  presses and speeds its components share. A step runs: `AdvanceTimers`, `BeforeAbilities` (gravity), `TakeOver`;
+  then, if nothing took the character, `BeforeLocomotion` (crouching), `Locomotion` (ground friction before walking,
+  which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (lowered
+  while any component's `KeepsLow` says so) and `FinishStep` (the fall speed limit). Within each point, list order
+  decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
+  assets, so per-character state lives on the `MovementController` (`MovementAbilityStates.cs`). See the recipe for
+  adding an ability.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
 - **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never the
@@ -110,9 +122,11 @@ are where most movement features land. If several agents work at once, only one 
 
 **Serialized field names are part of the interface.** Renaming a serialized field (`[SerializeField]`, or public on a
 MonoBehaviour/ScriptableObject) silently drops its saved value everywhere; if a rename is really needed, add
-`[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`. Tests also read `BasicMovementMode` fields by name
-through reflection, so a rename compiles but fails at runtime: the hygiene check finds every name the tests use and
-fails if one disappears. Unity silently drops enum fields wider than 32 bits, which is why a saved set of
+`[UnityEngine.Serialization.FormerlySerializedAs("oldName")]`. Tests also read the movement mode's and its components'
+fields by name through reflection, so a rename compiles but fails at runtime: the hygiene check finds every name the
+tests use and fails if one disappears. A movement component's class name is saved in the asset too
+(`[SerializeReference]`): renaming or moving one needs `[UnityEngine.Scripting.APIUpdating.MovedFrom]`, or the asset
+shows it as a missing component. Unity silently drops enum fields wider than 32 bits, which is why a saved set of
 `MovementEvents` (64-bit) is a `long` (`AnimatorParameterTranslator.EventTrigger`, drawn by `EventTriggerDrawer`).
 
 **Unity asset files.**
@@ -134,10 +148,10 @@ change and say regeneration is still needed.
 | `Mannequin.fbx` (mesh, rig, clips), `Assets/Animation/Mannequin.controller`, the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
 | A scene's Game Setup object (spawner, input manager, camera), and its fixtures made to work | `SceneGameSetup` (Set Up Scene), which runs `LevelFixtureSetup` |
-| The level scenes (`MeridianComplex`, `LevelPlayground`, `ProvingGround`), their `Environment/` assets and baked data | Their builders in `Assets/Editor/Level` |
+| The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data | Their builders in `Assets/Editor/Level` |
 | `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |
 | Climbable paint masks (`Assets/ClimbablePaint`) | A `PaintedClimbableSurface`'s Repaint Masks |
-| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope), from the default character's capabilities |
+| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor), from the default character's capabilities |
 | A model source's measured height and shoulder width | `CharacterModelImporter` (Prepare Character Models) |
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
@@ -147,21 +161,29 @@ regenerates them.
 
 ## Recipes
 
-**A new movement ability** (rope swinging and ziplines are recent examples to copy):
-1. A capability interface in `MovementMode.cs`, added to `BasicMovementMode`'s declaration; its code and settings (under
-   their own `[Header]`) in `BasicMovementMode.<Ability>.cs`.
+**A new movement ability** (`RopeSwinging` and `Ziplines` are recent examples to copy):
+1. A `[Serializable]` `MovementComponent` subclass in `Assets/Scripts/MovementModes/Components/<Ability>.cs`, holding its
+   settings (each with a `[Tooltip]`; names unique across the mode and its components, which the hygiene check enforces).
+   Override `TakeOver` (carry on or start; return whether it has the character), `IsActive`, `Interrupt` (end it when
+   another ability takes the character, or it's turned off), `AdvanceTimers` for its cooldowns, and
+   `AfterMovementResolved` if it moves something with the character. Add it to `BasicMovementMode.DefaultComponents` at
+   its place in the order (most committed first), and to the asset with Add Component.
 2. A state class in `MovementAbilityStates.cs` and a property for it on `MovementController`.
 3. A `CharacterState` flag, `MovementEvents` for its start and end, and an entry in `MovementController.StateEvents`
    (which raises them from the flag).
-4. A place in `BasicMovementMode.ProcessMovementData`'s chain (most committed first; each returns whether it has the
-   character), in `AbilityInProgress`, and in `AdvanceAbilityTimers` for its cooldowns; `AfterMovementResolved` if it
-   moves something with the character.
+4. Tests reach its settings by name as before (`rig.MovementSetting`, which searches the components) and the component
+   itself with `rig.Component<T>()`.
 5. Animation: fields in `CharacterAnimationState` filled by `AnimationController.BuildState`; a parameter on
    `AnimatorParameterTranslator` (default name, field, hash, set); in `MannequinGenerator`, the parameter, the crouch
    state's exclusions and a state in `MannequinGenerator.AbilityStates.cs`; a clip in `mannequin_animations.py` if
    needed; an IK component added in `CharacterModelImporter.SaveModelPrefab` if needed. Then regenerate the mannequin
    and prepare the character models.
 6. PlayMode tests, a docs section, and its turned-off-at-0 case.
+
+**Moving a mode's settings into a component** (a new mode type's own movement, made into components): keep the
+settings' field names (that's how their values are carried over), move the code into the component as above, and take
+it out of the mode's step. Then run Move Settings Into Components (`MovementModeMigration`) on the assets and check
+their diffs: every value should reappear under the component.
 
 **A new level mechanic** (a fixture): a piece in `Graybox.Mechanics.cs` naming its geometry "Name | key=value | …"; a
 set-up step in `LevelFixtureSetup` (the prefixes in both must match, and match only "Name |", since "(future)" markers
@@ -185,9 +207,11 @@ its game setup). Update the area's `*_Blockout_Notes.md` with the builder. Stair
 height and ramps to the envelope's ramp gradient, except the Calibration Annex's deliberate tests; prism footprints'
 edges run at multiples of 45° (so `FootprintBoxes` fills them exactly).
 
-**Retuning the movement:** change the asset, not the code defaults. Then write the movement envelope again (Write
-Movement Envelope: `Tools/LevelSpec/envelope.json`, from the default character's `MovementController.Capabilities`;
-`MovementEnvelopeTests` fails until you do), and check the Proving Ground, whose layout is graded to it. A new ability
+**Retuning the movement:** change the asset, not the code defaults. Saving it in the editor writes the movement
+envelope again (`Tools/LevelSpec/envelope.json`, from the default character's `MovementController.Capabilities`, by
+`MovementEnvelopeAutoWriter`, which logs what changed); a change made outside the editor (a YAML edit, batch mode)
+needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. Then check the levels' movement findings
+(the levelspec tool), which are graded to it. No tuning is fixed: tests that need one (no air jumps, say) set it on the rig. A new ability
 whose reach matters to levels gets a measurement in `BasicMovementMode.Capabilities.cs` and a `MovementCapabilities` value. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them
 together.
 

@@ -23,12 +23,18 @@ namespace Character
         {
             MovementController copy = simulation.Controller;
             float heightScale = copy.HeightScale * copy.jumpStrengthModifier * copy.jumpStrengthModifier;
+            Jumping jumping = Get<Jumping>();
+            float maxJumpHeight = jumping != null ? jumping.MaxJumpHeight : 0f, minJumpHeight = jumping != null ? jumping.MinJumpHeight : 0f;
+            int maxJumps = jumping != null ? jumping.MaxJumps : 0;
+            Dashing dashing = Get<Dashing>();
             capabilities.MinJumpHeight = maxJumpHeight > 0f ? Mathf.Min(minJumpHeight, maxJumpHeight) * heightScale : float.NaN;
             capabilities.MaxJumpHeight = maxJumpHeight > 0f ? maxJumpHeight * heightScale : float.NaN;
-            capabilities.CrouchHeight = crouchHeight * capabilities.StandHeight;
+            // How low the character gets: crouched (NaN if it can't crouch).
+            Crouching crouching = Get<Crouching>();
+            capabilities.CrouchHeight = crouching != null ? crouching.CrouchHeight * capabilities.StandHeight : float.NaN;
 
             bool canJump = maxJumpHeight > 0f && maxJumps > 0;
-            bool canDash = dashDuration > 0f && maxAirDashes > 0;
+            bool canDash = dashing is { DashDuration: > 0f, MaxAirDashes: > 0 };
             bool airJumps = canJump && maxJumps > 1;
 
             // ---- Jumps: gaps crossed at the same height ----
@@ -60,11 +66,11 @@ namespace Character
             {
                 // Jumping up onto something, without catching its edge as a ledge (or vaulting, sliding down it...).
                 BasicMovementMode plain = simulation.Copy(this);
-                plain.ledgeClimbDuration = 0f;
-                plain.vaultRiseDuration = 0f;
-                plain.wallSlideMaxDuration = 0f;
-                plain.wallRunMaxDuration = 0f;
-                plain.wallClimbSpeed = 0f;
+                TurnOff<Ledges>(plain);
+                TurnOff<Vaulting>(plain);
+                TurnOff<WallSliding>(plain);
+                TurnOff<WallRunning>(plain);
+                TurnOff<WallClimbing>(plain);
                 float top = capabilities.MaxJumpHeight + 2f * capabilities.StepHeight + capabilities.StandHeight;
                 MovementCapabilities.Add(capabilities.climbs, "jump up", HighestReached(simulation, plain, top, -1));
                 if (airJumps)
@@ -72,12 +78,13 @@ namespace Character
                     MovementCapabilities.Add(capabilities.climbs, "double jump up",
                         HighestReached(simulation, plain, 2f * top, Mathf.RoundToInt(DurationOfRise(copy, capabilities) / MovementSimulation.DeltaTime)));
                 }
-                if (ledgeClimbDuration > 0f)
+                Ledges ledgeGrabbing = Get<Ledges>();
+                if (ledgeGrabbing != null && ledgeGrabbing.LedgeClimbDuration > 0f)
                 {
                     // Jumping to a ledge and climbing up onto it (nothing else that could help: no wall slides or runs).
                     BasicMovementMode ledges = simulation.Copy(plain);
-                    ledges.ledgeClimbDuration = ledgeClimbDuration;
-                    float reach = capabilities.MaxJumpHeight + ledgeGrabMaxHeight * capabilities.StandHeight + capabilities.StandHeight;
+                    ledges.Get<Ledges>(includeDisabled: true).Enabled = true;
+                    float reach = capabilities.MaxJumpHeight + ledgeGrabbing.LedgeGrabMaxHeight * capabilities.StandHeight + capabilities.StandHeight;
                     MovementCapabilities.Add(capabilities.climbs, "jump to the ledge", HighestReached(simulation, ledges, reach, -1));
                     if (airJumps)
                     {
@@ -88,20 +95,30 @@ namespace Character
             }
 
             // ---- Abilities' reach ----
-            capabilities.SlideLength = slideMaxDuration > 0f ? SlideLength(simulation) : float.NaN;
-            capabilities.RollLength = rollDuration > 0f ? RollLength(simulation) : float.NaN;
-            if (wallRunMaxDuration > 0f && canJump)
+            capabilities.SlideLength = crouching is { SlidingEnabled: true, SlideMaxDuration: > 0f } ? SlideLength(simulation) : float.NaN;
+            capabilities.RollLength = Get<Rolling>() is { RollDuration: > 0f } ? RollLength(simulation) : float.NaN;
+            if (Get<WallRunning>() is { WallRunMaxDuration: > 0f } && canJump)
             {
                 (float length, float drop) = WallRun(simulation);
                 capabilities.WallRunLength = length;
                 capabilities.WallRunDrop = drop;
             }
+
+            // ---- The components' ----
+            base.MeasureCapabilities(simulation, capabilities);
+        }
+
+        /// <summary>Turns off a copy's component of type T, if it has one.</summary>
+        private static void TurnOff<T>(BasicMovementMode mode) where T : MovementComponent
+        {
+            T component = mode.Get<T>(includeDisabled: true);
+            if (component != null) { component.Enabled = false; }
         }
 
         /// <summary>About how long (s) a jump takes to rise to its top, for timing a second jump near it.</summary>
         private float DurationOfRise(MovementController controller, MovementCapabilities capabilities)
         {
-            float g = gravityStrength * controller.AccelerationScale;
+            float g = GravityAcceleration(controller);
             return g > 0f && capabilities.MaxJumpHeight > 0f ? Mathf.Sqrt(2f * capabilities.MaxJumpHeight / g) : 0.3f;
         }
 
@@ -287,7 +304,7 @@ namespace Character
                 simulation.Reset(new Vector3(0f, 4f * simulation.Controller.StandingHeight, 0f));
                 float face = simulation.Controller.Radius + 0.1f;
                 simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
-                simulation.Controller.OverrideVelocity(Vector3.forward * (runSpeed * simulation.Controller.SpeedScale));
+                simulation.Controller.OverrideVelocity(Vector3.forward * (SettingsOf<WalkingAndRunning>().RunSpeed * simulation.Controller.SpeedScale));
                 Vector3 input = Quaternion.Euler(0f, 10f, 0f) * Vector3.forward;
                 float startZ = float.NaN, startY = float.NaN;
                 for (int i = 0; i < MovementSimulation.StepsFor(MeasureTimeout); i++)

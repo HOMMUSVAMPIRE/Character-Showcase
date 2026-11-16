@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A ladder a character can climb (see BasicMovementMode's Wall Climbing settings): straight up and down it, only from
+    /// A ladder a character can climb (see the movement mode's WallClimbing component): straight up and down it, only from
     /// its front (the side its forward, +Z, points to), its hands and feet on its rungs (see LadderIK). Climbed as a
     /// climbable surface is otherwise: taken hold of by heading into it, stepped onto and off at the bottom, jumped off,
     /// let go of, and climbed off the top onto a floor there.

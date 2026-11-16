@@ -31,7 +31,7 @@ namespace CharacterShowcase.EditorTools.Level
     ///
     /// In JSON (see ToJson, and Tools/LevelSpec/level-spec.schema.json, written by LevelSpecTools):
     /// <code>
-    /// {"format": "character-showcase-level", "version": 1, "name": "Proving Ground", "scene": "Assets/…/ProvingGround.unity",
+    /// {"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/…/LevelPlayground.unity",
     ///  "parts": [{"name": "P2 Gap Run", "pieces": [
     ///     {"piece": "Group", "parent": "", "name": "P2 Gap Run"},
     ///     {"piece": "Platform", "parent": "P2 Gap Run", "name": "Platform A (+4)", "x0": 136, "x1": 148, …},

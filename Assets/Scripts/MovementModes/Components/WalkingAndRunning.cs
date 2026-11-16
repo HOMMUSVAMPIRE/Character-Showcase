@@ -1,0 +1,73 @@
+using System;
+using UnityEngine;
+
+namespace Character
+{
+    /// <summary>
+    /// Walking and running: on the ground, with no ability having the character, movement input moves it the way the input
+    /// points (relative to the camera) at the walk speed, or the run speed while Sprint is held (the crouch speed while
+    /// crouched: see Crouching), and turns it to face that way. It acts in the mode's Locomotion, after Fall &amp; Air
+    /// Handling's ground friction (see MovementComponent.Locomotion). Steering in the air is Fall &amp; Air Handling's,
+    /// toward these speeds, as are a roll's steering (see Rolling): turned off, these speeds still shape them.
+    /// </summary>
+    [Serializable]
+    [MovementComponentName("Walking & Running")]
+    public class WalkingAndRunning : MovementComponent
+    {
+        [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
+        [SerializeField] private float walkSpeed;
+        [Tooltip("How fast (m/s) the character moves while the Sprint button is held, at its authored size. At or below Walk Speed, sprinting does nothing.")]
+        [SerializeField] private float runSpeed;
+
+        /// <summary>How fast (m/s) the character walks at full movement input, at its authored size.</summary>
+        public float WalkSpeed { get => walkSpeed; set => walkSpeed = value; }
+        /// <summary>How fast (m/s) the character runs (Sprint held), at its authored size.</summary>
+        public float RunSpeed { get => runSpeed; set => runSpeed = value; }
+
+        /// <summary>
+        /// The speed to move at for these inputs, at full movement input and the character's authored size: the run
+        /// speed while Sprint is held (if there is one, faster than walking), otherwise the walk speed.
+        /// </summary>
+        public float MoveSpeed(Inputs inputs) =>
+            inputs.sprint != null && inputs.sprint.value && runSpeed > walkSpeed ? runSpeed : walkSpeed;
+
+        /// <summary>
+        /// On the ground, moves the character the way the movement input points, at walking speed (see the mode's
+        /// MoveSpeed), facing that way.
+        /// </summary>
+        public override void Locomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            // In the air, the character steers instead (see FallAndAirHandling).
+            if (!movementData.initialGrounded) { return; }
+            float steeringEffectiveness = controller.movementSpeedMultiplier;
+
+            // With movement input, move the way it points (relative to the camera) at walking speed (or running, while
+            // sprinting), facing that way. Walking only makes up the difference between the momentum the character is
+            // carrying that way (from a landing, say) and that speed: it moves at whichever is faster, momentum or
+            // walking, and the momentum fades with the ground's friction (see FallAndAirHandling, which comes first).
+            // Walking used to be added on top: just after a landing the character moved at its air speed plus its
+            // walking speed, and leaving the ground again before the friction had taken the momentum away (a jump right
+            // after landing, or touching a ledge's lip for a step or two) carried both into the air, where air steering
+            // keeps speed beyond walking. Every short touch of the ground then added walking speed again, and hopping or
+            // clipping ledges built up to several times it.
+            if (inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0)
+            {
+                Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
+                steer.y = 0f;
+                float stick = Mathf.Min(steer.magnitude, 1f);
+                float walking = stick * steeringEffectiveness * Mode.MoveSpeed(inputs, controller) * controller.SpeedScale;
+                // No speed to walk at (a speed of 0), no walking: nor turning to face the input.
+                if (stick > 1e-4f && walking > 1e-6f)
+                {
+                    Vector3 direction = steer.normalized;
+                    Vector3 carried = movementData.initialInertia;
+                    float carriedAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(carried.x, 0f, carried.z), direction));
+                    movementData.directMovementVector = direction * (Mathf.Max(0f, walking - carriedAlong) * movementData.deltaTime);
+                    movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(direction, Vector3.up), steeringEffectiveness);
+                }
+            }
+
+            movementData.state |= CharacterState.Moving;
+        }
+    }
+}

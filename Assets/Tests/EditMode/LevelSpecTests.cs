@@ -22,7 +22,6 @@ namespace CharacterShowcase.Tests.EditMode
             "{\"format\": \"character-showcase-level\", \"version\": 1, \"name\": \"Test Level\", \"scene\": \"Assets/Scenes/Test/Test.unity\", " +
             "\"parts\": [{\"name\": \"Part\", \"pieces\": [" + pieces + "]}]}";
 
-        [TestCase("Proving Ground")]
         [TestCase("Level Playground")]
         [TestCase("Meridian Complex")]
         public void EachLevel_BuiltFromItsOwnSpec_IsTheSameLevel(string level)

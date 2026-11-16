@@ -14,8 +14,8 @@ namespace CharacterShowcase.EditorTools
     /// default character can do: the Character prefab, with the collider its model gives it (see
     /// CharacterModelHost.ColliderFor), measured by running its movement (MovementController.Capabilities, through
     /// MovementSimulation). The levelspec tool is Python with nothing else to install, so it can't run the movement
-    /// itself: this file is how it knows. Never edit it by hand; write it again after changing the tuning
-    /// (MovementEnvelopeTests fails while it's out of date). The ramp gradient is the levels' own rule (GrayboxSettings'
+    /// itself: this file is how it knows. Never edit it by hand. Saving the tuning in the editor writes it again
+    /// (see MovementEnvelopeAutoWriter); MovementEnvelopeTests fails while it's out of date otherwise. The ramp gradient is the levels' own rule (GrayboxSettings'
     /// Max Ramp Gradient), not the character's.
     /// </summary>
     public static class MovementEnvelopeWriter

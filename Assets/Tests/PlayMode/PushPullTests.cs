@@ -30,7 +30,7 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float PushPullSpeed => rig.Mode<PushPullMode>().pushPullSpeed * rig.Movement.SpeedScale;
+        private float PushPullSpeed => rig.Component<PushingAndPulling>().PushPullSpeed * rig.Movement.SpeedScale;
         private bool Grabbing => rig.InState(CharacterState.Grabbing);
         /// <summary>The box's side facing the character (its -Z side).</summary>
         private float BoxNearSide => box.Position.z - BoxSize / 2f;

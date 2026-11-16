@@ -18,8 +18,8 @@ namespace CharacterShowcase.EditorTools.Level
     /// like a builder (the build window, or -executeMethod); and writes the specs' JSON Schema for other tools.
     ///
     /// Menu: Tools > Character Showcase > Level > Specs. Command line (Unity closed):
-    /// <c>-executeMethod CharacterShowcase.EditorTools.Level.LevelSpecTools.ExportFromCommandLine [-level "Proving Ground"]</c>,
-    /// <c>...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/ProvingGround.level.json</c> and
+    /// <c>-executeMethod CharacterShowcase.EditorTools.Level.LevelSpecTools.ExportFromCommandLine [-level "Level Playground"]</c>,
+    /// <c>...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/LevelPlayground.level.json</c> and
     /// <c>...LevelSpecTools.WriteSchemaFromCommandLine</c>.
     /// </summary>
     public static class LevelSpecTools
@@ -33,7 +33,6 @@ namespace CharacterShowcase.EditorTools.Level
         {
             ["Meridian Complex"] = () => MeridianComplexBuilder.Scene,
             ["Level Playground"] = () => LevelPlaygroundBuilder.Scene,
-            ["Proving Ground"] = () => ProvingGroundBuilder.Scene,
         };
 
         /// <summary>The levels that have builders, which can be exported as specs.</summary>

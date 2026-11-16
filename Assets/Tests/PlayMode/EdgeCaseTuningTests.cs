@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator RunSpeedNotAboveWalkSpeed_TurnsSprintingOff([Values(0.5f, 1f)] float runSpeedOfWalkSpeed)
         {
             yield return Settle();
-            float walkSpeed = rig.Mode<WalkRunMode>().walkSpeed;
+            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
             rig.SetMovementSetting("runSpeed", walkSpeed * runSpeedOfWalkSpeed);
 
             // Get up to speed, then time a second of sprinting.
@@ -256,7 +256,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Settle();
             rig.SetMovementSetting("dashSpeed", 0f);
-            float duration = rig.Mode<DashMode>().dashDuration;
+            float duration = rig.Component<Dashing>().DashDuration;
             Vector3 start = rig.Position;
 
             yield return Run(duration + 0.1f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle(),
@@ -277,8 +277,8 @@ namespace CharacterShowcase.Tests
             yield return Settle();
             // No keys at all: it evaluates to 0 throughout, leaving only the hand-over to momentum on the last step.
             rig.SetMovementSetting("dashSpeedCurve", new AnimationCurve());
-            float duration = rig.Mode<DashMode>().dashDuration;
-            float endSpeed = rig.Mode<DashMode>().dashSpeed * rig.MovementSetting<float>("dashEndSpeedRetention");
+            float duration = rig.Component<Dashing>().DashDuration;
+            float endSpeed = rig.Component<Dashing>().DashSpeed * rig.MovementSetting<float>("dashEndSpeedRetention");
             Vector3 start = rig.Position;
 
             yield return Run(duration + 0.02f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle(),
@@ -295,7 +295,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Settle();
             rig.SetMovementSetting("dashCooldown", 0f);
-            float duration = rig.Mode<DashMode>().dashDuration;
+            float duration = rig.Component<Dashing>().DashDuration;
 
             // Held through three dashes' worth of time: one dash.
             yield return Run(3f * duration, i => CharacterTestRig.Dash(i, Vector3.right));
@@ -349,7 +349,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -0.8f));
             rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add((step, movementEvent));
             rig.SetMovementSetting("coyoteTime", 0f);
-            if (rig.Mode<JumpMode>().maxJumps < 2) { rig.SetMovementSetting("maxJumps", 2); }
+            if (rig.Component<Jumping>().MaxJumps < 2) { rig.SetMovementSetting("maxJumps", 2); }
             yield return Run(0.3f, _ => CharacterTestRig.Idle());
 
             // Walk off, and press jump two steps after leaving the ground.

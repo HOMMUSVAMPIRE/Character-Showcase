@@ -36,7 +36,7 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float ClimbSpeed => rig.Mode<WallClimbMode>().wallClimbSpeed * rig.Movement.SpeedScale;
+        private float ClimbSpeed => rig.Component<WallClimbing>().WallClimbSpeed * rig.Movement.SpeedScale;
         private bool Climbing => rig.InState(CharacterState.WallClimbing);
         private Vector3 Velocity => rig.Movement.lastFrameMovementData.finalVelocity;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
@@ -256,7 +256,7 @@ namespace CharacterShowcase.Tests
             var events = new List<MovementEvents>();
             rig.Movement.MovementEventRaised += (movementEvent, _) => events.Add(movementEvent);
             yield return TakeHold();
-            yield return rig.Run(top / ClimbSpeed + rig.Mode<LedgeMode>().ledgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up);
+            yield return rig.Run(top / ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up);
             Assert.That(Climbing, Is.False);
 
             Assert.That(Climbing, Is.False, "The character should no longer be climbing.");

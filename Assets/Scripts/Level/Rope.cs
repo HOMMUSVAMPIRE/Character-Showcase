@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A rope a character can swing on (see BasicMovementMode's Rope Swinging settings): hanging from an anchor (this
+    /// A rope a character can swing on (see the movement mode's RopeSwinging component): hanging from an anchor (this
     /// object's position), length metres long. A character reaching it in mid-air catches hold of it and swings on it as a
     /// pendulum; let go of, the rope swings on by itself, slowing until it hangs straight down again, and can be caught
     /// on its way back.

@@ -80,7 +80,7 @@ namespace CharacterShowcase.Tests
             yield return Stand();
             if (!(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
             float limit = Setting<float>("maxTurnSpeedMoving"), fullAt = Setting<float>("fullTurnSpeedAt");
-            if (rig.Mode<WalkRunMode>().runSpeed < fullAt) { Assert.Ignore("The character's sprint is slower than full turning speed."); }
+            if (rig.Component<WalkingAndRunning>().RunSpeed < fullAt) { Assert.Ignore("The character's sprint is slower than full turning speed."); }
 
             // Standing still, turning around.
             float fastestStanding = 0f, previous = ModelYaw;
@@ -216,7 +216,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Stand();
             float yawAfterFewSteps = 0f, mostLean = 0f;
-            int rollSteps = CharacterTestRig.StepsFor(rig.Mode<RollMode>().rollDuration);
+            int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration);
             yield return rig.Run(rollSteps - 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(), step =>
             {
                 Feed(step);

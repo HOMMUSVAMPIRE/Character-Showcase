@@ -88,7 +88,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator Rolling_PlaysRoll_ThroughOnceOverTheRoll()
         {
             yield return Spawn();
-            int rollSteps = CharacterTestRig.StepsFor(rig.Mode<RollMode>().rollDuration);
+            int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration);
             bool played = false;
             float halfway = -1f;
             yield return rig.Run(rollSteps, step => step == 0 ? CharacterTestRig.Roll(0) : CharacterTestRig.Idle(), step =>
@@ -105,7 +105,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator RollingWhileMoving_BlendsIntoTheStride_AsTheRollEnds()
         {
             yield return Spawn();
-            int rollSteps = CharacterTestRig.StepsFor(rig.Mode<RollMode>().rollDuration);
+            int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration);
             int lastRollingStep = -1, inLocomotionAt = -1;
             string other = null;
             yield return rig.Run(rollSteps + 20, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
@@ -129,7 +129,7 @@ namespace CharacterShowcase.Tests
             rig.Body.position = new Vector3(0f, 6f, -10f);
             float face = rig.Radius + 0.1f;
             rig.Box("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
-            float speed = rig.Mode<WallRunningMode>().wallRunSpeed * rig.Movement.SpeedScale;
+            float speed = rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
             rig.Movement.OverrideVelocity(Vector3.forward * speed);
             yield return ExpectState("Wall Run", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
@@ -204,13 +204,13 @@ namespace CharacterShowcase.Tests
             rig.Body.position = new Vector3(0f, 3f, 0f);
             float top = 3f + rig.StandingHeight, face = rig.Radius + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
-            float clearance = rig.StandingHeight * Mathf.Lerp(rig.Mode<CrouchMode>().crouchHeight, 1f, 0.5f);
+            float clearance = rig.StandingHeight * Mathf.Lerp(rig.Component<Crouching>().CrouchHeight, 1f, 0.5f);
             rig.Box("Low Ceiling", new Vector3(0f, top + clearance + 0.5f, face + 2f), new Vector3(10f, 1f, 4f));
             yield return ExpectState("Hang", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
 
             // Through the climb (crouched, as there's only room to crouch on top), the Animator stays in Climb.
             int climbingSteps = 0, outOfClimb = 0;
-            yield return rig.Run(rig.Mode<LedgeMode>().ledgeClimbDuration, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
+            yield return rig.Run(rig.Component<Ledges>().LedgeClimbDuration, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
             {
                 StepAnimator(step);
                 if (!rig.InState(CharacterState.LedgeClimbing) || step < 4) { return; }
@@ -505,7 +505,7 @@ namespace CharacterShowcase.Tests
             yield return Spawn();
             rig.Floor();
             yield return ExpectState("Crouch", 0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
-            int rollSteps = CharacterTestRig.StepsFor(rig.Mode<RollMode>().rollDuration * rig.Movement.DurationScale);
+            int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration * rig.Movement.DurationScale);
             bool rolled = false, stood = false;
             yield return rig.Run(rollSteps + CharacterTestRig.StepsFor(0.6f),
                 step => step == 0 ? CharacterTestRig.Roll(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>

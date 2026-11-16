@@ -34,7 +34,7 @@ namespace CharacterShowcase.Tests
 
         private bool Vaulting => rig.InState(CharacterState.Vaulting);
         private float MinSpeed => rig.MovementSetting<float>("vaultMinSpeed") * rig.Movement.SpeedScale;
-        private float RiseDuration => rig.Mode<VaultMode>().vaultRiseDuration * rig.Movement.DurationScale;
+        private float RiseDuration => rig.Component<Vaulting>().VaultRiseDuration * rig.Movement.DurationScale;
         /// <summary>The speed a vault leaves the character with, coming in at the given speed.</summary>
         private float ExitSpeed(float speed) => Mathf.Max(MinSpeed, speed * rig.MovementSetting<float>("vaultSpeedRetention"));
         private float StepUpShare => rig.MovementSetting<float>("vaultStepUpHeight");

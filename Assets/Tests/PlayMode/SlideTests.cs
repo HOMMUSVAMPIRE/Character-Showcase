@@ -25,9 +25,9 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float SlideStartSpeed => rig.Mode<SlideMode>().slideStartSpeed * rig.Movement.SpeedScale;
-        private float SlideMaxDuration => rig.Mode<SlideMode>().slideMaxDuration;
-        private float CrouchHeight => rig.Mode<CrouchMode>().crouchHeight;
+        private float SlideStartSpeed => rig.Component<Crouching>().SlideStartSpeed * rig.Movement.SpeedScale;
+        private float SlideMaxDuration => rig.Component<Crouching>().SlideMaxDuration;
+        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
         private bool Sliding => rig.InState(CharacterState.Sliding);
 
         /// <summary>Stands the character on a floor and gets it sprinting forward, skipping the test if it can't slide from a sprint.</summary>
@@ -164,6 +164,29 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
             Assert.That(slid, Is.False, "With no slide length, crouching while sprinting shouldn't slide.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
+        }
+
+        [UnityTest]
+        public IEnumerator SlidingTurnedOff_CrouchesInstead()
+        {
+            yield return SprintForward();
+            rig.Component<Crouching>().SlidingEnabled = false;
+            bool slid = false;
+            yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
+            Assert.That(slid, Is.False, "With Sliding Enabled off, crouching while sprinting shouldn't slide.");
+            Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
+        }
+
+        [UnityTest]
+        public IEnumerator SlidingTurnedOffDuringASlide_EndsItCrouched()
+        {
+            yield return SprintForward();
+            yield return rig.Run(3, step => SprintCrouching(step));
+            Assume.That(Sliding, Is.True, "Test setup: the character should be sliding.");
+            rig.Component<Crouching>().SlidingEnabled = false;
+            yield return rig.Run(2, step => CharacterTestRig.Sprint(Vector3.forward, step + 200));
+            Assert.That(Sliding, Is.False, "Turning sliding off should end the slide.");
+            Assert.That(rig.Movement.crouch.IsCrouched, Is.True, "It should end crouched, as a slide does.");
         }
     }
 }

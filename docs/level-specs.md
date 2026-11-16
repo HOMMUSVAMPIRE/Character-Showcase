@@ -5,23 +5,23 @@ Each level can also be kept as data: a level spec (Assets/Levels/[scene].level.j
 **The format.** A spec is JSON, one line per piece:
 
 ```
-{"format": "character-showcase-level", "version": 1, "name": "Proving Ground", "scene": "Assets/Scenes/ProvingGround/ProvingGround.unity",
- "parts": [{"name": "P2 Gap Run", "pieces": [
-   {"piece": "Group", "parent": "", "name": "P2 Gap Run"},
-   {"piece": "Platform", "parent": "P2 Gap Run", "name": "Platform A (+4)", "x0": 136, "x1": 148, "z0": 23, "z1": 39, "y0": 0, "top": 4, "coping": "Accent"},
+{"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/Scenes/LevelPlayground/LevelPlayground.unity",
+ "parts": [{"name": "Movement Tests", "pieces": [
+   {"piece": "Group", "parent": "", "name": "Movement Tests"},
+   {"piece": "Platform", "parent": "Movement Tests", "name": "Beam Start (+4)", "x0": -38, "x1": -34, "z0": -40, "z1": -36, "y0": 0, "top": 4},
    ...]}]}
 ```
 
 Each piece is one of the builders' pieces (`Graybox`'s methods marked `[Piece]`), its settings named as its parameters; settings left out take their defaults.
 
-Points are `[x, z]` (or `[x, y, z]`), areas `[xMin, zMin, xMax, zMax]`, surfaces by name, and a parent is a path under the level's root (`""` the root, `"P2 Gap Run/Stairs"`, `"G#2"` for the second group named G). `Placed` and `Turned` make groups set at a position or turned, whose contents are laid out in their own coordinates. A `"State"` entry changes the stair step size or the deck and rail dimensions for the pieces after it in its part.
+Points are `[x, z]` (or `[x, y, z]`), areas `[xMin, zMin, xMax, zMax]`, surfaces by name, and a parent is a path under the level's root (`""` the root, `"Building/Catwalk (+4)"`, `"G#2"` for the second group named G). `Placed` and `Turned` make groups set at a position or turned, whose contents are laid out in their own coordinates. A `"State"` entry changes the stair step size or the deck and rail dimensions for the pieces after it in its part.
 
 The whole format, every piece and its settings and defaults, is described by a JSON Schema, Tools/LevelSpec/level-spec.schema.json, written by Unity from the pieces themselves (Tools > Character Showcase > Level > Specs > Write Spec Schema, and every export).
 
 **In Unity** (Tools > Character Showcase > Level > Specs):
-- **Export Level Specs** records each level's builder as it builds and writes its spec, then builds the level again from the spec and checks it's the same, object for object (the Meridian Complex, Level Playground and Proving Ground all are). A spec that's been changed since it was exported (in the Level Editor, say) is only replaced if you say so.
+- **Export Level Specs** records each level's builder as it builds and writes its spec, then builds the level again from the spec and checks it's the same, object for object (the Meridian Complex and Level Playground both are). A spec that's been changed since it was exported (in the Level Editor, say) is only replaced if you say so.
 - **Build Level from Spec…** builds a level from a spec as its builder would: the scene the spec names, with its environment and bakes, ready for Set Up Scene.
-- From the command line: `-executeMethod CharacterShowcase.EditorTools.Level.LevelSpecTools.ExportFromCommandLine` (optionally `-level "Proving Ground"`, and `-force` to replace specs changed since they were exported; it exits with 1 if a spec doesn't build its level or was kept) and `...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/ProvingGround.level.json`.
+- From the command line: `-executeMethod CharacterShowcase.EditorTools.Level.LevelSpecTools.ExportFromCommandLine` (optionally `-level "Level Playground"`, and `-force` to replace specs changed since they were exported; it exits with 1 if a spec doesn't build its level or was kept) and `...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/LevelPlayground.level.json`.
 
 **The Level Editor** (Tools > Character Showcase > Level > Level Editor) edits a spec and shows it as it changes. Open a spec (or start a new level), then Preview builds it in an unsaved scene, without bakes.
 
@@ -54,7 +54,7 @@ python3 Tools/LevelSpec/levelspec pieces [Platform]              # the pieces, o
 
 See Tools/LevelSpec/examples for a level written in each, and the notes in Tools/LevelSpec/levelspec/formats.py. Converting a spec to XML or CSV and back gives the same spec, byte for byte.
 
-**Movement checks** hold a level to what the character can do: Tools/LevelSpec/envelope.json, written from the default character's [capabilities](movement.md#capabilities) (the Character prefab with its model, measured by running its movement) by Tools > Character Showcase > Level > Specs > Write Movement Envelope (or `-executeMethod CharacterShowcase.EditorTools.MovementEnvelopeWriter.WriteFromCommandLine`). Don't edit it: write it again after changing the tuning, the character or its model (`MovementEnvelopeTests` fails until it's written). Its `maxRampGradient` is the levels' own rule, GrayboxSettings' Max Ramp Gradient under Stairs, gentler than the character's walkable slope (`walkableSlope`). The checks report stairs with steps over its `stepHeight`, ramps steeper than its `maxRampGradient`, and low beams lower than its `crouchHeight`.
+**Movement checks** hold a level to what the character can do: Tools/LevelSpec/envelope.json, written from the default character's [capabilities](movement.md#capabilities) (the Character prefab with its model, measured by running its movement) by Tools > Character Showcase > Level > Specs > Write Movement Envelope (or `-executeMethod CharacterShowcase.EditorTools.MovementEnvelopeWriter.WriteFromCommandLine`). Don't edit it. Saving a change to the tuning, the character or its model in the editor writes it again (`MovementEnvelopeAutoWriter`), and the Console logs what changed (a jump that reaches further, a move added or gone); `MovementEnvelopeTests` fails if it's out of date anyway (after a change made outside the editor, say). Its `maxRampGradient` is the levels' own rule, GrayboxSettings' Max Ramp Gradient under Stairs, gentler than the character's walkable slope (`walkableSlope`). The checks report stairs with steps over its `stepHeight`, ramps steeper than its `maxRampGradient`, and low beams lower than its `crouchHeight`.
 
 Between the level's blocks and platforms, they report each gap at the same height and each climb to a neighbour, with the move it takes (the first of the envelope's `jumps` or `climbs` that reaches: a sprint jump across a gap, say, or a double jump up to a ledge) or that it's out of reach. Walls (Panel blocks) aren't counted as somewhere to stand. The checks are reports, not errors: a pit too wide to jump may have stairs out of it.
 

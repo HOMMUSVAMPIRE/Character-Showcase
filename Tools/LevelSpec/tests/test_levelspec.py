@@ -2,11 +2,13 @@
 
 They check the exported levels (Assets/Levels) are valid; every format converts to every other and back to the same
 spec; XML and CSV written by hand read as meant (groups, text values, defaults); mistakes are reported where they are;
-groups' placement carries to what's in them; the movement checks grade the Proving Ground's gaps and ledges as built;
+groups' placement carries to what's in them; the movement checks grade gaps and climbs by the moves that cross and
+reach them (made-up moves, and the character's own from envelope.json, whatever it's tuned to);
 and schematics are drawn.
 """
 
 import json
+import math
 import os
 import sys
 import tempfile
@@ -17,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import levelspec  # noqa: E402
-from levelspec import SpecError, formats, geometry  # noqa: E402
+from levelspec import SpecError, checks, formats, geometry  # noqa: E402
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 LEVELS = os.path.join(PROJECT, "Assets", "Levels")
@@ -164,22 +166,57 @@ class Geometry(unittest.TestCase):
         self.assertAlmostEqual(changed.bounds[3], 12 * 0.5)
 
 
+def platform(name, x0, x1, z0, z1, top):
+    return {"piece": "Platform", "parent": "", "name": name, "x0": x0, "x1": x1, "z0": z0, "z1": z1, "y0": 0, "top": top}
+
+
+def envelope_with(jumps=None, climbs=None):
+    """The character's envelope with made-up moves, so the grading is tested whatever the character is tuned to."""
+    env = dict(checks.load_envelope())
+    if jumps is not None:
+        env["jumps"] = [{"distance": d, "move": m} for m, d in jumps]
+    if climbs is not None:
+        env["climbs"] = [{"height": h, "move": m} for m, h in climbs]
+    return env
+
+
+def gap_course(*gaps):
+    """A pair of 6 m platforms 4 m up per gap, each pair far from the others, gap metres apart along x."""
+    pieces = []
+    for i, gap in enumerate(gaps):
+        z = 100 * i
+        pieces += [platform(f"From {i}", 0, 6, z, z + 6, 4), platform(f"To {i}", 6 + gap, 12 + gap, z, z + 6, 4)]
+    return spec_with(*pieces)
+
+
+def gap_grades(findings):
+    return {f.text.split(" m ")[0]: f.text.rsplit(": ", 1)[1] for f in findings if f.kind == "gap"}
+
+
 class MovementChecks(unittest.TestCase):
-    def setUp(self):
-        path = os.path.join(LEVELS, "ProvingGround.level.json")
-        if not os.path.exists(path):
-            self.skipTest("No Proving Ground spec exported.")
-        self.findings = levelspec.check(levelspec.read(path))
+    def test_a_gap_is_graded_by_the_shortest_move_that_crosses_it(self):
+        env = envelope_with(jumps=[("jump", 3), ("sprint jump", 6), ("double jump", 9)])
+        findings = levelspec.check(gap_course(2.5, 5, 8, 10), envelope=env)
+        self.assertEqual(gap_grades(findings), {"2.5": "jump", "5.0": "sprint jump", "8.0": "double jump", "10.0": "too far to jump (over 9 m)"})
+        self.assertEqual([f.severity for f in findings if f.kind == "gap" and f.text.startswith("10.0")], ["warning"])
 
-    def test_the_gap_runs_gaps_are_graded(self):
-        gaps = {f.text.split(" m ")[0]: f.text.rsplit(": ", 1)[1] for f in self.findings if f.kind == "gap" and "Platform" in f.text}
-        self.assertEqual(gaps, {"4.0": "sprint jump", "6.0": "sprint jump", "8.5": "sprint jump and air dash",
-                                "11.0": "double jump", "13.5": "double jump and air dash"})
+    def test_a_climb_is_graded_by_the_lowest_move_that_reaches_it(self):
+        env = envelope_with(climbs=[("step up", 0.35), ("jump up", 2), ("jump to the ledge", 4.5)])
+        spec = spec_with(platform("Base", 0, 6, 0, 6, 1),
+                         platform("Low", 6, 12, 0, 6, 2.5), platform("Ledge", -6, 0, 0, 6, 5), platform("Cliff", 0, 6, 6, 12, 7))
+        climbs = sorted(f.text.split(" m up")[0] + ": " + f.text.rsplit(": ", 1)[1] for f in levelspec.check(spec, envelope=env) if f.kind == "climb")
+        self.assertEqual(climbs, ["1.5: jump up", "4.0: jump to the ledge", "6.0: out of reach (over 4.5 m)"])
 
-    def test_the_towers_ledges_are_graded(self):
-        climbs = [f.text for f in self.findings if f.kind == "climb" and "Ledge" in f.text]
-        self.assertTrue(any("4.5 m up" in t and "jump to the ledge" in t for t in climbs), climbs)
-        self.assertTrue(any("6.0 m up" in t and "double jump to the ledge" in t for t in climbs), climbs)
+    def test_the_characters_own_moves_grade_gaps_up_to_their_reach(self):
+        env = checks.load_envelope()
+        jumps = sorted(env["jumps"], key=lambda j: j["distance"])
+        farthest = jumps[-1]["distance"]
+        # Just short of each move's reach, to a tenth of a metre (so the findings' text rounds to the same).
+        gaps = [math.floor((j["distance"] - 0.05) * 10) / 10 for j in jumps] + [math.floor(farthest * 10) / 10 + 0.5]
+        grades = gap_grades(levelspec.check(gap_course(*gaps), envelope=env))
+        for gap in gaps[:-1]:
+            self.assertEqual(grades[f"{gap:.1f}"], checks.move_for(gap, env["jumps"], "distance"))
+        self.assertTrue(grades[f"{gaps[-1]:.1f}"].startswith("too far to jump"), grades)
 
     def test_steep_ramps_and_low_beams_are_warned_of(self):
         f = levelspec.check(spec_with(

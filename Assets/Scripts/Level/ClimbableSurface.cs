@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// Marks colliders a character can climb (see BasicMovementMode's Wall Climbing settings): this object's colliders and
+    /// Marks colliders a character can climb (see the movement mode's WallClimbing component): this object's colliders and
     /// those of its children, so one on a group makes the whole group climbable. Every face of a climbable collider that's
     /// steep enough is climbable, and a character climbing it moves on round corners onto the next climbable face, and
     /// across from one climbable collider to another touching it, but not onto anything without this. Disable the

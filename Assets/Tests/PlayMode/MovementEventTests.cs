@@ -73,7 +73,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
-            if (rig.Mode<JumpMode>().maxJumps < 2) { Assert.Ignore("The character can't jump in mid-air."); }
+            if (rig.Component<Jumping>().MaxJumps < 2) { Assert.Ignore("The character can't jump in mid-air."); }
 
             // Hold the first jump briefly, so the character is still in the air for the second press.
             yield return Run(0.5f, i => i < 5 ? CharacterTestRig.Jump(i) : i == 12 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
-            int dashSteps = CharacterTestRig.StepsFor(rig.Mode<DashMode>().dashDuration);
+            int dashSteps = CharacterTestRig.StepsFor(rig.Component<Dashing>().DashDuration);
 
             yield return Run(0.5f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle());
 

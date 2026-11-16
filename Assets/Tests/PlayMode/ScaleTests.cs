@@ -293,8 +293,8 @@ namespace CharacterShowcase.Tests
             public Course(CharacterTestRig rig)
             {
                 float height = rig.Height, speed = rig.WalkSpeed;
-                var dash = rig.Movement.movementHandler as DashMode;
-                float dashDistance = dash != null ? dash.dashSpeed * rig.Movement.SpeedScale * dash.dashDuration : 0f;
+                Dashing dash = (rig.Movement.movementHandler as ComposedMovementMode)?.Get<Dashing>();
+                float dashDistance = dash != null ? dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration : 0f;
                 rampAngle = Mathf.Min(20f, 0.5f * rig.MaxSlopeAngle);
                 rise = 0.5f * height;
                 blockHeight = 0.85f * rig.StepHeight;

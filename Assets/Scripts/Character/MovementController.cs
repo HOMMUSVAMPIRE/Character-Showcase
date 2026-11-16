@@ -327,7 +327,7 @@ namespace Character
         public ZiplineState zipline { get; } = new ZiplineState();
         public BounceState bounce { get; } = new BounceState();
         // The maximum number of jumps the character can perform in succession
-        public int maxJumps => movementHandler is JumpMode ? (movementHandler as JumpMode).maxJumps : 0;
+        public int maxJumps => movementHandler is ComposedMovementMode mode && mode.Get<Jumping>() is { } jumping ? jumping.MaxJumps : 0;
 
         /// <summary>
         /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times

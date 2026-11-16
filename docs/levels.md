@@ -133,19 +133,6 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Character Showcase > Level > Build Level Playground, or `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
-## Test Level: The Proving Ground
-The Proving Ground (Assets/Scenes/ProvingGround) is a level for trying out the movement: one circuit through a series of zones from a start hall, each pushing one family of moves. Its gaps, runs and ledges are set against what the character can do with the movement mode as it's tuned now, measured with the real movement code: how far each kind of jump crosses, how high a ledge can be caught from a jump and a double jump, and how far a slide, a roll and a wall run go. Those limits are the character's [capabilities](movement.md#capabilities), written to Tools/LevelSpec/envelope.json; the layout constants at the top of `ProvingGroundBuilder` are set against them, and retuning the movement may call for the layout to be revised with them. Every challenge has a way back up from a fall.
-
-- **P0 Start Hall**: an octagonal plaza with spawn points, and the lap gate, timing each lap of the circuit.
-- **P1 Sprint Line**: a long straight east. The north lane is a speed trap (timed between two gates, with its time and speed on the finish gate, and a ruler marked along it); the south lane has slide gates too low to stand under, spaced further apart than one slide goes, and kerbs either side of the step height (one to hop, one to run up).
-- **P2 Gap Run**: a ramp up to raised platforms heading north over a park, the gaps between them graded to the jumps, from a sprint jump through to a double jump and air dash, each painted with its width, with stairs back up from below.
-- **P3 Wall-Run Canyon**: a narrow canyon between tall walls, over a pit, from a run-up west to two landings and an exit: two runs with a wall jump between, and one longer than a single run can go, so it has to end in a jump.
-- **P4 Ledge Tower**: a suspended walkway from the canyon to a deck, and ledges up to a summit, each a jump or a double jump above the last (as painted on each); a chimney to climb by wall jumps; and a stair back down.
-- **P5 Low Works**: an enclosed, lit hall with a long crawl tunnel too low to stand in, slide gates, a roll lane under hoods, a ledge out of reach without a crate to stand on and a double jump, and two crates to push (one, in an alcove, has to be pulled out).
-- **P6 Moving Ground**: a pit crossed on shuttles, a turntable and islands, with a lift up from its floor and stairs out at both ends.
-
-Orange guide lines on the ground lead from each zone to the next. Build it with Tools > Character Showcase > Level > Build Proving Ground (or `-executeMethod CharacterShowcase.EditorTools.Level.ProvingGroundBuilder.BuildFromCommandLine`), then Set Up Scene: as with the other levels, its moving platforms, crates and timing gates only work once the scene is set up.
-
 ## Level mechanics
 The level builders can't reference the game's code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. Set Up Scene turns each into the real thing (`LevelFixtureSetup`):
 - "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a MovingPlatform with those settings;

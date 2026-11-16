@@ -26,10 +26,10 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float RollSpeed => rig.Mode<RollMode>().rollSpeed * rig.Movement.SpeedScale;
-        private float RollDuration => rig.Mode<RollMode>().rollDuration * rig.Movement.DurationScale;
+        private float RollSpeed => rig.Component<Rolling>().RollSpeed * rig.Movement.SpeedScale;
+        private float RollDuration => rig.Component<Rolling>().RollDuration * rig.Movement.DurationScale;
         private int RollSteps => CharacterTestRig.StepsFor(RollDuration);
-        private float CrouchHeight => rig.Mode<CrouchMode>().crouchHeight;
+        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
         private bool Rolling => rig.InState(CharacterState.Rolling);
 
         private IEnumerator Stand()
@@ -70,6 +70,21 @@ namespace CharacterShowcase.Tests
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.right), Is.LessThan(1f), "The character should face the roll.");
             Assert.That(lowest, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "A roll should be low, at the crouch height.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "After a roll the character should stand up again.");
+        }
+
+        [UnityTest]
+        public IEnumerator WithCrouchingTurnedOff_ARollStillGoesLow_AndCrouchDoesNothing()
+        {
+            yield return Stand();
+            rig.Component<Crouching>().Enabled = false;
+            float standing = rig.StandingHeight, lowest = float.PositiveInfinity;
+            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(),
+                _ => { if (Rolling) { lowest = Mathf.Min(lowest, rig.CurrentHeight); } });
+            Assert.That(lowest, Is.EqualTo(standing * CrouchHeight).Within(0.01f), "The character's posture is the mode's: a roll should still be low.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "After the roll it should stand up again.");
+            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step));
+            Assert.That(rig.Movement.crouch.IsCrouched, Is.False, "With Crouching turned off, Crouch shouldn't crouch.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f));
         }
 
         [UnityTest]
@@ -159,7 +174,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "With no room to stand, the roll should end crouched.");
             Assert.That(rig.CurrentHeight, Is.LessThan(underside));
 
-            float crouchSpeed = rig.Mode<CrouchMode>().crouchSpeed * rig.Movement.SpeedScale;
+            float crouchSpeed = rig.Component<Crouching>().CrouchSpeed * rig.Movement.SpeedScale;
             yield return rig.Run((length + rig.Radius) / crouchSpeed + 0.5f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.InState(CharacterState.Crouching), Is.False, "Out from under the ceiling, the character should stand up by itself.");
         }

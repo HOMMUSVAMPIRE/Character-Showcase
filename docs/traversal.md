@@ -1,5 +1,5 @@
 # Climbing and Traversal
-Climbing walls and ladders, pushing and pulling objects, ropes, ziplines and bounce pads. Like the other movement abilities ([abilities.md](abilities.md)), each is in its own BasicMovementMode file (Assets/Scripts/MovementModes/BasicMovementMode.<Ability>.cs), with its settings under its own header in the BasicMovementMode asset (Assets/ScriptableObjects/BasicMovementMode.asset). The settings named below are on that asset unless another component is named.
+Climbing walls and ladders, pushing and pulling objects, ropes, ziplines and bounce pads. Each is a component of the BasicMovementMode asset (Assets/ScriptableObjects/BasicMovementMode.asset; see [Movement Components](movement.md#movement-components)), in Assets/Scripts/MovementModes/Components, with its settings under its name in the asset's Components list. The settings named below are on that asset unless another component is named.
 
 ## Wall Climbing
 Surfaces with a ClimbableSurface component (on a collider, or on a parent to make a whole group climbable) can be climbed, and so can the parts of an object painted climbable with a PaintedClimbableSurface (see [Painting climbable areas](#painting-climbable-areas)); nothing else can. A climbable wall is climbed instead of wall-run along or slid down.
@@ -8,7 +8,7 @@ Surfaces with a ClimbableSurface component (on a collider, or on a parent to mak
 
 **Moving on it.** Climbing, the character faces the surface without gravity and holds still without input. The stick moves it over the surface at Wall Climb Speed (times the surface's own Speed Multiplier): up and down with the stick's up and down, sideways with left and right, as the camera sees it, so up on the stick climbs up whichever side of the character the camera is on. Wall Climb Snap Speed draws it in against the surface, so it stays against it as the surface curves.
 
-**The climbable area holds the character in.** What has to stay on it is the character's grip, a point on its body Wall Climb Grip Height (a share of its height) above its feet. The character climbs on as long as the grip stays within a few centimetres of a climbable surface (`WallClimbEdgeTolerance` in BasicMovementMode.WallClimb.cs), and stops where it wouldn't: a move that would take it off is cut down to whatever part of it (up, down or sideways) stays on.
+**The climbable area holds the character in.** What has to stay on it is the character's grip, a point on its body Wall Climb Grip Height (a share of its height) above its feet. The character climbs on as long as the grip stays within a few centimetres of a climbable surface (`WallClimbEdgeTolerance` in Components/WallClimbing.cs), and stops where it wouldn't: a move that would take it off is cut down to whatever part of it (up, down or sideways) stays on.
 
 It goes round outside corners onto the next climbable face, its grip swinging round the edge, and into inside corners onto the climbable wall it meets, so climbable surfaces that join are climbed as one. Where something unclimbable comes next instead (the plain wall round a climbable panel set on it, or a ledge that isn't climbable), it stops at the edge.
 
@@ -18,7 +18,7 @@ It goes round outside corners onto the next climbable face, its grip swinging ro
 
 **Letting go.** Jump kicks off the surface, upward (Wall Climb Jump Up Speed) and away (Wall Climb Jump Away Speed), giving back air jumps as a wall jump does ([Wall-Running](abilities.md#wall-running)). Crouch lets go and drops. After letting go, nothing can be climbed for Wall Climb Regrab Delay.
 
-The character climbs on surfaces that move, carried with them. The Wall Climbing section of the BasicMovementMode asset tunes it all; a Wall Climb Speed of 0 turns it off.
+The character climbs on surfaces that move, carried with them. The BasicMovementMode asset's Wall Climbing component tunes it all; turning it off, or a Wall Climb Speed of 0, turns climbing off. Climbing over the top of a surface is a ledge climb, so it needs Ledges turned on.
 
 ### Painting climbable areas
 To make only part of an object climbable (one face of a box, a strip up a wall, a patch of handholds), add a PaintedClimbableSurface to it and paint the climbable regions in the Scene view:
@@ -71,7 +71,7 @@ Large objects with a PushableObject component (a kinematic Rigidbody with a BoxC
 
 **Moving it.** An object's moves are swept against the world, so it stops at walls, and the character stops with it. Pushed off an edge, an object falls (it has simple gravity of its own: the PushableObject's Gravity and Max Fall Speed) and the character lets go. Letting go of Interact or leaving the ground lets go too. Holding an object, the character faces it and can't jump, dash, crouch or roll. Without Interact held, an object is just an obstacle.
 
-The Pushing & Pulling section of the BasicMovementMode asset tunes the speed and reach.
+The BasicMovementMode asset's Pushing And Pulling component tunes the speed and reach.
 
 ## Ropes
 A Rope component makes a rope to swing on: it hangs from its object's position (its anchor), Length metres long, and with Build Mesh on it draws itself (Add Component > Rope on an empty object where the rope is tied; give it a Material). Nothing collides with a rope: characters find it by where it is. In the levels, the Graybox Rope piece hangs one from a bracket, which Set Up Scene makes swing; the Level Playground has one on a gantry over a gap too wide to jump.
@@ -88,7 +88,7 @@ A Rope component makes a rope to swing on: it hangs from its object's position (
 
 **Letting go.** Jump lets go with the swing's speed and a jump up (Rope Jump Up Speed); Crouch, or touching the ground, lets go. Let go of, the rope swings on by itself, slowing by the Rope's own Swing Damping until it hangs straight again, and can be caught on its way back. The same rope can't be caught again for Rope Regrab Delay after letting go (another can, so the character can swing from rope to rope).
 
-The rope is drawn between physics steps as the character is, so the hands stay on it. The Rope Swinging section of the BasicMovementMode asset tunes it; a Rope Grab Reach of 0 turns it off.
+The rope is drawn between physics steps as the character is, so the hands stay on it. The BasicMovementMode asset's Rope Swinging component tunes it; turning it off, or a Rope Grab Reach of 0, turns rope swinging off.
 
 ## Ziplines
 A Zipline component makes a zipline: a straight cable from its object's position to its End Point (in its own space), ridden at up to its Max Speed, which with Build Mesh on draws its own cable. In the levels, the Graybox Zipline piece builds one between two posts, which Set Up Scene makes rideable; the Level Playground has one from the top of a tower down to the ground.
@@ -99,11 +99,11 @@ A Zipline component makes a zipline: a straight cable from its object's position
 
 **Letting go.** Jump lets go with a jump up (Zipline Jump Up Speed) on top of the ride's speed; Crouch, touching the ground, or being stopped by a wall or a ceiling lets go. The same zipline can't be caught again for Zipline Regrab Delay after letting go.
 
-The Ziplines section of the BasicMovementMode asset tunes it; a Zipline Grab Reach of 0 turns it off.
+The BasicMovementMode asset's Ziplines component tunes it; turning it off, or a Zipline Grab Reach of 0, turns ziplines off.
 
 ## Bounce Pads
 A BouncePad component on an object makes everything collidable on it a bounce pad. Standing on one (landing on it, or walking onto it) launches the character along the pad's up, fast enough that its feet rise the pad's Launch Height above it (worked out for the physics steps, so the height is exact), keeping the pad's Keep Momentum share of its speed across it (by default all of it, so running across a pad carries the run on). Holding Jump as it comes down on the pad multiplies the height by Bounce Jump Boost. A tilted pad launches along its tilt.
 
-The launch counts as the character's jump: its air jumps and dashes are left, and it cancels a dash, roll or slide. A pad can squash its Spring (its springy top) and let it spring back on each launch, for show, and raises Launched for effects and sound.
+The launch counts as the character's jump: its air jumps and dashes are left, and it ends whatever else the character was doing (a dash, roll or slide, or holding a rope or a zipline). A pad can squash its Spring (its springy top) and let it spring back on each launch, for show, and raises Launched for effects and sound.
 
-In the levels, the Graybox BouncePad piece builds one (a steel base with a cyan top), which Set Up Scene makes bounce; the Level Playground has one up onto its zipline tower. The Bounce Pads section of the BasicMovementMode asset holds Bounce Jump Boost and Bounce Height Multiplier, which every pad's height is multiplied by; a multiplier of 0 turns pads off.
+In the levels, the Graybox BouncePad piece builds one (a steel base with a cyan top), which Set Up Scene makes bounce; the Level Playground has one up onto its zipline tower. The BasicMovementMode asset's Bounce Pads component holds Bounce Jump Boost and Bounce Height Multiplier, which every pad's height is multiplied by; turning it off, or a multiplier of 0, turns pads off.

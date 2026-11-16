@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Character;
 using Level;
@@ -96,15 +97,15 @@ namespace CharacterShowcase.Tests
         public float StepHeight => Movement.MaxStepHeight * Movement.HeightScale;
         /// <summary>The steepest walkable slope, in degrees.</summary>
         public float MaxSlopeAngle => Movement.MaxSlopeAngle;
-        /// <summary>The character's walking speed in m/s at full stick (WalkRunMode), at its size.</summary>
-        public float WalkSpeed => Mode<WalkRunMode>().walkSpeed * Movement.SpeedScale;
+        /// <summary>The character's walking speed in m/s at full stick (Walking &amp; Running's), at its size.</summary>
+        public float WalkSpeed => Component<WalkingAndRunning>().WalkSpeed * Movement.SpeedScale;
         /// <summary>The character's sprinting speed (its run speed) at its current size.</summary>
-        public float RunSpeed => Mode<WalkRunMode>().runSpeed * Movement.SpeedScale;
+        public float RunSpeed => Component<WalkingAndRunning>().RunSpeed * Movement.SpeedScale;
         /// <summary>Seconds to walk the given distance at full stick, plus a margin for speeding up and settling.</summary>
         public float SecondsToWalk(float metres, float margin = 0.5f) => metres / WalkSpeed + margin;
 
         /// <summary>
-        /// The character's movement mode as the given interface (WalkRunMode, JumpMode, DashMode). Ignores the test if it
+        /// The character's movement mode as the given interface or type (ComposedMovementMode, BasicMovementMode). Ignores the test if it
         /// isn't one: a test of dashing has nothing to test on a character that can't dash.
         /// </summary>
         public T Mode<T>() where T : class
@@ -411,34 +412,59 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Reads a tuning value the movement mode interfaces don't have (BasicMovementMode's gravity, coyote time and dash
-        /// cooldown, say) from the character's movement mode by name. Ignores the test if the mode has no such value: it
-        /// tests a behaviour of BasicMovementMode, which another mode may not have.
+        /// cooldown, say) from the character's movement mode, or one of its components, by name (setting names are unique
+        /// across a mode and its components). Ignores the test if the mode has no such value: it tests a behaviour of
+        /// BasicMovementMode, which another mode may not have.
         /// </summary>
         public T MovementSetting<T>(string fieldName)
         {
-            object handler = Movement.movementHandler;
-            FieldInfo field = handler?.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null || field.FieldType != typeof(T))
-            {
-                Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
-            }
-            return (T)field.GetValue(handler);
+            (object owner, FieldInfo field) = FindSetting<T>(fieldName);
+            return (T)field.GetValue(owner);
         }
 
         /// <summary>
-        /// Changes a setting on the character's movement mode by name, for this test only: the mode is the rig's own copy
-        /// of the asset (see SpawnCharacter). Ignores the test if the mode has no such setting, as MovementSetting does.
+        /// Changes a setting on the character's movement mode, or one of its components, by name, for this test only: the
+        /// mode is the rig's own copy of the asset (see SpawnCharacter). Ignores the test if the mode has no such setting,
+        /// as MovementSetting does.
         /// </summary>
         public void SetMovementSetting<T>(string fieldName, T value)
         {
-            object handler = Movement.movementHandler;
-            FieldInfo field = handler?.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null || field.FieldType != typeof(T))
-            {
-                Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
-            }
-            field.SetValue(handler, value);
+            (object owner, FieldInfo field) = FindSetting<T>(fieldName);
+            field.SetValue(owner, value);
         }
+
+        private (object owner, FieldInfo field) FindSetting<T>(string fieldName)
+        {
+            const BindingFlags Fields = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
+            object handler = Movement.movementHandler;
+            var owners = new List<object> { handler };
+            if (handler is ComposedMovementMode composed) { owners.AddRange(composed.Components.Where(c => c != null)); }
+            foreach (object owner in owners)
+            {
+                for (Type type = owner?.GetType(); type != null; type = type.BaseType)
+                {
+                    FieldInfo field = type.GetField(fieldName, Fields | BindingFlags.DeclaredOnly);
+                    if (field != null && field.FieldType == typeof(T)) { return (owner, field); }
+                }
+            }
+            Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
+            return default;
+        }
+
+        /// <summary>
+        /// The character's movement mode's component of type T (the rig's own copy of it, for this test only), turned on
+        /// or not. Ignores the test if the mode has none: a test of riding ziplines has nothing to test on a character
+        /// that can't.
+        /// </summary>
+        public T Component<T>() where T : MovementComponent
+        {
+            T component = (Movement.movementHandler as ComposedMovementMode)?.Get<T>(includeDisabled: true);
+            if (component == null) { Assert.Ignore($"The character's movement mode has no {typeof(T).Name} component."); }
+            return component;
+        }
+
+        /// <summary>The rig's own copy of the character's movement mode, as one made of components (ignores the test if it isn't).</summary>
+        public ComposedMovementMode ComposedMode => Mode<ComposedMovementMode>();
 
         public void Dispose()
         {

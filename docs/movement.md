@@ -3,10 +3,31 @@ How the character moves: walking, jumping, dashing, turning, collision, size and
 
 Most of the settings named here are on the BasicMovementMode asset (`Assets/ScriptableObjects/BasicMovementMode.asset`), under the section named; the rest are on the Character prefab's components (`Assets/Prefabs/Character.prefab`).
 
+## Movement Components
+The movement mode is made of components: parts of the movement, each with its own settings, listed under Components at the bottom of the BasicMovementMode asset's inspector. They're Bounce Pads, Ziplines, Rope Swinging, Ledges, Vaulting, Pushing And Pulling, Wall Climbing, Wall Running, Wall Sliding, Rolling, Crouching (which slides too, unless its Sliding Enabled is off), Fall & Air Handling, Walking & Running, Dashing and Jumping. Every part of the movement is a component; the mode itself keeps only what they share (the character's posture, and the Jump and Crouch presses).
+
+Components act at different points of a step: most take the character over (the first in the list that can has it). Fall & Air Handling's gravity acts every step before that, and its fall speed limit last of all, whatever has the character. When nothing has it: Crouching changes how it walks; then Fall & Air Handling's ground friction takes away the momentum it carries and Walking & Running walks it (friction first, since walking makes up the difference to the momentum friction leaves), or in the air Fall & Air Handling steers it; then Dashing and Jumping act, a dash before the jump that cancels it. Those last four keep that order at the end of the list. Turning Jumping off leaves the character without jumps from the ground or in mid-air, but Jump still jumps off walls, ropes and ziplines, and a press counts for Jumping's Jump Input Buffer either way.
+
+- **Turning one off.** Its toggle turns it off, and the movement goes on as if it weren't there. Turned off while it has the character (riding a zipline, say), it lets go.
+- **Removing and adding.** The ✕ button removes a component, and Add Component adds one the mode doesn't have yet, at its default settings. A mode has one of each.
+- **Order.** Where several components could take over the character in the same step, the one higher in the list does: a bounce pad launches the character out of whatever it's doing on it, so Bounce Pads is first, and a climbable wall is climbed rather than run along or slid down, so Wall Climbing comes before Wall Running and Wall Sliding. The arrows move a component up and down. Only the order within each point of the step matters.
+- **Settings shared between components.** A few components are shaped by another's settings, which they use whether that one is turned on or not (or its defaults, if it's been removed): a vault is over something lower than Ledges' grab heights, a wall slid down reaches up the body by them, and is as upright as Wall Running's Wall Run Max Wall Tilt; anything low (a roll, a ledge climbed onto crouched) is at Crouching's Crouch Height, and every Crouch press counts for its Crouch Input Buffer. Air steering and a roll's steering aim for Walking & Running's speeds, and every ability that works with gravity (a jump's launch speed, a rope's swing, a slide down a wall, a bounce pad's height) uses Fall & Air Handling's Gravity Strength, as a wall run uses its Air Acceleration. Climbing over the top of a climbable surface hands the character to the ledge climb, so it happens only with Ledges turned on.
+
+In code, components are `MovementComponent`s (`Assets/Scripts/MovementModes/Components`), and a mode made of them is a `ComposedMovementMode`: a new kind of movement is a new mode type listing the components it uses. `ComposedMovementMode.Get<T>()`, `Add<T>()` and `Remove<T>()` find, add and remove them at runtime.
+
+### Tuning Presets
+A tuning preset (a MovementTuningPreset asset: Create > Scriptable Objects > MovementModes > Tuning Preset) saves movement settings to apply again: a whole tuning you liked, or just a few settings (a floatier jump, wall running turned off). Save Tuning as Preset, at the bottom of a movement mode's inspector, saves all of its settings into a new preset.
+
+In a preset's inspector, each component it covers is listed with a tick beside each setting: ticked settings are set by the preset and the rest left alone (changing a value ticks it; All and None tick or untick a whole component, and Turned On is the component's on/off switch). Add Component's Settings adds another component, unticked. Save From Mode replaces the preset with the Movement Mode's tuning now, and Apply To Mode sets the preset's settings on it, with Undo, and says what changed. The Movement Mode is the Character prefab's unless another is picked.
+
+A preset only sets values and on/off switches: it never adds, removes or reorders a mode's components, and a setting of a component the mode doesn't have is left out (and reported). Presets are made and edited in the editor only.
+
 ## Walking and Sprinting
-The character moves at its Walk Speed, or slower with partial stick input, and sprints at its Run Speed while Sprint is held: Left Shift (keyboard) or pressing the left stick (gamepad). Both are in the Speed section of the BasicMovementMode asset; a Run Speed at or below the Walk Speed turns sprinting off.
+The character moves at its Walk Speed, or slower with partial stick input, and sprints at its Run Speed while Sprint is held: Left Shift (keyboard) or pressing the left stick (gamepad). Both are in the BasicMovementMode asset's Walking & Running component; a Run Speed at or below the Walk Speed turns sprinting off. Turned off, movement input doesn't move the character on the ground (it still steers in the air, toward these speeds).
 
 Sprinting works in the air too: steering toward the run speed, and keeping a sprint's momentum through a jump without stacking more on top.
+
+Gravity, falling and steering in the air are the Fall & Air Handling component's: its Gravity & Falling section (Gravity Strength, Max Fall Speed, and the Coyote Time Gravity Curve, the gentler gravity just after walking off an edge), its Air Steering section (how much and how soon the character steers in the air, and how steering comes back after a wall jump), and its Landing section (Grounded Dampen Horizontal Inertia, below). Turned off, the character doesn't fall, steer in the air or lose momentum on the ground.
 
 Momentum carries onto the ground: landing from a sprint jump while walking keeps the sprint's speed, which eases down to the walk speed with the ground's friction (Grounded Dampen Horizontal Inertia). Walking or sprinting only makes up the difference between the momentum the character carries the way it's steering and its speed: it moves at whichever is faster, never at the two added together.
 
@@ -24,7 +45,7 @@ A jump is set by how high it goes. A tap rises the Min Jump Height, and Jump hel
 
 Max Jumps sets how many jumps it gets before landing (1 for none in mid-air); an air jump rises the same heights from where it's made. Bumping a ceiling ends the rise.
 
-All of it is in the Jumping section of the BasicMovementMode asset; a Max Jump Height of 0 turns jumping off.
+All of it is in the BasicMovementMode asset's Jumping component, Coyote Time included; turning it off, or a Max Jump Height of 0, turns jumping off.
 
 ## Dash
 Press F (keyboard) or right trigger (gamepad) to dash: a short burst in the movement direction relative to the camera, or straight ahead without input. A dash moves in a straight line, ignoring gravity and steering, and hands over to momentum when it ends instead of stopping dead.
@@ -33,7 +54,7 @@ It has a cooldown, a short input buffer (pressing just before the cooldown ends 
 
 The character plays a dash animation: it slides low in the dash direction with its legs trailing behind.
 
-All of it is tunable in the Dashing section of the BasicMovementMode asset, including a speed curve over the dash and how much speed is kept afterwards. A Dash Duration of 0 turns dashing off.
+All of it is tunable in the BasicMovementMode asset's Dashing component, including a speed curve over the dash and how much speed is kept afterwards. Turning it off, or a Dash Duration of 0, turns dashing off.
 
 ## Turning and Leaning
 The character turns at once where it's steered, so it's always responsive, but its model (on the model parent, separate from the character's root for this) turns after it, naturally. All of this is tuned in the AnimationController's Smooth Rotation Variables and Leaning sections, on the Character prefab.
@@ -98,4 +119,4 @@ Moving platforms should be kinematic Rigidbodies moved in FixedUpdate with inter
 
 The values that are exact by construction come straight from the settings: the step height (MovementController's Max Step Height), the walkable slope (Max Slope Angle), the jump heights (Min Jump Height and Max Jump Height), the stand height (the collider) and the crouch height (Crouch Height's share of it). The rest are measured by running the character's own movement: a copy of the character (its settings, movement mode, collider and size, none of its state) is stepped through each move in a world of its own, far below everything else, faster than real time and without rendering (`MovementSimulation`). The movement is deterministic (a fixed physics step, its own clock, `StepTime`, and no randomness), so this gives exact answers that can't drift from what the movement does. Moves with a choice of timing (when to dash, when to jump again) are measured at their best timing, found by trying each. Measuring takes a moment, so the capabilities are measured the first time they're asked for and again after the movement mode's settings, the character's size or its collider change.
 
-The levelspec tool's movement checks hold levels to the default character's capabilities: Tools/LevelSpec/envelope.json is written from them (Tools > Character Showcase > Level > Specs > Write Movement Envelope; see [Level specs](level-specs.md)), and a test fails while it's out of date.
+The levelspec tool's movement checks hold levels to the default character's capabilities: Tools/LevelSpec/envelope.json is written from them (Tools > Character Showcase > Level > Specs > Write Movement Envelope; see [Level specs](level-specs.md)), written again whenever the tuning is saved in the editor, with a Console log of what changed; a test fails if it's out of date anyway.

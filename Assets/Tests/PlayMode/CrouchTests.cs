@@ -27,8 +27,8 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float CrouchHeight => rig.Mode<CrouchMode>().crouchHeight;
-        private float CrouchSpeed => rig.Mode<CrouchMode>().crouchSpeed * rig.Movement.SpeedScale;
+        private float CrouchHeight => rig.Component<Crouching>().CrouchHeight;
+        private float CrouchSpeed => rig.Component<Crouching>().CrouchSpeed * rig.Movement.SpeedScale;
         private bool Crouched => rig.InState(CharacterState.Crouching);
 
         private IEnumerator Stand()
@@ -172,13 +172,13 @@ namespace CharacterShowcase.Tests
         public IEnumerator JumpingDuringACrouchedDash_UnderALowCeiling_KeepsDashing()
         {
             yield return Stand();
-            if (rig.Mode<DashMode>().dashDuration <= 0f) { Assert.Ignore("The character can't dash."); }
+            if (rig.Component<Dashing>().DashDuration <= 0f) { Assert.Ignore("The character can't dash."); }
             yield return PressCrouch();
             float underside = rig.StandingHeight * Mathf.Lerp(CrouchHeight, 1f, 0.5f);
             rig.Box("Low Ceiling", new Vector3(0f, underside + 0.5f, 10f), new Vector3(4f, 1f, 30f));
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
 
-            int dashSteps = CharacterTestRig.StepsFor(rig.Mode<DashMode>().dashDuration);
+            int dashSteps = CharacterTestRig.StepsFor(rig.Component<Dashing>().DashDuration);
             int dashingAfterJump = 0;
             yield return rig.Run(dashSteps, step =>
             {

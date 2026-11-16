@@ -31,8 +31,8 @@ namespace CharacterShowcase.Tests
             yield return null;
         }
 
-        private float WallRunSpeed => rig.Mode<WallRunningMode>().wallRunSpeed * rig.Movement.SpeedScale;
-        private float WallRunMaxDuration => rig.Mode<WallRunningMode>().wallRunMaxDuration * rig.Movement.DurationScale;
+        private float WallRunSpeed => rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
+        private float WallRunMaxDuration => rig.Component<WallRunning>().WallRunMaxDuration * rig.Movement.DurationScale;
         private float Gravity => rig.MovementSetting<float>("gravityStrength") * rig.Movement.AccelerationScale;
         private bool WallRunning => rig.InState(CharacterState.WallRunning);
 

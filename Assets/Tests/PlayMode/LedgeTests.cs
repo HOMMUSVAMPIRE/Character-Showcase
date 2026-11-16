@@ -31,7 +31,7 @@ namespace CharacterShowcase.Tests
         }
 
         private float HangHeight => rig.MovementSetting<float>("ledgeHangHeight") * rig.StandingHeight;
-        private float ClimbDuration => rig.Mode<LedgeMode>().ledgeClimbDuration * rig.Movement.DurationScale;
+        private float ClimbDuration => rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale;
         private bool Hanging => rig.InState(CharacterState.LedgeHanging);
         private bool Climbing => rig.InState(CharacterState.LedgeClimbing);
 
@@ -146,7 +146,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator WithRoomOnlyToCrouchOnTop_ClimbsUpCrouched()
         {
             yield return SetUpLedge();
-            float crouchHeight = rig.Mode<CrouchMode>().crouchHeight;
+            float crouchHeight = rig.Component<Crouching>().CrouchHeight;
             float clearance = rig.StandingHeight * Mathf.Lerp(crouchHeight, 1f, 0.5f);
             // A ceiling over the ledge's top (not over the air in front of its wall).
             rig.Box("Low Ceiling", new Vector3(0f, top + clearance + 0.5f, face + 2f), new Vector3(10f, 1f, 4f));

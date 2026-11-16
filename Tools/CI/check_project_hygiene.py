@@ -67,19 +67,42 @@ def check_camera_independence():
             problems.append(f"{source.relative_to(ROOT)} uses a character namespace; CameraSystem must stay independent")
 
 
-def check_reflected_settings():
+def movement_setting_sources():
     # BasicMovementMode is a partial class: its fields are spread over BasicMovementMode.cs and
-    # BasicMovementMode.<Ability>.cs.
-    mode = ASSETS / "Scripts" / "MovementModes" / "BasicMovementMode.cs"
-    source = "\n".join(p.read_text(errors="replace") for p in sorted(mode.parent.glob("BasicMovementMode*.cs")))
+    # BasicMovementMode.<Ability>.cs. Its components (MovementModes/Components) hold the rest, and the base
+    # classes (MovementComponent, ComposedMovementMode) a few more.
+    modes = ASSETS / "Scripts" / "MovementModes"
+    return (sorted(modes.glob("BasicMovementMode*.cs")) + sorted((modes / "Components").glob("*.cs"))
+            + [modes / "MovementComponent.cs", modes / "ComposedMovementMode.cs"])
+
+
+def check_reflected_settings():
+    sources = movement_setting_sources()
+    source = "\n".join(p.read_text(errors="replace") for p in sources)
     for test in (ASSETS / "Tests").rglob("*.cs"):
         for name in set(re.findall(r'MovementSetting(?:<\w+>)?\("(\w+)"', test.read_text(errors="replace"))):
             # A field declaration: "<type> name;" or "<type> name = ..."
             if not re.search(rf"\b\w[\w<>\[\],]*\s+{name}\s*(=|;)", source):
                 problems.append(
-                    f"{test.relative_to(ROOT)} reads or sets BasicMovementMode field '{name}' by reflection, "
-                    f"but no such field is declared in {mode.relative_to(ROOT)} (or its BasicMovementMode.*.cs parts)"
+                    f"{test.relative_to(ROOT)} reads or sets movement setting '{name}' by reflection, but no such "
+                    f"field is declared in BasicMovementMode (or its BasicMovementMode.*.cs parts) or its components"
                 )
+
+
+def check_unique_movement_settings():
+    # The tests (CharacterTestRig.MovementSetting) and MovementModeMigration find a setting by its name alone, across
+    # the mode and its components, so no two may share one.
+    declared = {}
+    for path in movement_setting_sources():
+        if path.name == "MovementComponent.cs":
+            continue  # Its fields (enabled) are every component's.
+        for name in re.findall(r"\[SerializeField\][^;]*?\b(\w+)\s*(?:=[^;]*)?;", path.read_text(errors="replace")):
+            if name in declared and declared[name] != path:
+                problems.append(
+                    f"Movement setting '{name}' is declared in both {declared[name].relative_to(ROOT)} and "
+                    f"{path.relative_to(ROOT)}: setting names must be unique across a mode and its components"
+                )
+            declared.setdefault(name, path)
 
 
 def main():
@@ -90,6 +113,7 @@ def main():
     check_guids()
     check_camera_independence()
     check_reflected_settings()
+    check_unique_movement_settings()
     if problems:
         print(f"{len(problems)} problem(s) found:")
         for problem in problems:
