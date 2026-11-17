@@ -303,9 +303,11 @@ namespace Character
             // is exactly 2 steps and 2 skins below where the sweep starts. A sweep of only that much reached it or missed
             // it by float rounding, depending on the ledge's height: off a ladder whose top was level with a floor, at 3, 8,
             // 10 or 12 m the floor was missed and the character was stuck at the ladder's top (at 4 to 6 m it was found).
-            // Two skins further makes sure of it.
-            if (!controller.SweepBody(from, Vector3.down, 2f * stepHeight + 4f * controller.Skin, out RaycastHit hit)) { return false; }
+            // Two skins further makes sure of it. Hovering over steps, the body's bottom starts the body lift higher still.
+            if (!controller.SweepBody(from, Vector3.down, 2f * stepHeight + 4f * controller.Skin + controller.BodyLift, out RaycastHit hit)) { return false; }
             standing = from + Vector3.down * Mathf.Max(0f, hit.distance - controller.Skin);
+            // Hovering over steps, the body rests a step above the feet: they go on the ground under it.
+            standing = controller.FeetOnGround(standing);
             return controller.CanFitAt(standing);
         }
 

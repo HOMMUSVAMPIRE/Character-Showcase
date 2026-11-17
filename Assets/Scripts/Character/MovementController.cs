@@ -82,6 +82,12 @@ namespace Character
         [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
         private float maxStepHeight = 0.35f;
         [SerializeField]
+        [Tooltip("Hold the body's bottom above the feet by the Max Step Height, standing or crouched (not lying), and keep " +
+                 "the feet on the ground with probes under them: steps, edges and bumps under that height pass under the " +
+                 "body (the feet step up and down onto them), so it never rests on an edge or a corner; anything taller " +
+                 "meets the body. Off: the body stands on the feet, stepping up onto what it meets")]
+        private bool hoverOverSteps = true;
+        [SerializeField]
         [Tooltip("Maximum slope angle (degrees) the character treats as walkable ground.")]
         private float maxSlopeAngle = 55f;
         [SerializeField]

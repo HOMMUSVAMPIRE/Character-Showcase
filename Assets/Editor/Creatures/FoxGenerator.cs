@@ -503,7 +503,8 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Fox.prefab: a variant of the Character prefab with the fox's body (a box: its Body Definition, taken as defined,
-        /// not fitted to the model), movement mode and model, and an eye height for while its model loads. Like the
+        /// not fitted to the model, held above its paws over steps: Hover Over Steps), movement mode and model, and an eye
+        /// height for while its model loads. Like the
         /// Character prefab, it has no collider of its own: its body is a shape, and its model's hitboxes are what meets it.
         /// </summary>
         private static void SavePrefab(DirectCharacterModelSource source, BodyDefinition body, ComposedMovementMode movement)
@@ -520,6 +521,8 @@ namespace CharacterShowcase.EditorTools
 
                 var moved = new SerializedObject(movementController);
                 moved.FindProperty("bodyCollider").objectReferenceValue = null;
+                // Its long body held above its paws, over steps, so it never rests on a step's edge or its corners.
+                moved.FindProperty("hoverOverSteps").boolValue = true;
                 moved.FindProperty("bodyDefinition").objectReferenceValue = body;
                 moved.ApplyModifiedPropertiesWithoutUndo();
 

@@ -288,7 +288,9 @@ namespace CharacterShowcase.Tests
                 rampAngle = Mathf.Min(20f, 0.5f * rig.MaxSlopeAngle);
                 rise = 0.5f * height;
                 blockHeight = 0.85f * rig.StepHeight;
-                tallStep = 1.15f * rig.StepHeight;
+                // Taller than a step by the body's width, so its face meets the body's side, not its rounded bottom
+                // (lifted above the feet, hovering over steps, that's a step's height up).
+                tallStep = 1.15f * rig.StepHeight + rig.SideExtent;
                 ceiling = 1.3f * height;
                 run = rise / Mathf.Tan(rampAngle * Mathf.Deg2Rad);
                 rampStart = 3f * height;

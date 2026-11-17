@@ -58,7 +58,7 @@ namespace Character
             string F(float value) => value.ToString("R", invariant);
             string V(Vector3 value) => $"{F(value.x)},{F(value.y)},{F(value.z)}";
             string mode = movementHandler != null ? $"{movementHandler.GetType().FullName}:{JsonUtility.ToJson(movementHandler)}" : "";
-            return string.Join("|", mode, V(Scale), Body.CapabilitiesKey(), sizeScaling.ToString(), F(maxStepHeight),
+            return string.Join("|", mode, V(Scale), Body.CapabilitiesKey(), sizeScaling.ToString(), F(maxStepHeight), hoverOverSteps.ToString(),
                 F(maxSlopeAngle), F(skinWidth), F(groundSnapDistance), F(groundCheckRadius), F(movementSpeedMultiplier), F(jumpStrengthModifier),
                 movementLayerMask.value.ToString(invariant), moveWithGround.ToString(), rotateWithGround.ToString(),
                 inheritGroundVelocity.ToString(), F(maxGroundCarryPerStep), gameObject.layer.ToString(invariant));
@@ -81,6 +81,7 @@ namespace Character
             groundCheckRadius = source.groundCheckRadius;
             movementLayerMask = source.movementLayerMask;
             maxStepHeight = source.maxStepHeight;
+            hoverOverSteps = source.hoverOverSteps;
             maxSlopeAngle = source.maxSlopeAngle;
             skinWidth = source.skinWidth;
             groundSnapDistance = source.groundSnapDistance;

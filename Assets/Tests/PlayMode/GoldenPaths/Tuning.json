@@ -75,6 +75,10 @@
             "value": "0.35"
         },
         {
+            "field": "hoverOverSteps",
+            "value": "True"
+        },
+        {
             "field": "maxSlopeAngle",
             "value": "55"
         },

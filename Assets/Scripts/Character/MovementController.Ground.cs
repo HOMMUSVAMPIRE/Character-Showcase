@@ -130,6 +130,7 @@ namespace Character
         /// <returns></returns>
         public bool CheckGrounded(Vector3 position, out Transform groundTransform)
         {
+            if (BodyLift > 0f) { return CheckGroundedHovering(position, out groundTransform); }
             groundTransform = null;
             lastGroundedBy = GroundedBy.None;
 

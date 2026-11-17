@@ -280,6 +280,41 @@ namespace Character
         }
 
         /// <summary>
+        /// The shape with its bottom held lift (m) above the feet, its top where it was (see MovementController's Hover Over
+        /// Steps): a box or upright capsule shortened from the bottom, as far as that lifts it, but never thinner across
+        /// (a capsule no shorter than it's wide, a box no thinner than its skin's twice over), so it reaches as far ahead
+        /// and to the sides. A shape already that far above the feet, or round across its height (a sphere, or a capsule
+        /// lying), isn't changed. The movement's queries are made with this shape; the body itself (its Height, its
+        /// collider) stays as it is.
+        /// </summary>
+        private BodyShape Lifted(BodyShape s, float lift)
+        {
+            if (lift <= 0f) { return s; }
+            float half = HalfExtents(s).y;
+            float bottom = s.center.y - half, top = s.center.y + half;
+            if (bottom >= lift) { return s; }
+            switch (s.kind)
+            {
+                case BodyShapeKind.Box:
+                {
+                    float lifted = Mathf.Max(bottom, Mathf.Min(lift, top - 4f * Owner.SkinWidth));
+                    s.size.y = top - lifted;
+                    s.center.y = 0.5f * (top + lifted);
+                    return s;
+                }
+                case BodyShapeKind.Capsule when s.direction == 1:
+                {
+                    float lifted = Mathf.Max(bottom, Mathf.Min(lift, top - 2f * s.radius));
+                    s.height = top - lifted;
+                    s.center.y = 0.5f * (top + lifted);
+                    return s;
+                }
+                default:
+                    return s;
+            }
+        }
+
+        /// <summary>
         /// Gives the body another shape as authored (see BodyShape): of its collider's kind, if it has a collider. Like
         /// growing, it waits for room: unless told not to (checkRoom false), if the new body would reach anywhere the
         /// current one doesn't and wouldn't fit with its feet at feet (turned rotation, at the given scale and posture),
@@ -334,7 +369,7 @@ namespace Character
         /// <summary>The same, for a body of another authored shape.</summary>
         private bool Fits(Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, BodyShape authoredShape)
         {
-            BodyShape s = ShapeAt(authoredShape, scale, posture);
+            BodyShape s = Lifted(ShapeAt(authoredShape, scale, posture), Owner.BodyLiftAt(scale, posture));
             float authoredFootprint = Footprint(authoredShape);
             float skinAtScale = Owner.AuthoredSkinWidth * (authoredFootprint > 0f ? Mathf.Min(scale.y, Footprint(s) / authoredFootprint) : scale.y);
             Collider[] overlaps = Owner.OverlapBuffer;
@@ -353,7 +388,7 @@ namespace Character
             if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
 
             Vector3 dir = direction.normalized;
-            BodyShape s = Current;
+            BodyShape s = Lifted(Current, Owner.BodyLift);
             float skin = Owner.SkinWidth;
             RaycastHit[] castHits = Owner.CastBuffer;
             int count = Cast(s, feet, rotation, skin, dir, distance, castHits);
@@ -378,7 +413,7 @@ namespace Character
 
         public override Vector3 Depenetrate(Vector3 feet, Quaternion rotation)
         {
-            BodyShape s = Current;
+            BodyShape s = Lifted(Current, Owner.BodyLift);
             float skin = Owner.SkinWidth;
             Collider[] overlaps = Owner.OverlapBuffer;
             Vector3 offset = Vector3.zero;

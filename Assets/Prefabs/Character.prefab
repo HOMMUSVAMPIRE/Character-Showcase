@@ -119,6 +119,7 @@ MonoBehaviour:
   bodyCollider: {fileID: 0}
   bodyDefinition: {fileID: 11400000, guid: badaeb9d24fe42239a97f35311941910, type: 2}
   maxStepHeight: 0.35
+  hoverOverSteps: 1
   maxSlopeAngle: 55
   skinWidth: 0.02
   groundSnapDistance: 0.1

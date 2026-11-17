@@ -14,7 +14,10 @@ namespace CharacterShowcase.Tests
     /// wall and crouched. Each run is recorded step by step (see StepTrace) and written to Logs/StepTraces, and is held to
     /// what steady contact means there: never leaving the ground, never overlapping the world, never being pushed out of
     /// it or lifted back out of the ground, and on level ground, never moving up or down at all. They're the measure of
-    /// the jitter a change to collision is meant to fix, so a trace of each run before and after can be compared.
+    /// the jitter a change to collision is meant to fix, so a trace of each run before and after can be compared. Each
+    /// character runs as it is (hovering over steps) and with its body standing on its feet (Hover Over Steps off);
+    /// hovering, the character keeps its feet on the ground over the hill, on the stairs and at the step's edge too (the
+    /// fox's long, flat body still rides the steps and slopes ahead of its feet).
     /// </summary>
     [Category(TestArea.Movement)]
     public class GroundContactTests : CharacterRigFixture
@@ -24,12 +27,34 @@ namespace CharacterShowcase.Tests
         // How far (m) the character's height may move in a step on level ground: rounding, not movement.
         private const float Level = 1e-4f;
 
-        /// <summary>The characters the runs are made with.</summary>
-        public static IEnumerable<string> Characters() => new[] { "Character", "Fox" };
+        // A character's name with this after it is run with Hover Over Steps off: its body standing on its feet.
+        private const string OnItsFeet = "_OnItsFeet";
+
+        /// <summary>
+        /// The characters the runs are made with: each as it is (hovering over steps), and with its body standing on its
+        /// feet (Hover Over Steps off).
+        /// </summary>
+        public static IEnumerable<string> Characters() => new[] { "Character", "Fox", "Character" + OnItsFeet, "Fox" + OnItsFeet };
+
+        private static bool Hovering(string character) => !character.EndsWith(OnItsFeet);
+
+        /// <summary>
+        /// Whether the character, as it's run, keeps its feet on the ground over slopes, steps and edges: hovering over
+        /// steps, with a body that doesn't reach far out over the ground ahead and behind. A long, flat body (the fox's
+        /// box) still rides the steps and slopes ahead of its feet.
+        /// </summary>
+        private static bool KeepsItsFeetOnTheGround(string character) => Hovering(character) && !character.StartsWith("Fox");
+
+        /// <summary>Holds a run to the character's feet staying on the ground under them, if they should (see KeepsItsFeetOnTheGround).</summary>
+        private static void AssertFeetOnTheGround(string character, StepTrace trace)
+        {
+            if (!KeepsItsFeetOnTheGround(character)) { return; }
+            Assert.That(trace.HighestFeet, Is.LessThan(StepTrace.FeetAboveGround), $"Hovering over steps, the character's feet should stay on the ground. {trace.Summary()}");
+        }
 
         private GameObject PrefabOf(string character)
         {
-            if (character != "Fox") { return CharacterTestRig.CharacterPrefab(); }
+            if (!character.StartsWith("Fox")) { return CharacterTestRig.CharacterPrefab(); }
             GameObject fox = CharacterTestRig.LoadPrefab(FoxPrefabPath);
             if (fox == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
             return fox;
@@ -39,7 +64,9 @@ namespace CharacterShowcase.Tests
         private IEnumerator Spawn(string character)
         {
             rig.Floor(0f, 200f);
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), PrefabOf(character));
+            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), PrefabOf(character), settleSeconds: 0f);
+            rig.Movement.HoverOverSteps = Hovering(character);
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
         }
 
         /// <summary>Puts the character's feet at feet (in the world just built) and lets it settle there.</summary>
@@ -152,6 +179,7 @@ namespace CharacterShowcase.Tests
             {
                 AssertSteady(trace);
                 Assert.That(trace.LargestRise, Is.LessThan(Level), $"Standing still on a step's edge, the character moved up or down. {trace.Summary()}");
+                AssertFeetOnTheGround(character, trace);
             });
         }
 
@@ -173,6 +201,7 @@ namespace CharacterShowcase.Tests
                 AssertSteady(trace);
                 // Up, then down: its height turns once.
                 Assert.That(trace.HeightReversals, Is.LessThanOrEqualTo(1), $"The character wobbled up and down along the ramps. {trace.Summary()}");
+                AssertFeetOnTheGround(character, trace);
             });
         }
 
@@ -197,6 +226,7 @@ namespace CharacterShowcase.Tests
                 AssertSteady(trace);
                 // Steadily up, or down: its height never turns.
                 Assert.That(trace.HeightReversals, Is.Zero, $"The character bobbed up and down on the stairs. {trace.Summary()}");
+                AssertFeetOnTheGround(character, trace);
             });
         }
 

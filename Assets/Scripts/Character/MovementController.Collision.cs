@@ -101,6 +101,20 @@ namespace Character
             Vector3 horiz = new Vector3(move.x, 0f, move.z);
             float vert = move.y;
 
+            if (BodyLift > 0f)
+            {
+                // Hovering over steps: the body only meets what's taller than a step (so it never steps up itself), and
+                // the feet are put on the ground the probes find (see ResolveVerticalHovering).
+                Vector3 across = ResolveHorizontal(pos, horiz, data.initialGrounded, ref inertia, ref data.collisions, BodyLift);
+                pos += across;
+                // A long body stepping up stairs ahead of its feet (see TryStepUp).
+                data.stepChange = steppedUp;
+                data.resolution.steppedUp = steppedUp;
+                Vector3 vertical = ResolveVerticalHovering(pos, vert, new Vector2(across.x, across.z).magnitude, ref data, ref inertia);
+                data.ForceMovementVector(depenetration + across + vertical, inertia);
+                return true;
+            }
+
             Vector3 horizResolved = ResolveHorizontal(pos, horiz, data.initialGrounded, ref inertia, ref data.collisions);
             pos += horizResolved;
             data.stepChange = steppedUp;
@@ -162,7 +176,7 @@ namespace Character
         /// <summary>
         /// Resolve horizontal motion: sweep forward, slide along walls/walkable slopes, attempt step-up for low ledges.
         /// </summary>
-        private Vector3 ResolveHorizontal(Vector3 feetPos, Vector3 horizMove, bool grounded, ref Vector3 inertia, ref CollisionFlags collisions)
+        private Vector3 ResolveHorizontal(Vector3 feetPos, Vector3 horizMove, bool grounded, ref Vector3 inertia, ref CollisionFlags collisions, float lift = 0f)
         {
             float mag = horizMove.magnitude;
             if (mag < 1e-6f) { return Vector3.zero; }
@@ -179,8 +193,10 @@ namespace Character
 
             float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
 
-            // Walkable slope (ramp): project remaining motion onto the slope and continue up/down it.
-            if (slopeAngle <= maxSlopeAngle && hit.normal.y > 0.01f)
+            // Walkable slope (ramp): project remaining motion onto the slope and continue up/down it. (Hovering over steps,
+            // only one rising into the body's bottom: the lifted body's rounded bottom meeting the top edge of something
+            // taller than a step has a contact normal as tilted as a ramp's, and would ride up over it.)
+            if (slopeAngle <= maxSlopeAngle && hit.normal.y > 0.01f && (lift <= 0f || RisesIntoTheBottom(hit, dir, feetPos, lift)))
             {
                 Vector3 slid = Vector3.ProjectOnPlane(remaining, hit.normal);
                 return traveled + slid;
@@ -189,7 +205,7 @@ namespace Character
             // Stair / low ledge: try to step up and over.
             if (grounded)
             {
-                Vector3 stepped = TryStepUp(feetPos, dir, mag);
+                Vector3 stepped = TryStepUp(feetPos, dir, mag, lift > 0f ? hit : (RaycastHit?)null);
                 if (stepped.sqrMagnitude > traveled.sqrMagnitude)
                 {
                     steppedUp += stepped.y;
@@ -220,10 +236,31 @@ namespace Character
         }
 
         /// <summary>
+        /// Whether what the lifted body met moving along dir (hovering over steps) is ground rising into its bottom (a ramp),
+        /// rather than the top edge of something taller than the lift: the walkable surface just beyond where it met it is
+        /// no higher above the feet than the lift.
+        /// </summary>
+        private bool RisesIntoTheBottom(RaycastHit hit, Vector3 dir, Vector3 feet, float lift)
+        {
+            Vector3 beyond = hit.point + dir * SkinWidth;
+            float above = 2f * SkinWidth;
+            int count = Physics.RaycastNonAlloc(beyond + Vector3.up * above, Vector3.down, stepHits, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit surface = stepHits[i];
+                if (IsOwnCollider(surface.collider.transform) || Vector3.Angle(surface.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                // A rounded bottom meets a ramp a little above its lowest point: the steeper the ramp, the higher.
+                float rounding = Body.FootprintRadius * (1f - Mathf.Cos(Vector3.Angle(surface.normal, Vector3.up) * Mathf.Deg2Rad));
+                if (surface.point.y - feet.y <= lift + rounding + SkinWidth) { return true; }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Attempt the classic step-up: lift the body by maxStepHeight, move forward, then drop back down.
         /// Returns Vector3.zero if the step cannot be made (headroom blocked, no floor, or floor too steep).
         /// </summary>
-        private Vector3 TryStepUp(Vector3 feetPos, Vector3 dir, float distance)
+        private Vector3 TryStepUp(Vector3 feetPos, Vector3 dir, float distance, RaycastHit? hovering = null)
         {
             // 1) Make sure there's headroom to lift up.
             float stepHeight = StepHeight;
@@ -272,8 +309,33 @@ namespace Character
             // Nor if the step is taller than the step height. Judged by where the capsule touched down (the step's top,
             // or its edge, which is as high), not where its feet end up: perched part way up a taller step's edge, the
             // feet can be under the step height, and from there the character would ride up over the edge.
-            if (downHit.point.y - feetPos.y > stepHeight + 1e-3f * HeightScale) { return Vector3.zero; }
+            // Hovering over steps, the body only meets what's taller than a step above the feet: a long body over stairs
+            // meets their next step while its feet are still a step below (or on the floor before them). It's a step if
+            // it's no more than a step above the ground just in front of it (stairs, each a step above the one before);
+            // a wall taller than a step, with the floor in front of it, isn't.
+            float stepFrom = hovering.HasValue ? GroundInFrontOf(hovering.Value, dir, downHit.point.y, feetPos.y) : feetPos.y;
+            if (downHit.point.y - stepFrom > stepHeight + 1e-3f * HeightScale) { return Vector3.zero; }
             return landed - feetPos;
+        }
+
+        /// <summary>
+        /// The height of the walkable ground just in front of what the body met moving along dir (whose top is at top),
+        /// no higher than that top: the floor before a wall, or the step below stairs' next one. The feet's height if
+        /// there's none within two steps below the top.
+        /// </summary>
+        private float GroundInFrontOf(RaycastHit met, Vector3 dir, float top, float feetHeight)
+        {
+            Vector3 inFront = met.point - dir * (2f * SkinWidth);
+            inFront.y = top + SkinWidth;
+            int count = Physics.RaycastNonAlloc(inFront, Vector3.down, stepHits, 2f * StepHeight + 2f * SkinWidth, movementLayerMask, QueryTriggerInteraction.Ignore);
+            float highest = float.NegativeInfinity;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit below = stepHits[i];
+                if (IsOwnCollider(below.collider.transform) || Vector3.Angle(below.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                if (below.point.y < top - SkinWidth) { highest = Mathf.Max(highest, below.point.y); }
+            }
+            return float.IsFinite(highest) ? highest : feetHeight;
         }
 
         /// <summary>

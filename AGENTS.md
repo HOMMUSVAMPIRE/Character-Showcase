@@ -125,6 +125,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   the CharacterHitbox layer, triggers unless set to collide), which no movement or IK query may meet (keep the layer
   out of their masks). Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
   `BackExtent`, `SideExtent`), the one they mean, not by a collider dimension.
+- **The body hovers over steps** (Hover Over Steps, on by default): its queries are of the body with its bottom a
+  step's height above the feet, which probes keep on the ground (`MovementController.Hover.cs`). So a body swept down
+  onto something rests a step above where the feet go: an ability finding where the character will stand puts the feet
+  there with `FeetOnGround`, and a sweep down to find a floor reaches `BodyLift` further.
 - **Time-since-grounded values update every step, including in the air.** Coyote time, coyote gravity and air
   steering depend on it.
 - **Long comments in the code explain past bugs.** Treat them as constraints: keep the behaviour a comment protects,

@@ -61,3 +61,10 @@ Choices about how the project is built, why they were made, and what was decided
 
 **Against:** a trimmed root collider beside the hitboxes, for other characters to meet: the hitboxes are the character's presence, and characters will meet one another through their bodies (a list of them, as ropes and water are found) rather than colliders. Solid hitboxes by default: what comes at the character is only detected for now, as the Response setting allows changing later.
 
+## The body hovers over steps (November 2026)
+**Decided:** the character's body is held a step's height above its feet (Hover Over Steps, on by default), and probes under the feet keep them on the ground: steps pass under the body, and the feet step up and down onto them. The body standing on its feet (the setting off) is kept, as it was, for comparison and for bodies that can't be lifted (a sphere).
+
+**Why:** the body's bottom resting on the ground was where the jitter came from (see the ground contact traces, in [Testing](testing.md)): a rounded bottom rolled over step edges and slopes with the feet in the air under it, the root jumping a tread at once and then settling, and a box rested on its corners, its feet up to most of a metre off the ground. Hovering, the mannequin's feet stay on the ground over ramps, stairs and edges.
+
+**Against:** a fractional lift (part of the step height): steps between the lift and the step height would need the body's own step-up, which hovering otherwise retires. And treating the long fox's body differently: it still rides slopes and stairs on the ground ahead of its paws, which a rounder or pitched body is next to fix.
+

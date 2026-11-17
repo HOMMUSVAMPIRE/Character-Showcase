@@ -16,9 +16,9 @@
   ],
   "climbs": [
     {"height": 0.35, "move": "step up"},
-    {"height": 2.01, "move": "jump up"},
-    {"height": 4.04, "move": "double jump up"},
+    {"height": 2.37, "move": "jump up"},
     {"height": 4.29, "move": "jump to the ledge"},
+    {"height": 4.37, "move": "double jump up"},
     {"height": 6.28, "move": "double jump to the ledge"}
   ],
   "slideLength": 13.41,

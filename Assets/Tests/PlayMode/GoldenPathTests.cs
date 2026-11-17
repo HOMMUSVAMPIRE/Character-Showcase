@@ -488,7 +488,7 @@ namespace CharacterShowcase.Tests
         // tests loudly, as the harness must follow it).
         private static readonly string[] ControllerSettings =
         {
-            "maxStepHeight", "maxSlopeAngle", "skinWidth", "groundSnapDistance", "groundCheckRadius", "movementSpeedMultiplier",
+            "maxStepHeight", "hoverOverSteps", "maxSlopeAngle", "skinWidth", "groundSnapDistance", "groundCheckRadius", "movementSpeedMultiplier",
             "jumpStrengthModifier", "sizeScaling", "moveWithGround", "rotateWithGround", "inheritGroundVelocity", "maxGroundCarryPerStep",
         };
 
