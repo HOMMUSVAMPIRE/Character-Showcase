@@ -160,14 +160,17 @@ namespace CharacterShowcase.Tests
             hitboxes.HitStarted += (_, _) => hit = true;
             Rigidbody ball = DropABall(out float top);
             Vector3 start = ball.position;
-            float lowestOver = float.PositiveInfinity;
+            float lowestOver = float.PositiveInfinity, lowestFeet = float.PositiveInfinity;
             float footprint = Mathf.Max(rig.SideExtent, 0.5f * (rig.FrontExtent + rig.BackExtent));
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), _ =>
             {
                 Vector3 offset = ball.position - start;
                 if (new Vector2(offset.x, offset.z).magnitude < 0.25f * footprint) { lowestOver = Mathf.Min(lowestOver, ball.position.y); }
+                lowestFeet = Mathf.Min(lowestFeet, rig.Position.y);
             });
             Assert.That(hit, Is.True, "The ball should have been reported as it met the character.");
+            // A ball resting on a fox's back is inside its (head-high) body: it mustn't push the character into the floor.
+            Assert.That(lowestFeet, Is.GreaterThan(-0.01f), "A loose ball resting on the character shouldn't push it down through the floor.");
             Assert.That(lowestOver, Is.GreaterThan(0.5f * top), "Colliding, the ball shouldn't pass through the character.");
 
             // Solid hitboxes are the character's own: its movement doesn't meet them.

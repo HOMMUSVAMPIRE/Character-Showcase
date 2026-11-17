@@ -8,8 +8,8 @@ pitfalls.
 ## Open tasks
 
 `ReferenceAssets/OpenTasks.md` lists the improvements chosen for this repo, ordered by impact, each with where, what's
-wrong, the fix and its effort. Check it before starting work, and when asked what's next. When a task is done, delete
-its entry from the list (or note what's left of it). The list is the one file in `ReferenceAssets/` you may edit. It's
+wrong, the fix and its effort. Check it before starting work, and when asked what's next. When a task is done, move it
+to the list's Done section, struck through (or note what's left of it); task numbers are fixed IDs, never renumbered. The list is the one file in `ReferenceAssets/` you may edit. It's
 kept out of git, so it exists only on the machine that has it. If it's missing, say so; don't recreate it from memory.
 
 ## The project at a glance
@@ -104,8 +104,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Movement modes are ScriptableObjects made of components.** A `ComposedMovementMode` holds a list of
   `MovementComponent`s (`[SerializeReference]`), each an ability with its own settings, run in list order (higher
   takes over first); a component asks its `Mode` for shared rules (gravity, air acceleration, the jump and crouch
-  presses, `AbilityInProgress` or `AbilityInProgressExcept<T>` for one that may take over from a T, `InterruptOthers`)
-  rather than reaching into other abilities. One shaped by another's
+  presses, `AbilityInProgress` or `AbilityInProgressExcept<T>` for one that may take over from a T,
+  `AbilityInProgressWith(AbilityTraits)` for one that cares what the ability under way does with the character (holds it
+  up, holds on: each ability declares its `Traits`), `InterruptOthers`) rather than reaching into other abilities or
+  listing them. One shaped by another's
   settings reads them with `SettingsOf<T>()` (the mode's, on or off, else T's defaults); one handing the character to
   another finds it with `Mode.Get<T>()` (turned-on only). Shared state rules (wall jumps) are in `MovementHelpers`.
   Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall speed limit, air

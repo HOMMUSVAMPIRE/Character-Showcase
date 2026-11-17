@@ -52,6 +52,8 @@ namespace Character
         public float LedgeMaxGrabRiseSpeed => ledgeMaxGrabRiseSpeed;
 
         public override bool IsActive(MovementController controller) => controller.ledge.IsActive;
+        /// <summary>Hanging from a ledge (or climbing up it), the character holds on, and is held up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {

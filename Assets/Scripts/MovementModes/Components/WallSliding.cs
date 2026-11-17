@@ -60,6 +60,8 @@ namespace Character
         public float WallSlideMaxDuration { get => wallSlideMaxDuration; set => wallSlideMaxDuration = value; }
 
         public override bool IsActive(MovementController controller) => controller.wallSlide.IsWallSliding;
+        /// <summary>Sliding down it, the wall holds the character up (it slides, rather than falls).</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {

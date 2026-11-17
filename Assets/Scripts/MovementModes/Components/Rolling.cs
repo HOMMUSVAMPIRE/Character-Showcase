@@ -128,18 +128,19 @@ namespace Character
 
         /// <summary>
         /// Keeps track of how far the character falls, for rolling on landing: where the current fall started (its feet,
-        /// on the last step it wasn't falling, or was on the ground or held by a wall or a ledge: so a drop from a ledge is
-        /// measured from the ledge, and a dash or a jump just before landing starts the fall again from there), and on
-        /// the step it lands, how far below that it is. Every step, whichever ability has the character.
+        /// on the last step it wasn't falling, or was on the ground or held up by an ability (AbilityTraits.HoldsUp: a wall,
+        /// a ledge, a rope, a cable, water): so a drop from a ledge is measured from the ledge, and a dash or a jump just
+        /// before landing starts the fall again from there), and on the step it lands, how far below that it is. Every
+        /// step, whichever ability has the character.
         /// </summary>
-        private static void TrackFall(MovementData movementData, MovementController controller)
+        private void TrackFall(MovementData movementData, MovementController controller)
         {
             RollState roll = controller.roll;
             float y = movementData.initialPosition.y;
             bool landed = movementData.initialGrounded && !movementData.previousState.HasFlag(CharacterState.Grounded);
             roll.landingFall = landed && roll.hasFallTop ? Mathf.Max(0f, roll.fallTop - y) : 0f;
-            bool held = movementData.initialGrounded || controller.ledge.IsActive || controller.wallClimb.IsClimbing
-                        || controller.wallRun.IsWallRunning || controller.wallSlide.IsWallSliding || controller.vault.IsActive;
+            // Whatever holds the character up (see AbilityTraits.HoldsUp): a ride down a sloped zipline, say, isn't a fall.
+            bool held = movementData.initialGrounded || Mode.AbilityInProgressWith(AbilityTraits.HoldsUp, controller);
             bool falling = movementData.initialVelocity.y < -FallStartSpeed * controller.SpeedScale;
             if (held || !falling || !roll.hasFallTop) { roll.fallTop = y; }
             roll.hasFallTop = true;

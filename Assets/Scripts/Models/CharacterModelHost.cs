@@ -410,7 +410,8 @@ namespace Character
         {
             if (movement == null) { return; }
             BodyShape? body = colliderFit == ColliderFit.Height ? BodyFitting.ScaledToHeight(movement.AuthoredBody, baseModelHeight)
-                : modelSource != null && modelSource.ModelBody is { } own ? own
+                // The source the model came from, not the one asked for: a fallback model has its own body.
+                : modelOwner != null && modelOwner.ModelBody is { } own ? own
                 : BodyFitting.ForModel(new Vector3(baseModelSize.x, baseModelHeight, baseModelSize.z), baseShoulderWidth, colliderWidthMargin);
             fitBody = body.Value;
             pendingColliderFit = true;

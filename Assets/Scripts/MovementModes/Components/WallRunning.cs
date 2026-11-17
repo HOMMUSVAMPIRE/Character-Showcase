@@ -71,6 +71,8 @@ namespace Character
         public float WallRunMaxWallTilt => wallRunMaxWallTilt;
 
         public override bool IsActive(MovementController controller) => controller.wallRun.IsWallRunning;
+        /// <summary>Running along it, the wall holds the character up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {

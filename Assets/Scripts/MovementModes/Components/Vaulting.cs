@@ -50,6 +50,8 @@ namespace Character
         public float VaultRiseDuration { get => vaultRiseDuration; set => vaultRiseDuration = value; }
 
         public override bool IsActive(MovementController controller) => controller.vault.IsActive;
+        /// <summary>Vaulting, the character's hands are on the obstacle, which holds it up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {

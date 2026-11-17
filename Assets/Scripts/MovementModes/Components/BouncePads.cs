@@ -46,10 +46,7 @@ namespace Character
             BouncePad pad = BouncePad.Of(movementData.initialGroundTransform);
             if (pad == null || pad.LaunchHeight <= 0f) { return false; }
             // Nothing that holds the character on the pad (holding a crate on it, climbing up off it) is launched.
-            if (controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing || controller.wallClimb.IsClimbing)
-            {
-                return false;
-            }
+            if (Mode.AbilityInProgressWith(AbilityTraits.HoldsOn, controller)) { return false; }
             Mode.InterruptOthers(ref movementData, controller, this);
 
             bool boosted = inputs.jump != null && inputs.jump.value;

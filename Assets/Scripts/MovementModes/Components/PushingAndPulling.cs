@@ -28,6 +28,8 @@ namespace Character
         public float PushPullSpeed { get => pushPullSpeed; set => pushPullSpeed = value; }
 
         public override bool IsActive(MovementController controller) => controller.grab.IsGrabbing;
+        /// <summary>Pushing or pulling, the character holds on to the crate.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsOn;
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {

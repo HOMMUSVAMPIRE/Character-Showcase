@@ -619,6 +619,11 @@ namespace Character
                 {
                     Collider other = overlaps[i];
                     if (Owner.IsOwnCollider(other.transform)) { continue; }
+                    // A loose physics object (a non-kinematic Rigidbody: a ball, say) meets the character's hitboxes, and
+                    // never pushes the character. Resting on a fox's back, a ball sits inside its body (its hitboxes are
+                    // lower than the head-high body), and being pushed out of it every step sank the fox through the floor.
+                    Rigidbody otherBody = other.attachedRigidbody;
+                    if (otherBody != null && !otherBody.isKinematic) { continue; }
                     if (query == null)
                     {
                         query = Owner.QueryCollider(s, part);

@@ -463,6 +463,36 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
         }
 
+        /// <summary>
+        /// A fallback model fitted to its source's body takes the fallback's body, not the body of the source that failed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ModelsBody_OfAFallbackModel_IsTheFallbacksBody()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.WaitForModel();
+            yield return new WaitForFixedUpdate();
+            rig.Models.ColliderFitting = ColliderFit.ModelsBody;
+            var failing = Track(ScriptableObject.CreateInstance<FailingSource>());
+            failing.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(new Vector3(0.9f, 1.2f, 0.9f))));
+            DirectCharacterModelSource fallback = OwnCopy();
+            var fallbackSize = new Vector3(0.5f, 1.7f, 0.3f);
+            fallback.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(fallbackSize)));
+            rig.Models.FallbackSource = fallback;
+
+            bool loaded = false;
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("didn't create a model"));
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Using the fallback model"));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(failing), l => loaded = l);
+
+            Assert.That(loaded, Is.True, "The fallback should load in the failed model's place.");
+            BodyShape box = rig.BodyNow;
+            Assert.That(box.kind, Is.EqualTo(BodyShapeKind.Box));
+            Assert.That(Vector3.Distance(box.size, fallbackSize), Is.LessThan(1e-4f),
+                "The body should be the fallback's, which the model came from, not the failed source's.");
+        }
+
         /// <summary>A source for the character's own model (or the given prefab), as its own, but a separate asset.</summary>
         private DirectCharacterModelSource OwnCopy(GameObject prefab = null)
         {

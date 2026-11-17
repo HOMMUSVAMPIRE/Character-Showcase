@@ -276,6 +276,33 @@ namespace CharacterShowcase.Tests
             Assert.That(rolled, Is.False, "Landing from an ordinary jump on flat ground shouldn't roll.");
         }
 
+        /// <summary>
+        /// A ride down a sloped zipline holds the character up, so letting go near the ground isn't a fall from where it
+        /// caught the cable: the landing, from just below the cable's end, doesn't roll.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LettingGoOfASlopedZipline_NearTheGround_DoesNotRollOnLanding()
+        {
+            rig.Floor();
+            // Its hang height and the landing roll's fall depend on its size, known once it's spawned.
+            yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
+            float hang = rig.ZiplineHangHeight;
+            // The cable's end hangs the feet a low share of the landing roll's fall above the floor; its start is well
+            // above that, so the ride itself drops the character far more than a landing roll's fall.
+            float endY = hang + 0.3f * LandingRollMinFall;
+            Level.Zipline line = rig.Zipline(new Vector3(0f, endY + 3f * LandingRollMinFall, 0f), new Vector3(0f, endY, 24f));
+            rig.Teleport(line.PointAt(2f) - Vector3.up * (hang - 0.15f));
+            yield return rig.RunUntil(() => rig.Ziplining, _ => CharacterTestRig.Idle(), timeoutSeconds: 0.5f);
+            Assert.That(rig.Ziplining, Is.True, $"Test setup: the character should have caught hold of the cable (it's at {rig.Position}).");
+            yield return rig.RunUntil(() => !rig.Ziplining, _ => CharacterTestRig.Idle(), timeoutSeconds: 8f);
+            Assert.That(rig.Ziplining, Is.False, "Test setup: the ride should have ended at the cable's end.");
+
+            bool rolled = false, landed = false;
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => { rolled |= Rolling; landed |= rig.Grounded; });
+            Assert.That(landed, Is.True, "Test setup: the character should have landed after letting go.");
+            Assert.That(rolled, Is.False, "The ride down the cable held the character up: only the drop from its end is a fall, too low to roll.");
+        }
+
         [UnityTest]
         public IEnumerator ADashJustBeforeLanding_StartsTheFallAgain_SoTheLandingDoesNotRoll()
         {

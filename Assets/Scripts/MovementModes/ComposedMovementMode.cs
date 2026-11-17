@@ -145,14 +145,34 @@ namespace Character
         public bool AbilityInProgressExcept<T1, T2>(MovementController controller) where T1 : MovementComponent where T2 : MovementComponent =>
             AbilityInProgressExcept(controller, typeof(T1), typeof(T2));
 
-        private bool AbilityInProgressExcept(MovementController controller, Type except, Type orExcept)
+        /// <summary>Whether an ability other than a T1, a T2 or a T3 has the character (see AbilityInProgressExcept&lt;T&gt;).</summary>
+        public bool AbilityInProgressExcept<T1, T2, T3>(MovementController controller)
+            where T1 : MovementComponent where T2 : MovementComponent where T3 : MovementComponent =>
+            AbilityInProgressExcept(controller, typeof(T1), typeof(T2), typeof(T3));
+
+        private bool AbilityInProgressExcept(MovementController controller, Type except, Type orExcept, Type orAlsoExcept = null)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
                 if (component == null || !component.Enabled) { continue; }
                 Type type = component.GetType();
-                if (type == except || type == orExcept) { continue; }
+                if (type == except || type == orExcept || type == orAlsoExcept) { continue; }
+                if (component.IsActive(controller)) { return true; }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a turned-on ability with any of the given traits has the character (see AbilityTraits): for an ability
+        /// that cares what the one under way does with the character (holds it up, say), not which ability it is.
+        /// </summary>
+        public bool AbilityInProgressWith(AbilityTraits traits, MovementController controller)
+        {
+            for (int i = 0; i < components.Count; i++)
+            {
+                MovementComponent component = components[i];
+                if (component == null || !component.Enabled || (component.Traits & traits) == 0) { continue; }
                 if (component.IsActive(controller)) { return true; }
             }
             return false;

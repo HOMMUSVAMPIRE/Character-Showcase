@@ -82,6 +82,8 @@ namespace Character
         public float WallClimbSpeed { get => wallClimbSpeed; set => wallClimbSpeed = value; }
 
         public override bool IsActive(MovementController controller) => controller.wallClimb.IsClimbing;
+        /// <summary>Climbing, the character holds on to the surface, which holds it up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -275,11 +277,8 @@ namespace Character
         {
             WallClimbState climb = controller.wallClimb;
             if (wallClimbSpeed <= 0f || climb.regrabCooldown > 0f || controller.crouch.IsCrouched) { return false; }
-            if (controller.dash.IsDashing || controller.ledge.IsActive || controller.vault.IsActive || controller.grab.IsGrabbing
-                || controller.roll.IsRolling || controller.slide.IsSliding)
-            {
-                return false;
-            }
+            // A swimmer takes hold too: climbing out of the water (Swimming comes later in the list, so it's under way here).
+            if (Mode.AbilityInProgressExcept<WallRunning, WallSliding, Swimming>(controller)) { return false; }
 
             // Which way the character is heading: as steered, or else as it's moving (or was, as it hit the surface).
             Vector3 steer = InputDirection(movementData, inputs);

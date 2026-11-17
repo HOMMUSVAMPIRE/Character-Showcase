@@ -36,6 +36,8 @@ namespace Character
         public float ZiplineGrabReach { get => ziplineGrabReach; set => ziplineGrabReach = value; }
 
         public override bool IsActive(MovementController controller) => controller.zipline.IsRiding;
+        /// <summary>Riding, the character holds on to the cable, which holds it up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {

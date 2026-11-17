@@ -77,6 +77,8 @@ namespace Character
         public float SwimSpeed { get => swimSpeed; set => swimSpeed = Mathf.Max(0f, value); }
 
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
+        /// <summary>Swimming, the water holds the character up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
 
         /// <summary>
         /// Underwater, the character's body lies flat along the way it swims, resting on its feet (the bottom of its body),

@@ -35,6 +35,8 @@ namespace Character
         public float RopeGrabReach { get => ropeGrabReach; set => ropeGrabReach = value; }
 
         public override bool IsActive(MovementController controller) => controller.ropeSwing.IsSwinging;
+        /// <summary>Swinging, the character holds on to the rope, which holds it up.</summary>
+        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {

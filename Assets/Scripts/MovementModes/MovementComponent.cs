@@ -76,6 +76,13 @@ namespace Character
         public virtual bool IsActive(MovementController controller) => false;
 
         /// <summary>
+        /// What this ability does with the character while it's under way (see AbilityTraits), so other abilities can
+        /// ask the mode about it (ComposedMovementMode.AbilityInProgressWith) rather than list the abilities they mean,
+        /// a list a new ability would be missing from. None unless the ability says.
+        /// </summary>
+        public virtual AbilityTraits Traits => AbilityTraits.None;
+
+        /// <summary>
         /// When no ability has the character this step (none took it over), before it walks, dashes and jumps: for what
         /// changes how it moves on its own (crouching, say).
         /// </summary>
@@ -147,6 +154,26 @@ namespace Character
         public virtual void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
         {
         }
+    }
+
+    /// <summary>
+    /// What an ability does with the character while it's under way (MovementComponent.Traits), for other abilities that
+    /// care about it, not which ability it is.
+    /// </summary>
+    [Flags]
+    public enum AbilityTraits
+    {
+        None = 0,
+        /// <summary>
+        /// The ability holds the character up: it isn't falling while it's held (by a ledge, a wall, a rope, a cable or
+        /// water). A fall is measured from where it was let go (see Rolling).
+        /// </summary>
+        HoldsUp = 1 << 0,
+        /// <summary>
+        /// The character holds on to something (a ledge, a crate, a rope or a cable): what would throw it about, a bounce
+        /// pad, leaves it be.
+        /// </summary>
+        HoldsOn = 1 << 1,
     }
 
     /// <summary>
