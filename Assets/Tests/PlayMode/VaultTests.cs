@@ -80,7 +80,9 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator HeadingIntoTheTopOfALowWallInMidAir_VaultsOverIt_LeavingWithItsShareOfTheSpeed()
         {
-            yield return SetUpLowWall();
+            // A run-up, so the vault starts once the character's moving at the speed it's launched at (right at the wall,
+            // it started on the launch's own step, before that speed was the character's).
+            yield return SetUpLowWall(distance: 1.5f);
             float speed = rig.RunSpeed;
             var record = new VaultRecord();
             yield return RunInto(speed, CharacterTestRig.Sprint(Vector3.forward), 1.6f, record);
@@ -119,6 +121,53 @@ namespace CharacterShowcase.Tests
             Assert.That(record.vaulted, Is.True, "The character should vault up onto the block, too high to step up onto.");
             Assert.That(rig.Grounded, Is.True, "The character should stand on the block's top.");
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.03f), "The character should be on the block's top.");
+        }
+
+        /// <summary>
+        /// Vaulting onto something deep, once over its top and standing on it, the character stays on it: the vault's path
+        /// held the feet a little clear of the top, the ground snap set them down on it, and the path lifted them back up,
+        /// so the character bounced on the top every step across it (climbing out of the water onto a pool's side, too).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator VaultingOntoABlock_DoesntBounceOnItsTop()
+        {
+            yield return SetUpLowWall(topAbove: () => Mathf.Lerp(StepUpShare, LedgeShare, 0.5f), thickness: 6f);
+            float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
+            int onTop = 0;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                if (!Vaulting || !rig.Grounded || rig.Position.z < face) { return; }
+                onTop++;
+                lowest = Mathf.Min(lowest, rig.Position.y);
+                highest = Mathf.Max(highest, rig.Position.y);
+            });
+            Assert.That(onTop, Is.GreaterThan(3), "Test setup: the vault should carry the character across the top, standing on it.");
+            Assert.That(highest - lowest, Is.LessThan(0.01f * rig.Controller.Scale.y), "Standing on the top, the character shouldn't bounce up and down.");
+        }
+
+        /// <summary>
+        /// Sprinting into a vault, the character takes off far enough from the wall to slow evenly through the rise, to
+        /// Vault Take Off Speed's share of its speed, rather than dropping almost to a standstill as the vault begins (it
+        /// was found just short of the wall, and the rise could only close that gap); and after it, sprinting picks up from
+        /// the speed it left with (see Walking &amp; Running's Ability Pick Up Time), rather than snapping back to its speed.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SprintingIntoAVault_SlowsEvenlyThroughTheRise_AndPicksUpAfter()
+        {
+            yield return SetUpLowWall(onTheGround: true, distance: 6f);
+            float speed = rig.RunSpeed, biggestChange = 0f, last = -1f;
+            bool vaulted = false;
+            int after = 0;
+            yield return rig.Run(1.6f, step => CharacterTestRig.Sprint(Vector3.forward, step), _ =>
+            {
+                float now = rig.HorizontalSpeed;
+                // Through the vault, and as walking (sprinting) picks up after it.
+                if ((Vaulting || (vaulted && after++ < 15)) && last >= 0f) { biggestChange = Mathf.Max(biggestChange, Mathf.Abs(now - last)); }
+                vaulted |= Vaulting;
+                last = now;
+            });
+            Assert.That(vaulted, Is.True, "Test setup: sprinting into the low wall should vault it.");
+            Assert.That(biggestChange, Is.LessThan(0.2f * speed), "Through the vault and back to sprinting, the character's speed shouldn't change sharply from one step to the next.");
         }
 
         [UnityTest]

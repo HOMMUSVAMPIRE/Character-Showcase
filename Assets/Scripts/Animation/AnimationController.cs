@@ -68,10 +68,12 @@ namespace Character
         [SerializeField] [Tooltip("Seconds over which the model eases up after the character steps up onto something from " +
                                   "mid-air or a sprint (a quick rise, for feel): the model lags behind and catches up, its " +
                                   "feet tucked onto the top by foot placement, rather than popping up with the collider. " +
-                                  "0 = the model rises with the character.")]
+                                  "Walking up or down stairs, it eases over each step likewise. 0 = the model moves with the " +
+                                  "character.")]
         [Min(0f)] private float stepUpSmoothTime = 0.08f;
         [SerializeField] [Tooltip("The furthest (m, at the character's authored size) the model lags below the character as it " +
-                                  "eases up after a step up, so its knees never fold up past its chest")]
+                                  "eases up after a step up, so its knees never fold up past its chest (or above it, easing " +
+                                  "down a stair)")]
         [Min(0f)] private float stepUpMaxLag = 0.35f;
 
         [Header("Swimming Underwater")]
@@ -85,6 +87,13 @@ namespace Character
                                   "as it crouches or lies down, and back up as it stands: kept the same share of the eye height " +
                                   "as the body is of its standing height. 0 = at once.")]
         [Min(0f)] private float eyeLoweringSmoothTime = 0.1f;
+
+        [Header("Vaulting")]
+        [SerializeField] [Tooltip("The shortest (seconds, at the character's authored size) a vault's animation plays over: a " +
+                                  "fast vault swings over the top in a moment, and its animation is slowed to this, finishing " +
+                                  "after the vault as the character runs on or lands, rather than racing through it. 0 = with " +
+                                  "the vault, however fast.")]
+        [Min(0f)] private float vaultMinDuration = 0.5f;
 
         [Header("Climbing Out Of Water")]
         [SerializeField] [Tooltip("How far into the climb onto a ledge (0 to 1) a climb out of the water starts (see " +
@@ -124,12 +133,20 @@ namespace Character
         private bool hasLastVelocity;
         // State carried between frames to build the animation state
         private float airTime;
+        // How far through the latest climb onto a ledge (or out of the water) and vault the character got, held once
+        // each is over (see BuildState).
+        private float heldClimbProgress, heldVaultProgress;
+        // Whether a vault's animation is showing (the vault, or its animation finishing after it: see ShowVault).
+        private bool showingVault;
         private Quaternion lastFacing = Quaternion.identity;
         private bool hasLastFacing;
 
         // Easing the model up after a step up: how far it's held below the character now (m, 0 or negative), its height
         // easing up and how fast, the character's height last frame, and the model parent's own position without it.
         private float stepUpLag, easedHeight, easedHeightVelocity, lastRootHeight;
+        // Whether the model's lag is a step up's (onto something, its feet tucked onto the top by foot placement) rather
+        // than a stair's (see EaseUpAfterStepUp).
+        private bool lagIsStepUp;
         private bool hasLastRootHeight;
         private Vector3 modelParentLocalPosition;
         // Lowering the model to the body underwater (see MovementData.modelDrop): how far now (m), and how fast it's changing.
@@ -260,6 +277,16 @@ namespace Character
             // climb up onto a ledge, its hands on the edge, not as a vault: from the water there's nothing to run at it from.
             bool vaultingOutOfWater = movementData.state.HasFlag(CharacterState.Vaulting) && movementController != null
                                       && movementController.vault.outOfWater;
+            // How far through a climb or a vault: once it's over, as far as it got (all the way), not back to 0, while the
+            // Animator blends out of it. At 0 the climb's clip went back to its start for the blend (the body hanging
+            // below the ledge), and the hips jumped back and forth as the character stepped off the top.
+            bool ledgeClimbing = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing);
+            if (ledgeClimbing) { heldClimbProgress = movementController.ledge.ClimbProgress; }
+            else if (vaultingOutOfWater) { heldClimbProgress = Mathf.Lerp(climbOutOfWaterStart, 1f, movementController.vault.Progress); }
+            float climbProgress = heldClimbProgress;
+            bool vaultingNow = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater;
+            bool showingVault = ShowVault(vaultingNow, vaultingNow ? movementController.vault.Progress : 1f, movementData.state, deltaTime);
+            float vaultProgress = heldVaultProgress;
             bool wallSliding = movementData.state.HasFlag(CharacterState.WallSliding) && movementController != null;
             bool wallClimbing = movementData.state.HasFlag(CharacterState.WallClimbing) && movementController != null;
             Vector3 wallPoint = Vector3.zero, wallNormal = Vector3.zero;
@@ -312,15 +339,15 @@ namespace Character
                 wallRunning = movementData.state.HasFlag(CharacterState.WallRunning),
                 wallSide = movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null ? movementController.wallRun.side : 0f,
                 rollProgress = movementController != null ? movementController.roll.Progress : 0f,
-                climbProgress = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing) ? movementController.ledge.ClimbProgress
-                    : vaultingOutOfWater ? Mathf.Lerp(climbOutOfWaterStart, 1f, movementController.vault.Progress) : 0f,
+                climbProgress = climbProgress,
                 hanging = movementData.state.HasFlag(CharacterState.LedgeHanging),
                 climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing) || vaultingOutOfWater,
-                vaulting = movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater,
-                vaultProgress = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater
-                    ? movementController.vault.Progress : 0f,
+                vaulting = showingVault,
+                vaultBodyProgress = vaultingNow ? movementController.vault.Progress : 1f,
+                vaultProgress = vaultProgress,
                 steppingUp = movementData.state.HasFlag(CharacterState.SteppingUp),
-                stepUpLag = stepUpLag,
+                // Only a step up's, whose feet foot placement tucks onto the top: a stair's leaves the feet to it as ever.
+                stepUpLag = lagIsStepUp ? stepUpLag : 0f,
                 grabbing = movementData.state.HasFlag(CharacterState.Grabbing),
                 ledgeEdge = ledgeEdge,
                 ledgeNormal = ledgeNormal,
@@ -343,6 +370,37 @@ namespace Character
                     ? modelHost.ModelParent.localScale : Vector3.one,
                 speedScale = speedScale,
             };
+        }
+
+        // What else the character can be doing that ends a vault's animation finishing (see ShowVault).
+        private const CharacterState EndsAVaultsFinish = CharacterState.Jumping | CharacterState.Dashing | CharacterState.Sliding
+            | CharacterState.Rolling | CharacterState.WallRunning | CharacterState.WallSliding | CharacterState.WallClimbing
+            | CharacterState.LedgeHanging | CharacterState.LedgeClimbing | CharacterState.Swimming | CharacterState.Grabbing
+            | CharacterState.RopeSwinging | CharacterState.Ziplining | CharacterState.Crouching;
+
+        /// <summary>
+        /// How far through a vault its animation shows (into heldVaultProgress), and whether it's showing one: the vault's
+        /// own progress, but no faster than plays the whole vault over Vault Min Duration. A fast vault swings over the top
+        /// in a few physics steps, and its animation raced through the swing, the hands and feet whipping round, then
+        /// snapped into walking; held to that pace, the animation finishes the swing after the vault (as the character
+        /// lands, or runs on), unless something else starts meanwhile.
+        /// </summary>
+        private bool ShowVault(bool vaulting, float progress, CharacterState state, float deltaTime)
+        {
+            float duration = vaultMinDuration * (movementController != null ? movementController.DurationScale : 1f);
+            if (vaulting && !showingVault) { heldVaultProgress = 0f; }
+            bool finishing = !vaulting && showingVault && heldVaultProgress < 1f && (state & EndsAVaultsFinish) == 0;
+            if (!vaulting && !finishing)
+            {
+                showingVault = false;
+                return false;
+            }
+            if (deltaTime > 0f)
+            {
+                heldVaultProgress = duration > 0f ? Mathf.Min(progress, heldVaultProgress + deltaTime / duration) : progress;
+            }
+            showingVault = vaulting || heldVaultProgress < 1f;
+            return showingVault;
         }
 
         /// <summary>The ladder's geometry as animation needs it (see LadderPose); empty without one.</summary>
@@ -480,7 +538,10 @@ namespace Character
 
         /// <summary>
         /// Holds the model below the character as it steps up onto something, then eases it up after it: the step's rise
-        /// is quick (it feels right that way), but the model popping up with the collider looked wrong. From where the
+        /// is quick (it feels right that way), but the model popping up with the collider looked wrong. Walking up or down
+        /// stairs, likewise (collision lifts the character onto each step, or drops it onto the next, in a physics step:
+        /// see MovementData.stepChange), the model held where it was, below or above, and eased after it, so it goes up
+        /// and down a flight smoothly rather than jumping a step at a time (foot placement keeps the feet on the steps). From where the
         /// model was when the step began, it follows the character's height, a critically damped spring, never above it
         /// and no further below than the most it may lag. Foot placement tucks the feet up onto the top meanwhile
         /// (CharacterAnimationState.stepUpLag tells it how far the model lags). Moves the model parent only. The model drop
@@ -493,6 +554,10 @@ namespace Character
             float scale = modelParent.lossyScale.y > 0f ? modelParent.lossyScale.y : 1f;
             bool steppingUp = movementController != null && movementController.lastFrameMovementData != null
                               && movementController.lastFrameMovementData.state.HasFlag(CharacterState.SteppingUp);
+            // Collision stepped the character up onto a stair, or down onto one, at once (see MovementData.stepChange).
+            bool stepped = movementController != null && movementController.lastFrameMovementData != null
+                           && movementController.lastFrameMovementData.stepChange != 0f;
+            float maxLag = stepUpMaxLag * scale;
             if (stepUpLag == 0f)
             {
                 if (!modelParentDisplaced) { modelParentLocalPosition = modelParent.localPosition; }
@@ -501,17 +566,28 @@ namespace Character
                     // From where the model was last frame, before this frame's part of the rise.
                     easedHeight = hasLastRootHeight ? Mathf.Min(lastRootHeight, rootHeight) : rootHeight;
                     easedHeightVelocity = 0f;
-                    stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -stepUpMaxLag * scale, -1e-5f);
+                    stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -maxLag, -1e-5f);
                     easedHeight = rootHeight + stepUpLag;
+                    lagIsStepUp = true;
+                }
+                else if (stepped && stepUpSmoothTime > 0f && hasLastRootHeight && Mathf.Abs(lastRootHeight - rootHeight) > 1e-5f)
+                {
+                    // Up or down a stair: from where the model was last frame, above or below the character.
+                    easedHeight = lastRootHeight;
+                    easedHeightVelocity = 0f;
+                    stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -maxLag, maxLag);
+                    easedHeight = rootHeight + stepUpLag;
+                    lagIsStepUp = false;
                 }
             }
             else
             {
                 easedHeight = Mathf.SmoothDamp(easedHeight, rootHeight, ref easedHeightVelocity, stepUpSmoothTime, Mathf.Infinity, deltaTime);
-                stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -stepUpMaxLag * scale, 0f);
+                // A step up's model is never above the character; a stair's, eased down after a step down, can be.
+                stepUpLag = Mathf.Clamp(easedHeight - rootHeight, -maxLag, lagIsStepUp ? 0f : maxLag);
                 easedHeight = rootHeight + stepUpLag;
-                // Caught up (or the step up is over and the model nearly is): back to following the character exactly.
-                if (stepUpLag > -1e-3f * scale && !steppingUp) { stepUpLag = 0f; }
+                // Caught up (or the step is over and the model nearly is): back to following the character exactly.
+                if (Mathf.Abs(stepUpLag) < 1e-3f * scale && !steppingUp && !stepped) { stepUpLag = 0f; }
             }
             lastRootHeight = rootHeight;
             hasLastRootHeight = true;

@@ -230,6 +230,8 @@ namespace Character
         public SwimState swim { get; } = new SwimState();
         /// <summary>The character's wading state (Wading).</summary>
         public WadeState wade { get; } = new WadeState();
+        /// <summary>The character's walking state (Walking &amp; Running): picking up speed after an ability.</summary>
+        public WalkState walk { get; } = new WalkState();
 
         /// <summary>
         /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times

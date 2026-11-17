@@ -46,7 +46,11 @@ namespace Character
         [SerializeField] private Vector2 vaultHandPlacement = new Vector2(0.12f, 0.12f);
         [Tooltip("Vaulting: the share of the vault (its progress, 0 to 1) over which the hand is planted, easing on at the " +
                  "start of this and off at the end.")]
-        [SerializeField] private Vector2 vaultPlantedBetween = new Vector2(0.05f, 0.75f);
+        [SerializeField] private Vector2 vaultPlantedBetween = new Vector2(0.15f, 0.75f);
+        [Tooltip("Vaulting: seconds over which the body, lowered for the planted hand to reach the top, eases down and back up. A vault " +
+                 "swings over the top in a moment, its progress racing through the end of the planting, so eased by progress " +
+                 "alone the body popped back up in a frame or two")]
+        [Min(0f)] [SerializeField] private float vaultSmoothTime = 0.08f;
 
         // The last ledge held, kept while easing out after letting go so the hands don't snap.
         private Vector3 edge, wallNormal;
@@ -59,7 +63,7 @@ namespace Character
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
-            if (state.vaulting || vaultWeight > 0f)
+            if (state.vaulting || vaultWeight > 0f || vaultShift != 0f)
             {
                 SolveVault(animator, state);
                 if (state.vaulting) { activeWeight = 0f; return; }
@@ -118,8 +122,9 @@ namespace Character
             ik.SetProceduralGoal(IKLimb.RightHand, rightHand, rightRotation, activeWeight, rotationWeight);
         }
 
-        // How far the vault's hand placement is eased in now, and the last edge vaulted over (kept while easing out).
-        private float vaultWeight;
+        // How far the vault's hand placement is eased in now (and how fast it's changing), how far (m) the body is lowered
+        // for it now (and how fast that's changing), and the last edge vaulted over (kept while easing out).
+        private float vaultWeight, vaultShift, vaultShiftVelocity;
         private Vector3 vaultEdge, vaultNormal;
 
         /// <summary>
@@ -138,13 +143,23 @@ namespace Character
             if (state.vaulting)
             {
                 float start = vaultPlantedBetween.x, end = vaultPlantedBetween.y, ease = 0.15f;
-                float p = state.vaultProgress;
+                // Where the body is, not how far the animation has got (which can lag a fast vault's), so the hand is
+                // let go of as the body passes over it rather than reached back for.
+                float p = state.vaultBodyProgress;
                 goal = weight * Mathf.InverseLerp(start, start + ease, p) * (1f - Mathf.InverseLerp(end - ease, end, p));
             }
-            // Along with the progress while vaulting; eased off quickly once it's over.
-            vaultWeight = state.vaulting ? goal
-                : fadeTime > 0f ? Mathf.MoveTowards(vaultWeight, 0f, Time.deltaTime / fadeTime) : 0f;
-            if (vaultWeight <= 0f || vaultNormal == Vector3.zero) { return; }
+            // Along with the progress while vaulting; eased off quickly once it's over. (The body lowered for it is eased
+            // over time: see EaseVaultShift.)
+            // Planted at once, but let go of over the fade time: the body passes over the hand in a step or two, and let go
+            // of with it, the hand snapped from the top to where the animation has it.
+            if (!state.vaulting) { goal = 0f; }
+            vaultWeight = goal >= vaultWeight || fadeTime <= 0f ? goal : Mathf.MoveTowards(vaultWeight, goal, Time.deltaTime / fadeTime);
+            if (vaultNormal == Vector3.zero) { return; }
+            if (vaultWeight <= 0f)
+            {
+                EaseVaultShift(animator, 0f);
+                return;
+            }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;
             Vector3 over = -vaultNormal; // The way the character vaults.
@@ -156,10 +171,22 @@ namespace Character
             // as animated, is above where it's planted, within reason.
             Vector3 animatedHand = animator.GetIKPosition(AvatarIKGoal.RightHand);
             float drop = Mathf.Clamp(plant.y - animatedHand.y, -maxBodyShift * size, 0f);
-            animator.bodyPosition += Vector3.up * (drop * vaultWeight);
+            EaseVaultShift(animator, drop * vaultWeight);
 
             Quaternion rotation = Quaternion.LookRotation(over, Vector3.up) * Quaternion.Euler(0f, -90f, 0f);
             ik.SetProceduralGoal(IKLimb.RightHand, plant, rotation, vaultWeight, handRotationWeight * vaultWeight);
+        }
+
+        /// <summary>
+        /// Lowers the body toward target (m, 0 or negative) over the vault smooth time: the animated hand it's lowered for
+        /// moves quickly, so following it at once jerked the body up and down.
+        /// </summary>
+        private void EaseVaultShift(Animator animator, float target)
+        {
+            vaultShift = vaultSmoothTime > 0f
+                ? Mathf.SmoothDamp(vaultShift, target, ref vaultShiftVelocity, vaultSmoothTime, Mathf.Infinity, Time.deltaTime) : target;
+            if (target == 0f && Mathf.Abs(vaultShift) < 1e-4f) { vaultShift = 0f; vaultShiftVelocity = 0f; }
+            animator.bodyPosition += Vector3.up * vaultShift;
         }
 
         /// <summary>

@@ -18,6 +18,11 @@ namespace Character
         [SerializeField] private float vaultRiseDuration = 0.25f;
         [Tooltip("The share of the speed the character came in at that it leaves a vault with")]
         [Range(0f, 1f)] [SerializeField] private float vaultSpeedRetention = 0.75f;
+        [Tooltip("The share of the speed it comes in at that a vault's rise slows to by the time it's up at the top: the " +
+                 "vault takes off far enough from the wall for that (further, the faster the character's going), slowing " +
+                 "evenly through the rise, rather than dropping almost to a standstill as it begins. 0 takes off as close as " +
+                 "the vault is found (just short of the wall), slowing at once to whatever closes that gap over the rise")]
+        [Range(0f, 1f)] [SerializeField] private float vaultTakeOffSpeed = 0.5f;
         [Tooltip("The slowest (m/s) a vault leaves the character, at its authored size: a slower approach is sped up to " +
                  "this, so a vault is always brisk")]
         [SerializeField] private float vaultMinSpeed = 3f;
@@ -81,26 +86,37 @@ namespace Character
             float length = travel.magnitude;
             Vector3 direction = length > 1e-5f ? travel / length : Facing(movementData);
 
-            // Rising: closing the gap to the wall at an even pace while lifted to the top's height, easing in to it.
+            // Rising: closing the gap to the wall, slowing evenly from the speed coming in (see riseStartSpeed), while
+            // lifted to the top's height, easing in to it.
             // Then over: the rest of the way, at the top's height, speeding up evenly to the speed it leaves with, so it
             // doesn't drift over slowly and then shoot off.
             float distance, up;
             bool over = false;
             if (!MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration, movementData.deltaTime))
             {
-                float rise = vault.elapsed / vault.riseDuration;
-                distance = vault.gapDistance * rise;
+                // Slowing evenly from the speed it rises at first to the speed it swings over at.
+                float rise = vault.elapsed / vault.riseDuration, t = vault.elapsed;
+                float slowing = (vault.crossStartSpeed - vault.riseStartSpeed) / Mathf.Max(vault.riseDuration, 1e-4f);
+                distance = Mathf.Min(vault.gapDistance, vault.riseStartSpeed * t + 0.5f * slowing * t * t);
                 up = Mathf.SmoothStep(0f, 1f, rise);
             }
             else
             {
-                float t = Mathf.Min(vault.elapsed - vault.riseDuration, vault.crossDuration);
+                float since = vault.elapsed - vault.riseDuration, t = Mathf.Min(since, vault.crossDuration);
                 float acceleration = vault.crossDuration > 0f ? (vault.exitSpeed - vault.crossStartSpeed) / vault.crossDuration : 0f;
                 distance = Mathf.Min(length, vault.gapDistance + vault.crossStartSpeed * t + 0.5f * acceleration * t * t);
                 up = 1f;
                 over = MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration + vault.crossDuration, movementData.deltaTime);
+                // The step it ends on, on past the end for the rest of the step at the speed it leaves with: stopped at the
+                // end, that step moved only part of one, and the character lurched as it left the vault at full speed.
+                if (over) { distance = length + vault.exitSpeed * Mathf.Max(0f, since - vault.crossDuration); }
             }
             Vector3 point = start + direction * distance + Vector3.up * ((end.y - start.y) * up);
+            // Over the top and standing on it: no higher than where it stands. The path holds the feet a little clear of
+            // the top (see VaultClearance), and standing on it, the ground snap set them down on it: lifted back up the
+            // next step and set down again the one after, the character bounced on the top all the way across (climbing
+            // out of the water, onto a pool's side, too).
+            if (up >= 1f && movementData.initialGrounded) { point.y = Mathf.Min(point.y, movementData.initialPosition.y); }
 
             movementData.velocityOverride = (point - movementData.initialPosition) / movementData.deltaTime;
             movementData.directMovementVector = Vector3.zero;
@@ -216,8 +232,12 @@ namespace Character
             Vector3 velocity = movementData.initialVelocity;
             Vector3 moving = new Vector3(velocity.x, 0f, velocity.z);
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
-            // Looked for far enough ahead that a fast approach is caught before the next step takes it into the wall.
-            float reach = controller.Body.FrontExtent + Mathf.Max(ledges.LedgeGrabReach * controller.HeightScale, 2f * moving.magnitude * movementData.deltaTime);
+            // Looked for far enough ahead that a fast approach is caught before the next step takes it into the wall, and
+            // that the rise can slow evenly from the speed coming in to its share of it (the take off speed) over its time.
+            float approach = Mathf.Max(0f, Vector3.Dot(moving, heading));
+            float takeOff = 0.5f * (1f + vaultTakeOffSpeed) * approach * vaultRiseDuration * controller.DurationScale;
+            float reach = controller.Body.FrontExtent + Mathf.Max(ledges.LedgeGrabReach * controller.HeightScale,
+                Mathf.Max(takeOff, 2f * moving.magnitude * movementData.deltaTime));
             Vector3 feet = movementData.initialPosition;
             if (!ledges.FindLedge(controller, feet, heading, low, high, reach, out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)) { return false; }
             bool steeringIn = Vector3.Dot(steer, -wallNormal) >= (grounded ? Mathf.Cos(vaultGroundMaxAngle * Mathf.Deg2Rad) : 0.5f);
@@ -282,7 +302,13 @@ namespace Character
             vault.localEnd = toObstacleSpace * (end - obstaclePosition);
             vault.gapDistance = Mathf.Min(gap, length);
             vault.riseDuration = vaultRiseDuration * controller.DurationScale;
-            vault.crossStartSpeed = vault.gapDistance / vault.riseDuration;
+            // Rising, slowing evenly from the speed coming in to the speed that closes the gap over the rise, if that's
+            // no faster than coming in; else, too close for that, at the gap's pace throughout, as it can't keep more of
+            // the speed without reaching the wall before it's up.
+            float even = vault.gapDistance / vault.riseDuration;
+            float approachSpeed = Mathf.Max(0f, Vector3.Dot(moving, heading));
+            vault.riseStartSpeed = approachSpeed <= 2f * even ? Mathf.Max(approachSpeed, even) : even;
+            vault.crossStartSpeed = 2f * even - vault.riseStartSpeed;
             vault.exitSpeed = Mathf.Max(minSpeed, speed * vaultSpeedRetention);
             vault.crossDuration = 2f * (length - vault.gapDistance) / (vault.crossStartSpeed + vault.exitSpeed);
             vault.exitVelocity = heading * vault.exitSpeed;
@@ -343,6 +369,8 @@ namespace Character
         public float riseDuration;
         /// <summary>Seconds the swing over, after the rise, takes.</summary>
         public float crossDuration;
+        /// <summary>How fast (m/s) the rise starts, slowing evenly to the swing over's start.</summary>
+        public float riseStartSpeed;
         /// <summary>How fast (m/s) the swing over starts.</summary>
         public float crossStartSpeed;
         /// <summary>The speed (m/s) the swing over speeds up to, which the character leaves with.</summary>

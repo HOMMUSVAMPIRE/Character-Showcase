@@ -69,10 +69,21 @@ namespace Character
         public bool hanging;
         /// <summary>Climbing up from a ledge onto it.</summary>
         public bool climbing;
-        /// <summary>Vaulting over something low.</summary>
+        /// <summary>
+        /// Vaulting over something low: while the character vaults, and as its animation finishes after a fast one (see
+        /// vaultProgress).
+        /// </summary>
         public bool vaulting;
-        /// <summary>About how far through the vault (0 to 1) while vaulting; 0 otherwise.</summary>
+        /// <summary>
+        /// How far through the vault (0 to 1) its animation is: the vault's progress, but no faster than plays it over
+        /// the AnimationController's Vault Min Duration, so after a fast vault it finishes as the character runs on.
+        /// </summary>
         public float vaultProgress;
+        /// <summary>
+        /// How far through the vault (0 to 1) the character itself is (1 once it's over), which vaultProgress can lag:
+        /// where its body is, for placing the hand on the top (see LedgeHandIK).
+        /// </summary>
+        public float vaultBodyProgress;
         /// <summary>Stepping up onto something low and deep (its edge in ledgeEdge and ledgeNormal).</summary>
         public bool steppingUp;
         /// <summary>

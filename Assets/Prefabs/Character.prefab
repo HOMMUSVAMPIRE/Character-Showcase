@@ -81,6 +81,7 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
+    stepChange: 0
     initialPitch: 0
     targetPitch: 0
     modelDrop: 0
@@ -93,6 +94,7 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
+    stepChange: 0
     initialPitch: 0
     targetPitch: 0
     modelDrop: 0
@@ -146,6 +148,7 @@ MonoBehaviour:
   stepUpMaxLag: 0.35
   modelDropSmoothTime: 0.25
   eyeLoweringSmoothTime: 0.1
+  vaultMinDuration: 0.5
   climbOutOfWaterStart: 0.4
   headWaterMargin: 0.1
 --- !u!136 &2503010006209077673

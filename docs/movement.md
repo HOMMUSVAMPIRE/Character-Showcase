@@ -29,7 +29,9 @@ Sprinting works in the air too: steering toward the run speed, and keeping a spr
 
 Gravity, falling and steering in the air are the Fall & Air Handling component's: its Gravity & Falling section (Gravity Strength, Max Fall Speed, and the Coyote Time Gravity Curve, the gentler gravity just after walking off an edge), its Air Steering section (how much and how soon the character steers in the air, and how steering comes back after a wall jump), and its Landing section (Grounded Dampen Horizontal Inertia, below). Turned off, the character doesn't fall, steer in the air or lose momentum on the ground.
 
-Momentum carries onto the ground: landing from a sprint jump while walking keeps the sprint's speed, which eases down to the walk speed with the ground's friction (Grounded Dampen Horizontal Inertia). Walking or sprinting only makes up the difference between the momentum the character carries the way it's steering and its speed: it moves at whichever is faster, never at the two added together.
+Momentum carries onto the ground: landing from a sprint jump while walking keeps the sprint's speed, which eases down to the walk speed with the ground's friction (Grounded Dampen Horizontal Inertia).
+
+Walking is at its speed at once, except after an ability that hands the character back on the ground slower than it walks (the end of a vault, or of a climb up onto a ledge): it then picks up from the speed it was going to its walking (or running) speed, at the rate Walking & Running's Ability Pick Up Time sets (the seconds from a standstill to the run speed), rather than snapping to it. Walking or sprinting only makes up the difference between the momentum the character carries the way it's steering and its speed: it moves at whichever is faster, never at the two added together.
 
 (They used to add up: just after a landing the character moved at its air speed plus its walking speed, and hopping again at once, or clipping a ledge's lip for a step or two, carried both into the air, building up to several times the walking speed.)
 
@@ -84,7 +86,7 @@ MovementController resolves the character's movement against the world itself, w
 
 Each physics step it:
 - pushes the character out of anything that moved into them since the last step, so moving walls and platforms push the character instead of passing through
-- slides along walls and walkable slopes, and steps up stairs and low ledges, anything up to the step height, at any pace (a step-up carries the character far enough onto the step that it doesn't perch on the edge and slide back off)
+- slides along walls and walkable slopes, and steps up stairs and low ledges, anything up to the step height, at any pace (a step-up carries the character far enough onto the step that it doesn't perch on the edge and slide back off). A step up, or a drop down onto a step, happens in a physics step; the movement reports how far (`MovementData.stepChange`), and the model is eased over it (see [Stepping up](abilities.md))
 - slides the character off surfaces too steep to stand on, including ledge edges caught by the capsule's rounded bottom; but the edge of a step (one with walkable ground no further than the step height below the character's feet) is ground, so on stairs whose treads are shallower than the capsule is wide, as the level's are, the character walks and sprints down resting on the steps' edges instead of floating off the top step
 - snaps to the ground when walking down slopes and stairs; resting on a step's edge counts as standing on the ground, even where the ground check's sphere (a little narrower than the body, Ground Check Radius on the MovementController, or 90% of the body's footprint at 0) doesn't reach it, so a slim body rolling over each edge of a steep flight stays on it
 

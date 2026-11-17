@@ -18,7 +18,7 @@
         },
         {
             "type": "Character.Vaulting",
-            "settings": "{\"enabled\":true,\"vaultRiseDuration\":0.25,\"vaultSpeedRetention\":0.75,\"vaultMinSpeed\":3.0,\"vaultFromGround\":true,\"vaultGroundMaxAngle\":25.0,\"vaultMaxDrop\":1.0,\"vaultStepUpHeight\":0.5}"
+            "settings": "{\"enabled\":true,\"vaultRiseDuration\":0.25,\"vaultSpeedRetention\":0.75,\"vaultTakeOffSpeed\":0.5,\"vaultMinSpeed\":3.0,\"vaultFromGround\":true,\"vaultGroundMaxAngle\":25.0,\"vaultMaxDrop\":1.0,\"vaultStepUpHeight\":0.5}"
         },
         {
             "type": "Character.PushingAndPulling",
@@ -30,11 +30,11 @@
         },
         {
             "type": "Character.Swimming",
-            "settings": "{\"enabled\":true,\"swimDepth\":0.75,\"swimSurfacingSpeed\":3.0,\"swimPlungeDrag\":1.5,\"swimSpeed\":3.0,\"swimSprintSpeed\":5.0,\"swimAcceleration\":8.0,\"swimJumpHeight\":1.2000000476837158,\"swimVaultHeight\":0.30000001192092896,\"swimDiveSpeed\":4.0,\"swimVerticalSpeed\":2.5,\"swimBuoyancy\":0.0}"
+            "settings": "{\"enabled\":true,\"swimDepth\":0.75,\"swimSurfacingSpeed\":3.0,\"swimPlungeDrag\":1.5,\"swimSpeed\":3.0,\"swimSprintSpeed\":5.0,\"swimAcceleration\":8.0,\"swimJumpHeight\":1.2000000476837158,\"swimVaultHeight\":0.30000001192092896,\"swimDiveSpeed\":4.0,\"swimVerticalSpeed\":2.5,\"swimBuoyancy\":0.0,\"swimMaxPitch\":60.0}"
         },
         {
             "type": "Character.WallRunning",
-            "settings": "{\"enabled\":true,\"wallRunSpeed\":9.0,\"wallRunMinSpeed\":4.0,\"wallRunMaxDuration\":1.2000000476837158,\"wallRunGravity\":5.0,\"wallRunMaxRiseSpeed\":4.0,\"wallRunMaxSteerAngle\":60.0,\"wallRunCheckDistance\":0.30000001192092896,\"wallRunMinHeight\":0.75,\"wallRunMaxWallTilt\":45.0,\"wallRunCooldown\":0.3499999940395355,\"wallRunFootHeight\":0.20000000298023224,\"wallRunReleaseDelay\":0.25,\"wallJumpAwaySpeed\":10.0,\"wallJumpUpSpeed\":10.0}"
+            "settings": "{\"enabled\":true,\"wallRunSpeed\":9.0,\"wallRunMinSpeed\":4.0,\"wallRunMaxDuration\":1.2000000476837158,\"wallRunGravity\":5.0,\"wallRunMaxRiseSpeed\":4.0,\"wallRunMaxSteerAngle\":60.0,\"wallRunCheckDistance\":0.30000001192092896,\"wallRunClearance\":0.25,\"wallRunMinHeight\":0.75,\"wallRunMaxWallTilt\":45.0,\"wallRunCooldown\":0.3499999940395355,\"wallRunFootHeight\":0.20000000298023224,\"wallRunReleaseDelay\":0.25,\"wallJumpAwaySpeed\":10.0,\"wallJumpUpSpeed\":10.0}"
         },
         {
             "type": "Character.WallSliding",
@@ -58,7 +58,7 @@
         },
         {
             "type": "Character.WalkingAndRunning",
-            "settings": "{\"enabled\":true,\"walkSpeed\":5.0,\"runSpeed\":10.0}"
+            "settings": "{\"enabled\":true,\"walkSpeed\":5.0,\"runSpeed\":10.0,\"abilityPickUpTime\":0.30000001192092896}"
         },
         {
             "type": "Character.Dashing",
@@ -88,7 +88,7 @@
         },
         {
             "field": "groundCheckRadius",
-            "value": "0.45"
+            "value": "0"
         },
         {
             "field": "movementSpeedMultiplier",
@@ -119,6 +119,7 @@
             "value": "2"
         }
     ],
-    "colliderRadius": 0.5,
-    "colliderHeight": 2.0
+    "colliderRadius": 0.23799997568130493,
+    "colliderHeight": 1.7617120742797852,
+    "colliderLyingThickness": 0.33324068784713745
 }

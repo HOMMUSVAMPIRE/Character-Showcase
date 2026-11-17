@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -286,6 +287,36 @@ namespace CharacterShowcase.Tests
             });
             Assert.That(played, Is.True, $"The 'Vault' state should play (the Animator is in '{CurrentAnimatorState()}').");
             Assert.That(closest, Is.LessThan(0.08f * size), "Mid-vault, the planted hand should be on the wall's top.");
+        }
+
+        /// <summary>
+        /// Vaulting, the body lowered for the planted hand to reach the top eases down and back up over time: the vault
+        /// swings over the top in a moment, its progress racing through the end of the hand's planting, and eased by
+        /// progress alone the body popped back up a third of a metre in a frame or two.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Vaulting_TheHipsDontJumpAsTheHandLetsGo()
+        {
+            yield return Spawn();
+            float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
+            float top = share * rig.StandingHeight;
+            rig.Box("Low Wall", new Vector3(0f, top / 2f, 3f), new Vector3(10f, top, 0.4f));
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips), parent = rig.Models.ModelParent;
+            bool vaulted = false;
+            float biggestJump = 0f;
+            Vector3 last = hips.position - parent.position;
+            yield return rig.Run(1.4f, step => CharacterTestRig.Sprint(Vector3.forward, step), step =>
+            {
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                StepAnimator(step);
+                Vector3 inModel = hips.position - parent.position;
+                bool vaulting = rig.InState(CharacterState.Vaulting);
+                vaulted |= vaulting;
+                if (vaulting) { biggestJump = Mathf.Max(biggestJump, Mathf.Abs(inModel.y - last.y)); }
+                last = inModel;
+            });
+            Assert.That(vaulted, Is.True, "Test setup: the character should vault over the wall.");
+            Assert.That(biggestJump, Is.LessThan(0.12f * rig.Controller.Scale.y), "Vaulting, the hips shouldn't jump up or down within the model.");
         }
 
         [UnityTest]
@@ -619,6 +650,126 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Movement.BodyPitch, Is.EqualTo(0f), "Without steering, the body should level out.");
             Assert.That(Vector3.Angle(modelParent.forward, Vector3.ProjectOnPlane(modelParent.forward, Vector3.up)), Is.LessThan(1f),
                 "And the model with it.");
+        }
+
+        /// <summary>
+        /// Walking up or down stairs, collision lifts the character onto each step, or drops it onto the next, in a
+        /// physics step: the model is eased over each step instead (see MovementData.stepChange), so it goes up and down
+        /// the flight smoothly. Its hips jolted up or down a whole step at a time, ten times as sharply as walking.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WalkingUpOrDownStairs_TheModelEasesOverEachStep([Values(true, false)] bool up)
+        {
+            yield return Spawn();
+            const int steps = 12;
+            float rise = 0.85f * rig.StepHeight, run = 4f / 3f * rise, top = steps * rise;
+            for (int i = 0; i < steps - 1; i++)
+            {
+                float height = up ? rise * (i + 1) : top - rise * (i + 1);
+                rig.Box($"Step {i + 1}", new Vector3(0f, height / 2f, 1f + i * run + run / 2f), new Vector3(10f, height, run));
+            }
+            rig.Box(up ? "Top Landing" : "Top", new Vector3(0f, top / 2f, up ? 1f + (steps - 1) * run + 5f : -4f), new Vector3(10f, top, 10f));
+            if (!up)
+            {
+                rig.Body.position = new Vector3(0f, top + 0.05f, 0f);
+                yield return rig.Run(0.3f, _ => CharacterTestRig.Idle(), StepAnimator);
+            }
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+            var hipsHeights = new List<float>();
+            var rootHeights = new List<float>();
+            bool stepped = false;
+            yield return rig.Run(2f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                StepAnimator(step);
+                stepped |= rig.Movement.lastFrameMovementData.stepChange != 0f;
+                hipsHeights.Add(hips.position.y);
+                rootHeights.Add(rig.Character.transform.position.y);
+            });
+            Assert.That(stepped, Is.True, "Test setup: the character should step up or down the stairs.");
+            Assert.That(PeakJolt(hipsHeights), Is.LessThan(0.5f * PeakJolt(rootHeights)),
+                "The model should ease over each step, not jolt up or down a step at a time as the character does.");
+        }
+
+        /// <summary>The largest change in speed (m/s²) between physics steps of a height over the steps.</summary>
+        private static float PeakJolt(List<float> heights)
+        {
+            float dt = Time.fixedDeltaTime, peak = 0f;
+            for (int i = 2; i < heights.Count; i++) { peak = Mathf.Max(peak, Mathf.Abs(heights[i] - 2f * heights[i - 1] + heights[i - 2]) / (dt * dt)); }
+            return peak;
+        }
+
+        /// <summary>
+        /// Climbing up onto a ledge and walking on, the model doesn't jump as the climb hands over: the climb's animation
+        /// is held where it ended while the Animator blends out of it. Its progress went back to 0, and the climb's clip
+        /// to its start for the blend, so the hips jumped forward and back as the character stepped off the top.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ClimbingOntoALedgeAndWalkingOn_TheHipsDontJumpAsTheClimbEnds()
+        {
+            yield return Spawn();
+            rig.Body.position = new Vector3(0f, 3f, 0f);
+            float top = 3f + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
+            rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
+            yield return ExpectState("Hang", 0.8f, _ => CharacterTestRig.Move(Vector3.forward));
+            Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips), parent = rig.Models.ModelParent;
+            bool climbed = false;
+            int afterClimb = 0;
+            float biggestJump = 0f;
+            Vector3 last = hips.position - parent.position;
+            yield return rig.Run(1.8f, step => step == 0 ? CharacterTestRig.Jump(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                StepAnimator(step);
+                bool climbing = rig.InState(CharacterState.LedgeClimbing);
+                climbed |= climbing;
+                Vector3 inModel = hips.position - parent.position;
+                // Over the steps from the climb's end, as the Animator blends out of it.
+                if (climbed && !climbing && afterClimb++ < 15) { biggestJump = Mathf.Max(biggestJump, Vector3.Distance(inModel, last)); }
+                last = inModel;
+            });
+            Assert.That(climbed, Is.True, "Test setup: the character should climb onto the ledge.");
+            Assert.That(biggestJump, Is.LessThan(0.08f * rig.Controller.Scale.y), "As the climb ends, the hips shouldn't jump within the model.");
+        }
+
+        /// <summary>
+        /// Sprinting over a low wall and running on, the model moves smoothly from the run into the vault and out of it:
+        /// the vault's animation plays over at least its Vault Min Duration (finishing after a fast vault, as the
+        /// character runs on), so it doesn't race through the swing over the top, the hands and feet whipping round and
+        /// snapping into the run; and it blends in over long enough that the stride's feet don't snap to the vault's.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SprintingOverALowWall_TheModelMovesSmoothlyIntoAndOutOfTheVault()
+        {
+            yield return Spawn();
+            float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
+            float top = share * rig.StandingHeight;
+            rig.Box("Low Wall", new Vector3(0f, top / 2f, 4.2f), new Vector3(10f, top, 0.4f));
+            HumanBodyBones[] bones = { HumanBodyBones.Hips, HumanBodyBones.Head, HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot, HumanBodyBones.LeftHand, HumanBodyBones.RightHand };
+            Transform parent = rig.Models.ModelParent;
+            var last = new Vector3[bones.Length];
+            bool vaulted = false;
+            int after = 0;
+            float biggest = 0f;
+            string which = "";
+            yield return rig.Run(1.6f, step => CharacterTestRig.Sprint(Vector3.forward, step), step =>
+            {
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                StepAnimator(step);
+                bool vaulting = rig.InState(CharacterState.Vaulting);
+                // Through the vault, and as its animation finishes and blends into what's next (not the landing after).
+                bool measured = step > 0 && (vaulting || (vaulted && after++ < 12));
+                vaulted |= vaulting;
+                for (int b = 0; b < bones.Length; b++)
+                {
+                    Vector3 local = parent.InverseTransformPoint(animator.GetBoneTransform(bones[b]).position);
+                    float moved = Vector3.Distance(local, last[b]);
+                    if (measured && moved > biggest) { biggest = moved; which = bones[b].ToString(); }
+                    last[b] = local;
+                }
+            });
+            Assert.That(vaulted, Is.True, "Test setup: the character should vault the wall.");
+            Assert.That(biggest, Is.LessThan(0.35f * rig.Controller.Scale.y), $"The model's {which} shouldn't jump within it from one step to the next.");
         }
 
         [UnityTest]

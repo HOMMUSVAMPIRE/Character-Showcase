@@ -115,6 +115,8 @@ namespace CharacterShowcase.EditorTools
         // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
         // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
         private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;
+        // Seconds the Animator blends into a vault over (from a run, say): at 0.05, the stride's feet snapped to the vault's.
+        private const float VaultBlendInTime = 0.12f;
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";

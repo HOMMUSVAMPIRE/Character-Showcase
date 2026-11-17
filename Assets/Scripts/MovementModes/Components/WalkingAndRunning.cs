@@ -18,6 +18,15 @@ namespace Character
         [SerializeField] private float walkSpeed;
         [Tooltip("How fast (m/s) the character moves while the Sprint button is held, at its authored size. At or below Walk Speed, sprinting does nothing.")]
         [SerializeField] private float runSpeed;
+        [Tooltip("Seconds walking takes to pick up from a standstill to the run speed after an ability hands the character " +
+                 "back on the ground slower than it walks (the end of a vault, or of a climb up onto a ledge): it speeds up to " +
+                 "its walking speed at that rate, from the speed it was going, rather than snapping to it. Otherwise walking " +
+                 "is at its speed at once. 0 = at once after abilities too")]
+        [Min(0f)] [SerializeField] private float abilityPickUpTime = 0.3f;
+
+        // The abilities that hand the character back to walking on the ground slower than it walks, which it then picks
+        // up speed from (see abilityPickUpTime).
+        private const CharacterState SlowHandOvers = CharacterState.Vaulting | CharacterState.LedgeClimbing;
 
         /// <summary>How fast (m/s) the character walks at full movement input, at its authored size.</summary>
         public float WalkSpeed { get => walkSpeed; set => walkSpeed = value; }
@@ -37,8 +46,13 @@ namespace Character
         /// </summary>
         public override void Locomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
-            // In the air, the character steers instead (see FallAndAirHandling).
-            if (!movementData.initialGrounded) { return; }
+            // In the air, the character steers instead (see FallAndAirHandling), and isn't picking up speed after an
+            // ability any more (nor once it stops: see PickingUp).
+            if (!movementData.initialGrounded)
+            {
+                controller.walk.pickingUp = false;
+                return;
+            }
             float steeringEffectiveness = controller.movementSpeedMultiplier;
 
             // With movement input, move the way it points (relative to the camera) at walking speed (or running, while
@@ -50,7 +64,9 @@ namespace Character
             // after landing, or touching a ledge's lip for a step or two) carried both into the air, where air steering
             // keeps speed beyond walking. Every short touch of the ground then added walking speed again, and hopping or
             // clipping ledges built up to several times it.
-            if (inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0)
+            bool steering = inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0;
+            if (!steering && (movementData.previousState & SlowHandOvers) == 0) { controller.walk.pickingUp = false; }
+            if (steering)
             {
                 Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
                 steer.y = 0f;
@@ -60,6 +76,7 @@ namespace Character
                 if (stick > 1e-4f && walking > 1e-6f)
                 {
                     Vector3 direction = steer.normalized;
+                    walking = PickingUp(ref movementData, controller, direction, walking);
                     Vector3 carried = movementData.initialInertia;
                     float carriedAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(carried.x, 0f, carried.z), direction));
                     movementData.directMovementVector = direction * (Mathf.Max(0f, walking - carriedAlong) * movementData.deltaTime);
@@ -69,5 +86,31 @@ namespace Character
 
             movementData.state |= CharacterState.Moving;
         }
+
+        /// <summary>
+        /// The speed (m/s) to walk at this step, toward walking (its full speed): after an ability hands the character back
+        /// slower than that (see SlowHandOvers), up from the speed it was going (the way it's heading) at the pick-up
+        /// rate, until it's caught up; otherwise walking. A vault ending standing on the top, or a climb onto a ledge,
+        /// snapped from the speed it left with (or a near standstill) to walking or running in a step.
+        /// </summary>
+        private float PickingUp(ref MovementData movementData, MovementController controller, Vector3 direction, float walking)
+        {
+            WalkState walk = controller.walk;
+            if ((movementData.previousState & SlowHandOvers) != 0) { walk.pickingUp = abilityPickUpTime > 0f; }
+            if (!walk.pickingUp) { return walking; }
+            Vector3 was = movementData.initialVelocity;
+            float wasAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(was.x, 0f, was.z), direction));
+            float rate = Mathf.Max(runSpeed, walkSpeed) * controller.SpeedScale / (abilityPickUpTime * controller.DurationScale);
+            float now = wasAlong + rate * movementData.deltaTime;
+            if (now >= walking) { walk.pickingUp = false; return walking; }
+            return now;
+        }
+    }
+
+    /// <summary>The character picking up speed to walk after an ability (see WalkingAndRunning).</summary>
+    public class WalkState
+    {
+        /// <summary>Whether walking is picking up speed after an ability handed the character back slower than it walks.</summary>
+        public bool pickingUp;
     }
 }

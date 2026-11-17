@@ -202,7 +202,8 @@ namespace CharacterShowcase.EditorTools
                 (crouch, CrouchingParameter, 0.15f), (slide, SlidingParameter, 0.1f), (roll, RollingParameter, 0.05f),
                 (wallRun, WallRunningParameter, 0.12f), (wallSlide, WallSlidingParameter, 0.1f), (wallClimb, WallClimbingParameter, 0.15f), (ladderState, OnLadderParameter, 0.15f),
                 (hang, HangingParameter, 0.1f), (climb, ClimbingParameter, 0.05f),
-                (vault, VaultingParameter, 0.05f), (pushPull, GrabbingParameter, 0.15f),
+                // Into a vault from a run over long enough that the stride's feet don't snap to the vault's.
+                (vault, VaultingParameter, VaultBlendInTime), (pushPull, GrabbingParameter, 0.15f),
                 (ropeSwing, RopeSwingingParameter, 0.1f), (zipline, ZipliningParameter, 0.1f), (swim, SwimmingParameter, 0.2f),
                 (swimUnderwater, DivingParameter, 0.2f),
             };

@@ -134,6 +134,13 @@ namespace Character
         /// </summary>
         [System.NonSerialized] public MovementEvents events;
 
+        /// <summary>
+        /// How far (m) collision stepped the character up onto a step (positive) or dropped it down onto one (negative)
+        /// this step, at once: walking up or down stairs, a step's whole height in a physics step. For the model to be
+        /// eased over it (see AnimationController), rather than jumping with the character. 0 otherwise.
+        /// </summary>
+        public float stepChange;
+
         /// <summary>How far (degrees, positive nose up) the character's body was pitched at the start of the step (see MovementController.BodyPitch).</summary>
         public float initialPitch;
 

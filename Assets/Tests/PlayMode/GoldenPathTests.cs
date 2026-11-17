@@ -491,6 +491,8 @@ namespace CharacterShowcase.Tests
             public List<PinnedComponent> components = new();
             public List<PinnedSetting> controller = new();
             public float colliderRadius, colliderHeight;
+            // Its lying thickness (see BodyShape): 0 lies it down as thick as it is wide.
+            public float colliderLyingThickness;
         }
 
         [Serializable] private sealed class PinnedComponent { public string type; public string settings; }
@@ -513,6 +515,7 @@ namespace CharacterShowcase.Tests
             {
                 colliderRadius = rig.Movement.AuthoredBody.radius,
                 colliderHeight = rig.Movement.AuthoredBody.height,
+                colliderLyingThickness = rig.Movement.AuthoredBody.lyingThickness,
             };
             foreach (MovementComponent component in rig.ComposedMode.Components)
             {
@@ -557,7 +560,7 @@ namespace CharacterShowcase.Tests
                     : Convert.ChangeType(setting.value, field.FieldType, CultureInfo.InvariantCulture);
                 field.SetValue(rig.Movement, value);
             }
-            Assert.That(rig.Movement.SetBody(BodyShape.Capsule(pinned.colliderRadius, pinned.colliderHeight)), Is.True,
+            Assert.That(rig.Movement.SetBody(BodyShape.Capsule(pinned.colliderRadius, pinned.colliderHeight, pinned.colliderLyingThickness)), Is.True,
                 "The golden paths' collider should fit where the character is spawned.");
         }
     }
