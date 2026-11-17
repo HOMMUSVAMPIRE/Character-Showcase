@@ -17,6 +17,11 @@ namespace Character
     /// - bends each leg (a two-bone solve of its upper and lower bones, its middle joint always bent the way it folds:
     ///   Bend Direction) to put its paw on its own ground, keeping the animation's lift (so a swinging paw still clears
     ///   the ground, and never eases into it) and the paw's animated turn, tilted to the ground's slope while it's planted.
+    /// - holds each planted paw where it was put down (Paw Lock), so the model turning after the character, about its feet,
+    ///   doesn't drag the paws round with it;
+    /// - bends the body into a turn (Turn Bend Bones), as fast as the model turns;
+    /// - shortens and quickens the strides on a slope (Stride Shortening), and puts each paw down on the nearest foothold
+    ///   that keeps its leg nearest its animated length (Foothold Reach).
     /// Placement fades out in the air, so jumps play as animated.
     ///
     /// It runs in LateUpdate while the Animator plays (Animator writes the pose before LateUpdate). A model whose Animator
@@ -44,6 +49,17 @@ namespace Character
                      "forward (0, 0, 1) for a hind leg's stifle. The solve always bends it that way, however straight the " +
                      "leg is. Zero bends it the way the animation has it bent.")]
             public Vector3 bendDirection;
+        }
+
+        /// <summary>A bone turned toward the way the creature turns, by a share of the bend (see Turn Bend Bones).</summary>
+        [System.Serializable]
+        public class TurnBendBone
+        {
+            [Tooltip("The bone (a spine bone, the neck, the head, the tail's): it and everything under it turn about it.")]
+            public Transform bone;
+            [Tooltip("Its share of the bend: positive toward the turn (the spine, neck and head), negative away from it (the " +
+                     "tail, so its tip swings round toward the turn too, the body a curve).")]
+            [Range(-1f, 1f)] public float share = 0.25f;
         }
 
         /// <summary>A bone turned back against the body's pitch, by a share of it.</summary>
@@ -122,8 +138,63 @@ namespace Character
         [Tooltip("Animated paw lift (m, for the model at its authored size) above which a paw counts as lifted, so it keeps " +
                  "its animated turn.")]
         [Min(0f)] [SerializeField] private float liftedHeight = 0.1f;
+        [Tooltip("How fast (m/s, for the model at its authored size) the animation carries a paw forward, relative to the " +
+                 "model, for it to count as lifted, however low it is: a planted paw goes back as the body passes over it, " +
+                 "a swinging one forward. (A hind paw swings with its toes curled down, barely off the ground.)")]
+        [Min(0.001f)] [SerializeField] private float swingSpeed = 0.3f;
+        [Tooltip("How fast (m/s, for the model at its authored size) the lowest a paw has been lately forgets: a paw's lift " +
+                 "is measured from there (a paw whose stance isn't quite at the floor still counts as planted in it), and " +
+                 "a stride or two later it's forgotten.")]
+        [Min(0f)] [SerializeField] private float liftBaselineRecovery = 0.1f;
         [Tooltip("How strongly planted paws tilt to the ground's slope.")]
         [Range(0f, 1f)] [SerializeField] private float alignToGround = 1f;
+
+        [Header("Turning")]
+        [Tooltip("Bones turned toward the way the creature is turning, each by a share of the bend: the spine and neck " +
+                 "toward the turn, the tail (a negative share) the other way, so the body curves into it. Each turns " +
+                 "everything under it, so the shares add up along the spine.")]
+        [SerializeField] private TurnBendBone[] turnBendBones = new TurnBendBone[0];
+        [Tooltip("The most (degrees) the body is bent into a turn.")]
+        [Range(0f, 90f)] [SerializeField] private float maxTurnBend = 25f;
+        [Tooltip("How fast (degrees a second) the model turning bends the body fully.")]
+        [Min(1f)] [SerializeField] private float fullBendTurnSpeed = 150f;
+        [Tooltip("Seconds to ease the bend in and out as the turning starts and stops.")]
+        [Range(0f, 0.5f)] [SerializeField] private float turnBendSmoothTime = 0.12f;
+
+        [Header("Strides on slopes")]
+        [Tooltip("How much shorter the strides are on a slope, by the sine of the body's pitch (0.7 takes about two fifths " +
+                 "off them up or down a 37° flight of stairs), and how much quicker, so the paws still keep pace with the " +
+                 "ground: the Animator plays that much faster while the creature moves. A planted paw stays put while the " +
+                 "body goes on over it the length of a stance, rising or falling as far along a slope, which a leg can't " +
+                 "stretch or fold to. 0 = off.")]
+        [Range(0f, 1f)] [SerializeField] private float strideShortening = 0.7f;
+        [Tooltip("The shortest the strides get on a slope, as a share of their length on the flat.")]
+        [Range(0.1f, 1f)] [SerializeField] private float shortestStride = 0.5f;
+        [Tooltip("The speed (m/s, for the model at its authored size) at which the creature counts as fully moving, so its " +
+                 "strides are fully shortened on a slope (standing, its animation plays as it is).")]
+        [Min(0.01f)] [SerializeField] private float strideMovingSpeed = 0.5f;
+
+        [Header("Footholds")]
+        [Tooltip("How far (m, for the model at its authored size) ahead of or behind where the animation puts a paw down it " +
+                 "may be put instead, onto ground nearer the body's line, so its leg stays nearer the length the animation " +
+                 "gives it. On a flight of stairs, a paw put down at the back of a tread, a riser below the steps' edges, is " +
+                 "out of its leg's reach, and one by an edge folds its leg up under the body; moved, it stands where the " +
+                 "leg reaches. On even ground every foothold is as good, and the paw is put where the animation has it. 0 = off.")]
+        [Min(0f)] [SerializeField] private float footholdReach = 0.12f;
+        [Tooltip("Seconds to ease a paw from one foothold to another as it swings (a planted paw stays where it was put down).")]
+        [Range(0f, 0.3f)] [SerializeField] private float footholdSmoothTime = 0.06f;
+
+        [Header("Paw locking")]
+        [Tooltip("How firmly a planted paw stays where it was put down, rather than where the animation has it now. The " +
+                 "model turns after the character, about its feet, which would otherwise drag planted paws round with it " +
+                 "(a long body's paws furthest of all), and any mismatch between a stride and the character's speed slides " +
+                 "them. 0 = off.")]
+        [Range(0f, 1f)] [SerializeField] private float pawLock = 1f;
+        [Tooltip("How far (m, for the model at its authored size) the animation's paw can get from where a planted paw was " +
+                 "locked before the lock lets go, so the leg is never stretched to hold it.")]
+        [Min(0f)] [SerializeField] private float maxLockDistance = 0.15f;
+        [Tooltip("Seconds a paw's lock takes to take hold, and to let go as the paw lifts, so it never pops.")]
+        [Min(0.001f)] [SerializeField] private float lockBlendTime = 0.08f;
 
         [Header("Activation")]
         [Tooltip("Seconds to fade placement in on landing and out on leaving the ground.")]
@@ -153,9 +224,30 @@ namespace Character
             public float lift;
             // How far ahead of the model's origin the paw is, and how planted it is (1 down, 0 lifted).
             public float along, planted;
+            // Where the animation had the paw, ahead of the model's origin, last frame (and whether it had one), and how
+            // fast it carries it forward.
+            public float lastModelAhead, forwardSpeed;
+            // The lowest the animation has had the paw lately (see Lift Baseline Recovery): its lift is measured from there.
+            public float lowestLift;
+            // How far across the ground the paw is moved with its leg's top as the body pitches; and how far ahead (or
+            // behind, negative) of there it's put down to stand on a better foothold (see Foothold Reach), eased.
+            public Vector3 shift;
+            public float foothold, footholdVelocity;
+            public bool hasLastModelAhead;
             // Debug
             public Vector3 rayOrigin, hitPoint;
             public bool hit;
+            // The ground under the paw this frame (null if none), which a lock holds it in the space of.
+            public Transform groundTransform;
+            // What the paw stood on last frame, and how high it was then: its eased ground is carried along with it.
+            public Transform lastGroundTransform;
+            public float lastGroundHeight;
+            // Paw lock: whether the paw is locked, where (in the space of the ground it was put down on, or the world if
+            // none), and how far the lock is blended in.
+            public bool locked;
+            public Transform lockGround;
+            public Vector3 lockPoint;
+            public float lockWeight;
         }
 
         private Animator animator;
@@ -165,6 +257,9 @@ namespace Character
         private PawState[] paws = new PawState[0];
         private float activeWeight;
         private float bodyPitch, bodyPitchVelocity;
+        // The bend into a turn (degrees, eased), and the model's facing last frame, which its turn rate is measured from.
+        private float turnBend, turnBendVelocity, lastYaw;
+        private bool hasLastYaw;
         // How far the body is lowered below the ground's line for its legs to reach, eased (and whether it's been set yet);
         // and its height above the animations' floor.
         private float bodyLevel, bodyLevelVelocity, bodyHeight;
@@ -194,6 +289,12 @@ namespace Character
             legs = newLegs;
             paws = new PawState[legs.Length];
         }
+
+        /// <summary>Sets the bones bent into a turn (the generator does).</summary>
+        public void SetTurnBendBones(TurnBendBone[] bones) => turnBendBones = bones ?? new TurnBendBone[0];
+
+        /// <summary>How far (degrees, positive turning right) the body is bent into a turn now.</summary>
+        public float TurnBend => turnBend;
 
         /// <summary>Sets the bones turned back against the body's pitch (the generator does).</summary>
         public void SetCounterPitchBones(CounterPitchBone[] bones) => counterPitchBones = bones ?? new CounterPitchBone[0];
@@ -226,10 +327,17 @@ namespace Character
 
         private void OnDisable()
         {
+            if (animator != null) { animator.speed = 1f; }
+            turnBend = turnBendVelocity = 0f;
+            hasLastYaw = false;
             activeWeight = 0f;
             bodyPitch = bodyPitchVelocity = bodyHeight = bodyLevelVelocity = 0f;
             hasBodyLevel = false;
-            for (int i = 0; i < paws.Length; i++) { paws[i].offset = paws[i].groundVelocity = 0f; paws[i].hasGround = false; }
+            for (int i = 0; i < paws.Length; i++)
+            {
+                paws[i].offset = paws[i].groundVelocity = paws[i].lockWeight = 0f;
+                paws[i].hasGround = paws[i].locked = paws[i].hasLastModelAhead = false;
+            }
         }
 
         private void LateUpdate()
@@ -249,12 +357,14 @@ namespace Character
             float goal = state.grounded ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, deltaTime / groundedFadeTime) : goal;
 
+            BendIntoTurn(deltaTime);
+
             float scale = Mathf.Max(transform.lossyScale.y, 1e-4f);
             float floor = transform.position.y; // The animations' floor: the model's origin, at the character's feet.
             Vector3 up = Vector3.up, forward = Vector3.ProjectOnPlane(transform.forward, up).normalized;
             if (forward == Vector3.zero) { forward = Vector3.forward; }
 
-            // Each paw's ground, under where the animation puts it, probed from inside the character's body.
+            // Each paw as the animation has it (its ground is found once the body's pitch is known: see below).
             float probeTop = floor + probeHeight * scale;
             float middleAlong = 0f, topHeight = 0f;
             int count = 0;
@@ -265,12 +375,17 @@ namespace Character
                 ref PawState paw = ref paws[i];
                 paw.animatedContact = leg.foot.TransformPoint(leg.contact);
                 paw.animatedFootRotation = leg.foot.rotation;
-                paw.lift = paw.animatedContact.y - floor;
-                // The leg's middle joint (knee or elbow), if it's ahead of the paw: a leg leaning forward over an edge
-                // (a hind leg, its paw on the last step of a flight as the body goes on onto the landing) puts its paw up
-                // on the edge's top, rather than its shin through the edge.
-                Vector3 middleJoint = Vector3.Dot(leg.lower.position - paw.animatedContact, forward) > 0f ? leg.lower.position : leg.foot.position;
-                FindPawGround(ref paw, leg.foot.position, middleJoint, probeTop, floor, scale, deltaTime);
+                // How high the animation lifts the paw: above the floor, and above the lowest it's had it lately, which a
+                // paw's stance may not quite be at the floor (a hind paw rolls a little onto its toes as it pushes off).
+                float aboveFloor = paw.animatedContact.y - floor;
+                paw.lowestLift = paw.hasLastModelAhead
+                    ? Mathf.Min(aboveFloor, paw.lowestLift + liftBaselineRecovery * scale * deltaTime)
+                    : aboveFloor;
+                paw.lift = Mathf.Min(aboveFloor, aboveFloor - Mathf.Max(paw.lowestLift, 0f));
+                float modelAhead = transform.InverseTransformPoint(paw.animatedContact).z;
+                paw.forwardSpeed = paw.hasLastModelAhead && deltaTime > 0f ? (modelAhead - paw.lastModelAhead) / deltaTime : 0f;
+                paw.lastModelAhead = modelAhead;
+                paw.hasLastModelAhead = true;
                 middleAlong += Vector3.Dot(leg.upper.position - transform.position, forward);
                 topHeight += leg.upper.position.y;
                 count++;
@@ -321,6 +436,47 @@ namespace Character
             float pitchGoal = Mathf.Clamp(Mathf.Atan(slopeGoal) * Mathf.Rad2Deg, -maxBodyPitch, maxBodyPitch);
             // (Reworked below once the legs say how far each end must come down to reach.)
             float baseGoal = groundGoal;
+
+            // Each paw moved with its leg's top as the body pitches (its shoulder or hip, swung about the body's middle,
+            // comes back or forward along the slope), so the legs keep the stance the animation gives them, upright under
+            // the body; and its ground found there, probed from inside the character's body. (Left where the flat-ground
+            // animation puts them, the front paws stood up a slope ahead of the shoulders, on higher ground, their legs
+            // folded, and the hind paws behind the hips, on lower, their legs stretched short of it.)
+            Quaternion slopePitch = Quaternion.AngleAxis(-pitchGoal, right); // Turning about +right pitches the nose down.
+            // Shorter, quicker strides on a slope (see Stride Shortening): each paw drawn in toward its leg's top along the
+            // way the body faces, and the Animator played as much faster (from the next frame), while moving.
+            float moving = Mathf.Clamp01(state.horizontalSpeed / (strideMovingSpeed * scale));
+            float stride = Mathf.Lerp(1f, Mathf.Max(shortestStride, 1f - strideShortening * Mathf.Abs(Mathf.Sin(bodyPitch * Mathf.Deg2Rad))), moving * activeWeight);
+            if (animator != null) { animator.speed = 1f / stride; }
+            for (int i = 0; i < paws.Length; i++)
+            {
+                Leg leg = legs[i];
+                if (leg?.upper == null || leg.lower == null || leg.foot == null) { continue; }
+                ref PawState paw = ref paws[i];
+                Vector3 top = leg.upper.position;
+                paw.shift = Vector3.ProjectOnPlane(pivot + slopePitch * (top - pivot) - top, up)
+                            + forward * ((stride - 1f) * Vector3.Dot(paw.animatedContact - top, forward));
+                // The ground under the paw's toes, and under the leg's middle joint (knee or elbow) where that leads the
+                // toes: a leg leaning forward over an edge (a hind leg, its paw on the last step of a flight as the body
+                // goes on onto the landing) puts its paw up on the edge's top, rather than its shin through the edge.
+                // Likewise the paw's own joint (wrist or hock) only where it leads the toes: a paw curls back as it swings,
+                // its joint ahead, and up a stair the joint would cross into the next step while the toes are over the one
+                // below. Behind the toes (a planted paw's wrist, going down a flight, over the step it's come from), it
+                // would lift the paw onto that step, folding the leg up under the body.
+                Vector3 animated = paw.animatedContact;
+                ChooseFoothold(ref paw, animated + paw.shift, leg.foot.position - animated, leg.lower.position - animated, forward,
+                    floor + groundGoal, slopeGoal, middleAlong, probeTop, floor, scale, deltaTime);
+                Vector3 contact = animated + paw.shift + forward * paw.foothold;
+                // A joint behind the toes only needs to clear the ground under it: the paw goes no lower than that
+                // ground less the joint's height above the paw (going down a flight, a hind paw put down by the riser
+                // behind it is raised only so far as keeps its hock out of the step above, not up onto that step, which
+                // folded the leg up under the hips).
+                Vector3 moved = paw.shift + forward * paw.foothold;
+                Vector3 pawJoint = leg.foot.position + moved, middleJoint = leg.lower.position + moved;
+                float pawJointClear = Vector3.Dot(leg.foot.position - animated, forward) > 0f ? 0f : Mathf.Max(leg.foot.position.y - animated.y, 0f);
+                float middleJointClear = Vector3.Dot(leg.lower.position - animated, forward) > 0f ? 0f : Mathf.Max(leg.lower.position.y - animated.y, 0f);
+                FindPawGround(ref paw, contact, pawJoint, pawJointClear, middleJoint, middleJointClear, probeTop, floor, scale, deltaTime);
+            }
             // Then lowered as far as a planted leg, pitched so, would have to reach further down to its paw's ground than
             // the animation reaches (a lifted paw lowers it as it comes down): the leg's top where pitching takes it,
             // and its paw where the animation has it, on its ground.
@@ -337,7 +493,9 @@ namespace Character
                 Leg leg = legs[i];
                 if (leg?.upper == null || leg.lower == null || leg.foot == null) { continue; }
                 ref PawState paw = ref paws[i];
-                paw.planted = 1f - Mathf.InverseLerp(plantedLift, liftedLift, paw.lift);
+                // Planted while low and not swinging forward (its speed is in the model's own units, as its scale is 1).
+                paw.planted = Mathf.Min(1f - Mathf.InverseLerp(plantedLift, liftedLift, paw.lift),
+                                        1f - Mathf.InverseLerp(0f, swingSpeed, paw.forwardSpeed));
                 Vector3 top = leg.upper.position;
                 float animatedReach = top.y - paw.animatedContact.y;
                 float pitchedTop = pivot.y + (pitchTo * (top - pivot)).y + baseGoal;
@@ -370,7 +528,11 @@ namespace Character
                 }
                 float tilt = (reachAhead - reachBehind) / Mathf.Max(alongAhead - alongBehind, 0.05f * scale);
                 pitchGoal = Mathf.Clamp(Mathf.Atan(slopeGoal + tilt) * Mathf.Rad2Deg, -maxBodyPitch, maxBodyPitch);
-                reach = reachAhead - tilt * alongAhead; // The line through the two, under the middle.
+                // Lowered under the middle as far as either end needs, with the tilt the pitch can take (Max Body Pitch
+                // may not let it take all of it: on a steep slope, lowering the middle for a tilt it didn't get dropped
+                // the front end onto its folded legs and left the hind legs stretched short of the ground).
+                float applied = Mathf.Tan(pitchGoal * Mathf.Deg2Rad) - slopeGoal;
+                reach = Mathf.Min(reachAhead - applied * alongAhead, reachBehind - applied * alongBehind);
             }
             float heightGoal = baseGoal + reach;
             bodyPitch = bodySmoothTime > 0f
@@ -393,7 +555,12 @@ namespace Character
             }
             heightGoal = baseGoal + bodyLevel;
             bodyHeight = Mathf.Clamp(heightGoal, -maxStepDown * scale, maxStepUp * scale);
-            if (activeWeight <= 0f) { return; }
+            if (activeWeight <= 0f)
+            {
+                // Off the ground, nothing stays locked: landing, the paws lock where they come down.
+                for (int i = 0; i < paws.Length; i++) { paws[i].locked = false; paws[i].lockWeight = 0f; }
+                return;
+            }
 
             // Pitched about its middle, then raised or lowered; the tail and neck turned back against the pitch.
             float pitched = bodyPitch * activeWeight;
@@ -413,10 +580,12 @@ namespace Character
             {
                 Leg leg = legs[i];
                 if (leg?.upper == null || leg.lower == null || leg.foot == null) { continue; }
-                PawState paw = paws[i];
+                ref PawState paw = ref paws[i];
                 Quaternion tilt = Quaternion.Slerp(Quaternion.identity, Quaternion.FromToRotation(up, paw.normal), paw.planted * alignToGround * activeWeight);
                 Quaternion footRotation = tilt * paw.animatedFootRotation;
-                Vector3 contact = paw.animatedContact + up * (paw.offset * activeWeight);
+                // Locked (or not) fully placed, then faded in over the animation's paw, so a paw put down while placement
+                // fades in (landing) is locked where placement puts it, not where it is part of the way there.
+                Vector3 contact = Vector3.Lerp(paw.animatedContact, LockPaw(ref paw, paw.animatedContact + paw.shift + forward * paw.foothold + up * paw.offset, scale, deltaTime), activeWeight);
                 Vector3 footTarget = contact - footRotation * Vector3.Scale(leg.contact, leg.foot.lossyScale);
                 // The bend direction turned with the body's pitch, as the leg's joints are.
                 Vector3 bend = leg.bendDirection == Vector3.zero ? Vector3.zero : pitch * transform.TransformDirection(leg.bendDirection);
@@ -430,32 +599,43 @@ namespace Character
         /// animations' floor: that rises and falls with the character (walking up a ramp, say), and a paw planted on still
         /// ground would trail it by as much as it moved in the easing's time, standing above the ramp.
         /// </summary>
-        private void FindPawGround(ref PawState paw, Vector3 joint, Vector3 middleJoint, float top, float floor, float scale, float deltaTime)
+        private void FindPawGround(ref PawState paw, Vector3 contact, Vector3 joint, float jointClear, Vector3 middleJoint,
+            float middleJointClear, float top, float floor, float scale, float deltaTime)
         {
             float stepUp = maxStepUp * scale, stepDown = maxStepDown * scale;
-            // Under the paw's contact (its toes), under its joint (the wrist, or the hind leg's hock), and under the leg's
-            // middle joint where that leans out ahead of it: the highest. A paw curls back as it swings, its joint leading,
-            // and stepping up a stair the joint would cross into the next step while the toes are still over the one below.
-            paw.rayOrigin = new Vector3(paw.animatedContact.x, top, paw.animatedContact.z);
+            // Under the paw's contact (its toes), and under its joint and the leg's middle joint, less how high above the
+            // paw each may stay (see Solve): the highest.
+            paw.rayOrigin = new Vector3(contact.x, top, contact.z);
             paw.hit = FindGround(paw.rayOrigin, paw.rayOrigin.y - (floor - stepDown), out RaycastHit hit);
+            float groundGoal = paw.hit ? hit.point.y : floor;
             for (int j = 0; j < 2; j++)
             {
                 Vector3 at = j == 0 ? joint : middleJoint;
+                float clear = j == 0 ? jointClear : middleJointClear;
                 var origin = new Vector3(at.x, top, at.z);
-                if (FindGround(origin, origin.y - (floor - stepDown), out RaycastHit jointHit) && (!paw.hit || jointHit.point.y > hit.point.y))
+                if (FindGround(origin, origin.y - (floor - stepDown), out RaycastHit jointHit) && (!paw.hit || jointHit.point.y - clear > groundGoal))
                 {
-                    hit = jointHit;
+                    groundGoal = jointHit.point.y - clear;
+                    if (!paw.hit) { hit = jointHit; }
                     paw.hit = true;
                 }
             }
-            float groundGoal = floor;
             Vector3 normalGoal = Vector3.up;
+            paw.groundTransform = null;
             if (paw.hit)
             {
                 paw.hitPoint = hit.point;
-                groundGoal = hit.point.y;
+                paw.groundTransform = hit.transform;
                 normalGoal = hit.normal;
             }
+            // Carried with what it stands on (a moving platform), so the easing smooths only the ground changing under the
+            // paw, not the platform's travel, which it would trail.
+            if (paw.hasGround && paw.groundTransform != null && paw.groundTransform == paw.lastGroundTransform)
+            {
+                paw.ground += paw.groundTransform.position.y - paw.lastGroundHeight;
+            }
+            paw.lastGroundTransform = paw.groundTransform;
+            paw.lastGroundHeight = paw.groundTransform != null ? paw.groundTransform.position.y : 0f;
             if (!paw.hasGround || pawSmoothTime <= 0f)
             {
                 paw.ground = groundGoal;
@@ -477,6 +657,127 @@ namespace Character
             paw.offset = Mathf.Clamp(paw.ground - floor, -stepDown, stepUp);
             paw.normal = pawSmoothTime > 0f ? Vector3.Slerp(paw.normal, normalGoal, 1f - Mathf.Exp(-deltaTime / pawSmoothTime)) : normalGoal;
         }
+
+        // How much better (m nearer the body's line) a foothold must be than where the animation has the paw, for each
+        // metre it's moved, for the paw to be moved there: on even ground, where every foothold is as good, it stays put.
+        private const float FootholdMovePenalty = 0.25f;
+        // How far (m, for the model at its authored size) ahead of its contact a paw's toes reach as it rolls onto them to
+        // push off: a foothold with the ground higher there is against a riser.
+        private const float ToeClearance = 0.1f;
+
+        /// <summary>
+        /// Bends the body into the way the model is turning (it turns after the character): each of Turn Bend Bones
+        /// turned about the model's up by its share of the bend, eased, as far as Max Turn Bend at Full Bend Turn Speed.
+        /// Before the legs are placed, so they're placed from the bent body.
+        /// </summary>
+        private void BendIntoTurn(float deltaTime)
+        {
+            float yaw = transform.eulerAngles.y;
+            float rate = hasLastYaw && deltaTime > 0f ? Mathf.DeltaAngle(lastYaw, yaw) / deltaTime : 0f;
+            lastYaw = yaw;
+            hasLastYaw = true;
+            float goal = Mathf.Clamp(rate / fullBendTurnSpeed, -1f, 1f) * maxTurnBend;
+            turnBend = turnBendSmoothTime > 0f
+                ? Mathf.SmoothDamp(turnBend, goal, ref turnBendVelocity, turnBendSmoothTime, Mathf.Infinity, deltaTime)
+                : goal;
+            if (Mathf.Abs(turnBend) < 1e-3f) { return; }
+            Vector3 up = transform.up;
+            foreach (TurnBendBone bend in turnBendBones)
+            {
+                if (bend?.bone == null || bend.share == 0f) { continue; }
+                bend.bone.rotation = Quaternion.AngleAxis(turnBend * bend.share, up) * bend.bone.rotation;
+            }
+        }
+
+        /// <summary>
+        /// Chooses where a paw is put down (paw.foothold, m ahead of where the animation has it, eased): there, Foothold
+        /// Reach ahead or behind, whichever has its ground nearest the body's line (the line at lineAtMiddle under the
+        /// body's middle, rising slope per metre ahead), so the leg stays nearest the length the animation gives it.
+        /// </summary>
+        private void ChooseFoothold(ref PawState paw, Vector3 at, Vector3 toJoint, Vector3 toMiddleJoint, Vector3 forward,
+            float lineAtMiddle, float slope, float middleAlong, float top, float floor, float scale, float deltaTime)
+        {
+            float reach = footholdReach * scale;
+            float goal = 0f;
+            if (reach > 0f)
+            {
+                float best = float.PositiveInfinity, depth = top - (floor - maxStepDown * scale);
+                for (int k = -1; k <= 1; k++)
+                {
+                    float offset = k * reach;
+                    Vector3 point = at + forward * offset;
+                    if (!FindGround(new Vector3(point.x, top, point.z), depth, out RaycastHit hit)) { continue; }
+                    float along = Vector3.Dot(point - transform.position, forward) - middleAlong;
+                    float cost = Mathf.Abs(hit.point.y - (lineAtMiddle + slope * along)) + FootholdMovePenalty * Mathf.Abs(offset);
+                    // Not where the leg's joints would be in the ground there (going down a flight, a hind paw put down by
+                    // the riser behind it has its hock in the step above).
+                    // Nor with its toes against a riser ahead (up a flight, a paw put down at the back of a tread pokes its
+                    // toes into the step above).
+                    if (InGround(point, toJoint, hit.point.y, top, depth) || InGround(point, toMiddleJoint, hit.point.y, top, depth)
+                        || InGround(point, forward * (ToeClearance * scale), hit.point.y, top, depth))
+                    {
+                        cost += 1f;
+                    }
+                    if (cost < best) { best = cost; goal = offset; }
+                }
+            }
+            // A paw put down stays where it was (its lock holds it); a swinging one eases to its next foothold.
+            if (paw.planted >= 0.5f && paw.hasGround) { return; }
+            paw.foothold = footholdSmoothTime > 0f
+                ? Mathf.SmoothDamp(paw.foothold, goal, ref paw.footholdVelocity, footholdSmoothTime, Mathf.Infinity, deltaTime)
+                : goal;
+        }
+
+        /// <summary>
+        /// Whether a joint, its animated offset from the paw (toJoint) above a paw put down at point, on ground at
+        /// groundHeight, would be in the ground there.
+        /// </summary>
+        private bool InGround(Vector3 point, Vector3 toJoint, float groundHeight, float top, float depth)
+        {
+            Vector3 joint = point + toJoint;
+            joint.y = groundHeight + Mathf.Max(toJoint.y, 0f);
+            return FindGround(new Vector3(joint.x, top, joint.z), depth, out RaycastHit hit) && hit.point.y > joint.y;
+        }
+
+        /// <summary>
+        /// Holds a planted paw where it was put down: locked as the animation plants it, held there (in the space of the
+        /// ground under it, so it rides moving ground) while the animation keeps it planted, and let go as it lifts, or if
+        /// the animation's paw gets further than Max Lock Distance from the lock. The lock is blended in and out over the
+        /// animation's paw. Its height follows the ground where it was put down (and the animation's lift above it), so on a
+        /// slope it stays on the ground there.
+        /// </summary>
+        private Vector3 LockPaw(ref PawState paw, Vector3 placed, float scale, float deltaTime)
+        {
+            if (pawLock <= 0f) { return placed; }
+            if (paw.locked)
+            {
+                Vector3 held = LockPosition(paw);
+                Vector2 apart = new Vector2(held.x - placed.x, held.z - placed.z);
+                if (paw.planted < 0.5f || apart.magnitude > maxLockDistance * scale) { paw.locked = false; }
+            }
+            else if (paw.planted >= 0.999f && paw.lockWeight <= 0f)
+            {
+                // Locked at the paw's place across the ground, on the ground there.
+                var groundPoint = new Vector3(placed.x, paw.ground, placed.z);
+                paw.locked = true;
+                paw.lockGround = paw.groundTransform;
+                paw.lockPoint = paw.lockGround != null ? paw.lockGround.InverseTransformPoint(groundPoint) : groundPoint;
+            }
+            paw.lockWeight = Mathf.MoveTowards(paw.lockWeight, paw.locked ? 1f : 0f, deltaTime / lockBlendTime);
+            if (paw.lockWeight <= 0f) { return placed; }
+            // Held where it was put down, as high above the ground there as the animation has it above its ground now: on
+            // a slope, the ground where the animation has the paw now isn't as high as where it was put down.
+            Vector3 lockAt = LockPosition(paw);
+            lockAt.y += placed.y - paw.ground;
+            return Vector3.Lerp(placed, lockAt, paw.lockWeight * pawLock);
+        }
+
+        /// <summary>Where a paw's lock is now, in the world (it moves with the ground it was put down on).</summary>
+        private static Vector3 LockPosition(in PawState paw) =>
+            paw.lockGround != null ? paw.lockGround.TransformPoint(paw.lockPoint) : paw.lockPoint;
+
+        /// <summary>Whether a leg's paw is locked where it was put down now (see Paw Lock), and how far the lock is blended in.</summary>
+        public float LockWeight(int leg) => leg >= 0 && leg < paws.Length && paws[leg].locked ? paws[leg].lockWeight : 0f;
 
         /// <summary>
         /// The highest ground (m above the floor) probed under the body (this frame's body probes) within a probe's spacing
@@ -538,7 +839,17 @@ namespace Character
                 if (Vector3.Angle(h.normal, Vector3.up) > maxSlopeAngle) { continue; }
                 if (h.distance < best) { best = h.distance; closest = h; }
             }
-            return best < float.PositiveInfinity;
+            if (best == float.PositiveInfinity) { return false; }
+            // Where the ground is drawn, not where physics has it: a moving platform's Rigidbody is interpolated, drawn
+            // between its physics steps, as the character is, while a ray hits it at its latest step; placed there, the
+            // paws jumped up and down against it each frame.
+            Rigidbody moving = closest.rigidbody;
+            if (moving != null && moving.interpolation != RigidbodyInterpolation.None)
+            {
+                Transform drawn = moving.transform;
+                closest.point = drawn.position + drawn.rotation * Quaternion.Inverse(moving.rotation) * (closest.point - moving.position);
+            }
+            return true;
         }
 
         private void OnDrawGizmosSelected()

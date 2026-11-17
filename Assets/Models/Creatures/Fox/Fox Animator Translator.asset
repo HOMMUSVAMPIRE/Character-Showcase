@@ -17,7 +17,7 @@ MonoBehaviour:
   verticalSpeedParameter: VerticalSpeed
   forwardSpeedParameter: 
   sidewaysSpeedParameter: 
-  turnSpeedParameter: 
+  turnSpeedParameter: TurnSpeed
   wallSideParameter: WallSide
   grabSpeedParameter: GrabSpeed
   climbRightParameter: ClimbRight

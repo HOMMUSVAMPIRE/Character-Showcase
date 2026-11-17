@@ -210,7 +210,33 @@ MonoBehaviour:
   pawSmoothTime: 0.05
   plantedHeight: 0.02
   liftedHeight: 0.1
+  swingSpeed: 0.3
+  liftBaselineRecovery: 0.1
   alignToGround: 1
+  turnBendBones:
+  - bone: {fileID: 6391736033645562572}
+    share: 0.25
+  - bone: {fileID: 2404790901556388376}
+    share: 0.3
+  - bone: {fileID: 4620291763351031116}
+    share: 0.25
+  - bone: {fileID: 2189073837705236579}
+    share: 0.2
+  - bone: {fileID: 3355191746315405290}
+    share: -0.4
+  - bone: {fileID: 3409967347331530155}
+    share: -0.3
+  maxTurnBend: 25
+  fullBendTurnSpeed: 150
+  turnBendSmoothTime: 0.12
+  strideShortening: 0.7
+  shortestStride: 0.5
+  strideMovingSpeed: 0.5
+  footholdReach: 0.12
+  footholdSmoothTime: 0.06
+  pawLock: 1
+  maxLockDistance: 0.15
+  lockBlendTime: 0.08
   groundedFadeTime: 0.12
   drawGizmos: 1
 --- !u!1 &1181238363127940373

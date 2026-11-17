@@ -18,7 +18,8 @@ namespace CharacterShowcase.EditorTools
     ///   animates it (Tools/Fox/fox_animations.py), writing Fox.fbx (skipped with -skipBlender, rebuilding the rest from
     ///   the Fox.fbx that's there);
     /// - imports it as a Generic rig with its clips looping;
-    /// - builds its Animator Controller: Locomotion (Idle, Walk, Trot, Gallop by Speed), Crouch (Crouch Idle and Crouch
+    /// - builds its Animator Controller: Locomotion (Idle, or Turn Step as it turns standing, by TurnSpeed; then Walk, Trot,
+    ///   Gallop by Speed), Crouch (Crouch Idle and Crouch
     ///   Walk by Speed, while Crouching) and Airborne (Jump Fall and Jump Rise by VerticalSpeed, while not Grounded);
     /// - saves its model prefab (with an "Eyes" point on its head, which the character's eye point and camera follow, and
     ///   paw placement, PawPlacementIK, planting its paws on uneven ground), an Animator parameter translator for it, and
@@ -59,6 +60,12 @@ namespace CharacterShowcase.EditorTools
         // mostly going up (pitched up a steep ramp with the body, it swings down into it) and not at all going down (held
         // level, it reaches into the slope behind), the neck by half (the head looks ahead, not at the sky or its paws).
         private static readonly (string bone, float up, float down)[] CounterPitchBones = { ("Tail1", 0.8f, 0f), ("Neck", 0.5f, 0.5f) };
+        // The bones bent into a turn, and their shares of the bend: the spine, neck and head toward it, the tail away (its
+        // tip swinging round toward the turn too), so the fox curves into it.
+        private static readonly (string bone, float share)[] TurnBendBones =
+        {
+            ("Spine1", 0.25f), ("Spine2", 0.3f), ("Neck", 0.25f), ("Head", 0.2f), ("Tail1", -0.4f), ("Tail2", -0.3f),
+        };
         private static readonly (string upper, string lower, string foot, bool front)[] LegBones =
         {
             ("FrontUpperLeg_L", "FrontLowerLeg_L", "FrontPaw_L", true),
@@ -79,6 +86,10 @@ namespace CharacterShowcase.EditorTools
         private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
         private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
         private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
+        // How fast the character turns (degrees a second), which the translator drives and the standing turn blends by.
+        private const string TurnSpeedParameter = "TurnSpeed";
+        // The turn speed (degrees a second, either way) at which the fox, standing, steps round fully (Turn Step).
+        private const float TurnStepTurnSpeed = 90f;
 
         private static readonly string[] Clips = { "Idle", "Walk", "Trot", "Gallop", "Jump Rise", "Jump Fall", "Crouch Idle", "Crouch Walk" };
 
@@ -142,6 +153,10 @@ namespace CharacterShowcase.EditorTools
             AnimatorController controller = BuildController(clips);
             GameObject modelPrefab = SaveModelPrefab(controller);
             var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
+            var translatorSettings = new SerializedObject(translator);
+            translatorSettings.FindProperty("turnSpeedParameter").stringValue = TurnSpeedParameter;
+            translatorSettings.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(translator);
             BodyDefinition body = LoadOrCreateBody();
             DirectCharacterModelSource source = SaveSource(modelPrefab, translator, body);
             ComposedMovementMode movement = LoadOrCreateMovement();
@@ -204,11 +219,15 @@ namespace CharacterShowcase.EditorTools
             controller.AddParameter(VerticalSpeedParameter, AnimatorControllerParameterType.Float);
             controller.AddParameter(new AnimatorControllerParameter { name = GroundedParameter, type = AnimatorControllerParameterType.Bool, defaultBool = true });
             controller.AddParameter(CrouchingParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter(TurnSpeedParameter, AnimatorControllerParameterType.Float);
 
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
             AnimatorState locomotion = machine.AddState("Locomotion");
+            // Standing: Idle, stepping round (Turn Step) as it turns either way.
+            BlendTree standing = Blend(controller, "Standing", TurnSpeedParameter,
+                (clips["Turn Step"], -TurnStepTurnSpeed), (clips["Idle"], 0f), (clips["Turn Step"], TurnStepTurnSpeed));
             locomotion.motion = Blend(controller, "Locomotion", SpeedParameter,
-                (clips["Idle"], 0f), (clips["Walk"], WalkClipSpeed), (clips["Trot"], TrotClipSpeed), (clips["Gallop"], GallopClipSpeed));
+                (standing, 0f), (clips["Walk"], WalkClipSpeed), (clips["Trot"], TrotClipSpeed), (clips["Gallop"], GallopClipSpeed));
             AnimatorState crouch = machine.AddState("Crouch");
             crouch.motion = Blend(controller, "Crouch", SpeedParameter, (clips["Crouch Idle"], 0f), (clips["Crouch Walk"], CrouchWalkClipSpeed));
             AnimatorState airborne = machine.AddState("Airborne");
@@ -280,6 +299,10 @@ namespace CharacterShowcase.EditorTools
             paws.SetCounterPitchBones(CounterPitchBones
                 .Select(c => new PawPlacementIK.CounterPitchBone { bone = Bone(c.bone), noseUpShare = c.up, noseDownShare = c.down })
                 .Where(c => c.bone != null)
+                .ToArray());
+            paws.SetTurnBendBones(TurnBendBones
+                .Select(b => new PawPlacementIK.TurnBendBone { bone = Bone(b.bone), share = b.share })
+                .Where(b => b.bone != null)
                 .ToArray());
             // Each paw touches the floor at its toes, beside its leg.
             for (int i = 0; i < legs.Length; i++)

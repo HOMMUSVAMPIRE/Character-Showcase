@@ -1,5 +1,5 @@
 """
-Procedurally authored animation clips for the fox: Idle, Walk, Trot, Gallop, Jump Rise, Jump Fall, Crouch Idle and
+Procedurally authored animation clips for the fox: Idle, Walk, Trot, Gallop, Jump Rise, Jump Fall, Crouch Idle, Turn Step and
 Crouch Walk.
 
 As for the mannequin (see Tools/Mannequin/mannequin_animations.py), poses are world-space (armature-space) rotations
@@ -351,6 +351,12 @@ GALLOP = Gait(speed=10.0, duration=0.3, stance=0.2, legs=legs(0.5, 0.6, 0.1, 0.0
 CROUCH_WALK = Gait(speed=1.0, duration=0.8, stance=0.65, legs=legs(0.75, 0.25, 0.0, 0.5), lift_front=35.0, lift_hind=25.0,
                    crouch=True, bob=0.004, head_bob=0.5)
 
+# Stepping in place, to turn on the spot: the trot's diagonal pairs, slower, with small lifts and no stride. Played as the
+# fox turns standing (by its turn speed), its paws lift and are put down again where the turning body has them, so it
+# steps round (PawPlacementIK locks each where it's put down).
+TURN_STEP = Gait(speed=0.0, duration=0.5, stance=0.5, legs=legs(0.0, 0.5, 0.5, 0.0), lift_front=35.0, lift_hind=25.0,
+                 bob=0.006, head_bob=1.0)
+
 # Clip name -> (pose function of phase, duration in seconds). Speeds (m/s) the gaits are authored for are in SPEEDS.
 CLIPS = {
     "Idle": (idle, 2.4),
@@ -361,6 +367,7 @@ CLIPS = {
     "Jump Fall": (jump_fall, 1.0),
     "Crouch Idle": (crouch_idle, 2.4),
     "Crouch Walk": (CROUCH_WALK, CROUCH_WALK.duration),
+    "Turn Step": (TURN_STEP, TURN_STEP.duration),
 }
 SPEEDS = {"Walk": WALK.speed, "Trot": TROT.speed, "Gallop": GALLOP.speed, "Crouch Walk": CROUCH_WALK.speed}
 
