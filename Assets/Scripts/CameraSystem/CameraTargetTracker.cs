@@ -15,9 +15,11 @@ namespace CameraSystem
         private float previousSampleTime, currentSampleTime;
         private bool hasSamples;
 
-        // The fastest the target has fallen (most negative vertical speed) since it last rose or landed, and for how long
-        // (s) it's been falling.
-        private float fallPeak, fallTime;
+        // Landings are judged from the target's height each physics step (see Step), not from these once-a-frame
+        // samples: the fastest it's fallen since it last rose or landed, and for how long (s) it's been falling; its
+        // height at the last step; and the fastest landing since the last frame, which the next frame reports.
+        private float fallPeak, fallTime, stepHeight, landedSince;
+        private bool hasStepHeight;
 
         // If the target has a Rigidbody, its position is the physics pose (the transform may be interpolated).
         // If that Rigidbody also interpolates, the transform is already smooth and must not be interpolated again.
@@ -59,9 +61,41 @@ namespace CameraSystem
             Velocity = Vector3.zero;
             fallPeak = 0f;
             fallTime = 0f;
+            landedSince = 0f;
+            hasStepHeight = false;
             hasSamples = target != null;
             TeleportedThisFrame = true;
             LandingSpeedThisFrame = 0f;
+        }
+
+        /// <summary>
+        /// Call once per physics step (from FixedUpdate): judges landings from the target's height step by step. Landing:
+        /// it was falling fast, for at least the landing's Min Fall Time, and its vertical speed has suddenly mostly
+        /// stopped; reported by the next frame (LandingSpeedThisFrame), the fastest if there were several. Judged step by
+        /// step, not frame by frame: a frame can hold several physics steps, and averaged over them, walking down stairs
+        /// at a low frame rate (each frame holding a drop onto the next stair, a step's height in a physics step) read as
+        /// a steady fall, then a landing at the bottom of a drop; and the step a target lands on, averaged with its fall,
+        /// read as half as fast. sizeScale is the target's size relative to normal, as for Update.
+        /// </summary>
+        public void Step(Transform target, CameraFollowSettings settings, LandingSettings landing, float sizeScale = 1f)
+        {
+            if (target == null) { return; }
+            float size = Mathf.Max(sizeScale, 1e-4f);
+            float height = body != null ? body.position.y : target.position.y;
+            float dt = Mathf.Max(Time.fixedDeltaTime, 1e-4f);
+            bool teleported = hasStepHeight && Mathf.Abs(height - stepHeight) > settings.teleportDistance * size;
+            float vertical = hasStepHeight && !teleported ? (height - stepHeight) / dt : 0f;
+            stepHeight = height;
+            hasStepHeight = true;
+            if (teleported) { fallPeak = fallTime = 0f; return; }
+
+            // Stopped after a fall (not a step or two's drop onto the next stair, as the target's movement snaps it down,
+            // which reads as fast as a hard landing: walking down stairs dipped and shook the camera at every step).
+            bool landed = fallPeak < -landing.minImpactSpeed * size && vertical > fallPeak * 0.35f && fallTime >= landing.minFallTime;
+            if (landed) { landedSince = Mathf.Max(landedSince, -fallPeak); }
+            bool falling = vertical < 0f && !landed;
+            fallTime = falling ? fallTime + dt : 0f;
+            fallPeak = falling ? Mathf.Min(fallPeak, vertical) : 0f;
         }
 
         /// <summary>
@@ -95,25 +129,11 @@ namespace CameraSystem
                 {
                     float stepTime = Mathf.Max(currentSampleTime - previousSampleTime, 1e-4f);
                     Velocity = (currentSample - previousSample) / stepTime;
-
-                    // Landing: was falling fast, and vertical speed has suddenly mostly stopped. Judged against the
-                    // fastest fall since the target last rose, not just the last frame's: a frame can hold several
-                    // physics steps, and the one in which the target lands averages its fall with its stop, so at low
-                    // frame rates the landing read as half as fast (and the camera dipped a quarter as far).
-                    // And it was a fall, not a drop of a step or two (onto the next stair, as the target's movement snaps
-                    // it down): those read as fast as a hard landing, and walking down stairs dipped and shook the camera
-                    // at every step.
-                    if (fallPeak < -landing.minImpactSpeed * this.sizeScale && Velocity.y > fallPeak * 0.35f && fallTime >= landing.minFallTime)
-                    {
-                        LandingSpeedThisFrame = -fallPeak;
-                        fallPeak = 0f;
-                    }
-                    bool falling = Velocity.y < 0f && LandingSpeedThisFrame <= 0f;
-                    // This sample's fall counts if it carries on into the next (a stop reads as not falling).
-                    fallTime = falling ? fallTime + stepTime : 0f;
                 }
-                fallPeak = Velocity.y >= 0f || LandingSpeedThisFrame > 0f ? 0f : Mathf.Min(fallPeak, Velocity.y);
             }
+            // The fastest landing seen in the physics steps since the last frame (see Step).
+            LandingSpeedThisFrame = landedSince;
+            landedSince = 0f;
 
             bool rigidbodyInterpolates = body != null && body.interpolation != RigidbodyInterpolation.None;
             SelfInterpolating = settings.interpolateTarget && !rigidbodyInterpolates;

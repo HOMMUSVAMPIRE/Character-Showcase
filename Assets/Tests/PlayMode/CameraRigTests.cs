@@ -682,12 +682,21 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// A target walking down stairs drops onto each step in a physics step or two (as a character's movement snaps it
-        /// down onto the next step): that's not a landing, however fast the drop reads, and doesn't dip or shake the camera.
+        /// down onto the next step): that's not a landing, however fast the drop reads, and doesn't dip or shake the camera,
+        /// at any frame rate (landings are judged step by step: see CameraTargetTracker.Step).
         /// </summary>
         [UnityTest]
-        public IEnumerator WalkingDownStairs_DoesntDipOrShakeTheCamera()
+        public IEnumerator WalkingDownStairs_DoesntDipOrShakeTheCamera_AtAnyFrameRate([Values(0f, 0.05f, 0.1f)] float frameTime)
         {
             if (!rig.Landing.enabled) { Assert.Ignore("Landing dips are off."); }
+            // Frames frameTime long (several physics steps each), as at a low frame rate: judged frame by frame, two frames
+            // in a row each holding a drop onto the next stair read as a fall, then a landing.
+            if (frameTime > 0f)
+            {
+                timeLimit.enabled = false;
+                Time.timeScale = 1f;
+                Time.captureDeltaTime = frameTime;
+            }
             target.position = new Vector3(0f, 20f, 0f);
             rig.SetTarget(target);
             yield return Frames(3);
@@ -704,6 +713,8 @@ namespace CharacterShowcase.Tests
                 lowest = Mathf.Min(lowest, rig.LandingDip);
                 mostTrauma = Mathf.Max(mostTrauma, rig.Trauma);
             }
+            Time.captureDeltaTime = 0f;
+            timeLimit.enabled = true;
             Assert.That(lowest, Is.EqualTo(0f).Within(1e-4f), "Stepping down stairs shouldn't dip the camera as a landing does.");
             Assert.That(mostTrauma, Is.EqualTo(0f).Within(1e-4f), "Nor shake it.");
         }

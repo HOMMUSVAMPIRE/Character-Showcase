@@ -383,6 +383,12 @@ namespace CameraSystem
         // The Profiler's CPU Usage marker for updating the camera each frame (see docs/testing.md, Performance).
         private static readonly ProfilerMarker UpdateMarker = new("Camera.Update");
 
+        // Landings are judged step by step (see CameraTargetTracker.Step).
+        private void FixedUpdate()
+        {
+            if (target != null) { tracker.Step(target, follow, landing, SizeScale); }
+        }
+
         private void LateUpdate()
         {
             using (UpdateMarker.Auto()) { UpdateCamera(); }
