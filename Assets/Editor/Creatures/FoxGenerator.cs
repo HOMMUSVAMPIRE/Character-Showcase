@@ -19,7 +19,7 @@ namespace CharacterShowcase.EditorTools
     ///   the Fox.fbx that's there);
     /// - imports it as a Generic rig with its clips looping;
     /// - builds its Animator Controller: Locomotion (Idle, or Turn Step as it turns standing, by TurnSpeed; then Walk, Trot,
-    ///   Gallop by Speed), Crouch (Crouch Idle and Crouch
+    ///   Gallop by Speed), Swim (Swim Idle and Swim by Speed, while Swimming), Wall Run (the gaits, while WallRunning), Crouch (Crouch Idle and Crouch
     ///   Walk by Speed, while Crouching) and Airborne (Jump Fall and Jump Rise by VerticalSpeed, while not Grounded);
     /// - saves its model prefab (with an "Eyes" point on its head, which the character's eye point and camera follow, and
     ///   paw placement, PawPlacementIK, planting its paws on uneven ground), an Animator parameter translator for it, and
@@ -56,6 +56,9 @@ namespace CharacterShowcase.EditorTools
         // htoe), whose places the bones don't record (they end at the paws' joints).
         private const string HipsBone = "Hips";
         private const float FrontToesAhead = 0.38f, HindToesAhead = -0.34f;
+        // How far (m) each paw's mesh reaches beyond its contact toward a wall it's put on, wall-running (measured on the
+        // mesh: the hind paws, longer, reach further).
+        private const float FrontPawWallClearance = 0.015f, HindPawWallClearance = 0.045f;
         // The bones turned back against the body's pitch on slopes, and by how much of it, nose up and nose down: the tail
         // mostly going up (pitched up a steep ramp with the body, it swings down into it) and not at all going down (held
         // level, it reaches into the slope behind), the neck by half (the head looks ahead, not at the sky or its paws).
@@ -86,6 +89,11 @@ namespace CharacterShowcase.EditorTools
         private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
         private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
         private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
+        private const string SwimmingParameter = AnimatorParameterTranslator.DefaultSwimmingParameter;
+        private const string WallRunningParameter = AnimatorParameterTranslator.DefaultWallRunningParameter;
+        private const string WallSideParameter = AnimatorParameterTranslator.DefaultWallSideParameter;
+        // The speed (m/s) the Swim clip's paddle is authored for (fox_animations.py's SWIM_SPEED; the fox's Swim Speed).
+        private const float SwimClipSpeed = 2.5f;
         // How fast the character turns (degrees a second), which the translator drives and the standing turn blends by.
         private const string TurnSpeedParameter = "TurnSpeed";
         // The turn speed (degrees a second, either way) at which the fox, standing, steps round fully (Turn Step).
@@ -220,6 +228,9 @@ namespace CharacterShowcase.EditorTools
             controller.AddParameter(new AnimatorControllerParameter { name = GroundedParameter, type = AnimatorControllerParameterType.Bool, defaultBool = true });
             controller.AddParameter(CrouchingParameter, AnimatorControllerParameterType.Bool);
             controller.AddParameter(TurnSpeedParameter, AnimatorControllerParameterType.Float);
+            controller.AddParameter(SwimmingParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter(WallRunningParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter(WallSideParameter, AnimatorControllerParameterType.Float);
 
             AnimatorStateMachine machine = controller.layers[0].stateMachine;
             AnimatorState locomotion = machine.AddState("Locomotion");
@@ -232,11 +243,33 @@ namespace CharacterShowcase.EditorTools
             crouch.motion = Blend(controller, "Crouch", SpeedParameter, (clips["Crouch Idle"], 0f), (clips["Crouch Walk"], CrouchWalkClipSpeed));
             AnimatorState airborne = machine.AddState("Airborne");
             airborne.motion = Blend(controller, "Airborne", VerticalSpeedParameter, (clips["Jump Fall"], FallingSpeed), (clips["Jump Rise"], RisingSpeed));
+            // Swimming: paddling, treading water (Swim Idle) to swimming (Swim) by Speed.
+            AnimatorState swim = machine.AddState("Swim");
+            swim.motion = Blend(controller, "Swim", SpeedParameter, (clips["Swim Idle"], 0f), (clips["Swim"], SwimClipSpeed));
+            // Running along a wall: the gaits, by Speed (the fox's body rolled toward the wall by PawPlacementIK).
+            AnimatorState wallRun = machine.AddState("Wall Run");
+            wallRun.motion = locomotion.motion;
             machine.defaultState = locomotion;
 
+            // Swimming and wall-running aren't on the ground either: in the air is only when neither.
+            AnimatorStateTransition toSwim = machine.AddAnyStateTransition(swim);
+            toSwim.canTransitionToSelf = false;
+            Configure(toSwim, BlendTime, (AnimatorConditionMode.If, SwimmingParameter));
+            AnimatorStateTransition toWallRun = machine.AddAnyStateTransition(wallRun);
+            toWallRun.canTransitionToSelf = false;
+            Configure(toWallRun, BlendTime, (AnimatorConditionMode.If, WallRunningParameter));
             AnimatorStateTransition toAir = machine.AddAnyStateTransition(airborne);
             toAir.canTransitionToSelf = false;
-            Configure(toAir, BlendTime, (AnimatorConditionMode.IfNot, GroundedParameter));
+            Configure(toAir, BlendTime, (AnimatorConditionMode.IfNot, GroundedParameter), (AnimatorConditionMode.IfNot, SwimmingParameter),
+                (AnimatorConditionMode.IfNot, WallRunningParameter));
+            foreach (AnimatorState from in new[] { swim, wallRun })
+            {
+                string flag = from == swim ? SwimmingParameter : WallRunningParameter;
+                Configure(from.AddTransition(locomotion), BlendTime, (AnimatorConditionMode.IfNot, flag), (AnimatorConditionMode.If, GroundedParameter),
+                    (AnimatorConditionMode.IfNot, CrouchingParameter));
+                Configure(from.AddTransition(crouch), BlendTime, (AnimatorConditionMode.IfNot, flag), (AnimatorConditionMode.If, GroundedParameter),
+                    (AnimatorConditionMode.If, CrouchingParameter));
+            }
             Configure(airborne.AddTransition(locomotion), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.IfNot, CrouchingParameter));
             Configure(airborne.AddTransition(crouch), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.If, CrouchingParameter));
             Configure(locomotion.AddTransition(crouch), CrouchBlendTime, (AnimatorConditionMode.If, CrouchingParameter));
@@ -285,6 +318,8 @@ namespace CharacterShowcase.EditorTools
                     upper = Bone(upper), lower = Bone(lower), foot = Bone(foot),
                     // A front leg's elbow points back, a hind leg's stifle forward.
                     bendDirection = front ? Vector3.back : Vector3.forward,
+                    // Running along a wall, how far each paw's mesh reaches beyond its contact toward the wall.
+                    wallClearance = front ? FrontPawWallClearance : HindPawWallClearance,
                 };
                 if (legs[i].upper == null || legs[i].lower == null || legs[i].foot == null)
                 {
@@ -381,16 +416,23 @@ namespace CharacterShowcase.EditorTools
 
         // ---- The character ----
 
+        // How deep (a share of the fox's height) its feet hang below the surface swimming: its back at the waterline.
+        private const float SwimDepth = 0.8f;
+        // How far out from a wall (a share of its height) the fox's middle is held running along it: near enough that its
+        // body need only roll a little toward the wall for its paws to reach it.
+        private const float WallRunClearance = 0.25f;
+
         // The humanoid's movement components a fox can't use (yet): turned off in its movement mode.
         private static readonly Type[] HumanOnly =
         {
             typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting), typeof(PushingAndPulling), typeof(WallClimbing),
-            typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling), typeof(Dashing),
+            typeof(WallSliding), typeof(Rolling), typeof(Dashing),
         };
 
         /// <summary>
         /// The fox's movement mode, made if it isn't there (then left as it's tuned): the humanoid's, with what the fox
-        /// can't do turned off, sliding off, one jump, and a fox's speeds (it trots as it walks, and gallops sprinting).
+        /// can't do turned off, sliding off, one jump, a fox's speeds (it trots as it walks, and gallops sprinting), and
+        /// swimming and wall-running tuned for a fox.
         /// </summary>
         private static ComposedMovementMode LoadOrCreateMovement()
         {
@@ -415,6 +457,17 @@ namespace CharacterShowcase.EditorTools
             Set<Crouching>(mode, "crouchSpeed", 1f);
             Set<Crouching>(mode, "crouchHeight", 0.65f);
             Set<Crouching>(mode, "slidingEnabled", false);
+            // Swimming at the surface only (a fox doesn't dive), its back at the waterline, its head up out of the water;
+            // a fox's paddle is slower than a person's crawl, and it jumps out onto lower edges.
+            Set<Swimming>(mode, "swimDepth", SwimDepth);
+            Set<Swimming>(mode, "swimSpeed", SwimClipSpeed);
+            Set<Swimming>(mode, "swimSprintSpeed", 3.5f);
+            Set<Swimming>(mode, "swimJumpHeight", 0.8f);
+            Set<Swimming>(mode, "swimVaultHeight", 0f);
+            Set<Swimming>(mode, "swimDiveSpeed", 0f);
+            // Wall-running held a little out from the wall (its body rolled toward it, its paws on it), from lower jumps.
+            Set<WallRunning>(mode, "wallRunClearance", WallRunClearance);
+            Set<WallRunning>(mode, "wallRunMinHeight", 0.5f);
             AssetDatabase.CreateAsset(mode, MovementPath);
             return mode;
         }

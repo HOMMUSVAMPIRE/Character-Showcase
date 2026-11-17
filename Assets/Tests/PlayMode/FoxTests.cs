@@ -10,7 +10,8 @@ namespace CharacterShowcase.Tests
     /// Tests of the fox (Fox.prefab, made by FoxGenerator), the first creature that isn't a humanoid: it stands on its
     /// paws in a box body, its eye point at its eyes; trots as it walks and gallops sprinting, at its speeds; jumps once,
     /// to its jump height; crouches under what's too low to stand under; turns only as far as a corridor narrower than
-    /// it's long lets it; walks up and down stairs; and plays its own Animator's states (Locomotion, Crouch, Airborne).
+    /// it's long lets it; walks up and down stairs; plays its own Animator's states (Locomotion, Crouch, Airborne); and,
+    /// jumping onto a wall at an angle, runs along it.
     /// Its tuning is read from its own movement mode, so retuning it doesn't fail them.
     /// </summary>
     [Category(TestArea.Movement)]
@@ -150,6 +151,62 @@ namespace CharacterShowcase.Tests
             bool airborne = false;
             yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), step => { Step(step); airborne |= InState("Airborne"); });
             Assert.That(airborne, Is.True, "Jumping, the fox should play Airborne.");
+        }
+    
+        /// <summary>
+        /// Sprinting at a wall at an angle and jumping onto it, steering along it, the fox runs along the wall, for most of
+        /// a wall run's longest time. (Its long box reaches the wall first with a corner; the run is judged by how far its
+        /// side will be from the wall once it's turned along it, or it turned along the wall, found it out of reach, and
+        /// fell off in the next step.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheFox_JumpingOntoAWallAtAnAngle_RunsAlongIt([Values(20f, 40f, 60f)] float angle, [Values(1f, -1f)] float side)
+        {
+            yield return JumpOntoAWall(angle, side, steerAlong: true);
+        }
+
+        /// <summary>
+        /// Steering straight at a wall, steeply (as steep as the wall run's Max Steer Angle lets a run start), sprinting at
+        /// it and jumping onto it, the fox runs along it: its box meets the wall with a corner while its side is still
+        /// further from it than a person's would be, and it turns along the wall and is drawn in to it (see
+        /// WallRunning.Reach), rather than colliding with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheFox_JumpingSteeplyAtAWall_SteeringAtIt_RunsAlongIt([Values(50f, 65f)] float angle, [Values(1f, -1f)] float side)
+        {
+            yield return JumpOntoAWall(angle, side, steerAlong: false);
+        }
+
+        /// <summary>
+        /// Sprints at a wall at the angle given (on the side given) and, a metre from it, jumps, steering along it (or on at
+        /// it), and asserts the fox ran along the wall for most of a wall run's longest time.
+        /// </summary>
+        private IEnumerator JumpOntoAWall(float angle, float side, bool steerAlong)
+        {
+            yield return SpawnFox();
+            if (!steerAlong)
+            {
+                Assume.That(rig.MovementSetting<float>("wallRunMaxSteerAngle"), Is.GreaterThanOrEqualTo(angle), "Test setup: a run should be able to start steering this steeply.");
+            }
+            const float wallFace = 3f;
+            rig.Box("Wall", new Vector3(side * (wallFace + 0.5f), 5f, 15f), new Vector3(1f, 10f, 40f));
+            Physics.SyncTransforms();
+            float a = angle * Mathf.Deg2Rad;
+            Vector3 approach = new Vector3(side * Mathf.Sin(a), 0f, Mathf.Cos(a)), along = new Vector3(side * 0.35f, 0f, 1f).normalized;
+            int jumpAt = -1;
+            float ran = 0f;
+            yield return rig.Run(2.2f, step =>
+            {
+                // Sprinting at the wall, then a metre from it, jumping, steering along it.
+                if (jumpAt < 0 && side * rig.Position.x > wallFace - rig.SideExtent - 1f) { jumpAt = step; }
+                if (jumpAt < 0) { return CharacterTestRig.Sprint(approach, step + 1); }
+                Inputs inputs = CharacterTestRig.Sprint(steerAlong ? along : approach, step + 1);
+                inputs.jump = CharacterTestRig.Held(step - jumpAt);
+                return inputs;
+            }, _ => { if (rig.Movement.wallRun.IsWallRunning) { ran += Time.fixedDeltaTime; } });
+            float longest = rig.Component<WallRunning>().WallRunMaxDuration * rig.Movement.DurationScale;
+            TestContext.WriteLine($"Jumping onto a wall at {angle}° on the {(side > 0 ? "right" : "left")}, the fox ran along it for {ran:0.00} s (at most {longest:0.00} s).");
+            Assert.That(ran, Is.GreaterThan(0.8f * longest), "The fox should run along the wall.");
         }
     }
 }

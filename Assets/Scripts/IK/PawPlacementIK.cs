@@ -20,6 +20,7 @@ namespace Character
     /// - holds each planted paw where it was put down (Paw Lock), so the model turning after the character, about its feet,
     ///   doesn't drag the paws round with it;
     /// - bends the body into a turn (Turn Bend Bones), as fast as the model turns;
+    /// - running along a wall, rolls the body toward it until its legs reach it, its paws on the wall's face;
     /// - shortens and quickens the strides on a slope (Stride Shortening), and puts each paw down on the nearest foothold
     ///   that keeps its leg nearest its animated length (Foothold Reach).
     /// Placement fades out in the air, so jumps play as animated.
@@ -49,6 +50,10 @@ namespace Character
                      "forward (0, 0, 1) for a hind leg's stifle. The solve always bends it that way, however straight the " +
                      "leg is. Zero bends it the way the animation has it bent.")]
             public Vector3 bendDirection;
+            [Tooltip("How far (m, for the model at its authored size) the paw's mesh reaches beyond its contact toward a wall " +
+                     "it's put on, running along one (its pad and toes, the paw rolled to the wall): it's put that far out " +
+                     "from the wall's face.")]
+            [Min(0f)] public float wallClearance = 0.03f;
         }
 
         /// <summary>A bone turned toward the way the creature turns, by a share of the bend (see Turn Bend Bones).</summary>
@@ -161,6 +166,12 @@ namespace Character
         [Tooltip("Seconds to ease the bend in and out as the turning starts and stops.")]
         [Range(0f, 0.5f)] [SerializeField] private float turnBendSmoothTime = 0.12f;
 
+        [Header("Wall running")]
+        [Tooltip("The furthest (degrees) the body is rolled toward a wall it runs along, for its legs to reach the wall.")]
+        [Range(0f, 90f)] [SerializeField] private float maxWallRoll = 45f;
+        [Tooltip("Seconds to roll the body to the wall as a wall run starts, and back as it ends.")]
+        [Min(0.001f)] [SerializeField] private float wallRollBlendTime = 0.12f;
+
         [Header("Strides on slopes")]
         [Tooltip("How much shorter the strides are on a slope, by the sine of the body's pitch (0.7 takes about two fifths " +
                  "off them up or down a 37° flight of stairs), and how much quicker, so the paws still keep pace with the " +
@@ -259,6 +270,10 @@ namespace Character
         private float bodyPitch, bodyPitchVelocity;
         // The bend into a turn (degrees, eased), and the model's facing last frame, which its turn rate is measured from.
         private float turnBend, turnBendVelocity, lastYaw;
+        // How far the body is rolled to a wall it runs along (0 to 1, eased), and the wall (kept as the run ends, to roll
+        // back from it).
+        private float wallWeight;
+        private Vector3 wallNormal, wallPoint;
         private bool hasLastYaw;
         // How far the body is lowered below the ground's line for its legs to reach, eased (and whether it's been set yet);
         // and its height above the animations' floor.
@@ -292,6 +307,9 @@ namespace Character
 
         /// <summary>Sets the bones bent into a turn (the generator does).</summary>
         public void SetTurnBendBones(TurnBendBone[] bones) => turnBendBones = bones ?? new TurnBendBone[0];
+
+        /// <summary>How far (0 to 1) the body is rolled to a wall it runs along now.</summary>
+        public float WallRoll => wallWeight;
 
         /// <summary>How far (degrees, positive turning right) the body is bent into a turn now.</summary>
         public float TurnBend => turnBend;
@@ -328,7 +346,7 @@ namespace Character
         private void OnDisable()
         {
             if (animator != null) { animator.speed = 1f; }
-            turnBend = turnBendVelocity = 0f;
+            turnBend = turnBendVelocity = wallWeight = 0f;
             hasLastYaw = false;
             activeWeight = 0f;
             bodyPitch = bodyPitchVelocity = bodyHeight = bodyLevelVelocity = 0f;
@@ -354,7 +372,9 @@ namespace Character
         {
             if (rootBone == null || paws.Length == 0) { return; }
             CharacterAnimationState state = stateSource?.AnimationState ?? new CharacterAnimationState { grounded = true };
-            float goal = state.grounded ? weight : 0f;
+            // On the ground only: swimming, the paddle plays as animated; wall-running, the body is rolled to the wall
+            // (see SolveWallRun).
+            float goal = state.grounded && !state.swimming && !state.wallRunning ? weight : 0f;
             activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, deltaTime / groundedFadeTime) : goal;
 
             BendIntoTurn(deltaTime);
@@ -559,6 +579,7 @@ namespace Character
             {
                 // Off the ground, nothing stays locked: landing, the paws lock where they come down.
                 for (int i = 0; i < paws.Length; i++) { paws[i].locked = false; paws[i].lockWeight = 0f; }
+                SolveWallRun(state, floor, scale, deltaTime);
                 return;
             }
 
@@ -589,6 +610,79 @@ namespace Character
                 Vector3 footTarget = contact - footRotation * Vector3.Scale(leg.contact, leg.foot.lossyScale);
                 // The bend direction turned with the body's pitch, as the leg's joints are.
                 Vector3 bend = leg.bendDirection == Vector3.zero ? Vector3.zero : pitch * transform.TransformDirection(leg.bendDirection);
+                SolveTwoBone(leg.upper, leg.lower, leg.foot, footTarget, bend);
+                leg.foot.rotation = footRotation;
+            }
+            SolveWallRun(state, floor, scale, deltaTime);
+        }
+
+        /// <summary>
+        /// Running along a wall: the body rolled toward the wall (about its legs' tops, along the way it faces) as far as
+        /// its legs need to reach the wall (Max Wall Roll at most), eased in and out over Wall Roll Blend Time; and each
+        /// paw kept out of the wall, put on its face where the animation has it through it, and drawn onto it as it's
+        /// planted (low, in the animation), so the creature runs on the wall, paws to it.
+        /// </summary>
+        private void SolveWallRun(CharacterAnimationState state, float floor, float scale, float deltaTime)
+        {
+            bool running = state.wallRunning && state.wallNormal != Vector3.zero;
+            if (running)
+            {
+                wallNormal = state.wallNormal;
+                wallPoint = state.wallPoint;
+            }
+            wallWeight = wallRollBlendTime > 0f ? Mathf.MoveTowards(wallWeight, running ? 1f : 0f, deltaTime / wallRollBlendTime) : running ? 1f : 0f;
+            if (wallWeight <= 0f || wallNormal == Vector3.zero) { return; }
+
+            // Where the legs' tops are, and how long the legs are as animated (to their paws).
+            Vector3 pivot = Vector3.zero;
+            float legLength = 0f;
+            int count = 0;
+            for (int i = 0; i < paws.Length; i++)
+            {
+                Leg leg = legs[i];
+                if (leg?.upper == null || leg.lower == null || leg.foot == null) { continue; }
+                pivot += leg.upper.position;
+                legLength += Vector3.Distance(leg.upper.position, leg.foot.TransformPoint(leg.contact));
+                count++;
+            }
+            if (count == 0) { return; }
+            pivot /= count;
+            legLength /= count;
+
+            // Rolled so the legs, hanging from their tops, reach the wall: the roll whose sine is the wall's distance
+            // over the legs' length. Toward the wall: the body's down turned to point at it.
+            Vector3 forward = Vector3.ProjectOnPlane(transform.forward, wallNormal).normalized;
+            if (forward == Vector3.zero) { return; }
+            float distance = Vector3.Dot(pivot - wallPoint, wallNormal);
+            float roll = Mathf.Min(Mathf.Asin(Mathf.Clamp01(distance / Mathf.Max(legLength, 1e-3f))) * Mathf.Rad2Deg, maxWallRoll) * wallWeight;
+            if (Vector3.Dot(Quaternion.AngleAxis(roll, forward) * Vector3.down, wallNormal) > 0f) { roll = -roll; }
+            Quaternion rolled = Quaternion.AngleAxis(roll, forward);
+
+            // Each paw's lift as animated (before the roll), for how planted it is.
+            float plantedLift = plantedHeight * scale, liftedLift = Mathf.Max(liftedHeight * scale, plantedLift + 1e-3f);
+            for (int i = 0; i < paws.Length; i++)
+            {
+                Leg leg = legs[i];
+                if (leg?.foot == null) { continue; }
+                paws[i].lift = leg.foot.TransformPoint(leg.contact).y - floor;
+            }
+            rootBone.SetPositionAndRotation(pivot + rolled * (rootBone.position - pivot), rolled * rootBone.rotation);
+
+            for (int i = 0; i < paws.Length; i++)
+            {
+                Leg leg = legs[i];
+                if (leg?.upper == null || leg.lower == null || leg.foot == null) { continue; }
+                Vector3 contact = leg.foot.TransformPoint(leg.contact);
+                // Out from the wall's face (less the paw's thickness beyond its contact, which would go through it, the
+                // paw rolled to face the wall); negative, through it.
+                float off = Vector3.Dot(contact - wallPoint, wallNormal) - leg.wallClearance * scale;
+                float planted = 1f - Mathf.InverseLerp(plantedLift, liftedLift, paws[i].lift);
+                float onto = off < 0f ? off : off * planted * wallWeight;
+                if (Mathf.Abs(onto) < 1e-4f) { continue; }
+                Vector3 target = contact - wallNormal * onto;
+                Quaternion footRotation = leg.foot.rotation;
+                Vector3 footTarget = target - footRotation * Vector3.Scale(leg.contact, leg.foot.lossyScale);
+                Vector3 bend = leg.bendDirection == Vector3.zero ? Vector3.zero : rolled * transform.TransformDirection(leg.bendDirection);
                 SolveTwoBone(leg.upper, leg.lower, leg.foot, footTarget, bend);
                 leg.foot.rotation = footRotation;
             }

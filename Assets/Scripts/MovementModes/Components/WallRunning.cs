@@ -27,7 +27,8 @@ namespace Character
         [Tooltip("How far (degrees) from along the wall the steering can point for a wall run to start: a wall run is " +
                  "asked for, by steering along the wall, not something the character falls into heading at it")]
         [Range(0f, 90f)] [SerializeField] private float wallRunMaxSteerAngle = 35f;
-        [Tooltip("How far (m) beside the character a wall can be for it to run along it, at its authored size")]
+        [Tooltip("How far (m) beside the character a wall can be for it to run along it, at its authored size (a body " +
+                 "longer than it is wide, as much further as its length reaches beyond its side)")]
         [SerializeField] private float wallRunCheckDistance = 0.3f;
         [Tooltip("How far from the wall the character's middle (its feet, the point it stands on) is held as it runs along " +
                  "one, as a share of its standing height, at least as far as its body reaches to that side: a wall runner " +
@@ -97,7 +98,7 @@ namespace Character
             if (!run.IsWallRunning && !TryStartWallRun(ref movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
-            if (movementData.initialGrounded || !FindWall(controller, feet, -run.wallNormal, out Vector3 normal, out float gap, out Vector3 wallPoint)
+            if (movementData.initialGrounded || !FindWall(controller, feet, -run.wallNormal, out Vector3 normal, out _, out Vector3 wallPoint)
                 || !WallReachesFeet(controller, feet, normal))
             {
                 EndWallRun(controller);
@@ -144,7 +145,7 @@ namespace Character
             // Run along the wall, falling slowly, pressed lightly against it, or held its clearance out from it.
             speed = Mathf.MoveTowards(speed, wallRunSpeed * controller.SpeedScale, Mode.AirAcceleration(controller) * movementData.deltaTime);
             float rise = inertia.y - wallRunGravity * controller.AccelerationScale * movementData.deltaTime;
-            movementData.velocityOverride = tangent * speed + Vector3.up * rise - normal * TowardWall(controller, gap - controller.Skin);
+            movementData.velocityOverride = tangent * speed + Vector3.up * rise - normal * TowardWall(controller, AlongsideGap(controller, feet, wallPoint, normal));
             movementData.directMovementVector = Vector3.zero;
             movementData.targetRotation = Quaternion.LookRotation(tangent, Vector3.up);
             // The wall is on the character's right if its normal points to the character's left.
@@ -177,10 +178,16 @@ namespace Character
             // The nearer of a wall on the right and one on the left.
             Vector3 feet = movementData.initialPosition;
             Vector3 right = Vector3.Cross(Vector3.up, direction);
-            bool onRight = FindWall(controller, feet, right, out Vector3 rightNormal, out float rightDistance);
-            bool onLeft = FindWall(controller, feet, -right, out Vector3 leftNormal, out float leftDistance);
+            bool onRight = FindWall(controller, feet, right, out Vector3 rightNormal, out float rightDistance, out Vector3 rightPoint);
+            bool onLeft = FindWall(controller, feet, -right, out Vector3 leftNormal, out float leftDistance, out Vector3 leftPoint);
             if (!onRight && !onLeft) { return false; }
-            Vector3 normal = onRight && (!onLeft || rightDistance <= leftDistance) ? rightNormal : leftNormal;
+            bool useRight = onRight && (!onLeft || rightDistance <= leftDistance);
+            Vector3 normal = useRight ? rightNormal : leftNormal;
+            // Within reach of the wall as the body will be running along it, its side to the wall (see Reach): not only by
+            // a corner of a long body turned toward the wall, coming at it at an angle. (A fox's box reached the wall with
+            // its front corner, started a run, turned along the wall, and found it out of reach, ending the run in the next
+            // step.)
+            if (AlongsideGap(controller, feet, useRight ? rightPoint : leftPoint, normal) > Reach(controller)) { return false; }
             if (run.hasLastWall && Vector3.Angle(normal, run.lastWallNormal) < SameWallAngle) { return false; }
             if (!WallReachesFeet(controller, feet, normal)) { return false; }
 
@@ -218,6 +225,29 @@ namespace Character
                 WallRunMaxHoldShare * wallRunCheckDistance * controller.HeightScale);
 
         /// <summary>
+        /// How far (m) beside the body a wall can be to run along it: the check distance, and for a body longer than it is
+        /// wide (a fox's box), as much further as its length reaches beyond its side. Coming at a wall steeply, such a body
+        /// meets it with a corner while its side is still that far off it; it starts a run there, turns along the wall,
+        /// and is drawn in to its clearance (see TowardWall), the wall kept within reach as it is. (A capsule reaches as
+        /// far ahead as to the side: no further.)
+        /// </summary>
+        private float Reach(MovementController controller)
+        {
+            CharacterBody body = controller.Body;
+            return wallRunCheckDistance * controller.HeightScale + Mathf.Max(0f, Mathf.Max(body.FrontExtent, body.BackExtent) - body.SideExtent);
+        }
+
+        /// <summary>
+        /// How far (m) the body's side is from the wall (through point, its normal given) as it runs along it, alongside
+        /// it: the character's middle's distance from the wall's face, less how far its body reaches to the side. Not the
+        /// distance a sweep of the body finds, turned as it is: a long body coming at the wall at an angle reaches it with a
+        /// corner, and held out by that, it was pushed off the wall as it turned along it. (For a body that reaches as far
+        /// to the side however it's turned, a capsule, they're the same.)
+        /// </summary>
+        private static float AlongsideGap(MovementController controller, Vector3 feet, Vector3 wallPoint, Vector3 normal) =>
+            Vector3.Dot(feet - wallPoint, normal) - controller.Body.SideExtent;
+
+        /// <summary>
         /// How fast (m/s) to move toward the wall this step, the body's side gap (m) from it: pressed lightly against it,
         /// or, held out from it (see HoldGap), closing in on that gap (or easing out to it) over the hold time.
         /// </summary>
@@ -242,7 +272,7 @@ namespace Character
             normal = Vector3.zero;
             distance = 0f;
             point = Vector3.zero;
-            float reach = wallRunCheckDistance * controller.HeightScale + controller.Skin;
+            float reach = Reach(controller) + controller.Skin;
             if (!controller.SweepBody(feet, direction, reach, out RaycastHit hit)) { return false; }
             if (Mathf.Abs(hit.normal.y) > Mathf.Sin(wallRunMaxWallTilt * Mathf.Deg2Rad)) { return false; }
             normal = new Vector3(hit.normal.x, 0f, hit.normal.z);
@@ -262,7 +292,7 @@ namespace Character
         /// </summary>
         private bool WallReachesFeet(MovementController controller, Vector3 feet, Vector3 normal)
         {
-            float reach = controller.Body.SideExtent + wallRunCheckDistance * controller.HeightScale + 2f * controller.Skin;
+            float reach = controller.Body.SideExtent + Reach(controller) + 2f * controller.Skin;
             return controller.Raycast(feet + Vector3.up * (wallRunFootHeight * controller.Body.StandingHeight), -normal, reach, out _);
         }
 

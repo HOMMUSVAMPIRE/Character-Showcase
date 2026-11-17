@@ -116,16 +116,16 @@ MonoBehaviour:
     - rid: 5929479653649547268
       type: {class: WallRunning, ns: Character, asm: CharacterShowcase}
       data:
-        enabled: 0
+        enabled: 1
         wallRunSpeed: 9
         wallRunMinSpeed: 4
         wallRunMaxDuration: 1.2
         wallRunGravity: 5
         wallRunMaxRiseSpeed: 4
-        wallRunMaxSteerAngle: 60
+        wallRunMaxSteerAngle: 90
         wallRunCheckDistance: 0.3
         wallRunClearance: 0.25
-        wallRunMinHeight: 0.75
+        wallRunMinHeight: 0.5
         wallRunMaxWallTilt: 45
         wallRunCooldown: 0.35
         wallRunFootHeight: 0.2
@@ -237,8 +237,8 @@ MonoBehaviour:
       type: {class: Jumping, ns: Character, asm: CharacterShowcase}
       data:
         enabled: 1
-        minJumpHeight: 0.5
-        maxJumpHeight: 1.4
+        minJumpHeight: 0.75
+        maxJumpHeight: 2
         maxJumps: 1
         jumpInputBuffer: 0.1
         coyoteTime: 0.1
@@ -329,16 +329,16 @@ MonoBehaviour:
     - rid: 5929479671128260608
       type: {class: Swimming, ns: Character, asm: CharacterShowcase}
       data:
-        enabled: 0
-        swimDepth: 0.75
+        enabled: 1
+        swimDepth: 0.8
         swimSurfacingSpeed: 3
         swimPlungeDrag: 1.5
-        swimSpeed: 3
-        swimSprintSpeed: 5
+        swimSpeed: 2.5
+        swimSprintSpeed: 3.5
         swimAcceleration: 8
-        swimJumpHeight: 1.2
-        swimVaultHeight: 0.3
-        swimDiveSpeed: 4
+        swimJumpHeight: 0.8
+        swimVaultHeight: 0
+        swimDiveSpeed: 0
         swimVerticalSpeed: 2.5
         swimBuoyancy: 0
         swimMaxPitch: 60

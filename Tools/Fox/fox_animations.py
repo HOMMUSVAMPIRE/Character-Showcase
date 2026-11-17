@@ -1,6 +1,6 @@
 """
-Procedurally authored animation clips for the fox: Idle, Walk, Trot, Gallop, Jump Rise, Jump Fall, Crouch Idle, Turn Step and
-Crouch Walk.
+Procedurally authored animation clips for the fox: Idle, Walk, Trot, Gallop, Jump Rise, Jump Fall, Crouch Idle, Crouch
+Walk, Turn Step, Swim and Swim Idle.
 
 As for the mannequin (see Tools/Mannequin/mannequin_animations.py), poses are world-space (armature-space) rotations
 per bone, converted to Blender's bone-local pose rotations here. All clips loop and stay in place (no root travel).
@@ -334,6 +334,48 @@ def jump_fall(p):
     return pose
 
 
+class Paddle:
+    """
+    Swimming: a dog paddle at the surface, the legs in diagonal pairs (as a trot). Each front leg reaches forward and
+    pulls down and back through the water, then folds up (the elbow flexing the forearm forward, the paw folded back
+    under it) to reach forward again; each hind leg kicks back straight and draws up bent. The body is level and a
+    little nose up, the neck raised and the head looking ahead, the tail floating out behind. The fox's feet (its
+    origin) are the swim depth below the surface (Swimming), so the body is drawn at its standing height above them.
+    `effort` scales the strokes: treading water, they're small.
+    """
+
+    def __init__(self, duration, effort):
+        self.duration = duration
+        self.effort = effort
+
+    def __call__(self, p):
+        pose = Pose()
+        e = self.effort
+        for leg, offset in ((Leg(True, "L", 0.0), 0.0), (Leg(True, "R", 0.5), 0.5), (Leg(False, "L", 0.5), 0.5), (Leg(False, "R", 0.0), 0.0)):
+            phi = TAU * ((p + offset) % 1.0)
+            # Pulling back while cos(phi) > 0 (the leg swinging back), recovering forward folded while it's < 0.
+            fold = max(0.0, -math.cos(phi))
+            if leg.front:
+                angles = front_angles(-5.0 + 40.0 * e * math.sin(phi), -80.0 * e * fold, 100.0 * e * fold + 15.0)
+            else:
+                angles = hind_angles(10.0 + 30.0 * e * math.sin(phi + math.pi), 60.0 * e * fold + 10.0, -45.0 * e * fold - 10.0,
+                                     25.0 * e * fold + 20.0)
+            set_leg(pose, FRONT_BONES if leg.front else HIND_BONES, leg.side, angles)
+        body(pose, pitch=-5.0, spine=1.5 * e * math.sin(2.0 * TAU * p), tail_sway=6.0 * math.sin(TAU * p), tail_lift=12.0,
+             ears=-4.0)
+        # The neck raised, the head looking ahead (nose a little up), clear of the water.
+        pose.set("Neck", rx(-30.0))
+        pose.set("Head", rx(-8.0 + 2.0 * e * math.sin(2.0 * TAU * p)))
+        pose.hips_offset = Vector((0.0, 0.0, 0.006 * e * math.cos(2.0 * TAU * p)))
+        return pose
+
+
+SWIM = Paddle(duration=0.6, effort=1.0)
+SWIM_IDLE = Paddle(duration=1.0, effort=0.45)
+# The speed (m/s) the swimming paddle is authored for (the fox's Swim Speed): FoxGenerator's Swim blend matches it.
+SWIM_SPEED = 2.5
+
+
 def legs(*offsets):
     """Left front, right front, left hind, right hind, with these phase offsets."""
     lf, rf, lh, rh = offsets
@@ -368,8 +410,10 @@ CLIPS = {
     "Crouch Idle": (crouch_idle, 2.4),
     "Crouch Walk": (CROUCH_WALK, CROUCH_WALK.duration),
     "Turn Step": (TURN_STEP, TURN_STEP.duration),
+    "Swim": (SWIM, SWIM.duration),
+    "Swim Idle": (SWIM_IDLE, SWIM_IDLE.duration),
 }
-SPEEDS = {"Walk": WALK.speed, "Trot": TROT.speed, "Gallop": GALLOP.speed, "Crouch Walk": CROUCH_WALK.speed}
+SPEEDS = {"Walk": WALK.speed, "Trot": TROT.speed, "Gallop": GALLOP.speed, "Crouch Walk": CROUCH_WALK.speed, "Swim": SWIM_SPEED}
 
 
 # ---------------------------------------------------------------------------------------------------------------

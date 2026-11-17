@@ -22,7 +22,7 @@ Moving fast along a wall beside the character in mid-air, high enough above the 
 - moving along the wall at least Wall Run Min Speed;
 - at least Wall Run Min Height above the ground;
 - steering within Wall Run Max Steer Angle of parallel with the wall (a wall run is asked for, not fallen into);
-- the wall reaching down to the character's feet (to Wall Run Foot Height above them, a share of its height), within Wall Run Check Distance beside it and leaning no more than Wall Run Max Wall Tilt.
+- the wall reaching down to the character's feet (to Wall Run Foot Height above them, a share of its height), within Wall Run Check Distance beside it and leaning no more than Wall Run Max Wall Tilt. Beside it is as the body will be running along it, its side to the wall: a long body (the fox's) coming at the wall at an angle reaches it first with a corner, and is judged, and held out from the wall, by where its side will be once it's turned along the wall. Such a body, longer than it is wide, may start a run with its side as much further from the wall as its length reaches beyond its side (coming at the wall steeply, its corner meets the wall while its side is still that far off it), and is drawn in to its clearance as it runs; the wall stays within that reach.
 
 Running along it, the character's middle is held Wall Run Clearance out from the wall (a share of its standing height), or against it for a body that reaches further to its side than that: a wall runner leans out, its feet on the wall. The wall run animation's feet (and hands) are put on the wall's face by WallSlideIK wherever they'd go through it (its Wall Run Foot From Wall, and Wrist From Wall, keep them that far out).
 

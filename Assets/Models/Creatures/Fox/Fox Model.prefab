@@ -171,21 +171,25 @@ MonoBehaviour:
     foot: {fileID: 6523289164856767771}
     contact: {x: 0.000000026142008, y: 0.13243507, z: -0.02368065}
     bendDirection: {x: 0, y: 0, z: -1}
+    wallClearance: 0.015
   - upper: {fileID: 3394995374928380763}
     lower: {fileID: 8917919383979425238}
     foot: {fileID: 640329677639250933}
     contact: {x: 0.000000026142065, y: 0.1324351, z: -0.023680627}
     bendDirection: {x: 0, y: 0, z: -1}
+    wallClearance: 0.015
   - upper: {fileID: 5526378002257870794}
     lower: {fileID: 1190536085706898742}
     foot: {fileID: 4999235438205051379}
     contact: {x: 0.000000012526388, y: 0.1746237, z: 0.03880612}
     bendDirection: {x: 0, y: 0, z: 1}
+    wallClearance: 0.045
   - upper: {fileID: 1401919831684826798}
     lower: {fileID: 8517453050461694258}
     foot: {fileID: 1634602484683399698}
     contact: {x: 0.000000012526503, y: 0.17462373, z: 0.03880605}
     bendDirection: {x: 0, y: 0, z: 1}
+    wallClearance: 0.045
   rootBone: {fileID: 4392339089650549564}
   groundLayers:
     serializedVersion: 2
@@ -229,6 +233,8 @@ MonoBehaviour:
   maxTurnBend: 25
   fullBendTurnSpeed: 150
   turnBendSmoothTime: 0.12
+  maxWallRoll: 45
+  wallRollBlendTime: 0.12
   strideShortening: 0.7
   shortestStride: 0.5
   strideMovingSpeed: 0.5
