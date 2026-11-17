@@ -68,3 +68,10 @@ Choices about how the project is built, why they were made, and what was decided
 
 **Against:** a fractional lift (part of the step height): steps between the lift and the step height would need the body's own step-up, which hovering otherwise retires. And treating the long fox's body differently: it still rides slopes and stairs on the ground ahead of its paws, which a rounder or pitched body is next to fix.
 
+## A long body is made of several parts (November 2026)
+**Decided:** a body can have extra parts beside its shape (a Body Definition's Extra Parts), together one body: the fox's is two capsules lying along its back, one above the other, held a step above its paws, and a sphere for its head, in place of the box round all of it.
+
+**Why:** a box long enough for the fox reached out with its corners: turning in a corridor, coming at a wall to run along it, and over slopes and stairs, where its flat bottom rested on the ground ahead of its paws. Rounded parts have no corners, and held above its legs, they leave the ground to its paws. A single capsule couldn't do it: round across, as wide as the fox would leave it only as tall as its back, or as tall as its head, far too wide.
+
+**Against:** pitching the body along the ground (as its model is), which would keep a long body off the steps behind it going down a flight too, but turn the character's own queries with every stride; it's still open, if the few centimetres it rests on them there matter. And dropping the long-body rules (WallRunning's reach and alongside gap): they're about a body being longer than it's wide, which a rounded one still is, not about corners.
+

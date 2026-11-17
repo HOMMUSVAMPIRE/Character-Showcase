@@ -110,15 +110,20 @@ namespace CharacterShowcase.Tests
             }
         }
 
-        /// <summary>A ball dropped from above the middle of the character's body, its body's top.</summary>
+        /// <summary>
+        /// A ball dropped from above the character's broadest hitbox (its chest, or a fox's back: the middle of its body,
+        /// not the gap between two parts), half a metre over the top of its body (top).
+        /// </summary>
         private Rigidbody DropABall(out float top)
         {
-            BodyShape body = rig.BodyNow;
             top = rig.StandingHeight;
+            Hitbox broadest = rig.Models.Hitboxes.Hitboxes.OrderByDescending(h => h.Collider.radius * h.transform.lossyScale.x).First();
+            Vector3 over = broadest.Collider.bounds.center;
+            over.y = rig.Position.y + top + 0.5f;
             GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             ball.name = "Ball";
             ball.transform.localScale = Vector3.one * 0.2f;
-            ball.transform.position = rig.Character.transform.TransformPoint(new Vector3(0f, top + 0.5f, body.center.z));
+            ball.transform.position = over;
             var ballBody = ball.AddComponent<Rigidbody>();
             ballBody.mass = 0.2f;
             ballBody.interpolation = RigidbodyInterpolation.None;
@@ -154,11 +159,12 @@ namespace CharacterShowcase.Tests
             bool hit = false;
             hitboxes.HitStarted += (_, _) => hit = true;
             Rigidbody ball = DropABall(out float top);
+            Vector3 start = ball.position;
             float lowestOver = float.PositiveInfinity;
             float footprint = Mathf.Max(rig.SideExtent, 0.5f * (rig.FrontExtent + rig.BackExtent));
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), _ =>
             {
-                Vector3 offset = ball.position - rig.Character.transform.TransformPoint(new Vector3(0f, 0f, rig.BodyNow.center.z));
+                Vector3 offset = ball.position - start;
                 if (new Vector2(offset.x, offset.z).magnitude < 0.25f * footprint) { lowestOver = Mathf.Min(lowestOver, ball.position.y); }
             });
             Assert.That(hit, Is.True, "The ball should have been reported as it met the character.");

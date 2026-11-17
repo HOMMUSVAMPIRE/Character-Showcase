@@ -34,7 +34,8 @@ namespace CharacterShowcase.Tests
         /// The characters the runs are made with: each as it is (hovering over steps), and with its body standing on its
         /// feet (Hover Over Steps off).
         /// </summary>
-        public static IEnumerable<string> Characters() => new[] { "Character", "Fox", "Character" + OnItsFeet, "Fox" + OnItsFeet };
+        /// (The fox's body is held above its legs, which only hovering over steps stands on: it has no other way.)
+        public static IEnumerable<string> Characters() => new[] { "Character", "Fox", "Character" + OnItsFeet };
 
         private static bool Hovering(string character) => !character.EndsWith(OnItsFeet);
 
@@ -43,13 +44,22 @@ namespace CharacterShowcase.Tests
         /// steps, with a body that doesn't reach far out over the ground ahead and behind. A long, flat body (the fox's
         /// box) still rides the steps and slopes ahead of its feet.
         /// </summary>
-        private static bool KeepsItsFeetOnTheGround(string character) => Hovering(character) && !character.StartsWith("Fox");
+        private static bool KeepsItsFeetOnTheGround(string character) => Hovering(character);
 
-        /// <summary>Holds a run to the character's feet staying on the ground under them, if they should (see KeepsItsFeetOnTheGround).</summary>
-        private static void AssertFeetOnTheGround(string character, StepTrace trace)
+        /// <summary>
+        /// Holds a run to the character's feet staying on the ground under them, if they should (see
+        /// KeepsItsFeetOnTheGround), on ground rising or falling at the given gradient (rise over run): unless its body
+        /// reaches out over it further than its lift above the feet clears (the back of a long body over the steps behind,
+        /// going down stairs), when its body rests on the ground there, holding its feet as far above the ground under
+        /// them as it reaches out beyond that.
+        /// </summary>
+        private void AssertFeetOnTheGround(string character, StepTrace trace, float gradient = 0f)
         {
             if (!KeepsItsFeetOnTheGround(character)) { return; }
-            Assert.That(trace.HighestFeet, Is.LessThan(StepTrace.FeetAboveGround), $"Hovering over steps, the character's feet should stay on the ground. {trace.Summary()}");
+            float reach = Mathf.Max(rig.FrontExtent, rig.BackExtent);
+            float resting = Mathf.Max(0f, reach * gradient - rig.Movement.BodyLift);
+            Assert.That(trace.HighestFeet, Is.LessThan(StepTrace.FeetAboveGround + resting),
+                $"Hovering over steps, the character's feet should stay on the ground. {trace.Summary()}");
         }
 
         private GameObject PrefabOf(string character)
@@ -201,8 +211,11 @@ namespace CharacterShowcase.Tests
                 AssertSteady(trace);
                 // Up, then down: its height turns once.
                 Assert.That(trace.HeightReversals, Is.LessThanOrEqualTo(1), $"The character wobbled up and down along the ramps. {trace.Summary()}");
-                AssertFeetOnTheGround(character, trace);
+                AssertFeetOnTheGround(character, trace, Mathf.Tan(angle * Mathf.Deg2Rad));
             });
+            float over = start + 2f * run + plateau;
+            Assert.That(rig.Position.z, Is.GreaterThan(over), "The character should have walked over the hill.");
+            Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.02f), "It should be back down on the floor.");
         }
 
         [UnityTest]
@@ -226,8 +239,10 @@ namespace CharacterShowcase.Tests
                 AssertSteady(trace);
                 // Steadily up, or down: its height never turns.
                 Assert.That(trace.HeightReversals, Is.Zero, $"The character bobbed up and down on the stairs. {trace.Summary()}");
-                AssertFeetOnTheGround(character, trace);
+                AssertFeetOnTheGround(character, trace, rise / run);
             });
+            Assert.That(rig.Position.z, Is.GreaterThan(start + steps * run), up ? "The character should have walked up the flight." : "The character should have walked down the flight.");
+            Assert.That(rig.Position.y, Is.EqualTo(up ? top : 0f).Within(0.02f), up ? "It should be on the landing at the top." : "It should be on the floor at the bottom.");
         }
 
         /// <summary>A walkable ramp, 1 m thick and 6 m wide, its top from one point to another.</summary>

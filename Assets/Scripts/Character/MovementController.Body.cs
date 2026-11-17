@@ -15,10 +15,11 @@ namespace Character
         /// </summary>
         public CharacterBody Body => body ??= new PrimitiveBody(this, bodyCollider);
 
-        // A collider of the body's shape on a hidden object of the character's, turned off but while it's used, so nothing
-        // meets it: pushing the body out of the world (Physics.ComputePenetration) needs a collider, turned on, and the
-        // character may have none.
-        private Collider queryCollider;
+        // A collider of each of the body's parts' shapes on a hidden object of the character's, turned off but while it's
+        // used, so nothing meets it: pushing the body out of the world (Physics.ComputePenetration) needs a collider, turned
+        // on, and the character may have none. One for each part, so a body of parts of several kinds doesn't swap them.
+        private Collider[] queryColliders = new Collider[1];
+        private GameObject queryHolder;
 
         /// <summary>
         /// A collider shaped as the given body shape, at the character's origin, turned off: for the queries that need a
@@ -26,27 +27,28 @@ namespace Character
         /// (Physics.ComputePenetration ignores a collider that's turned off), so nothing else meets it. Made the first
         /// time it's needed (and again for a shape of another kind).
         /// </summary>
-        internal Collider QueryCollider(BodyShape shape)
+        internal Collider QueryCollider(BodyShape shape, int part = 0)
         {
-            if (!shape.IsKindOf(queryCollider))
+            if (part >= queryColliders.Length) { System.Array.Resize(ref queryColliders, part + 1); }
+            Collider query = queryColliders[part];
+            if (!shape.IsKindOf(query))
             {
-                GameObject holder;
-                if (queryCollider != null)
+                if (query != null)
                 {
-                    holder = queryCollider.gameObject;
-                    if (Application.isPlaying) { Destroy(queryCollider); } else { DestroyImmediate(queryCollider); }
+                    if (Application.isPlaying) { Destroy(query); } else { DestroyImmediate(query); }
                 }
-                else
+                if (queryHolder == null)
                 {
-                    holder = new GameObject("Body Query") { hideFlags = HideFlags.HideAndDontSave, layer = gameObject.layer };
-                    holder.transform.SetParent(transform, false);
+                    queryHolder = new GameObject("Body Query") { hideFlags = HideFlags.HideAndDontSave, layer = gameObject.layer };
+                    queryHolder.transform.SetParent(transform, false);
                 }
-                queryCollider = (Collider)holder.AddComponent(shape.ColliderType);
-                queryCollider.enabled = false;
-                if (queryCollider is CapsuleCollider capsule) { capsule.direction = shape.direction; }
+                query = (Collider)queryHolder.AddComponent(shape.ColliderType);
+                query.enabled = false;
+                if (query is CapsuleCollider capsule) { capsule.direction = shape.direction; }
+                queryColliders[part] = query;
             }
-            PrimitiveBody.Write(queryCollider, shape);
-            return queryCollider;
+            PrimitiveBody.Write(query, shape);
+            return query;
         }
 
         private void RememberBaseSize() => Body.RememberAuthoredSize();
@@ -57,8 +59,11 @@ namespace Character
         /// </summary>
         public void RebuildBody(Collider primitive = null)
         {
+            // Its extra parts (see BodyDefinition's Extra Parts) stay its parts.
+            BodyShape[] parts = body is PrimitiveBody had ? System.Linq.Enumerable.ToArray(had.AuthoredExtraParts) : null;
             bodyCollider = primitive;
             body = null;
+            if (parts != null && parts.Length > 0) { ((PrimitiveBody)Body).SetExtraParts(parts); }
             // Its own shape from now on, not the definition's.
             shapedFromDefinition = true;
             RememberBaseSize();
@@ -126,7 +131,7 @@ namespace Character
         /// </summary>
         private void ShapeFromDefinition()
         {
-            if (bodyDefinition != null && !shapedFromDefinition && SetBody(bodyDefinition.Shape, checkRoom: false)) { shapedFromDefinition = true; }
+            if (bodyDefinition != null && !shapedFromDefinition && SetBody(bodyDefinition.Shape, checkRoom: false, bodyDefinition.ExtraParts)) { shapedFromDefinition = true; }
             else { RememberBaseSize(); }
         }
 
@@ -137,20 +142,34 @@ namespace Character
         /// settings), so it keeps following the body. Like growing,
         /// it waits for room: unless checkRoom is false, if the new body would reach somewhere the current one doesn't and
         /// wouldn't fit there, nothing changes and this returns false. False for a body without a size, or a character
-        /// whose body isn't a primitive.
+        /// whose body isn't a primitive. Given extra parts (see BodyDefinition's Extra Parts: none makes it one shape),
+        /// they're its parts beside the shape from then on (and are part of the room it needs); not given, it keeps the
+        /// ones it has.
         /// </summary>
-        public bool SetBody(BodyShape shape, bool checkRoom = true)
+        public bool SetBody(BodyShape shape, bool checkRoom = true, System.Collections.Generic.IReadOnlyList<BodyShape> extraParts = null)
         {
             if (!shape.HasSize || Body is not PrimitiveBody primitive) { return false; }
             Vector3 feet = PhysicsPosition;
             Quaternion rotation = BodyRotation;
+            BodyShape[] hadParts = System.Linq.Enumerable.ToArray(primitive.AuthoredExtraParts);
+            if (extraParts != null) { primitive.SetExtraParts(extraParts); }
             if (primitive.Collider != null && !shape.IsKindOf(primitive.Collider))
             {
-                if (checkRoom && !primitive.FitsAs(shape, feet, rotation, Scale, posture)) { return false; }
-                primitive = new PrimitiveBody(this, ReplaceCollider(primitive.Collider, shape));
+                if (checkRoom && !primitive.FitsAs(shape, feet, rotation, Scale, posture))
+                {
+                    primitive.SetExtraParts(hadParts);
+                    return false;
+                }
+                var replaced = new PrimitiveBody(this, ReplaceCollider(primitive.Collider, shape));
+                replaced.SetExtraParts(primitive.AuthoredExtraParts);
+                primitive = replaced;
                 body = primitive;
             }
-            if (!primitive.SetAuthoredShape(shape, feet, rotation, Scale, posture, checkRoom)) { return false; }
+            if (!primitive.SetAuthoredShape(shape, feet, rotation, Scale, posture, checkRoom))
+            {
+                primitive.SetExtraParts(hadParts);
+                return false;
+            }
             ApplyScale(Scale);
             return true;
         }

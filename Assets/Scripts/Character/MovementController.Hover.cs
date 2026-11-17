@@ -106,7 +106,7 @@ namespace Character
                 lastGroundedBy = byRay || Vector3.Angle(hit.normal, Vector3.up) <= maxSlopeAngle ? GroundedBy.Probe : GroundedBy.ProbeOnStepEdge;
                 return true;
             }
-            if (RestsOnSomething(position, out ground) && ProbeGround(position, StepHeight + BodyLift, out _, out _, out _))
+            if (BodyRestsOnSomething(position, out ground) && ProbeGround(position, StepHeight + BodyLift, out _, out _, out _))
             {
                 lastGroundedBy = GroundedBy.BodyRest;
                 return true;
@@ -128,6 +128,39 @@ namespace Character
         }
 
         /// <summary>
+        /// Whether the lifted body, its feet at position, rests on something walkable (within the skin and the grounded
+        /// tolerance below it), and what. Whatever its bottom rests on counts, a step's edge as much as a tread (not a
+        /// slope too steep to stand on): a long body over
+        /// stairs rests on the steps behind or ahead of its feet, well above them (where the standing body's rule, for a
+        /// bottom at the feet, takes only an edge as high as its footprint is wide). Whether that's ground is for the probes
+        /// under the feet to say (see CheckGroundedHovering): with nothing under them, it's perched, and tips off.
+        /// </summary>
+        private bool BodyRestsOnSomething(Vector3 position, out Transform ground)
+        {
+            ground = null;
+            if (!Body.Sweep(position, BodyRotation, Vector3.down, SkinWidth + GroundedTolerance, out RaycastHit rest)) { return false; }
+            if (IsOwnCollider(rest.transform) || rest.normal.y <= 0.01f) { return false; }
+            // Walkable where it touches: a tread, or a step's edge (the top of it there is walkable), not the face of a
+            // slope too steep to stand on, which it slides down.
+            if (Vector3.Angle(rest.normal, Vector3.up) > maxSlopeAngle && !WalkableAt(rest.point)) { return false; }
+            ground = rest.transform;
+            return true;
+        }
+
+        /// <summary>Whether the surface at point (a contact) is walkable from above: a top, or the edge of one.</summary>
+        private bool WalkableAt(Vector3 point)
+        {
+            float above = 2f * SkinWidth;
+            int count = Physics.RaycastNonAlloc(point + Vector3.up * above, Vector3.down, stepHits, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit below = stepHits[i];
+                if (!IsOwnCollider(below.collider.transform) && Vector3.Angle(below.normal, Vector3.up) <= maxSlopeAngle) { return true; }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// The vertical part of a step for a character hovering over steps, after its horizontal part (to pos): rising,
         /// its body is swept up (a ceiling stops it); otherwise, if it's on the ground or falling, its feet go to the
         /// ground its probes find (up onto a step, down a slope or a step, landing), within its fall this step (and, on
@@ -144,7 +177,10 @@ namespace Character
                 // never leaving the feet in the ground (walking up a beach, swimming), as the standing body's bottom,
                 // pushed up by the ground, didn't.
                 Vector3 risen = vert > 0f ? ResolveVertical(pos, vert, ref inertia, ref data.collisions) : Vector3.zero;
-                return risen + OutOfTheGround(pos + risen, ref data.collisions);
+                Vector3 outOfIt = OutOfTheGround(pos + risen, ref data.collisions);
+                // A step up in the air (its feet onto a ledge's top at a jump's height), for the model to ease over.
+                if (outOfIt.y > SkinWidth) { data.stepChange += outOfIt.y; }
+                return risen + outOfIt;
             }
 
             float fall = -vert;
@@ -178,6 +214,9 @@ namespace Character
                 // On the ground (or held up over it by the body: a long body over stairs).
                 data.collisions |= CollisionFlags.Below;
                 inertia.y = Mathf.Max(inertia.y, 0f);
+                // Landing up on something its feet fell into (a ledge's top, at the end of a jump): a step up, for the
+                // model to ease over, as on the ground.
+                if (!grounded && dy > SkinWidth) { data.stepChange += dy; }
                 if (grounded)
                 {
                     // Further than walking along what it's on would take it (by more than the skin width): a step.

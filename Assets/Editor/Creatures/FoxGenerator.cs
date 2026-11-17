@@ -62,7 +62,10 @@ namespace CharacterShowcase.EditorTools
         // The bones turned back against the body's pitch on slopes, and by how much of it, nose up and nose down: the tail
         // mostly going up (pitched up a steep ramp with the body, it swings down into it) and not at all going down (held
         // level, it reaches into the slope behind), the neck by half (the head looks ahead, not at the sky or its paws).
-        private static readonly (string bone, float up, float down)[] CounterPitchBones = { ("Tail1", 0.8f, 0f), ("Neck", 0.5f, 0.5f) };
+        private static readonly (string bone, float up, float down, float clearance)[] CounterPitchBones = { ("Tail1", 0.8f, 0f, TailClearance), ("Neck", 0.5f, 0.5f, 0f) };
+        // How far (m) the tail's tip is kept above the ground under it (see PawPlacementIK's Ground Clearance): its
+        // thickness there (its brush is thick), and a little more.
+        private const float TailClearance = 0.12f;
         // The bones bent into a turn, and their shares of the bend: the spine, neck and head toward it, the tail away (its
         // tip swinging round toward the turn too), so the fox curves into it.
         private static readonly (string bone, float share)[] TurnBendBones =
@@ -332,7 +335,7 @@ namespace CharacterShowcase.EditorTools
             if (!model.TryGetComponent(out PawPlacementIK paws)) { paws = model.AddComponent<PawPlacementIK>(); }
             paws.SetLegs(hips, legs);
             paws.SetCounterPitchBones(CounterPitchBones
-                .Select(c => new PawPlacementIK.CounterPitchBone { bone = Bone(c.bone), noseUpShare = c.up, noseDownShare = c.down })
+                .Select(c => new PawPlacementIK.CounterPitchBone { bone = Bone(c.bone), noseUpShare = c.up, noseDownShare = c.down, groundClearance = c.clearance })
                 .Where(c => c.bone != null)
                 .ToArray());
             paws.SetTurnBendBones(TurnBendBones
@@ -397,21 +400,32 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// The fox's body, made if it isn't there (then left as it's tuned): a box about its body's size, standing on its
-        /// paws, from just behind its nose to its rump (not its ears or tail), not refitted to the model.
+        /// The fox's body, made if it isn't there (then left as it's tuned), not refitted to the model: rounded, so it has
+        /// no corners to catch on things, and held above its legs (they're under it, over steps: see Hover Over Steps).
+        /// Its back is two capsules lying along it, one above the other (a body narrower than it's deep), from its rump
+        /// to its chest, the lower one's bottom a step above its paws; its head a sphere ahead of them, as high as its head
+        /// is (not its ears or tail).
         /// </summary>
         private static BodyDefinition LoadOrCreateBody()
         {
             var body = AssetDatabase.LoadAssetAtPath<BodyDefinition>(BodyPath);
             if (body != null) { return body; }
             body = ScriptableObject.CreateInstance<BodyDefinition>();
-            BodyShape box = BodyShape.Box(new Vector3(0.34f, 0.95f, 1.25f));
-            box.center.z = 0.125f; // Its head reaches further ahead of its middle than its rump does behind.
-            body.Shape = box;
+            body.Shape = BackCapsule(0.52f);
+            body.ExtraParts.Add(BackCapsule(0.66f));
+            BodyShape head = BodyShape.Sphere(0.15f);
+            head.center = new Vector3(0f, 0.8f, 0.56f);
+            body.ExtraParts.Add(head);
             body.RefitOnPrepare = false;
             AssetDatabase.CreateAsset(body, BodyPath);
             return body;
         }
+
+        /// <summary>A capsule lying along the fox's back (0.34 m across, 0.95 m long), its middle at the given height.</summary>
+        private static BodyShape BackCapsule(float height) => new BodyShape
+        {
+            kind = BodyShapeKind.Capsule, direction = 2, radius = 0.17f, height = 0.95f, center = new Vector3(0f, height, -0.05f),
+        };
 
         private static DirectCharacterModelSource SaveSource(GameObject modelPrefab, AnimatorParameterTranslator translator, BodyDefinition body)
         {

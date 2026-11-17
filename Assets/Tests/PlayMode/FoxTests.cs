@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -28,10 +29,14 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator TheFox_StandsOnItsPaws_InABoxBody_ItsEyesOnItsHead()
+        public IEnumerator TheFox_StandsOnItsPaws_InARoundedBodyAboveItsLegs_ItsEyesOnItsHead()
         {
             yield return SpawnFox();
-            Assert.That(rig.BodyNow.kind, Is.EqualTo(BodyShapeKind.Box), "The fox's body should be a box.");
+            var body = (PrimitiveBody)rig.Movement.Body;
+            Assert.That(body.AuthoredExtraParts.Count, Is.GreaterThan(0), "The fox's body should be of several parts (its back and its head).");
+            Assert.That(body.AuthoredExtraParts.Append(body.AuthoredShape).Any(p => p.kind == BodyShapeKind.Box), Is.False,
+                "The fox's body should be rounded, with no corners to catch on things.");
+            Assert.That(rig.Movement.HoverOverSteps, Is.True, "The fox should hover over steps, its legs under its body.");
             Assert.That(rig.Grounded, Is.True, "The fox should stand on the floor.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.02f));
             Assert.That(rig.FrontExtent, Is.GreaterThan(2f * rig.SideExtent), "The fox should be longer than it's wide.");

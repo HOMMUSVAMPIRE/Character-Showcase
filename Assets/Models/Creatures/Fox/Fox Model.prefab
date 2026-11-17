@@ -551,10 +551,13 @@ MonoBehaviour:
   - bone: {fileID: 3355191746315405290}
     noseUpShare: 0.8
     noseDownShare: 0
+    groundClearance: 0.12
   - bone: {fileID: 4620291763351031116}
     noseUpShare: 0.5
     noseDownShare: 0.5
+    groundClearance: 0
   pawSmoothTime: 0.05
+  swingLookAhead: 0.1
   plantedHeight: 0.02
   liftedHeight: 0.1
   swingSpeed: 0.3

@@ -13,11 +13,26 @@ MonoBehaviour:
   m_Name: Fox Body
   m_EditorClassIdentifier: CharacterShowcase::Character.BodyDefinition
   shape:
-    kind: 1
-    center: {x: 0, y: 0.475, z: 0.125}
-    radius: 0
+    kind: 0
+    center: {x: 0, y: 0.52, z: -0.05}
+    radius: 0.17
+    height: 0.95
+    direction: 2
+    size: {x: 0, y: 0, z: 0}
+    lyingThickness: 0
+  extraParts:
+  - kind: 0
+    center: {x: 0, y: 0.66, z: -0.05}
+    radius: 0.17
+    height: 0.95
+    direction: 2
+    size: {x: 0, y: 0, z: 0}
+    lyingThickness: 0
+  - kind: 2
+    center: {x: 0, y: 0.8, z: 0.56}
+    radius: 0.15
     height: 0
     direction: 0
-    size: {x: 0.34, y: 0.95, z: 1.25}
+    size: {x: 0, y: 0, z: 0}
     lyingThickness: 0
   refitOnPrepare: 0

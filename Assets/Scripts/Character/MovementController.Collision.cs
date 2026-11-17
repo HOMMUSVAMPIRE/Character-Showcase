@@ -293,7 +293,9 @@ namespace Character
             // A flat-bottomed body (a box) is on the step once it's over its top, however far ahead of its feet that is:
             // a long one (a fox's) reaches a step well ahead of its feet, and carried on to have its feet over it, was
             // carried into the next step's riser, so it never stepped up at all.
-            if (ahead > landingReach && !Body.FlatBottomed)
+            // Hovering over steps, it isn't carried on: the probes put the feet on the step as they reach it, and a long body
+            // stepping up stairs ahead of its feet (see below), carried on so, was carried into the next step's riser.
+            if (ahead > landingReach && !Body.FlatBottomed && !hovering.HasValue)
             {
                 float extra = ahead - landingReach;
                 if (Body.Sweep(raised, BodyRotation, dir, extra + SkinWidth, out _)) { return Vector3.zero; }

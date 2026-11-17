@@ -80,6 +80,11 @@ namespace Character
             [Tooltip("How much of the body's pitch it's turned back by, nose down (descending). A tail is best left " +
                      "pitched with the body going down: held level, it reaches into the slope rising behind.")]
             [Range(0f, 1f)] public float noseDownShare = 0.5f;
+            [Tooltip("How far (m, for the model at its authored size) the tip of the bone's chain (its last bone under it: " +
+                     "the tail's tip) is kept above the ground under it, once pitched: it's turned up about the bone as far " +
+                     "as that takes. Going down stairs, the steps behind rise faster than the pitched body lifts a long tail. " +
+                     "0: not kept")]
+            [Min(0f)] public float groundClearance;
         }
 
         [Tooltip("Overall strength of paw placement. 0 = off (the paws where the animation puts them), 1 = fully placed.")]
@@ -137,6 +142,13 @@ namespace Character
         [Header("Paws")]
         [Tooltip("Seconds to smooth each paw's ground height, so crossing a stair's edge doesn't pop.")]
         [Range(0f, 0.3f)] [SerializeField] private float pawSmoothTime = 0.05f;
+        [Tooltip("How far (m, for the model at its authored size) ahead of a swinging paw's toes the ground is looked for: a " +
+                 "paw swinging up a flight of stairs is lifted over the next step's edge as it comes to it, rather than " +
+                 "through its riser. Only ever raises a paw, and only as it swings (not planted). 0 doesn't look ahead")]
+        [Min(0f)] [SerializeField] private float swingLookAhead = 0.1f;
+        // How much higher (m, at the authored size) than the slope under a swinging paw's toes carries on to, the ground
+        // ahead of them must be to be a step it lifts over (see Swing Look Ahead): more than a bump's rounding.
+        private const float SwingStepThreshold = 0.02f;
         [Tooltip("Animated paw lift (m above the floor, for the model at its authored size) below which a paw counts as " +
                  "planted, so it tilts to the ground.")]
         [Min(0f)] [SerializeField] private float plantedHeight = 0.02f;
@@ -495,7 +507,9 @@ namespace Character
                 Vector3 pawJoint = leg.foot.position + moved, middleJoint = leg.lower.position + moved;
                 float pawJointClear = Vector3.Dot(leg.foot.position - animated, forward) > 0f ? 0f : Mathf.Max(leg.foot.position.y - animated.y, 0f);
                 float middleJointClear = Vector3.Dot(leg.lower.position - animated, forward) > 0f ? 0f : Mathf.Max(leg.lower.position.y - animated.y, 0f);
-                FindPawGround(ref paw, contact, pawJoint, pawJointClear, middleJoint, middleJointClear, probeTop, floor, scale, deltaTime);
+                // Where a swinging paw is going: as far ahead of its toes as it's lifted (not planted, as last placed).
+                Vector3 lookAhead = forward * (swingLookAhead * scale * (1f - paw.planted));
+                FindPawGround(ref paw, contact, pawJoint, pawJointClear, middleJoint, middleJointClear, lookAhead, probeTop, floor, scale, deltaTime);
             }
             // Then lowered as far as a planted leg, pitched so, would have to reach further down to its paw's ground than
             // the animation reaches (a lifted paw lowers it as it comes down): the leg's top where pitching takes it,
@@ -593,6 +607,11 @@ namespace Character
                 float share = pitched >= 0f ? counter?.noseUpShare ?? 0f : counter?.noseDownShare ?? 0f;
                 if (counter?.bone == null || share <= 0f) { continue; }
                 counter.bone.rotation = Quaternion.AngleAxis(pitched * share, right) * counter.bone.rotation;
+            }
+            foreach (CounterPitchBone counter in counterPitchBones)
+            {
+                if (counter?.bone == null || counter.groundClearance <= 0f) { continue; }
+                KeepTipClear(counter.bone, counter.groundClearance * scale * activeWeight, right, up, forward);
             }
 
             // Each leg bent to put its paw on its ground, lifted as animated, turned as animated (tilted to the ground when
@@ -694,7 +713,7 @@ namespace Character
         /// ground would trail it by as much as it moved in the easing's time, standing above the ramp.
         /// </summary>
         private void FindPawGround(ref PawState paw, Vector3 contact, Vector3 joint, float jointClear, Vector3 middleJoint,
-            float middleJointClear, float top, float floor, float scale, float deltaTime)
+            float middleJointClear, Vector3 lookAhead, float top, float floor, float scale, float deltaTime)
         {
             float stepUp = maxStepUp * scale, stepDown = maxStepDown * scale;
             // Under the paw's contact (its toes), and under its joint and the leg's middle joint, less how high above the
@@ -712,6 +731,19 @@ namespace Character
                     groundGoal = jointHit.point.y - clear;
                     if (!paw.hit) { hit = jointHit; }
                     paw.hit = true;
+                }
+            }
+            // Swinging, the ground just ahead of its toes too, if it's a step up: higher than the ground under the toes,
+            // carried on along its slope, reaches there (the next step's edge, which it's coming up onto; not a ramp's rise).
+            if (lookAhead.sqrMagnitude > 1e-10f)
+            {
+                var ahead = new Vector3(contact.x + lookAhead.x, top, contact.z + lookAhead.z);
+                float alongSlope = paw.hit && hit.normal.y > 0.1f ? -(hit.normal.x * lookAhead.x + hit.normal.z * lookAhead.z) / hit.normal.y : 0f;
+                float stepAbove = Mathf.Max(groundGoal, (paw.hit ? hit.point.y : groundGoal) + alongSlope) + SwingStepThreshold * scale;
+                if (FindGround(ahead, ahead.y - (floor - stepDown), out RaycastHit aheadHit) && aheadHit.point.y > stepAbove)
+                {
+                    groundGoal = aheadHit.point.y;
+                    if (!paw.hit) { hit = aheadHit; paw.hit = true; }
                 }
             }
             Vector3 normalGoal = Vector3.up;
@@ -919,6 +951,44 @@ namespace Character
             {
                 lower.rotation = Quaternion.FromToRotation(from, to) * lower.rotation;
             }
+        }
+
+        /// <summary>
+        /// Turns the bone up (about right, at the bone) as far as keeps the end of its chain (past its first child's first
+        /// child's ..., its last bone) clearance above the ground under it, keeping how far the end is from it.
+        /// </summary>
+        private void KeepTipClear(Transform bone, float clearance, Vector3 right, Vector3 up, Vector3 forward)
+        {
+            Transform last = bone;
+            for (Transform next = FirstBone(last); next != null; next = FirstBone(last)) { last = next; }
+            if (last == bone) { return; }
+            // The chain's end: as far past its last bone as that is past the one before (a bone's origin is where it
+            // starts, and the last one's mesh reaches on past it: the tail's tip).
+            Vector3 end = last.position + (last.position - last.parent.position);
+            Vector3 toTip = Vector3.ProjectOnPlane(end - bone.position, right);
+            float reach = toTip.magnitude;
+            if (reach < 1e-4f) { return; }
+            bool hasGround = FindGround(end + up * reach, 2f * reach + clearance, out RaycastHit ground);
+            if (!hasGround) { return; }
+            float shortfall = ground.point.y + clearance - end.y;
+            if (shortfall <= 0f) { return; }
+            float height = Vector3.Dot(toTip, up);
+            float raised = Mathf.Asin(Mathf.Clamp(Mathf.Min(height + shortfall, reach) / reach, -1f, 1f))
+                           - Mathf.Asin(Mathf.Clamp(height / reach, -1f, 1f));
+            // About right, a positive turn raises what's behind the bone; what's ahead of it, the other way.
+            float sign = Vector3.Dot(toTip, forward) < 0f ? 1f : -1f;
+            bone.rotation = Quaternion.AngleAxis(sign * raised * Mathf.Rad2Deg, right) * bone.rotation;
+        }
+
+        /// <summary>The bone's first child that's a bone (not its hitbox: see Hitbox), or null.</summary>
+        private static Transform FirstBone(Transform bone)
+        {
+            for (int i = 0; i < bone.childCount; i++)
+            {
+                Transform child = bone.GetChild(i);
+                if (!child.TryGetComponent(out Hitbox _)) { return child; }
+            }
+            return null;
         }
 
         private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)

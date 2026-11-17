@@ -14,12 +14,20 @@ namespace Character
         [Tooltip("The body: its kind, its size and where it sits standing (relative to the feet, the character's origin), and " +
                  "how thick it is lying down")]
         [SerializeField] private BodyShape shape = BodyShape.Capsule(0.5f, 2f);
+        [Tooltip("More primitives beside the body's shape, together one body: a long creature's back and head, say, where a " +
+                 "box round all of it would reach out with its corners. The movement's queries cover every part, and the " +
+                 "body is as tall as its highest part. Each is placed as the shape is (relative to the feet and facing, " +
+                 "standing). Empty: the body is its shape alone")]
+        [SerializeField] private System.Collections.Generic.List<BodyShape> extraParts = new();
         [Tooltip("Let Prepare Character Models fit this body to its model again each time it runs. Turn off for a body " +
                  "shaped by hand, which it then leaves as it is")]
         [SerializeField] private bool refitOnPrepare = true;
 
         /// <summary>The body this defines.</summary>
         public BodyShape Shape { get => shape; set => shape = value; }
+
+        /// <summary>The body's extra parts beside its shape (see the field's tooltip): none for a body of one shape.</summary>
+        public System.Collections.Generic.List<BodyShape> ExtraParts => extraParts;
 
         /// <summary>Whether Prepare Character Models fits this body to its model each time it runs.</summary>
         public bool RefitOnPrepare { get => refitOnPrepare; set => refitOnPrepare = value; }
