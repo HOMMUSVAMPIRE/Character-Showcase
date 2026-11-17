@@ -73,6 +73,12 @@ namespace Character
                                   "eases up after a step up, so its knees never fold up past its chest")]
         [Min(0f)] private float stepUpMaxLag = 0.35f;
 
+        [Header("Swimming Underwater")]
+        [SerializeField] [Tooltip("Seconds over which the model eases down to the character's body as it dives (and back up as " +
+                                  "it surfaces): the swimming animations float the body the swim depth above the feet, as " +
+                                  "treading water does, but underwater the body lies on them (see Swimming). 0 = at once.")]
+        [Min(0f)] private float modelDropSmoothTime = 0.25f;
+
         [Header("Climbing Out Of Water")]
         [SerializeField] [Tooltip("How far into the climb onto a ledge (0 to 1) a climb out of the water starts (see " +
                                   "Swimming): a swimmer at the edge is already part way up, its body higher than one " +
@@ -116,6 +122,11 @@ namespace Character
         private float stepUpLag, easedHeight, easedHeightVelocity, lastRootHeight;
         private bool hasLastRootHeight;
         private Vector3 modelParentLocalPosition;
+        // Lowering the model to the body underwater (see MovementData.modelDrop): how far now (m), and how fast it's changing.
+        private float modelDrop, modelDropVelocity;
+        // Whether the model parent was last moved off its own position (by a step up's lag or the model drop), so its
+        // own position isn't read back with the offset in it.
+        private bool modelParentDisplaced;
 
         private ICharacterAnimationDriver driver;
         // The driver of a model being replaced, which the new model's driver carries on from.
@@ -412,6 +423,20 @@ namespace Character
         }
 
         /// <summary>
+        /// How far (m) to draw the model below where its animations put it: easing to the movement's model drop (lowered
+        /// to the body underwater; see MovementData.modelDrop) and back.
+        /// </summary>
+        private float EaseModelDrop(float deltaTime)
+        {
+            MovementData last = movementController != null ? movementController.lastFrameMovementData : null;
+            float target = last != null ? last.modelDrop : 0f;
+            if (modelDropSmoothTime <= 0f) { modelDrop = target; modelDropVelocity = 0f; }
+            else { modelDrop = Mathf.SmoothDamp(modelDrop, target, ref modelDropVelocity, modelDropSmoothTime, Mathf.Infinity, deltaTime); }
+            if (target == 0f && modelDrop < 1e-4f) { modelDrop = 0f; modelDropVelocity = 0f; }
+            return modelDrop;
+        }
+
+        /// <summary>
         /// Holds the model below the character as it steps up onto something, then eases it up after it: the step's rise
         /// is quick (it feels right that way), but the model popping up with the collider looked wrong. From where the
         /// model was when the step began, it follows the character's height, a critically damped spring, never above it
@@ -426,7 +451,7 @@ namespace Character
                               && movementController.lastFrameMovementData.state.HasFlag(CharacterState.SteppingUp);
             if (stepUpLag == 0f)
             {
-                modelParentLocalPosition = modelParent.localPosition;
+                if (!modelParentDisplaced) { modelParentLocalPosition = modelParent.localPosition; }
                 if (steppingUp && stepUpSmoothTime > 0f)
                 {
                     // From where the model was last frame, before this frame's part of the rise.
@@ -446,11 +471,13 @@ namespace Character
             }
             lastRootHeight = rootHeight;
             hasLastRootHeight = true;
-            if (stepUpLag != 0f || modelParent.localPosition != modelParentLocalPosition)
+            float drop = EaseModelDrop(deltaTime);
+            if (stepUpLag != 0f || drop != 0f || modelParent.localPosition != modelParentLocalPosition)
             {
                 modelParent.localPosition = modelParentLocalPosition;
-                modelParent.position += Vector3.up * stepUpLag;
+                modelParent.position += Vector3.up * (stepUpLag - drop);
             }
+            modelParentDisplaced = stepUpLag != 0f || drop != 0f;
         }
 
         /// <summary>The model's facing (yaw, degrees) as SmoothRotateVisuals has turned it, without its lean.</summary>

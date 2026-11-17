@@ -16,7 +16,7 @@ namespace Character
         /// surface the character rests against is about Skin away.
         /// </summary>
         public bool SweepBody(Vector3 feet, Vector3 direction, float distance, out RaycastHit hit) =>
-            Body.Sweep(feet, direction, distance, out hit);
+            Body.Sweep(feet, BodyRotation, direction, distance, out hit);
 
         /// <summary>The nearest thing a ray hits within distance, other than the character itself (triggers aren't hit).</summary>
         public bool Raycast(Vector3 origin, Vector3 direction, float distance, out RaycastHit hit)

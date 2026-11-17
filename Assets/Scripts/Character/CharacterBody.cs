@@ -6,9 +6,10 @@ namespace Character
     /// The character's body as collision sees it: its collider, its size (as authored, and now, at the character's size
     /// and posture), and the queries that depend on its shape: whether it fits somewhere, sweeping it through the world,
     /// and pushing it out of what has moved into it. The MovementController resolves the character's movement through
-    /// these alone (see MovementController.Body), so a body of another shape is another subclass; CapsuleBody is the
-    /// upright capsule. Its origin is the character's: the point it stands on, its feet. Its queries skip the character's
-    /// own colliders, and what it ignores (MovementController.IgnoredCollisionRoot).
+    /// these alone (see MovementController.Body), so a body of another kind is another subclass; PrimitiveBody is one of
+    /// Unity's primitive colliders (a capsule, box or sphere). Its origin is the character's: the point it stands on, its
+    /// feet, though its shape may sit off it (centred above the feet, lying ahead of them). It turns with the character.
+    /// Its queries skip the character's own colliders, and what it ignores (MovementController.IgnoredCollisionRoot).
     /// </summary>
     public abstract class CharacterBody
     {
@@ -26,14 +27,26 @@ namespace Character
         /// <summary>The body's height (m) standing, at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         public abstract float AuthoredHeight { get; }
 
-        /// <summary>The body's radius (m) across, at the character's authored size, which its scale multiplies.</summary>
+        /// <summary>
+        /// The radius (m) of the body's footprint, at the character's authored size, which its scale multiplies (see
+        /// FootprintRadius).
+        /// </summary>
         public abstract float AuthoredRadius { get; }
 
-        /// <summary>The body's radius (m) across now, at the character's size and posture. Only while it has a collider.</summary>
-        public abstract float Radius { get; }
+        /// <summary>
+        /// The radius (m) of the body's footprint now, at the character's size and posture: the ground check under its feet
+        /// is about this wide, and small clearances (the skin width) shrink with it. Only while it has a collider.
+        /// </summary>
+        public abstract float FootprintRadius { get; }
 
-        /// <summary>The body's height (m) now, at the character's size and posture. Only while it has a collider.</summary>
+        /// <summary>The body's height (m) now, top to bottom, at the character's size and posture. Only while it has a collider.</summary>
         public abstract float Height { get; }
+
+        /// <summary>
+        /// Whether turning the character turns its body into somewhere else (it isn't round about the feet: lying, a box,
+        /// a shape off to one side), so that a turn needs room (see MovementController.CheckMovementValid).
+        /// </summary>
+        public abstract bool TurnsWithFacing { get; }
 
         // Its proportions: what the abilities measure the character by (how tall it stands, how far it reaches out in front,
         // behind and to the sides of its feet), rather than the collider's dimensions, so a body of another shape answers
@@ -54,20 +67,20 @@ namespace Character
         /// <summary>Reads the body's size as authored from its collider, if it hasn't yet (before Awake, too: a prefab asked about).</summary>
         public abstract void RememberAuthoredSize();
 
-        /// <summary>Sizes the collider for the character's scale and the share of its standing height it has (its posture).</summary>
-        public abstract void Resize(Vector3 scale, float heightFraction);
+        /// <summary>Shapes the collider for the character's scale and posture. Doesn't check for room: see Fits.</summary>
+        public abstract void Resize(Vector3 scale, BodyPosture posture);
 
         /// <summary>
-        /// Whether the body would fit with its feet at feet, at the given scale and share of its standing height, without
+        /// Whether the body would fit with its feet at feet, turned rotation, at the given scale and posture, without
         /// overlapping the world (more than the skin width, so a floor it stands on doesn't count).
         /// </summary>
-        public abstract bool Fits(Vector3 feet, Vector3 scale, float heightFraction);
+        public abstract bool Fits(Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture);
 
         /// <summary>
-        /// Sweeps the body as it is now from feet along direction, returning the nearest thing it would hit within distance
-        /// (not counting what it starts overlapping). A hit's distance includes the skin width.
+        /// Sweeps the body as it is now, turned rotation, from feet along direction, returning the nearest thing it would
+        /// hit within distance (not counting what it starts overlapping). A hit's distance includes the skin width.
         /// </summary>
-        public abstract bool Sweep(Vector3 feet, Vector3 direction, float distance, out RaycastHit hit);
+        public abstract bool Sweep(Vector3 feet, Quaternion rotation, Vector3 direction, float distance, out RaycastHit hit);
 
         /// <summary>
         /// How far the body, its feet at feet and turned rotation, must move to stop overlapping the world. Only overlaps
@@ -77,8 +90,8 @@ namespace Character
 
         /// <summary>
         /// The same body for a copy of the character (see MovementController.CopyForSimulation): a collider of its kind
-        /// added to the copy's object, and its size as authored (or, given an authored radius and height, a body of that
-        /// size standing on its feet). The copy sizes it for itself.
+        /// added to the copy's object, and its size as authored (or, given an authored footprint radius and height, a body
+        /// of that size standing on its feet). The copy sizes it for itself.
         /// </summary>
         public abstract CharacterBody CopyFor(MovementController copy, float? authoredRadius = null, float? authoredHeight = null);
 

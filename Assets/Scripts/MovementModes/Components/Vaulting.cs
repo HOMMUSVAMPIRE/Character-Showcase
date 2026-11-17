@@ -246,12 +246,12 @@ namespace Character
             // Room to rise up to the top where the character is, and to be on it with its whole body past the wall's
             // face, where the vault ends.
             float clearedHeight = edge.y + VaultClearance(controller);
-            if (!controller.CanFitAt(new Vector3(feet.x, Mathf.Max(feet.y, clearedHeight), feet.z), 1f)) { return false; }
+            if (!controller.CanFitAt(new Vector3(feet.x, Mathf.Max(feet.y, clearedHeight), feet.z))) { return false; }
             float headingIn = Mathf.Max(Vector3.Dot(heading, -wallNormal), 0.5f);
             float toFace = Mathf.Max(0f, Vector3.Dot(edge - feet, -wallNormal));
             Vector3 end = feet + heading * ((toFace + controller.Body.BackExtent) / headingIn);
             end.y = clearedHeight;
-            if (!controller.CanFitAt(end, 1f)) { return false; }
+            if (!controller.CanFitAt(end)) { return false; }
 
             float minSpeed = vaultMinSpeed * controller.SpeedScale;
             float speed = Mathf.Max(moving.magnitude, minSpeed, 1e-3f);

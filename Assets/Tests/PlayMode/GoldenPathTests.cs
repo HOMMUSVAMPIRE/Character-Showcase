@@ -433,7 +433,7 @@ namespace CharacterShowcase.Tests
             float yaw = rig.Body.rotation.eulerAngles.y;
             return string.Join(",", step.ToString(CultureInfo.InvariantCulture), F(p.x), F(p.y), F(p.z), F(yaw), F(v.x), F(v.y), F(v.z),
                 ((int)data.state).ToString(CultureInfo.InvariantCulture), ((long)data.events).ToString(CultureInfo.InvariantCulture),
-                F(rig.Movement.HeightFraction));
+                F(rig.CurrentHeight / rig.StandingHeight));
         }
 
         private static string F(float value) => value.ToString("0.#####", CultureInfo.InvariantCulture);
@@ -557,7 +557,7 @@ namespace CharacterShowcase.Tests
                     : Convert.ChangeType(setting.value, field.FieldType, CultureInfo.InvariantCulture);
                 field.SetValue(rig.Movement, value);
             }
-            Assert.That(rig.Movement.SetBaseCapsule(pinned.colliderRadius, pinned.colliderHeight), Is.True,
+            Assert.That(rig.Movement.SetBaseSize(pinned.colliderRadius, pinned.colliderHeight), Is.True,
                 "The golden paths' collider should fit where the character is spawned.");
         }
     }

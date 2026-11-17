@@ -128,17 +128,27 @@ namespace Character
         }
 
         /// <summary>
-        /// Lowers the character's collider to the crouch height (Crouching's, whether or not it's turned on: rolls go
-        /// low either way) while a component keeps it low (crouched, sliding, rolling), and raises it again otherwise.
-        /// Where there isn't room to stand (a slide or roll ending under something low, say), the character stays
-        /// crouched, and stands up by itself once there is. Also marks the step as crouched.
+        /// Holds the character's body the way the first component to hold it does (low while crouched, sliding or rolling;
+        /// lying while swimming underwater: see MovementComponent.Posture), where there's room; where there isn't (lying
+        /// down beside a wall, say), it's held low, at the crouch height (Crouching's, whether or not it's turned on),
+        /// until there is. With none holding it, it stands again; where there isn't room to (a slide or roll ending under
+        /// something low, say), the character stays crouched, and stands up by itself once there is. Also marks the step
+        /// as crouched.
         /// </summary>
         private void UpdatePosture(ref MovementData movementData, MovementController controller)
         {
             CrouchState crouch = controller.crouch;
-            if (ComponentKeepsLow(controller)) { controller.SetHeightFraction(SettingsOf<Crouching>().CrouchHeight, movementData.initialPosition); }
-            else if (!controller.SetHeightFraction(1f, movementData.initialPosition))
+            Vector3 feet = movementData.initialPosition;
+            BodyPosture low = BodyPosture.Low(SettingsOf<Crouching>().CrouchHeight);
+            BodyPosture? held = ComponentPosture(controller);
+            if (held.HasValue)
             {
+                if (!controller.SetPosture(held.Value, feet)) { controller.SetPosture(low, feet); }
+            }
+            else if (!controller.SetPosture(BodyPosture.Standing, feet))
+            {
+                // Low, if it's not already (coming up from lying under something low); where even that won't fit, it stays as it is.
+                controller.SetPosture(low, feet);
                 crouch.IsCrouched = true;
                 crouch.wantsToStand = true;
             }

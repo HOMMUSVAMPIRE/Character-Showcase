@@ -259,15 +259,20 @@ namespace Character
             }
         }
 
-        /// <summary>Whether a turned-on component keeps the character low this step (see MovementComponent.KeepsLow).</summary>
-        protected bool ComponentKeepsLow(MovementController controller)
+        /// <summary>
+        /// How the first turned-on component (in list order) to hold the character's body holds it this step, or null if
+        /// none does (see MovementComponent.Posture).
+        /// </summary>
+        protected BodyPosture? ComponentPosture(MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled && component.KeepsLow(controller)) { return true; }
+                if (component == null || !component.Enabled) { continue; }
+                BodyPosture? held = component.Posture(controller);
+                if (held.HasValue) { return held; }
             }
-            return false;
+            return null;
         }
 
         /// <summary>Each turned-on component, once the step's movement is resolved (see MovementComponent.AfterMovementResolved).</summary>

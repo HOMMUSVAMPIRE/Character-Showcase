@@ -102,10 +102,12 @@ namespace Character
         }
 
         /// <summary>
-        /// Whether this keeps the character low this step, its collider at the crouch height (crouched, sliding, rolling):
-        /// the mode lowers it while any turned-on component does, and stands it back up where there's room otherwise.
+        /// How this holds the character's body this step (see BodyPosture), or null if it doesn't: low at the crouch height
+        /// (crouched, sliding, rolling), lying (swimming underwater). The first turned-on component, in list order, to hold
+        /// it has its way; the mode holds the body so where there's room (else as low as it fits), and stands it back up
+        /// where there's room once none does.
         /// </summary>
-        public virtual bool KeepsLow(MovementController controller) => false;
+        public virtual BodyPosture? Posture(MovementController controller) => null;
 
         /// <summary>
         /// Every step, last of all, whatever has the character (once its posture is set): for limits on the step's

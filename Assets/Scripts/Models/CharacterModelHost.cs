@@ -407,7 +407,7 @@ namespace Character
         private void TryFitCollider()
         {
             if (movement == null) { pendingColliderFit = false; return; }
-            if (movement.SetBaseCapsule(fitRadius, fitHeight)) { pendingColliderFit = false; }
+            if (movement.SetBaseSize(fitRadius, fitHeight)) { pendingColliderFit = false; }
         }
 
         /// <summary>

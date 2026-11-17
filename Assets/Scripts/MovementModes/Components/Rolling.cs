@@ -37,7 +37,9 @@ namespace Character
 
         public override bool IsActive(MovementController controller) => controller.roll.IsRolling;
 
-        public override bool KeepsLow(MovementController controller) => controller.roll.IsRolling;
+        /// <summary>Rolling, low at the crouch height (Crouching's, whether or not it's turned on).</summary>
+        public override BodyPosture? Posture(MovementController controller) =>
+            controller.roll.IsRolling ? BodyPosture.Low(SettingsOf<Crouching>().CrouchHeight) : null;
 
         /// <summary>Frees the next press of Roll once it's released, advances the cooldown, and keeps track of falls (see TrackFall).</summary>
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)

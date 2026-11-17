@@ -2,50 +2,61 @@ using UnityEngine;
 
 namespace Character
 {
-    // The character's body (see CharacterBody): its size (ApplyScale), its height while crouched (SetHeightFraction), and
-    // whether it fits somewhere. Collision goes through it (see MovementController.Collision.cs).
+    // The character's body (see CharacterBody): its size (ApplyScale), its posture (SetPosture), and whether it fits
+    // somewhere. Collision goes through it (see MovementController.Collision.cs).
     public partial class MovementController
     {
         private CharacterBody body;
 
         /// <summary>
         /// The character's body as collision sees it (see CharacterBody): every sweep, overlap and push out of the world
-        /// goes through it. An upright capsule (CapsuleBody) of the character's CapsuleCollider.
+        /// goes through it. One of Unity's primitive colliders (PrimitiveBody): the character's Body Collider.
         /// </summary>
-        public CharacterBody Body => body ??= new CapsuleBody(this, capsule);
+        public CharacterBody Body => body ??= new PrimitiveBody(this, bodyCollider);
 
-        private void RememberBaseCapsule() => Body.RememberAuthoredSize();
+        private void RememberBaseSize() => Body.RememberAuthoredSize();
 
         /// <summary>
-        /// Resizes the character's collision to the given size (see CharacterBody.Resize: a capsule's height scales with y,
-        /// and its radius with the larger of x and z). Collision sweeps, ground checks and depenetration all use the body,
-        /// so they follow. (A crouched character's body is lower too: see SetHeightFraction.) Doesn't check for room: see
-        /// CanFit. Called by ACCharacterController.SetScale.
+        /// After the character's collider has been replaced (a capsule for a box, say): makes its body again, from the
+        /// first primitive collider on it, as authored, in the posture it has.
+        /// </summary>
+        public void RebuildBody(Collider primitive = null)
+        {
+            bodyCollider = primitive;
+            body = null;
+            RememberBaseSize();
+            ApplyScale(Scale);
+        }
+
+        /// <summary>
+        /// Resizes the character's collision to the given size (see PrimitiveBody: a capsule's height scales with y, and
+        /// its radius with the larger of x and z). Collision sweeps, ground checks and depenetration all use the body, so
+        /// they follow. (Its posture shapes it too: see SetPosture.) Doesn't check for room: see CanFit. Called by
+        /// ACCharacterController.SetScale.
         /// </summary>
         public void ApplyScale(Vector3 scale)
         {
             Scale = scale;
-            Body.Resize(scale, heightFraction);
+            Body.Resize(scale, posture);
         }
 
-        // The share of its standing height the character's collider has: below 1 while crouched (see SetHeightFraction).
-        private float heightFraction = 1f;
+        // How the character's body is held: standing, low (crouched), lying (swimming underwater). See SetPosture.
+        private BodyPosture posture = BodyPosture.Standing;
 
-        /// <summary>The share of its standing height the character's collider has now (1 standing; less crouched).</summary>
-        public float HeightFraction => heightFraction;
+        /// <summary>How the character's body is held now (standing; low while crouched; lying underwater).</summary>
+        public BodyPosture Posture => posture;
 
         /// <summary>
-        /// Lowers or raises the top of the character's collider, keeping its feet where they are: to the given share of
-        /// its standing height (crouching, say). Lowering always works; raising only where there's room above the
-        /// character standing at feet (its physics position this step), and otherwise nothing changes and this returns
-        /// false. The share stays through changes of size.
+        /// Changes how the character's body is held (see BodyPosture), keeping its feet where they are. Lowering it (from
+        /// standing, or lower still) always works; anything else only where the body fits that way with its feet at feet
+        /// (its physics position this step), and otherwise nothing changes and this returns false. The posture holds
+        /// through changes of size.
         /// </summary>
-        public bool SetHeightFraction(float fraction, Vector3 feet)
+        public bool SetPosture(BodyPosture newPosture, Vector3 feet)
         {
-            fraction = Mathf.Clamp(fraction, 0.1f, 1f);
-            if (Mathf.Abs(fraction - heightFraction) < 1e-5f) { return true; }
-            if (fraction > heightFraction && !CanFitAt(feet, fraction)) { return false; }
-            heightFraction = fraction;
+            if (newPosture.Equals(posture)) { return true; }
+            if (!newPosture.IsLowerThan(posture) && !CanFitAt(feet, newPosture)) { return false; }
+            posture = newPosture;
             ApplyScale(Scale);
             return true;
         }
@@ -54,21 +65,22 @@ namespace Character
         public float MaxStepHeight => maxStepHeight;
         /// <summary>The steepest slope, in degrees, the character treats as walkable ground.</summary>
         public float MaxSlopeAngle => maxSlopeAngle;
-        /// <summary>The body's radius (m) at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
+        /// <summary>The radius (m) of the body's footprint at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         public float BaseRadius => Body.AuthoredRadius;
         /// <summary>The body's height (m) at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
         public float BaseHeight => Body.AuthoredHeight;
 
         /// <summary>
-        /// Changes the capsule's size at the character's authored size (its scale then multiplies it), standing on the
-        /// character's feet (see CapsuleBody.SetAuthoredSize). Used to fit the collider to the character's model (see
-        /// CharacterModelHost). Like growing, it waits for room: if the bigger capsule wouldn't fit where the character
-        /// stands, nothing changes and this returns false. False for a body that isn't a capsule.
+        /// Changes the body's size at the character's authored size (its scale then multiplies it), standing on the
+        /// character's feet (see PrimitiveBody.SetAuthoredSize): its footprint's radius and its height. Used to fit the
+        /// collider to the character's model (see CharacterModelHost). Like growing, it waits for room: if the bigger body
+        /// wouldn't fit where the character stands, nothing changes and this returns false. False for a body that can't
+        /// be refitted so (a capsule lying as authored, or one that isn't a primitive).
         /// </summary>
-        public bool SetBaseCapsule(float radius, float height)
+        public bool SetBaseSize(float radius, float height)
         {
-            if (Body is not CapsuleBody capsuleBody
-                || !capsuleBody.SetAuthoredSize(radius, height, rb != null ? rb.position : transform.position, Scale, heightFraction))
+            if (Body is not PrimitiveBody primitive
+                || !primitive.SetAuthoredSize(radius, height, PhysicsPosition, BodyRotation, Scale, posture))
             {
                 return false;
             }
@@ -77,15 +89,27 @@ namespace Character
         }
 
         /// <summary>
-        /// Whether the character would fit where it stands at the given size, without overlapping the world (more than
-        /// the skin width, so the floor it stands on doesn't count).
+        /// Whether the character would fit where it stands at the given size, in its posture, without overlapping the
+        /// world (more than the skin width, so the floor it stands on doesn't count).
         /// </summary>
-        public bool CanFit(Vector3 scale) => Body.Fits(rb != null ? rb.position : transform.position, scale, heightFraction);
+        public bool CanFit(Vector3 scale) => Body.Fits(PhysicsPosition, BodyRotation, scale, posture);
+
+        /// <summary>Whether the character would fit standing with its feet at the given position, at its size, without overlapping the world.</summary>
+        public bool CanFitAt(Vector3 feet) => CanFitAt(feet, BodyPosture.Standing);
 
         /// <summary>
-        /// Whether the character would fit with its feet at the given position, at its size and the given share of its
-        /// standing height (1 standing; see SetHeightFraction), without overlapping the world.
+        /// Whether the character would fit with its feet at the given position, at its size, held the given way (see
+        /// BodyPosture) and turned as it is, without overlapping the world.
         /// </summary>
-        public bool CanFitAt(Vector3 feet, float fraction = 1f) => Body.Fits(feet, Scale, Mathf.Clamp(fraction, 0.1f, 1f));
+        public bool CanFitAt(Vector3 feet, BodyPosture held) => Body.Fits(feet, BodyRotation, Scale, held);
+
+        // The character's physics pose (the Rigidbody's, which the transform lags behind while it's interpolated).
+        private Vector3 PhysicsPosition => rb != null ? rb.position : transform.position;
+
+        // Set while collision resolves a step: the way the body faces as it moves (the step's turn, as far as it has room).
+        private Quaternion? resolvingRotation;
+
+        /// <summary>The way the body faces for queries: as the step turns it while collision resolves it, else the physics pose's.</summary>
+        internal Quaternion BodyRotation => resolvingRotation ?? (rb != null ? rb.rotation : transform.rotation);
     }
 }

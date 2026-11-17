@@ -75,11 +75,13 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
 
         /// <summary>
-        /// Underwater, the character's collider is lowered to the crouch height, as a body swimming along is far less tall
-        /// than one standing, so it fits through what it swims through. (Its collider is still an upright capsule: a
-        /// flat one, for a body lying along the way it swims, waits on movement not assuming that shape.)
+        /// Underwater, the character's body lies flat along the way it swims, resting on its feet (the bottom of its body),
+        /// so it fits through what a swimmer would: along the pool's floor, under an arch. (The swimming animations float
+        /// the body the swim depth above the feet, as treading water at the surface does, so underwater the model is drawn
+        /// lowered to the body: see MovementData.modelDrop.) At the surface it treads water, upright.
         /// </summary>
-        public override bool KeepsLow(MovementController controller) => controller.swim.IsUnderwater;
+        public override BodyPosture? Posture(MovementController controller) =>
+            controller.swim.IsUnderwater ? BodyPosture.Lying : null;
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {
@@ -212,7 +214,13 @@ namespace Character
             movementData.velocityOverride = velocity;
             movementData.directMovementVector = Vector3.zero;
             movementData.state |= CharacterState.Swimming;
-            if (swim.underwater) { movementData.state |= CharacterState.Diving; }
+            if (swim.underwater)
+            {
+                movementData.state |= CharacterState.Diving;
+                // The swimming animations draw the body the swim depth above the feet; underwater it's the middle of the
+                // body, which rests on them (lying, once there's room to).
+                movementData.modelDrop = Mathf.Max(0f, depth - 0.5f * controller.Body.Height);
+            }
             if (velocity.sqrMagnitude > 1e-4f) { movementData.state |= CharacterState.Moving; }
             return true;
         }

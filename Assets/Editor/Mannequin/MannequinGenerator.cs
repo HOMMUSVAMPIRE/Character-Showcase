@@ -109,6 +109,9 @@ namespace CharacterShowcase.EditorTools
         // below it, it blends from treading water. The stroke is on the spot (it has no strides to measure), so it's
         // shown at any swimming speed past this.
         private const float SwimStrokeSpeed = 1.5f;
+        // How fast (a share of its own pace) Swim Underwater plays the swim stroke while the character drifts without
+        // swimming: an easy stroke, lying flat as the body does underwater, rather than treading water upright.
+        private const float UnderwaterDriftStrokePace = 0.35f;
         // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
         // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
         private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;

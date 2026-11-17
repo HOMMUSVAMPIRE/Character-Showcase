@@ -138,7 +138,7 @@ namespace Character
             }
 
             Vector3 hang = HangPosition(controller, wallNormal, edge);
-            if (!controller.CanFitAt(hang, 1f)) { return false; }
+            if (!controller.CanFitAt(hang)) { return false; }
             HoldLedge(controller, top, wallNormal, edge, hang);
             Mode.InterruptOthers(ref movementData, controller, this); // A slide down the wall, the only other thing it can be doing.
             return true;
@@ -269,8 +269,8 @@ namespace Character
             // step leaves no room at the edge's own height, so without this the character could hang there but never
             // climb up.
             if (TryDropOntoLedge(controller, target, out Vector3 standing)) { target = standing; ledge.climbToCrouch = false; }
-            else if (controller.CanFitAt(target, 1f)) { ledge.climbToCrouch = false; }
-            else if (controller.CanFitAt(target, CrouchedHeight)) { ledge.climbToCrouch = true; }
+            else if (controller.CanFitAt(target)) { ledge.climbToCrouch = false; }
+            else if (controller.CanFitAt(target, BodyPosture.Low(CrouchedHeight))) { ledge.climbToCrouch = true; }
             else { return; }
             ledge.localClimbTarget = Quaternion.Inverse(ledgeRotation) * (target - ledgePosition);
 
@@ -295,10 +295,10 @@ namespace Character
         private static bool TryDropOntoLedge(MovementController controller, Vector3 target, out Vector3 standing)
         {
             standing = target;
-            if (controller.HeightFraction < 1f) { return false; } // The sweep would be of a crouched collider.
+            if (!controller.Posture.IsStanding) { return false; } // The sweep would be of a crouched (or lying) body.
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
             Vector3 from = target + Vector3.up * (2f * stepHeight);
-            if (!controller.CanFitAt(from, 1f)) { return false; }
+            if (!controller.CanFitAt(from)) { return false; }
             // Target is a skin above the edge's height, and the sweep's collider starts a skin above its feet, so the top
             // is exactly 2 steps and 2 skins below where the sweep starts. A sweep of only that much reached it or missed
             // it by float rounding, depending on the ledge's height: off a ladder whose top was level with a floor, at 3, 8,
@@ -306,7 +306,7 @@ namespace Character
             // Two skins further makes sure of it.
             if (!controller.SweepBody(from, Vector3.down, 2f * stepHeight + 4f * controller.Skin, out RaycastHit hit)) { return false; }
             standing = from + Vector3.down * Mathf.Max(0f, hit.distance - controller.Skin);
-            return controller.CanFitAt(standing, 1f);
+            return controller.CanFitAt(standing);
         }
 
         /// <summary>

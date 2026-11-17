@@ -60,7 +60,9 @@ namespace Character
         /// <summary>A slide has the character while it lasts (crouching is a stance, not an ability: others start from it, or refuse to).</summary>
         public override bool IsActive(MovementController controller) => controller.slide.IsSliding;
 
-        public override bool KeepsLow(MovementController controller) => controller.crouch.IsCrouched || controller.slide.IsSliding;
+        /// <summary>Crouched or sliding, low at the crouch height.</summary>
+        public override BodyPosture? Posture(MovementController controller) =>
+            controller.crouch.IsCrouched || controller.slide.IsSliding ? BodyPosture.Low(crouchHeight) : null;
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {
@@ -99,7 +101,7 @@ namespace Character
             }
 
             bool standForJump = Mode.IsNewJumpPress(inputs, controller);
-            if (crouch.IsCrouched && (crouch.wantsToStand || standForJump) && controller.CanFitAt(movementData.initialPosition, 1f))
+            if (crouch.IsCrouched && (crouch.wantsToStand || standForJump) && controller.CanFitAt(movementData.initialPosition))
             {
                 crouch.IsCrouched = false;
                 crouch.wantsToStand = false;
@@ -141,7 +143,7 @@ namespace Character
 
             // A jump stands up (where there's room) and keeps the slide's speed: its momentum is already the
             // character's inertia, which the jump carries into the air.
-            if (Mode.IsNewJumpPress(inputs, controller) && controller.CanFitAt(movementData.initialPosition, 1f))
+            if (Mode.IsNewJumpPress(inputs, controller) && controller.CanFitAt(movementData.initialPosition))
             {
                 EndSlide(controller, crouched: false);
                 movementData.directMovementVector = Vector3.zero;

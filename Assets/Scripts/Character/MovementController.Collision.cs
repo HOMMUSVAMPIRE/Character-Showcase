@@ -10,9 +10,39 @@ namespace Character
         /// Resolve the character's intended motion against the world: push out of anything that moved into the
         /// character, sweep its body, slide along walls and walkable slopes, step up onto low ledges (stairs), slide
         /// off surfaces too steep to stand on, and stick to descending slopes. Momentum that a collision blocks is
-        /// removed, and data.collisions records which sides were blocked.
+        /// removed, and data.collisions records which sides were blocked. A body that turns with the character (see
+        /// CharacterBody.TurnsWithFacing) turns only as far as it has room to.
         /// </summary>
         public bool CheckMovementValid(ref MovementData data)
+        {
+            resolvingRotation = data.initialRotation;
+            try { return ResolveStep(ref data); }
+            finally { resolvingRotation = null; }
+        }
+
+        // Halvings of a blocked turn made to find how far of it there's room for (to within 1/32 of it).
+        private const int TurnRoomSteps = 5;
+
+        /// <summary>
+        /// The way the character can turn to, from from toward to, with its body (one that turns with it) at pos: all the
+        /// way where there's room, otherwise as far as there is. Turning sweeps nothing (a turn's sweep isn't worth it): the
+        /// body is checked for room facing the new way, and the turn is halved until it fits. Already without room as it
+        /// faces (pushed into something), it turns freely, so it isn't stuck facing that way.
+        /// </summary>
+        private Quaternion TurnWithRoom(Vector3 pos, Quaternion from, Quaternion to)
+        {
+            if (Quaternion.Angle(from, to) < 0.01f || Body.Fits(pos, to, Scale, posture) || !Body.Fits(pos, from, Scale, posture)) { return to; }
+            float fits = 0f, blocked = 1f;
+            for (int i = 0; i < TurnRoomSteps; i++)
+            {
+                float half = 0.5f * (fits + blocked);
+                if (Body.Fits(pos, Quaternion.Slerp(from, to, half), Scale, posture)) { fits = half; }
+                else { blocked = half; }
+            }
+            return Quaternion.Slerp(from, to, fits);
+        }
+
+        private bool ResolveStep(ref MovementData data)
         {
             data.collisions = CollisionFlags.None;
             Vector3 pos = data.initialPosition;
@@ -29,6 +59,11 @@ namespace Character
                     : pushDirection.y < -0.7f ? CollisionFlags.Above : CollisionFlags.Sides;
                 RemoveInertiaInto(ref inertia, pushDirection);
             }
+
+            // Turning, a body that isn't round about the feet swings into somewhere else: only as far as there's room. It
+            // moves facing the way it ends up.
+            if (Body.TurnsWithFacing) { data.targetRotation = TurnWithRoom(pos, data.initialRotation, data.finalRotation); }
+            resolvingRotation = data.finalRotation;
 
             Vector3 move = data.finalMovementVector;
             if (move.sqrMagnitude < 1e-12f && depenetration == Vector3.zero) { return true; }
@@ -59,7 +94,7 @@ namespace Character
                 float maxSlopeDrop = Mathf.Min(groundSnapDistance * HeightScale, horizDist * Mathf.Tan(maxSlopeAngle * Mathf.Deg2Rad));
                 float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + SkinWidth;
                 if (horizDist > 1e-4f * HeightScale) { maxDrop = Mathf.Max(maxDrop, StepHeight + SkinWidth); }
-                if (Body.Sweep(pos, Vector3.down, maxDrop + SkinWidth, out var snapHit)
+                if (Body.Sweep(pos, BodyRotation, Vector3.down, maxDrop + SkinWidth, out var snapHit)
                     && (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle || IsStepEdge(snapHit, pos)))
                 {
                     // Negative when the ground is closer than the skin width (rolling over a step's edge can close the
@@ -94,7 +129,7 @@ namespace Character
             if (mag < 1e-6f) { return Vector3.zero; }
             Vector3 dir = horizMove / mag;
 
-            if (!Body.Sweep(feetPos, dir, mag + SkinWidth, out var hit))
+            if (!Body.Sweep(feetPos, BodyRotation, dir, mag + SkinWidth, out var hit))
             {
                 return horizMove;
             }
@@ -131,7 +166,7 @@ namespace Character
             if (slideMag < 1e-6f) { return traveled; }
 
             // Make sure the slide direction isn't itself blocked (a corner).
-            if (Body.Sweep(feetPos + traveled, slide / slideMag, slideMag + SkinWidth, out var slideHit))
+            if (Body.Sweep(feetPos + traveled, BodyRotation, slide / slideMag, slideMag + SkinWidth, out var slideHit))
             {
                 Vector3 cornerNormal = new Vector3(slideHit.normal.x, 0f, slideHit.normal.z);
                 if (cornerNormal.sqrMagnitude > 1e-6f) { RemoveInertiaInto(ref inertia, cornerNormal.normalized); }
@@ -149,11 +184,11 @@ namespace Character
         {
             // 1) Make sure there's headroom to lift up.
             float stepHeight = StepHeight;
-            if (Body.Sweep(feetPos, Vector3.up, stepHeight + SkinWidth, out _)) { return Vector3.zero; }
+            if (Body.Sweep(feetPos, BodyRotation, Vector3.up, stepHeight + SkinWidth, out _)) { return Vector3.zero; }
             Vector3 raised = feetPos + Vector3.up * stepHeight;
 
             // 2) Sweep forward from the raised position.
-            if (Body.Sweep(raised, dir, distance + SkinWidth, out var fwdHit))
+            if (Body.Sweep(raised, BodyRotation, dir, distance + SkinWidth, out var fwdHit))
             {
                 float travel = Mathf.Max(0f, fwdHit.distance - SkinWidth);
                 if (travel < 1e-4f * HeightScale) { return Vector3.zero; }
@@ -165,7 +200,7 @@ namespace Character
             }
 
             // 3) Drop back down and make sure we land on walkable ground.
-            if (!Body.Sweep(raised, Vector3.down, stepHeight + SkinWidth, out var downHit)) { return Vector3.zero; }
+            if (!Body.Sweep(raised, BodyRotation, Vector3.down, stepHeight + SkinWidth, out var downHit)) { return Vector3.zero; }
 
             // 4) Make sure we land on the step, not perched on its edge. Moving only this step's distance forward, the
             // capsule's rounded bottom often comes down on the step's edge, well ahead of its axis. The ground check
@@ -178,9 +213,9 @@ namespace Character
             if (ahead > landingReach)
             {
                 float extra = ahead - landingReach;
-                if (Body.Sweep(raised, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
+                if (Body.Sweep(raised, BodyRotation, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
                 raised += dir * extra;
-                if (!Body.Sweep(raised, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
+                if (!Body.Sweep(raised, BodyRotation, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
             }
             if (Vector3.Angle(downHit.normal, Vector3.up) > maxSlopeAngle) { return Vector3.zero; }
 
@@ -205,7 +240,7 @@ namespace Character
             if (Mathf.Abs(verticalDelta) < 1e-6f) { return Vector3.zero; }
             Vector3 dir = verticalDelta > 0f ? Vector3.up : Vector3.down;
             float mag = Mathf.Abs(verticalDelta);
-            if (!Body.Sweep(feetPos, dir, mag + SkinWidth, out var hit)) { return dir * mag; }
+            if (!Body.Sweep(feetPos, BodyRotation, dir, mag + SkinWidth, out var hit)) { return dir * mag; }
             float travel = Mathf.Max(0f, hit.distance - SkinWidth);
             Vector3 traveled = dir * travel;
 
@@ -230,7 +265,7 @@ namespace Character
                 if (slideMag > 1e-6f)
                 {
                     Vector3 slideDir = slide / slideMag;
-                    if (Body.Sweep(feetPos + traveled, slideDir, slideMag + SkinWidth, out var slideHit))
+                    if (Body.Sweep(feetPos + traveled, BodyRotation, slideDir, slideMag + SkinWidth, out var slideHit))
                     {
                         slide = slideDir * Mathf.Max(0f, slideHit.distance - SkinWidth);
                     }

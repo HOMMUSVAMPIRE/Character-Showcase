@@ -89,7 +89,7 @@ namespace Character
             rotateWithGround = source.rotateWithGround;
             inheritGroundVelocity = source.inheritGroundVelocity;
             maxGroundCarryPerStep = source.maxGroundCarryPerStep;
-            heightFraction = 1f;
+            posture = BodyPosture.Standing;
             ApplyScale(source.Scale);
         }
     }

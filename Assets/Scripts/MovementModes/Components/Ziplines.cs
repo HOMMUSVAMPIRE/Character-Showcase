@@ -166,7 +166,7 @@ namespace Character
             }
             if (best == null) { return false; }
             Vector3 hang = best.PointAt(bestAlong) - Vector3.up * hangHeight;
-            if (!controller.CanFitAt(hang, 1f)) { return false; }
+            if (!controller.CanFitAt(hang)) { return false; }
 
             ride.line = best;
             ride.along = bestAlong;

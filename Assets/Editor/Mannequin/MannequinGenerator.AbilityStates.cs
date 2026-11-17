@@ -26,7 +26,7 @@ namespace CharacterShowcase.EditorTools
         /// the mannequin's own clips otherwise (its crouch, its dash for the slide, its tucked jump for the roll, its
         /// rise for the climb and the vault, and its walk for the push). Swimming (Swim) is the library's treading water
         /// and swim stroke, by Speed, or the mannequin's treading water; swimming underwater (Swim Underwater) is a state
-        /// of its own, playing the same. Hanging, sliding down a wall, swinging on a rope
+        /// of its own, the library's stroke alone (slowed while drifting), as the body lies flat underwater. Hanging, sliding down a wall, swinging on a rope
         /// (Rope Swing) and riding a zipline (Zipline) are always the mannequin's own.
         /// </summary>
         private static void BuildAbilityStates(AnimatorController controller, AnimatorStateMachine stateMachine,
@@ -109,10 +109,15 @@ namespace CharacterShowcase.EditorTools
             swim.motion = swimIdle != null && swimStroke != null
                 ? CreateBlendTree(controller, "Swim", SpeedParameter, (swimIdle, 0f, 1f, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
                 : clips["Swim"];
-            // Swimming underwater (Diving): a state of its own, so a controller can give it clips of its own; this one
-            // plays the surface's, which suit it well enough.
+            // Swimming underwater (Diving): a state of its own, so a controller can give it clips of its own. Underwater
+            // the body lies flat, resting on the character's feet, with the model lowered to it (see Swimming), so this one
+            // is always the library's stroke, lying, never its treading water (upright, its legs hanging through the floor
+            // below a swimmer near the bottom): drifting along slowly without swimming, at its own pace swimming. Or else
+            // the surface's.
             AnimatorState swimUnderwater = stateMachine.AddState("Swim Underwater");
-            swimUnderwater.motion = swim.motion;
+            swimUnderwater.motion = swimStroke != null
+                ? CreateBlendTree(controller, "Swim Underwater", SpeedParameter, (swimStroke, 0f, UnderwaterDriftStrokePace, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
+                : swim.motion;
 
             // Climbing a climbable surface: the library's climbing loops (the Pro edition of Universal Animation Library 1
             // has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at

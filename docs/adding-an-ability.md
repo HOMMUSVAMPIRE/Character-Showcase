@@ -14,7 +14,7 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 - `IsActive` and `Interrupt`: whether it's under way, and ending it cleanly, when another ability takes the character or it's turned off while it has it.
 - `AdvanceTimers`: its cooldowns, every step, whatever has the character.
 - For what isn't a takeover: `BeforeAbilities` (forces, like gravity), `BeforeLocomotion` (changing how the character walks, like crouching), `Locomotion` (how it moves by itself), `AfterWalking` (acting on top of walking, like dashing and jumping) and `FinishStep` (limits, like the fall speed).
-- `KeepsLow`: whether it keeps the character's collider at the crouch height.
+- `Posture`: how it holds the character's body this step (a `BodyPosture`: low at the crouch height, or lying), or null; the first component in list order to hold it has its way.
 - `AfterMovementResolved`: for moving something along with the character, by however far it actually moved.
 - `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities`, and to `MovementEnvelopeWriter` if the levelspec tool's checks should use it.
 

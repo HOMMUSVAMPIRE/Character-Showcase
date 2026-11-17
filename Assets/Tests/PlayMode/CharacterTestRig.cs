@@ -144,6 +144,23 @@ namespace CharacterShowcase.Tests
         // ---- The character's size and tuning, as it is now (at its current size) ----
 
         public CapsuleCollider Capsule => Character.GetComponent<CapsuleCollider>();
+        /// <summary>
+        /// Gives the character a body of another primitive collider (a box, a sphere, or a capsule shaped otherwise),
+        /// shaped by shape, in place of its capsule (see MovementController.RebuildBody). After spawning it.
+        /// </summary>
+        public T UseBody<T>(System.Action<T> shape) where T : Collider
+        {
+            UnityEngine.Object.DestroyImmediate(Capsule);
+            var primitive = Character.AddComponent<T>();
+            shape(primitive);
+            Movement.RebuildBody(primitive);
+            Physics.SyncTransforms();
+            return primitive;
+        }
+
+        /// <summary>Whether the character's body, as it is now, overlaps nothing (more than the skin width).</summary>
+        public bool BodyFits => Movement.Body.Fits(Body.position, Body.rotation, Movement.Scale, Movement.Posture);
+
         /// <summary>How far (m) the character's body reaches out in front of its feet (see CharacterBody.FrontExtent).</summary>
         public float FrontExtent => Movement.Body.FrontExtent;
         /// <summary>How far (m) the character's body reaches out behind its feet (see CharacterBody.BackExtent).</summary>

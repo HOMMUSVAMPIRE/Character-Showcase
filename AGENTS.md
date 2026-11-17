@@ -103,8 +103,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the collider's posture and the
   presses and speeds its components share. A step runs: `AdvanceTimers`, `BeforeAbilities` (gravity), `TakeOver`;
   then, if nothing took the character, `BeforeLocomotion` (crouching), `Locomotion` (ground friction before walking,
-  which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (lowered
-  while any component's `KeepsLow` says so) and `FinishStep` (the fall speed limit). Within each point, list order
+  which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (held as
+  the first component's `Posture` asks: low, or lying) and `FinishStep` (the fall speed limit). Within each point, list order
   decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
   assets, so per-character state lives on the `MovementController` (each state class in its component's file). Adding an
   ability: see docs/adding-an-ability.md.
@@ -120,7 +120,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Collision is resolved by `MovementController` with sweeps of the character's body,** not the physics solver.
   Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
   depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
-  `MovementController.Body`, a `CharacterBody` (`CapsuleBody`, the upright capsule, for now): don't reach for the
+  `MovementController.Body`, a `CharacterBody` (`PrimitiveBody`: a capsule, box or sphere collider): don't reach for the
   collider itself. Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
   `BackExtent`, `SideExtent`), the one they mean, not by a collider dimension.
 - **Time-since-grounded values update every step, including in the air.** Coyote time, coyote gravity and air
@@ -203,7 +203,7 @@ swimming clips are floated at Swimming's Swim Depth: after changing it, run Gene
   in movement code.
 - **Abilities query the world through the `MovementController`** (`SweepBody`, `Raycast`, `OverlapSphere`,
   `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders and its `IgnoredCollisionRoot`.
-  `SetHeightFraction` lowers the collider keeping the feet in place.
+  `SetPosture` holds the body standing, low or lying (a `BodyPosture`), keeping the feet in place.
 - **Ropes, ziplines and water have no colliders:** abilities find them through `Level.Rope.All` / `Level.Zipline.All`
   / `Level.Water.All` (the character stands on what's built under water). A
   rope swings itself when let go and is drawn interpolated between physics steps, so the hands IK'd onto it stay on it.

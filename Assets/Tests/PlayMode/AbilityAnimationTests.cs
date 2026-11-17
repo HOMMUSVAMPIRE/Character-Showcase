@@ -531,6 +531,19 @@ namespace CharacterShowcase.Tests
             yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
             yield return ExpectState("Swim Underwater", 0.6f, step => CharacterTestRig.Crouch(step));
             Assert.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
+            // The swimming clips float the body the swim depth above the feet; underwater the body lies on them, and the
+            // model is drawn lowered to it.
+            yield return rig.Run(0.6f, _ => CharacterTestRig.Idle(), step =>
+            {
+                StepAnimator(step);
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+            });
+            float hips = animator.GetBoneTransform(HumanBodyBones.Hips).position.y - rig.Position.y;
+            Assert.That(hips, Is.InRange(0f, rig.CurrentHeight), "Underwater, the swimmer should be drawn inside its lying body.");
+            // Drifting without swimming too: lying, not treading water upright, its legs hanging through a floor it's near.
+            float lowestFoot = Mathf.Min(animator.GetBoneTransform(HumanBodyBones.LeftFoot).position.y,
+                animator.GetBoneTransform(HumanBodyBones.RightFoot).position.y) - rig.Position.y;
+            Assert.That(lowestFoot, Is.GreaterThan(-0.1f * rig.Controller.Scale.y), "Underwater, the swimmer's feet shouldn't hang below its lying body.");
             yield return rig.RunUntil(() => !rig.InState(CharacterState.Diving), step => CharacterTestRig.Jump(step), StepAnimator, timeoutSeconds: 5f);
             yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
         }

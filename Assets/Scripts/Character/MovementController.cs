@@ -69,8 +69,9 @@ namespace Character
 
         [Header("Collision")]
         [SerializeField]
-        [Tooltip("The character's capsule collider: its body for collision (see Body), whose size collision sweeps use. Auto-fetched in Awake if left empty.")]
-        private CapsuleCollider capsule;
+        [Tooltip("The character's collider for collision: a capsule, box or sphere (see Body), whose shape collision sweeps use. Its first solid one of those if left empty.")]
+        [UnityEngine.Serialization.FormerlySerializedAs("capsule")]
+        private Collider bodyCollider;
         [SerializeField]
         [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
         private float maxStepHeight = 0.35f;
@@ -116,12 +117,12 @@ namespace Character
         public float AccelerationScale => SpeedScale / DurationScale;
 
         /// <summary>
-        /// The character's smallest dimension relative to as authored: the lesser of its height and its collider's
+        /// The character's smallest dimension relative to as authored: the lesser of its height and its body's footprint's
         /// radius. Small clearances (the skin width) scale with it, so they stay as thin, for the character's size, on
         /// every side.
         /// </summary>
         private float ClearanceScale => Body.HasAuthoredSize && Body.AuthoredRadius > 0f && Body.Collider != null
-            ? Mathf.Min(HeightScale, Body.Radius / Body.AuthoredRadius) : HeightScale;
+            ? Mathf.Min(HeightScale, Body.FootprintRadius / Body.AuthoredRadius) : HeightScale;
 
         /// <summary>The gap kept between the character and surfaces, at its size.</summary>
         internal float SkinWidth => skinWidth * ClearanceScale;
@@ -138,11 +139,11 @@ namespace Character
         private const float StepLandingAngle = 40f;
 
         /// <summary>The radius of the body used for collision sweeps (the body's, less the skin width).</summary>
-        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (Body.Collider != null ? Body.Radius : 0.5f) - SkinWidth);
+        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (Body.Collider != null ? Body.FootprintRadius : 0.5f) - SkinWidth);
 
         /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
         private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
-            : (Body.Collider != null ? Body.Radius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
+            : (Body.Collider != null ? Body.FootprintRadius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
 
         /// <summary>The tallest step the character climbs at its size.</summary>
         private float StepHeight => maxStepHeight * HeightScale;
@@ -157,8 +158,7 @@ namespace Character
 
         private void Awake()
         {
-            if (capsule == null) { capsule = GetComponent<CapsuleCollider>(); }
-            RememberBaseCapsule();
+            RememberBaseSize();
         }
 
         [Tooltip("The transform on which the character is currently standing")]

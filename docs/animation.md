@@ -45,7 +45,7 @@ The libraries' clips are raised or lowered so their lowest foot stands where the
 
 ## Swimming
 
-Swimming underwater (the Diving parameter, set with Swimming) has a state of its own, Swim Underwater, so a controller can give it its own clips; the generated one plays the same as Swim, which suits it well enough. It's entered from any state while diving, and swimming back at the surface returns to Swim.
+Swimming underwater (the Diving parameter, set with Swimming) has a state of its own, Swim Underwater, so a controller can give it its own clips. The generated one plays the library's swim stroke alone, never its treading water: underwater the body lies flat, so drifting without swimming it strokes slowly (at the generator's UnderwaterDriftStrokePace), rather than treading upright with its legs hanging below the body (through the floor, near the bottom). Without the library, it plays the same as Swim. It's entered from any state while diving, and swimming back at the surface returns to Swim. Underwater the body lies on the character's feet while the swimming clips float it Swim Depth above them, so the AnimationController draws the model lowered by the movement's model drop (`MovementData.modelDrop`), easing to it (and back up at the surface) over Model Drop Smooth Time.
 
 The Swim state plays Quaternius's treading water still, blending by Speed into their swim stroke, shown fully from `SwimStrokeSpeed` (in MannequinGenerator.cs) up: the stroke is on the spot, with no strides to measure, so it's shown at any swimming speed past that.
 

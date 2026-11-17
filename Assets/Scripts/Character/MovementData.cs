@@ -135,6 +135,13 @@ namespace Character
         [System.NonSerialized] public MovementEvents events;
 
         /// <summary>
+        /// How far (m) below where its animations draw it the character's body is this step, for the model to be drawn
+        /// lowered to it (see AnimationController): underwater, the body lies on its feet, but the swimming animations
+        /// float it the swim depth above them, as they do treading water at the surface. 0 otherwise.
+        /// </summary>
+        public float modelDrop;
+
+        /// <summary>
         /// Calculates the final state of the character based on the starting data and the intended motion data (only if
         /// something changed since it last did: the final values' accessors call it).
         /// </summary>
