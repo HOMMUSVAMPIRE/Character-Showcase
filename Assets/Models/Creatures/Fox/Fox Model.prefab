@@ -105,6 +105,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4177322834084298129}
   - component: {fileID: 7385348156157979596}
+  - component: {fileID: 1622571459558663844}
   m_Layer: 0
   m_Name: Fox Model
   m_TagString: Untagged
@@ -151,6 +152,67 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1622571459558663844
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1052630425069537216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb8bc3e0d5614664bc070821871e9dfc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: CharacterShowcase::Character.PawPlacementIK
+  weight: 1
+  legs:
+  - upper: {fileID: 6129086839112679514}
+    lower: {fileID: 6254384061699281977}
+    foot: {fileID: 6523289164856767771}
+    contact: {x: 0.000000026142008, y: 0.13243507, z: -0.02368065}
+    bendDirection: {x: 0, y: 0, z: -1}
+  - upper: {fileID: 3394995374928380763}
+    lower: {fileID: 8917919383979425238}
+    foot: {fileID: 640329677639250933}
+    contact: {x: 0.000000026142065, y: 0.1324351, z: -0.023680627}
+    bendDirection: {x: 0, y: 0, z: -1}
+  - upper: {fileID: 5526378002257870794}
+    lower: {fileID: 1190536085706898742}
+    foot: {fileID: 4999235438205051379}
+    contact: {x: 0.000000012526388, y: 0.1746237, z: 0.03880612}
+    bendDirection: {x: 0, y: 0, z: 1}
+  - upper: {fileID: 1401919831684826798}
+    lower: {fileID: 8517453050461694258}
+    foot: {fileID: 1634602484683399698}
+    contact: {x: 0.000000012526503, y: 0.17462373, z: 0.03880605}
+    bendDirection: {x: 0, y: 0, z: 1}
+  rootBone: {fileID: 4392339089650549564}
+  groundLayers:
+    serializedVersion: 2
+    m_Bits: 1
+  probeHeight: 0.9
+  maxStepUp: 0.5
+  maxStepDown: 1
+  maxSlopeAngle: 50
+  ignoreCollidersUnder: {fileID: 0}
+  bodyProbeReach: 0.45
+  maxBodyPitch: 40
+  maxBodyDrop: 0.25
+  legTopClearance: 0.25
+  bodySmoothTime: 0.1
+  counterPitchBones:
+  - bone: {fileID: 3355191746315405290}
+    noseUpShare: 0.8
+    noseDownShare: 0
+  - bone: {fileID: 4620291763351031116}
+    noseUpShare: 0.5
+    noseDownShare: 0.5
+  pawSmoothTime: 0.05
+  plantedHeight: 0.02
+  liftedHeight: 0.1
+  alignToGround: 1
+  groundedFadeTime: 0.12
+  drawGizmos: 1
 --- !u!1 &1181238363127940373
 GameObject:
   m_ObjectHideFlags: 0

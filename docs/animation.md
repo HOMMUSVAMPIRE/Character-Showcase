@@ -181,6 +181,8 @@ FootPlacementIK uses the same system to plant the feet on slopes, stairs and bum
 
 Foot placement also locks planted feet. As the animation plants a foot, where it was put down is remembered (relative to the ground under it, so it rides moving ground), and an IK goal blended over the animation holds it there until the animation lifts it, or the animation's foot gets further from it than FootPlacementIK's Max Lock Distance. The model turns after the character about its feet (see [Turning and Leaning](movement.md#turning-and-leaning)), which would otherwise drag planted feet round with it: turning on the spot, they slid without locking, and don't with it. Foot Lock on FootPlacementIK sets how firmly (0 turns it off).
 
+A model with a Generic rig, which Unity's humanoid IK can't pose, places its feet another way: the fox's PawPlacementIK pitches its body with the ground and bends its legs itself (see [Creatures](creatures.md#paw-placement)).
+
 ### Ropes and ziplines
 
 LineGripIK, on every model, puts the hands on the rope or the cable while swinging or riding, moves the body up or down so the hands reach (up to its Max Body Shift), and eases in and out.

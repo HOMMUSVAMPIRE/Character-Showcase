@@ -20,8 +20,9 @@ namespace CharacterShowcase.EditorTools
     /// - imports it as a Generic rig with its clips looping;
     /// - builds its Animator Controller: Locomotion (Idle, Walk, Trot, Gallop by Speed), Crouch (Crouch Idle and Crouch
     ///   Walk by Speed, while Crouching) and Airborne (Jump Fall and Jump Rise by VerticalSpeed, while not Grounded);
-    /// - saves its model prefab (with an "Eyes" point on its head, which the character's eye point and camera follow),
-    ///   an Animator parameter translator for it, and its model source;
+    /// - saves its model prefab (with an "Eyes" point on its head, which the character's eye point and camera follow, and
+    ///   paw placement, PawPlacementIK, planting its paws on uneven ground), an Animator parameter translator for it, and
+    ///   its model source;
     /// - makes, if they aren't there, its body (a box, about its body's size: see BodyDefinition) and its movement mode
     ///   (the humanoid's, with what a fox can't do turned off and tuned for a fox), which are then the user's to tune;
     /// - and saves Fox.prefab, a variant of the Character prefab with the fox's body, movement and model: put it in a
@@ -49,6 +50,22 @@ namespace CharacterShowcase.EditorTools
         // Where its eyes are, in the model's space (on its head bone), and which bone that is.
         private static readonly Vector3 EyesPosition = new(0f, 0.98f, 0.64f);
         private const string HeadBone = "Head";
+        // The bone the body hangs from, and each leg's upper, lower and foot bones (see PawPlacementIK), and how far ahead
+        // of the model's origin (m) its toes touch the floor standing: generate_fox.py's front and hind toe joints (ftoe,
+        // htoe), whose places the bones don't record (they end at the paws' joints).
+        private const string HipsBone = "Hips";
+        private const float FrontToesAhead = 0.38f, HindToesAhead = -0.34f;
+        // The bones turned back against the body's pitch on slopes, and by how much of it, nose up and nose down: the tail
+        // mostly going up (pitched up a steep ramp with the body, it swings down into it) and not at all going down (held
+        // level, it reaches into the slope behind), the neck by half (the head looks ahead, not at the sky or its paws).
+        private static readonly (string bone, float up, float down)[] CounterPitchBones = { ("Tail1", 0.8f, 0f), ("Neck", 0.5f, 0.5f) };
+        private static readonly (string upper, string lower, string foot, bool front)[] LegBones =
+        {
+            ("FrontUpperLeg_L", "FrontLowerLeg_L", "FrontPaw_L", true),
+            ("FrontUpperLeg_R", "FrontLowerLeg_R", "FrontPaw_R", true),
+            ("HindUpperLeg_L", "HindLowerLeg_L", "HindFoot_L", false),
+            ("HindUpperLeg_R", "HindLowerLeg_R", "HindFoot_R", false),
+        };
 
         // The speeds (m/s, at its authored size) the clips are authored for (fox_animations.SPEEDS): the Speed blend's
         // thresholds, so each clip plays at the speed its paws keep to the ground.
@@ -231,6 +248,47 @@ namespace CharacterShowcase.EditorTools
             return tree;
         }
 
+        /// <summary>
+        /// Gives the model paw placement (PawPlacementIK), its legs found by their bones' names and their paws touching the
+        /// floor at their toes, set on the model as it stands, in its bind pose. Its other settings are PawPlacementIK's defaults: the model
+        /// prefab is built anew each time, so tune them there.
+        /// </summary>
+        private static void AddPawPlacement(GameObject model)
+        {
+            Transform[] bones = model.GetComponentsInChildren<Transform>(true);
+            Transform Bone(string name) => bones.FirstOrDefault(t => t.name == name);
+            var legs = new PawPlacementIK.Leg[LegBones.Length];
+            for (int i = 0; i < LegBones.Length; i++)
+            {
+                var (upper, lower, foot, front) = LegBones[i];
+                legs[i] = new PawPlacementIK.Leg
+                {
+                    upper = Bone(upper), lower = Bone(lower), foot = Bone(foot),
+                    // A front leg's elbow points back, a hind leg's stifle forward.
+                    bendDirection = front ? Vector3.back : Vector3.forward,
+                };
+                if (legs[i].upper == null || legs[i].lower == null || legs[i].foot == null)
+                {
+                    Debug.LogWarning($"[{LogName}] The fox is missing a bone of the leg {upper} > {lower} > {foot}: it has no paw placement.");
+                    return;
+                }
+            }
+            Transform hips = Bone(HipsBone);
+            if (hips == null) { Debug.LogWarning($"[{LogName}] The fox has no '{HipsBone}' bone: it has no paw placement."); return; }
+            if (!model.TryGetComponent(out PawPlacementIK paws)) { paws = model.AddComponent<PawPlacementIK>(); }
+            paws.SetLegs(hips, legs);
+            paws.SetCounterPitchBones(CounterPitchBones
+                .Select(c => new PawPlacementIK.CounterPitchBone { bone = Bone(c.bone), noseUpShare = c.up, noseDownShare = c.down })
+                .Where(c => c.bone != null)
+                .ToArray());
+            // Each paw touches the floor at its toes, beside its leg.
+            for (int i = 0; i < legs.Length; i++)
+            {
+                float across = model.transform.InverseTransformPoint(legs[i].foot.position).x;
+                paws.SetContact(i, new Vector3(across, 0f, LegBones[i].front ? FrontToesAhead : HindToesAhead));
+            }
+        }
+
         /// <summary>The fox's model prefab: the model, its Animator playing the controller, and its eyes on its head.</summary>
         private static GameObject SaveModelPrefab(AnimatorController controller)
         {
@@ -254,6 +312,7 @@ namespace CharacterShowcase.EditorTools
                     eyes.position = model.transform.TransformPoint(EyesPosition);
                 }
                 else { Debug.LogWarning($"[{LogName}] The fox has no '{HeadBone}' bone to put its eyes on."); }
+                AddPawPlacement(model);
                 return PrefabUtility.SaveAsPrefabAsset(model, ModelPrefabPath);
             }
             finally

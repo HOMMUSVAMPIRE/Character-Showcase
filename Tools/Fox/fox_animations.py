@@ -21,7 +21,10 @@ import math
 
 from mathutils import Quaternion, Vector
 
-FPS = 60
+# Keys per second. The FBX bakes a key a frame, and a galloping leg landing straight flexes fast as the body comes down
+# over it: between keys far apart, the joints' interpolated turns don't keep the paw off the floor, so the clips are
+# keyed at twice the usual 60.
+FPS = 120
 SAMPLES_PER_SECOND = FPS
 TAU = math.pi * 2.0
 # A one-frame take holding the rest pose, named to sort first, so it's the FBX's current take (see the mannequin's).
@@ -77,8 +80,18 @@ def leg_depth(segments, angles):
     return -lowest
 
 
+# The flex reach() scans (degrees): in steps of REACH_SCAN_STEP, up to REACH_MAX_FLEX.
+REACH_SCAN_STEP = 1.0
+REACH_MAX_FLEX = 120.0
+
+# A stride's swing lifts the front paw by these shares of its lift (lift_front, degrees): the upper leg swung back, the
+# elbow flexing the forearm forward, the wrist folding the paw back.
+FRONT_LIFT_SHOULDER = 0.5
+FRONT_LIFT_ELBOW = 1.5
+FRONT_LIFT_WRIST = 2.5
+
 # How far (m) a stepping paw's mesh reaches below the end of its bones as the paw tilts: kept that much clear.
-PAW_TILT_MARGIN = 0.022
+PAW_TILT_MARGIN = 0.015
 
 FRONT_LENGTH = leg_depth(FRONT_SEGMENTS, [0.0] * 3)
 HIND_LENGTH = leg_depth(HIND_SEGMENTS, [0.0] * 4)
@@ -155,7 +168,11 @@ class Gait:
             lift = math.sin(math.pi * t)
         if leg.front:
             base = CROUCH_FRONT if self.crouch else (0.0, 0.0, 0.0)
-            return front_angles(base[0] + swing, base[1] + self.lift_front * lift, base[2] + 0.8 * self.lift_front * lift)
+            # A fox's front leg folds as its elbow points: back. Lifting, the upper leg swings back, the elbow flexes the
+            # forearm forward and up, and the wrist folds the paw back under it (never the forearm swung back, as a knee).
+            f = self.lift_front * lift
+            return front_angles(base[0] + swing + FRONT_LIFT_SHOULDER * f, base[1] - FRONT_LIFT_ELBOW * f,
+                                base[2] + FRONT_LIFT_WRIST * f)
         base = CROUCH_HIND if self.crouch else (0.0, 0.0, 0.0, 0.0)
         return hind_angles(base[0] + swing - 0.3 * self.lift_hind * lift, base[1] + self.lift_hind * lift,
                            base[2] - 1.2 * self.lift_hind * lift, base[3] + 0.5 * self.lift_hind * lift)
@@ -176,14 +193,31 @@ class Gait:
         return pose
 
 
+def leg_end(segments, angles):
+    """Where the end of the leg is, (y, z) from its root, for these world angles per segment."""
+    y = z = 0.0
+    for segment, angle in zip(segments, angles):
+        dy, dz = rotate_x(segment, angle)
+        y, z = y + dy, z + dz
+    return y, z
+
+
 def flexed(front, angles, flex):
-    """The leg's angles flexed by `flex` degrees more at its middle joint: the front leg's elbow (the lower leg swung
-    back, the paw as it was), the hind leg's stifle (the shin swung back, the foot forward as much, the paw as it was)."""
-    angles = list(angles)
-    angles[1] += flex
+    """The leg's angles flexed by `flex` degrees more at its middle joint (the front leg's elbow, flexing it forward with a
+    negative flex; the hind leg's stifle, back with a positive one,
+    its foot turned back as much, so it stays as it was), then the whole leg turned so its end is in the same direction
+    from its root as before: flexing only draws the paw in toward the shoulder or hip, never swings it about. (Flexing
+    the middle joint alone, a leg swung forward first reaches deeper as its lower half swings toward straight down, so
+    the least flex that clears the ground jumps from none to most of a right angle: the joint snapped between keys.)"""
+    bent = list(angles)
+    bent[1] += flex
     if not front:
-        angles[2] -= flex
-    return angles
+        bent[2] -= flex
+    segments = FRONT_SEGMENTS if front else HIND_SEGMENTS
+    by, bz = leg_end(segments, angles)
+    ay, az = leg_end(segments, bent)
+    turn = (math.degrees(math.atan2(bz, by) - math.atan2(az, ay)) + 180.0) % 360.0 - 180.0
+    return [angle + turn for angle in bent]
 
 
 def reach(front, angles, height, planted):
@@ -195,10 +229,27 @@ def reach(front, angles, height, planted):
     segments = FRONT_SEGMENTS if front else HIND_SEGMENTS
     if leg_depth(segments, angles) <= height:
         return angles  # Short enough already (a planted leg straight at the end of its stride just reaches).
-    # Flexed the way that shortens it: a leg already bent (crouched) one way shortens bending further that way.
-    sign = 1.0 if leg_depth(segments, flexed(front, angles, 5.0)) < leg_depth(segments, flexed(front, angles, -5.0)) else -1.0
-    low, high = 0.0, 120.0
-    for _ in range(24):
+    # Flexed the way the joint folds: a front leg's elbow points back (the forearm flexes forward), a hind leg's stifle
+    # forward (the shin flexes back). Always that way, never chosen key by key (by whichever way shortens it more, say):
+    # near straight, that flips from one key to the next, and the joint snaps across between them, sweeping the paw
+    # through the floor; and flexed the other way, a front leg bends like a knee.
+    sign = -1.0 if front else 1.0
+    # The least flex that clears the ground: scanned up from none (a leg's depth needn't fall steadily as it flexes, so
+    # a bisection over the whole range can land past a dip), then narrowed between the last step short of it and the first
+    # past it. The least is continuous from one key to the next wherever the leg's depth is, so the joint never snaps.
+    low = high = None
+    previous = 0.0
+    flex = REACH_SCAN_STEP
+    while flex <= REACH_MAX_FLEX:
+        if leg_depth(segments, flexed(front, angles, sign * flex)) <= height:
+            low, high = previous, flex
+            break
+        previous = flex
+        flex += REACH_SCAN_STEP
+    if high is None:
+        high = REACH_MAX_FLEX  # It can't reach: as near as it gets.
+        low = high
+    for _ in range(16):
         mid = 0.5 * (low + high)
         if leg_depth(segments, flexed(front, angles, sign * mid)) > height:
             low = mid
@@ -261,11 +312,12 @@ def crouch_idle(p):
 
 
 def jump_rise(p):
-    """Leaving the ground: nose up, the front legs tucked, the hind legs stretched back from the push."""
+    """Leaving the ground: nose up, the front legs tucked (elbows back, forearms forward, paws folded back), the hind legs
+    stretched back from the push."""
     pose = Pose()
     wave = math.sin(TAU * p)
     for side in ("L", "R"):
-        set_leg(pose, FRONT_BONES, side, front_angles(-35.0, 85.0, 50.0))
+        set_leg(pose, FRONT_BONES, side, front_angles(35.0, -115.0, 140.0))
         set_leg(pose, HIND_BONES, side, hind_angles(45.0, 10.0, 0.0, 30.0))
     body(pose, pitch=-12.0, spine=-4.0, tail_lift=12.0 + 2.0 * wave, ears=-10.0)
     return pose
