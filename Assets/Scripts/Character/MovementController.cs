@@ -71,7 +71,7 @@ namespace Character
 
         [Header("Collision")]
         [SerializeField]
-        [Tooltip("The character's collider for collision: a capsule, box or sphere (see Body), whose shape collision sweeps use. Its first solid one of those if left empty.")]
+        [Tooltip("The character's collider, for the physics that meets it: a capsule, box or sphere, kept in the body's shape (see Body), and the body's shape as authored if there's no Body Definition. Its first solid one of those if left empty. Optional: the movement doesn't need it")]
         [UnityEngine.Serialization.FormerlySerializedAs("capsule")]
         private Collider bodyCollider;
         [SerializeField]
@@ -127,7 +127,7 @@ namespace Character
         /// radius. Small clearances (the skin width) scale with it, so they stay as thin, for the character's size, on
         /// every side.
         /// </summary>
-        private float ClearanceScale => Body.HasAuthoredSize && Body.AuthoredRadius > 0f && Body.Collider != null
+        private float ClearanceScale => Body.HasAuthoredSize && Body.AuthoredRadius > 0f
             ? Mathf.Min(HeightScale, Body.FootprintRadius / Body.AuthoredRadius) : HeightScale;
 
         /// <summary>The gap kept between the character and surfaces, at its size.</summary>
@@ -145,11 +145,11 @@ namespace Character
         private const float StepLandingAngle = 40f;
 
         /// <summary>The radius of the body used for collision sweeps (the body's, less the skin width).</summary>
-        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, (Body.Collider != null ? Body.FootprintRadius : 0.5f) - SkinWidth);
+        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, Body.FootprintRadius - SkinWidth);
 
         /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
         private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
-            : (Body.Collider != null ? Body.FootprintRadius * 0.9f : 0.45f); // 90%: 0.45 m on the 0.5 m capsule.
+            : Body.FootprintRadius * 0.9f; // 90%: 0.45 m on the 0.5 m capsule.
 
         /// <summary>The tallest step the character climbs at its size.</summary>
         private float StepHeight => maxStepHeight * HeightScale;

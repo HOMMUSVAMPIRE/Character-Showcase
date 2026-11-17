@@ -186,7 +186,7 @@ namespace Character
         private bool RestsOnSomething(Vector3 position, out Transform groundTransform)
         {
             groundTransform = null;
-            if (Body.Collider == null || !Body.Sweep(position, BodyRotation, Vector3.down, SkinWidth + GroundedTolerance, out RaycastHit rest)) { return false; }
+            if (!Body.Sweep(position, BodyRotation, Vector3.down, SkinWidth + GroundedTolerance, out RaycastHit rest)) { return false; }
             if (IsOwnCollider(rest.transform)) { return false; }
             if (Vector3.Angle(rest.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(rest, position)) { return false; }
             groundTransform = rest.transform;
@@ -207,7 +207,7 @@ namespace Character
         /// </summary>
         private bool IsStepEdge(RaycastHit hit, Vector3 feet)
         {
-            float radius = Body.Collider != null ? Body.FootprintRadius : 0.5f * HeightScale;
+            float radius = Body.FootprintRadius;
             if (hit.point.y > feet.y + radius) { return false; }
             float lift = SkinWidth;
             float reach = lift + StepHeight + GroundedTolerance + SkinWidth;

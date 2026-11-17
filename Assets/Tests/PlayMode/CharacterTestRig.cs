@@ -171,6 +171,18 @@ namespace CharacterShowcase.Tests
             return primitive;
         }
 
+        /// <summary>
+        /// Takes the character's collider away (its Body Collider, which its body keeps in shape): the movement doesn't
+        /// need it, so the character should move exactly as it did with it. After spawning it.
+        /// </summary>
+        public void RemoveCollider()
+        {
+            Collider collider = Movement.Body.Collider;
+            Assert.That(collider, Is.Not.Null, "Test setup: the character should have a collider to take away.");
+            Object.DestroyImmediate(collider);
+            Physics.SyncTransforms();
+        }
+
         /// <summary>Whether the character's body, as it is now, overlaps nothing (more than the skin width).</summary>
         public bool BodyFits => Movement.Body.Fits(Body.position, MovementController.Attitude(Body.rotation, Movement.BodyPitch), Movement.Scale, Movement.Posture);
 

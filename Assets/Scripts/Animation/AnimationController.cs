@@ -513,7 +513,7 @@ namespace Character
         /// </summary>
         private void LowerEyePoint(float deltaTime)
         {
-            if (movementController == null || modelHost == null || movementController.Body.Collider == null) { return; }
+            if (movementController == null || modelHost == null) { return; }
             float standing = movementController.Body.StandingHeight;
             float target = standing > 0f ? Mathf.Clamp01(movementController.Body.Height / standing) : 1f;
             if (eyeLoweringSmoothTime <= 0f) { eyeShare = target; eyeShareVelocity = 0f; }

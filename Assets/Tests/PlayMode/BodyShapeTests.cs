@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -109,6 +110,60 @@ namespace CharacterShowcase.Tests
             Assert.That(box.center.y - box.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Its bottom should stay at the feet.");
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "Pressing Crouch again, it should stand back up.");
+        }
+
+        private const string FoxPrefabPath = "Assets/Prefabs/Fox.prefab";
+
+        /// <summary>
+        /// Without a collider, a character moves exactly as it does with one (the movement doesn't need it: see
+        /// CharacterBody): the tested character and the fox (a box body), up a flight of stairs, along a wall it steers
+        /// into, and jumping. (The golden paths hold the tested character to it over all of its movement.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WithoutACollider_ACharacterMovesExactlyAsWithOne([Values("Character", "Fox")] string character)
+        {
+            var paths = new List<Vector3>[2];
+            for (int run = 0; run < 2; run++)
+            {
+                if (run > 0) { yield return ReplaceRig(); }
+                GameObject prefab = character == "Fox" ? CharacterTestRig.LoadPrefab(FoxPrefabPath) : CharacterTestRig.CharacterPrefab();
+                if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+                rig.Floor(0f, 200f);
+                yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab, settleSeconds: 0f);
+                bool withCollider = run == 0;
+                if (!withCollider) { rig.RemoveCollider(); }
+
+                // Six steps up to a landing, with a wall along the landing's right.
+                float rise = 0.6f * rig.StepHeight, tread = 4f / 3f * rise, top = 6f * rise, start = rig.FrontExtent + 1f;
+                for (int i = 0; i < 5; i++)
+                {
+                    rig.Box($"Step {i + 1}", new Vector3(0f, rise * (i + 1) / 2f, start + i * tread + tread / 2f), new Vector3(10f, rise * (i + 1), tread));
+                }
+                float landing = start + 5f * tread;
+                rig.Box("Landing", new Vector3(0f, top / 2f, landing + 15f), new Vector3(10f, top, 30f));
+                rig.Box("Wall", new Vector3(rig.SideExtent + 1.5f, top + 1.5f, landing + 15f), new Vector3(1f, 3f, 30f));
+                Physics.SyncTransforms();
+                rig.Teleport(new Vector3(0f, 0.02f, 0f));
+
+                float dt = Time.fixedDeltaTime;
+                var path = new List<Vector3>();
+                paths[run] = path;
+                yield return rig.Run(6f, step =>
+                {
+                    float t = step * dt;
+                    if (t < 2.5f) { return CharacterTestRig.Move(Vector3.forward); }
+                    Vector3 alongTheWall = new Vector3(0.5f, 0f, 1f).normalized;
+                    if (t >= 4f && t < 4.3f) { return CharacterTestRig.Jump(step - CharacterTestRig.StepsFor(4f), alongTheWall); }
+                    return CharacterTestRig.Move(alongTheWall);
+                }, _ => path.Add(rig.Position));
+            }
+
+            Assert.That(paths[1].Count, Is.EqualTo(paths[0].Count));
+            for (int i = 0; i < paths[0].Count; i++)
+            {
+                Assert.That(Vector3.Distance(paths[1][i], paths[0][i]), Is.LessThan(1e-5f),
+                    $"At step {i}, without a collider the character was at {paths[1][i]:F5}; with one, at {paths[0][i]:F5}.");
+            }
         }
 
         [UnityTest]

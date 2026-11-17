@@ -3,13 +3,15 @@ using UnityEngine;
 namespace Character
 {
     /// <summary>
-    /// The character's body as collision sees it: its collider, its size (as authored, and now, at the character's size
-    /// and posture), and the queries that depend on its shape: whether it fits somewhere, sweeping it through the world,
-    /// and pushing it out of what has moved into it. The MovementController resolves the character's movement through
-    /// these alone (see MovementController.Body), so a body of another kind is another subclass; PrimitiveBody is one of
-    /// Unity's primitive colliders (a capsule, box or sphere). Its origin is the character's: the point it stands on, its
-    /// feet, though its shape may sit off it (centred above the feet, lying ahead of them). It turns with the character.
-    /// Its queries skip the character's own colliders, and what it ignores (MovementController.IgnoredCollisionRoot).
+    /// The character's body as the movement sees it: its size (as authored, and now, at the character's size and posture),
+    /// and the queries that depend on its shape: whether it fits somewhere, sweeping it through the world, and pushing it
+    /// out of what has moved into it. The MovementController resolves the character's movement through these alone (see
+    /// MovementController.Body), so a body of another kind is another subclass; PrimitiveBody is shaped as one of Unity's
+    /// primitive colliders (a capsule, box or sphere). It's a shape, not a collider: the character needs no collider for
+    /// the movement, and one it has (for the physics that meets it) is only kept in shape by the body. Its origin is the
+    /// character's: the point it stands on, its feet, though its shape may sit off it (centred above the feet, lying ahead
+    /// of them). It turns with the character. Its queries skip the character's own colliders, and what it ignores
+    /// (MovementController.IgnoredCollisionRoot).
     /// </summary>
     public abstract class CharacterBody
     {
@@ -18,10 +20,13 @@ namespace Character
         /// <summary>The character whose body this is.</summary>
         protected MovementController Owner { get; }
 
-        /// <summary>The collider the body is, on the character's object; null if it has none yet.</summary>
+        /// <summary>
+        /// The collider on the character's object the body keeps in its shape (for the physics that meets the character),
+        /// if it has one: null without. The movement doesn't use it.
+        /// </summary>
         public abstract Collider Collider { get; }
 
-        /// <summary>Whether the body's size as authored is known yet (it's read from the collider when first needed).</summary>
+        /// <summary>Whether the body's size as authored is known yet (it's read from the collider, if any, when first needed).</summary>
         public abstract bool HasAuthoredSize { get; }
 
         /// <summary>The body's height (m) standing, at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
@@ -35,11 +40,11 @@ namespace Character
 
         /// <summary>
         /// The radius (m) of the body's footprint now, at the character's size and posture: the ground check under its feet
-        /// is about this wide, and small clearances (the skin width) shrink with it. Only while it has a collider.
+        /// is about this wide, and small clearances (the skin width) shrink with it.
         /// </summary>
         public abstract float FootprintRadius { get; }
 
-        /// <summary>The body's height (m) now, top to bottom, at the character's size and posture. Only while it has a collider.</summary>
+        /// <summary>The body's height (m) now, top to bottom, at the character's size and posture.</summary>
         public abstract float Height { get; }
 
         /// <summary>
@@ -71,10 +76,10 @@ namespace Character
         /// <summary>How far (m) the body reaches out to either side of its feet, now: half the width it needs to pass between things.</summary>
         public abstract float SideExtent { get; }
 
-        /// <summary>Reads the body's size as authored from its collider, if it hasn't yet (before Awake, too: a prefab asked about).</summary>
+        /// <summary>Reads the body's size as authored from its collider (if any), if it hasn't yet (before Awake, too: a prefab asked about).</summary>
         public abstract void RememberAuthoredSize();
 
-        /// <summary>Shapes the collider for the character's scale and posture. Doesn't check for room: see Fits.</summary>
+        /// <summary>Shapes the body (and its collider, if any) for the character's scale and posture. Doesn't check for room: see Fits.</summary>
         public abstract void Resize(Vector3 scale, BodyPosture posture);
 
         /// <summary>
@@ -96,9 +101,9 @@ namespace Character
         public abstract Vector3 Depenetrate(Vector3 feet, Quaternion rotation);
 
         /// <summary>
-        /// The same body for a copy of the character (see MovementController.CopyForSimulation): a collider of its kind
-        /// added to the copy's object, and its shape as authored (or, given a shape as authored, that body, of its kind:
-        /// the one a model would give the character, say). The copy sizes it for itself.
+        /// The same body for a copy of the character (see MovementController.CopyForSimulation), without a collider: its
+        /// shape as authored (or, given a shape as authored, that body, of its kind: the one a model would give the
+        /// character, say). The copy sizes it for itself.
         /// </summary>
         public abstract CharacterBody CopyFor(MovementController copy, BodyShape? authoredShape = null);
 

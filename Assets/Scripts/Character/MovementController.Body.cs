@@ -9,16 +9,51 @@ namespace Character
         private CharacterBody body;
 
         /// <summary>
-        /// The character's body as collision sees it (see CharacterBody): every sweep, overlap and push out of the world
-        /// goes through it. One of Unity's primitive colliders (PrimitiveBody): the character's Body Collider.
+        /// The character's body as the movement sees it (see CharacterBody): every sweep, overlap and push out of the world
+        /// goes through it. Shaped as one of Unity's primitive colliders (PrimitiveBody), keeping the character's Body
+        /// Collider (if it has one) in its shape. The movement doesn't need the collider.
         /// </summary>
         public CharacterBody Body => body ??= new PrimitiveBody(this, bodyCollider);
+
+        // A collider of the body's shape on a hidden object of the character's, turned off but while it's used, so nothing
+        // meets it: pushing the body out of the world (Physics.ComputePenetration) needs a collider, turned on, and the
+        // character may have none.
+        private Collider queryCollider;
+
+        /// <summary>
+        /// A collider shaped as the given body shape, at the character's origin, turned off: for the queries that need a
+        /// collider rather than a shape (see PrimitiveBody.Depenetrate), which turn it on only while they use it
+        /// (Physics.ComputePenetration ignores a collider that's turned off), so nothing else meets it. Made the first
+        /// time it's needed (and again for a shape of another kind).
+        /// </summary>
+        internal Collider QueryCollider(BodyShape shape)
+        {
+            if (!shape.IsKindOf(queryCollider))
+            {
+                GameObject holder;
+                if (queryCollider != null)
+                {
+                    holder = queryCollider.gameObject;
+                    if (Application.isPlaying) { Destroy(queryCollider); } else { DestroyImmediate(queryCollider); }
+                }
+                else
+                {
+                    holder = new GameObject("Body Query") { hideFlags = HideFlags.HideAndDontSave, layer = gameObject.layer };
+                    holder.transform.SetParent(transform, false);
+                }
+                queryCollider = (Collider)holder.AddComponent(shape.ColliderType);
+                queryCollider.enabled = false;
+                if (queryCollider is CapsuleCollider capsule) { capsule.direction = shape.direction; }
+            }
+            PrimitiveBody.Write(queryCollider, shape);
+            return queryCollider;
+        }
 
         private void RememberBaseSize() => Body.RememberAuthoredSize();
 
         /// <summary>
-        /// After the character's collider has been replaced (a capsule for a box, say): makes its body again, from the
-        /// first primitive collider on it, as authored, in the posture it has.
+        /// After the character's collider has been replaced (a capsule for a box, say): makes its body again, shaped as the
+        /// given collider (or the first primitive collider on it) as authored, in the posture it has.
         /// </summary>
         public void RebuildBody(Collider primitive = null)
         {
@@ -31,10 +66,10 @@ namespace Character
         }
 
         /// <summary>
-        /// Resizes the character's collision to the given size (see PrimitiveBody: a capsule's height scales with y, and
-        /// its radius with the larger of x and z). Collision sweeps, ground checks and depenetration all use the body, so
-        /// they follow. (Its posture shapes it too: see SetPosture.) Doesn't check for room: see CanFit. Called by
-        /// ACCharacterController.SetScale.
+        /// Resizes the character's body (and its collider, if any) to the given size (see PrimitiveBody: a capsule's height
+        /// scales with y, and its radius with the larger of x and z). Collision sweeps, ground checks and depenetration all
+        /// use the body, so they follow. (Its posture shapes it too: see SetPosture.) Doesn't check for room: see CanFit.
+        /// Called by ACCharacterController.SetScale.
         /// </summary>
         public void ApplyScale(Vector3 scale)
         {
@@ -71,7 +106,7 @@ namespace Character
         /// <summary>
         /// The character's body as authored, at its authored size (1, 1, 1), standing (see BodyShape): its Body
         /// Definition's (before the character wakes, for a prefab asked about), or the shape it's been given since (see
-        /// SetBody), or its Body Collider's as authored.
+        /// SetBody), or its Body Collider's as authored (or, without one, an upright capsule 2 m tall).
         /// </summary>
         public BodyShape AuthoredBody =>
             bodyDefinition != null && !shapedFromDefinition ? bodyDefinition.Shape
@@ -98,7 +133,8 @@ namespace Character
         /// <summary>
         /// Gives the character another body as authored (see BodyShape; its scale then multiplies it), its feet staying
         /// where they are: the body a model gives it (see CharacterModelHost), say. A body of another kind than the
-        /// collider's replaces the collider with one of its kind (keeping its material, layers and settings). Like growing,
+        /// character's collider (if it has one) replaces the collider with one of its kind (keeping its material, layers and
+        /// settings), so it keeps following the body. Like growing,
         /// it waits for room: unless checkRoom is false, if the new body would reach somewhere the current one doesn't and
         /// wouldn't fit there, nothing changes and this returns false. False for a body without a size, or a character
         /// whose body isn't a primitive.

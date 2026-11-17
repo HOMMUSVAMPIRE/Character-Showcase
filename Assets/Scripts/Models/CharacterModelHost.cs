@@ -344,12 +344,12 @@ namespace Character
                 return; // Fitted, so it can't fail to fit.
             }
 
-            if (ModelHeightMeters <= 0f || movement == null || movement.Body.Collider == null) { return; }
+            if (ModelHeightMeters <= 0f || movement == null) { return; }
             float colliderHeight = movement.Body.Height * transform.lossyScale.y;
             if (ModelHeightMeters > colliderHeight + 0.01f || ModelHeightMeters < colliderHeight * minimumHeightFraction)
             {
                 Debug.LogWarning($"[{nameof(CharacterModelHost)}] The model '{created.Root.name}' is {ModelHeightMeters:0.00} m tall, " +
-                                 $"but the character's collider is {colliderHeight:0.00} m. Set its source's Height to Fit To Height, " +
+                                 $"but the character's body is {colliderHeight:0.00} m. Set its source's Height to Fit To Height, " +
                                  "or change its Scale.", this);
             }
         }

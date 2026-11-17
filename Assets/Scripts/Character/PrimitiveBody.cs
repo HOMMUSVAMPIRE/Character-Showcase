@@ -4,29 +4,43 @@ using UnityEngine;
 namespace Character
 {
     /// <summary>
-    /// A body (see CharacterBody) that is one of Unity's primitive colliders on the character's object: a capsule (upright
-    /// or lying along an axis), a box or a sphere, centred wherever it's authored. Its size follows the character's (a
+    /// A body (see CharacterBody) shaped as one of Unity's primitive colliders: a capsule (upright or lying along an axis),
+    /// a box or a sphere, centred wherever it's authored. It's a shape, not a collider: the movement needs no collider on
+    /// the character (its queries are made with the shape itself, and pushing it out of the world with a private collider
+    /// that nothing else meets: see MovementController.QueryCollider). If the character has a collider of its kind (its
+    /// Body Collider), the body keeps it shaped as it is, for the physics that meets the character; it's the body's
+    /// shape as authored, too, unless it's given one (see MovementController.SetBody). Its size follows the character's (a
     /// capsule's length along its axis with that axis's scale, its radius with the larger of the others, but no more than
     /// half its height; a box's sides each with theirs; a sphere with the largest). Its postures are its authored shape
     /// lowered from the top (low) or laid down along the facing, resting on the feet (lying), no thicker than its lying
-    /// thickness (see BodyShape). Its queries use the shape shrunk by the skin width on every side. Its shape as authored
-    /// is its collider's, or the one it's given (see MovementController.SetBody).
+    /// thickness (see BodyShape). Its queries use the shape shrunk by the skin width on every side. Without a collider or
+    /// a shape given it, it's an upright capsule 2 m tall standing on the feet.
     /// </summary>
     public sealed class PrimitiveBody : CharacterBody
     {
         // Passes made to push the body out of geometry that moved into it, for when several things overlap.
         private const int MaxDepenetrationPasses = 4;
 
+        // The collider the body keeps shaped as it is, if the character has one (see Collider).
         private Collider collider;
         // The shape as authored, which the character's size and posture change.
         private BodyShape authored;
         private bool hasAuthored;
+        // The shape now, at the character's size and posture (see Resize).
+        private BodyShape current;
+        private bool hasCurrent;
+        // Whether the owner has been looked through for a collider (see RememberAuthoredSize).
+        private bool searched;
 
         /// <summary>
-        /// A body for the owner, of the given primitive collider (or, if null, the owner's first solid capsule, box or
-        /// sphere collider, once it has one).
+        /// A body for the owner, keeping the given primitive collider shaped as it is (or, if null, the owner's first
+        /// solid capsule, box or sphere collider, if it has one).
         /// </summary>
-        public PrimitiveBody(MovementController owner, Collider primitive) : base(owner) => collider = IsPrimitive(primitive) ? primitive : null;
+        public PrimitiveBody(MovementController owner, Collider primitive) : base(owner)
+        {
+            collider = IsPrimitive(primitive) ? primitive : null;
+            searched = collider != null;
+        }
 
         private static bool IsPrimitive(Collider c) => c is CapsuleCollider || c is BoxCollider || c is SphereCollider;
 
@@ -56,7 +70,6 @@ namespace Character
         {
             get
             {
-                if (collider == null) { return false; }
                 BodyShape s = Current;
                 bool offCentre = s.center.x != 0f || s.center.z != 0f;
                 return s.kind switch
@@ -68,22 +81,42 @@ namespace Character
             }
         }
 
-        public override bool FlatBottomed => collider is BoxCollider;
+        public override bool FlatBottomed => Current.kind == BodyShapeKind.Box;
 
         // How far the shape reaches ahead of, behind and beside the feet, in the character's frame. A round shape on the
-        // feet reaches its radius every way (or, before it has a collider, half a metre at the character's height).
-        public override float FrontExtent => collider != null ? Current.center.z + HalfExtents(Current).z : 0.5f * Owner.HeightScale;
-        public override float BackExtent => collider != null ? HalfExtents(Current).z - Current.center.z : 0.5f * Owner.HeightScale;
-        public override float SideExtent => collider != null ? Mathf.Abs(Current.center.x) + HalfExtents(Current).x : 0.5f * Owner.HeightScale;
+        // feet reaches its radius every way.
+        public override float FrontExtent => Current.center.z + HalfExtents(Current).z;
+        public override float BackExtent => HalfExtents(Current).z - Current.center.z;
+        public override float SideExtent => Mathf.Abs(Current.center.x) + HalfExtents(Current).x;
 
-        /// <summary>The collider's shape as it is now.</summary>
-        private BodyShape Current => Read(collider);
+        /// <summary>
+        /// The body's shape now, at the character's size and posture: as the last Resize made it, or (before one) its
+        /// shape as authored, at the character's size and posture now.
+        /// </summary>
+        public BodyShape Current
+        {
+            get
+            {
+                if (!hasCurrent)
+                {
+                    RememberAuthoredSize();
+                    current = ShapeAt(authored, Owner.Scale, Owner.Posture);
+                    hasCurrent = true;
+                }
+                return current;
+            }
+        }
 
         public override void RememberAuthoredSize()
         {
-            // Also before Awake (a prefab asset asked about, say), so the collider is fetched here too.
-            if (collider == null) { collider = FindPrimitive(Owner); }
-            if (hasAuthored || collider == null) { return; }
+            // Also before Awake (a prefab asset asked about, say), so the collider is fetched here too: once (this is
+            // asked every step, and a character without a collider would otherwise look for one every time).
+            if (collider == null && !searched)
+            {
+                collider = FindPrimitive(Owner);
+                searched = true;
+            }
+            if (hasAuthored) { return; }
             authored = Read(collider);
             hasAuthored = true;
         }
@@ -101,16 +134,19 @@ namespace Character
         public override void Resize(Vector3 scale, BodyPosture posture)
         {
             RememberAuthoredSize();
-            if (collider == null) { return; }
-            Write(ShapeAt(authored, scale, posture));
+            current = ShapeAt(authored, scale, posture);
+            hasCurrent = true;
+            // The collider, if there is one, follows the body: the movement itself doesn't need it.
+            if (current.IsKindOf(collider)) { Write(collider, current); }
         }
 
         // ---- Shapes ----
 
-        // No collider yet: the default upright capsule, 2 m tall, standing on the feet.
+        // No collider: the default upright capsule, 2 m tall, standing on the feet.
         private static BodyShape Read(Collider c) => BodyShape.TryRead(c, out BodyShape shape) ? shape : BodyShape.Capsule(0.5f, 2f);
 
-        private void Write(BodyShape s)
+        /// <summary>Shapes a primitive collider of the shape's kind as the shape (see MovementController.QueryCollider, too).</summary>
+        internal static void Write(Collider collider, BodyShape s)
         {
             switch (collider)
             {
@@ -244,20 +280,21 @@ namespace Character
         }
 
         /// <summary>
-        /// Gives the body another shape as authored (see BodyShape), of its collider's kind. Like growing, it waits for room:
-        /// unless told not to (checkRoom false), if the new body would reach anywhere the current one doesn't and wouldn't
-        /// fit with its feet at feet (turned rotation, at the given scale and posture), nothing changes and this returns
-        /// false; also false for a shape of another kind, or without a size. Doesn't resize the collider: the owner does
-        /// (see MovementController.SetBody).
+        /// Gives the body another shape as authored (see BodyShape): of its collider's kind, if it has a collider. Like
+        /// growing, it waits for room: unless told not to (checkRoom false), if the new body would reach anywhere the
+        /// current one doesn't and wouldn't fit with its feet at feet (turned rotation, at the given scale and posture),
+        /// nothing changes and this returns false; also false for a shape of another kind than its collider, or without a
+        /// size. Doesn't resize it: the owner does (see MovementController.SetBody).
         /// </summary>
         public bool SetAuthoredShape(BodyShape shape, Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, bool checkRoom = true)
         {
             RememberAuthoredSize();
-            if (collider == null || !shape.HasSize || !shape.IsKindOf(collider)) { return false; }
+            if (!shape.HasSize || (collider != null && !shape.IsKindOf(collider))) { return false; }
             if (checkRoom && Reaches(ShapeAt(shape, scale, posture), ShapeAt(authored, scale, posture))
                 && !Fits(feet, rotation, scale, posture, shape)) { return false; }
             authored = shape;
             hasAuthored = true;
+            hasCurrent = false;
             return true;
         }
 
@@ -275,9 +312,8 @@ namespace Character
         {
             RememberAuthoredSize();
             BodyShape shape = authoredShape is { HasSize: true } given ? given : authored;
-            var added = (Collider)copy.gameObject.AddComponent(shape.ColliderType);
-            if (added is CapsuleCollider capsule) { capsule.direction = shape.direction; }
-            return new PrimitiveBody(copy, added) { authored = shape, hasAuthored = true };
+            // No collider: the copy's movement doesn't need one.
+            return new PrimitiveBody(copy, null) { authored = shape, hasAuthored = true };
         }
 
         // ---- Queries ----
@@ -298,7 +334,6 @@ namespace Character
         /// <summary>The same, for a body of another authored shape.</summary>
         private bool Fits(Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, BodyShape authoredShape)
         {
-            if (collider == null) { return true; }
             BodyShape s = ShapeAt(authoredShape, scale, posture);
             float authoredFootprint = Footprint(authoredShape);
             float skinAtScale = Owner.AuthoredSkinWidth * (authoredFootprint > 0f ? Mathf.Min(scale.y, Footprint(s) / authoredFootprint) : scale.y);
@@ -343,29 +378,42 @@ namespace Character
 
         public override Vector3 Depenetrate(Vector3 feet, Quaternion rotation)
         {
-            if (collider == null) { return Vector3.zero; }
-
             BodyShape s = Current;
             float skin = Owner.SkinWidth;
             Collider[] overlaps = Owner.OverlapBuffer;
             Vector3 offset = Vector3.zero;
-            for (int pass = 0; pass < MaxDepenetrationPasses; pass++)
+            // ComputePenetration needs a collider, and one that's turned on: a private one of the body's shape, turned on
+            // only while it's used (only in a step the body overlaps something), so nothing else ever meets it.
+            Collider query = null;
+            try
             {
-                int count = Overlap(s, feet + offset, rotation, skin, overlaps);
-                bool pushed = false;
-                for (int i = 0; i < count; i++)
+                for (int pass = 0; pass < MaxDepenetrationPasses; pass++)
                 {
-                    Collider other = overlaps[i];
-                    if (Owner.IsOwnCollider(other.transform)) { continue; }
-                    MovementController.GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
-                    if (Physics.ComputePenetration(collider, feet + offset, rotation, other, otherPosition, otherRotation,
-                            out Vector3 direction, out float distance))
+                    int count = Overlap(s, feet + offset, rotation, skin, overlaps);
+                    bool pushed = false;
+                    for (int i = 0; i < count; i++)
                     {
-                        offset += direction * distance;
-                        pushed = true;
+                        Collider other = overlaps[i];
+                        if (Owner.IsOwnCollider(other.transform)) { continue; }
+                        if (query == null)
+                        {
+                            query = Owner.QueryCollider(s);
+                            query.enabled = true;
+                        }
+                        MovementController.GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
+                        if (Physics.ComputePenetration(query, feet + offset, rotation, other, otherPosition, otherRotation,
+                                out Vector3 direction, out float distance))
+                        {
+                            offset += direction * distance;
+                            pushed = true;
+                        }
                     }
+                    if (!pushed) { break; }
                 }
-                if (!pushed) { break; }
+            }
+            finally
+            {
+                if (query != null) { query.enabled = false; }
             }
             return offset;
         }
