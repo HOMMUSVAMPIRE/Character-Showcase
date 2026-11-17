@@ -141,6 +141,9 @@ namespace Character
         /// </summary>
         public float stepChange;
 
+        /// <summary>What collision did to the character this step (see StepResolution): for seeing why it moved as it did.</summary>
+        public StepResolution resolution;
+
         /// <summary>How far (degrees, positive nose up) the character's body was pitched at the start of the step (see MovementController.BodyPitch).</summary>
         public float initialPitch;
 

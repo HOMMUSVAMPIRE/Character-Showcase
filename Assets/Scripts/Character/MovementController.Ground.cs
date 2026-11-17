@@ -54,6 +54,24 @@ namespace Character
             return CheckGrounded(data.initialPosition, out groundTransform);
         }
 
+        /// <summary>
+        /// Puts the character's feet at feet at once, between steps (turned to rotation, if given): a teleport. It forgets
+        /// the ground it stood on, which would otherwise carry it back on the next step: the carry follows where the
+        /// character last stood on its ground, so a teleport shorter than Max Ground Carry Per Step, made standing, was
+        /// undone.
+        /// </summary>
+        public void Teleport(Vector3 feet, Quaternion? rotation = null)
+        {
+            carrierGround = null;
+            Quaternion turn = rotation ?? (rb != null ? rb.rotation : transform.rotation);
+            if (rb != null)
+            {
+                rb.position = feet;
+                rb.rotation = turn;
+            }
+            transform.SetPositionAndRotation(feet, turn);
+        }
+
         /// <summary>Records the character's pose relative to their ground at the end of the step, for the next carry.</summary>
         private void RememberGround(MovementData data)
         {
@@ -113,6 +131,7 @@ namespace Character
         public bool CheckGrounded(Vector3 position, out Transform groundTransform)
         {
             groundTransform = null;
+            lastGroundedBy = GroundedBy.None;
 
             float r = GroundCheckRadius;
             // Start with the bottom of the sphere just above the feet so we can detect ground slightly below them,
@@ -126,23 +145,35 @@ namespace Character
 
             int count = Physics.SphereCastNonAlloc(start, r, Vector3.down, castHits, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
             float best = float.PositiveInfinity;
+            bool bestOnEdge = false;
             for (int i = 0; i < count; i++)
             {
                 RaycastHit hit = castHits[i];
                 if (IsOwnCollider(hit.transform)) { continue; }
                 if (hit.distance <= 0f) { continue; }
-                if (Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(hit, position)) { continue; }
+                bool steep = Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle;
+                if (steep && !IsStepEdge(hit, position)) { continue; }
                 if (hit.distance < best)
                 {
                     best = hit.distance;
+                    bestOnEdge = steep;
                     // The object actually hit (its Rigidbody's transform, if it has one) - not the hierarchy root,
                     // which for a platform parented under a static "Environment" object would never move.
                     groundTransform = hit.transform;
                 }
             }
-            if (float.IsFinite(best)) { return true; }
-            return RestsOnSomething(position, out groundTransform);
+            if (float.IsFinite(best))
+            {
+                lastGroundedBy = bestOnEdge ? GroundedBy.ProbeOnStepEdge : GroundedBy.Probe;
+                return true;
+            }
+            if (!RestsOnSomething(position, out groundTransform)) { return false; }
+            lastGroundedBy = GroundedBy.BodyRest;
+            return true;
         }
+
+        // How the latest ground check found the character on the ground (see StepResolution.groundedBy).
+        private GroundedBy lastGroundedBy;
 
         /// <summary>
         /// Whether the body itself, its feet at position, rests on walkable ground or a step's edge (within the grounded

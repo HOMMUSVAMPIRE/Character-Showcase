@@ -585,12 +585,11 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Moves the character's feet to the given position at once, between steps (for placing it where its own size
-        /// decides, which isn't known until it's spawned and its model has loaded).
+        /// decides, which isn't known until it's spawned and its model has loaded). See MovementController.Teleport.
         /// </summary>
         public void Teleport(Vector3 feet)
         {
-            Body.position = feet;
-            Character.transform.position = feet;
+            Movement.Teleport(feet);
             Physics.SyncTransforms();
         }
 

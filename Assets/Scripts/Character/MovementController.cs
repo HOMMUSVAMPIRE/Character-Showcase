@@ -304,6 +304,7 @@ namespace Character
             // ground this frame via spherecast downwards
             data.initialGrounded = ApplyGroundCarry(ref data);
             data.initialGroundTransform = groundTransform;
+            data.resolution.groundedBy = data.initialGrounded ? lastGroundedBy : GroundedBy.None;
 
             // On leaving the ground (walking off an edge or jumping), keep moving at the speed the character was going.
             // On the ground, walking is applied directly each frame rather than stored as inertia, so without this the

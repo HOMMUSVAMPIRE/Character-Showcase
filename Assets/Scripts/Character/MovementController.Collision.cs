@@ -63,6 +63,10 @@ namespace Character
             // Sweeps can't see anything they start inside of, so first push out of anything that moved into the
             // character since the last step (a moving wall, a platform's side, a lowering ceiling).
             Vector3 depenetration = Body.Depenetrate(pos, BodyRotation);
+            data.resolution.depenetration = depenetration;
+            data.resolution.steppedUp = 0f;
+            data.resolution.snapped = false;
+            data.resolution.groundSnap = 0f;
             if (depenetration != Vector3.zero)
             {
                 pos += depenetration;
@@ -100,6 +104,7 @@ namespace Character
             Vector3 horizResolved = ResolveHorizontal(pos, horiz, data.initialGrounded, ref inertia, ref data.collisions);
             pos += horizResolved;
             data.stepChange = steppedUp;
+            data.resolution.steppedUp = steppedUp;
 
             Vector3 vertResolved = ResolveVertical(pos, vert, ref inertia, ref data.collisions);
             pos += vertResolved;
@@ -131,6 +136,8 @@ namespace Character
                     {
                         totalResolved += Vector3.down * drop;
                         data.collisions |= CollisionFlags.Below;
+                        data.resolution.snapped = true;
+                        data.resolution.groundSnap = drop;
                         // Further than walking down what it lands on would drop it (by more than the skin width, which
                         // is all walking on the level drops it): down onto a step. Onto a step's edge (too steep to walk
                         // down), rolling over it toward the step below, all of it.

@@ -366,17 +366,52 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Grounded, Is.True);
         }
 
+        /// <summary>
+        /// A step taller than the step height stops the character, walking or sprinting, straight at it or at an angle.
+        /// Whether a step is short enough is judged by where the body touches down on it, not where its feet end up:
+        /// perched part way up a taller step's edge, the feet can be under the step height, and from there the character
+        /// used to ride up over the edge. (Vaulting is turned off: sprinting at it, Vaulting steps up onto something a
+        /// little taller on purpose.)
+        /// </summary>
         [UnityTest]
-        public IEnumerator DoesNotClimbStepsTallerThanTheStepHeight()
+        public IEnumerator DoesNotClimbStepsTallerThanTheStepHeight([Values(false, true)] bool sprint, [Values(0f, 30f)] float angle)
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            if (rig.ComposedMode.Get<Vaulting>(includeDisabled: true) is { } vaulting) { vaulting.Enabled = false; }
             float height = 1.15f * rig.StepHeight, start = rig.FrontExtent + 1.5f;
-            rig.Box("Step", new Vector3(0f, height / 2f, start + 20f), new Vector3(10f, height, 40f));
-            yield return rig.Run(rig.SecondsToWalk(start + 1f, 1f), _ => CharacterTestRig.Move(Vector3.forward));
+            rig.Box("Step", new Vector3(0f, height / 2f, start + 20f), new Vector3(40f, height, 40f));
+            Vector3 heading = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+            float speed = sprint ? rig.RunSpeed : rig.WalkSpeed;
+            yield return rig.Run((start + 1f) / speed + 1f, step => sprint ? CharacterTestRig.Sprint(heading, step + 1) : CharacterTestRig.Move(heading));
 
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.01f));
             Assert.That(rig.Position.z, Is.LessThan(start), "A step taller than the step height should stop the character.");
+        }
+
+        /// <summary>
+        /// Falling, the character is on the ground only once its feet are near the floor. The ground check once counted it
+        /// on the ground up to its sphere's radius (plus the grounded tolerance) above the floor, cancelling its fall
+        /// while it was still in the air.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Falling_IsntOnTheGround_UntilItsFeetAreNearTheFloor()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 2f, 0f));
+            yield return rig.WaitForModel();
+            rig.Teleport(new Vector3(0f, 2f, 0f));
+            Vector3 previous = rig.Position;
+            float highestGrounded = float.NegativeInfinity;
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), _ =>
+            {
+                // Grounded as the step started: where the last step left it.
+                if (rig.Movement.lastFrameMovementData.initialGrounded) { highestGrounded = Mathf.Max(highestGrounded, previous.y); }
+                previous = rig.Position;
+            });
+
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
+            Assert.That(highestGrounded, Is.LessThan(0.5f * rig.StepHeight), "The character counted as on the ground while still well above the floor.");
         }
 
         [UnityTest]

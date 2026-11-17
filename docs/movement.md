@@ -122,7 +122,7 @@ Everything else follows:
 ## Moving Ground
 The character rides along with whatever it stands on. Each physics step, before moving, the character is carried by however far its ground moved, and turned with it if it spins. It then moves relative to the ground as normal. Leaving moving ground, by jumping or walking off, keeps the ground's velocity, so the character doesn't stop dead in mid-air.
 
-These options can be toggled in the MovementController's Moving Ground section (Move With Ground, Rotate With Ground, Inherit Ground Velocity). Ground that moves further than Max Ground Carry Per Step in one physics step is treated as teleporting and doesn't carry the character.
+These options can be toggled in the MovementController's Moving Ground section (Move With Ground, Rotate With Ground, Inherit Ground Velocity). Ground that moves further than Max Ground Carry Per Step in one physics step is treated as teleporting and doesn't carry the character. Moving the character somewhere at once (a respawn, a checkpoint) goes through `MovementController.Teleport`, which forgets the ground it stood on; set the Rigidbody's position directly instead and, standing, the next step carries the character back to where it stood on its ground.
 
 Moving platforms should be kinematic Rigidbodies moved in FixedUpdate with interpolation enabled; the MovingPlatform component does this. Tools > Character Showcase > Create Foot Placement Test Area adds a sliding platform, an elevator and a spinning platform to try it.
 

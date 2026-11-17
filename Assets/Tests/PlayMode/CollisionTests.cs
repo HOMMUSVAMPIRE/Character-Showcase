@@ -108,6 +108,32 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.z, Is.GreaterThan(foot - 0.05f), "Character should slide down the slope, away from it.");
         }
 
+        /// <summary>
+        /// Falling onto a walkable ramp, the character stops where it lands. (Removing only the part of the fall heading
+        /// into the ramp's surface would turn the rest into sliding down it.)
+        /// </summary>
+        [UnityTest]
+        public IEnumerator LandingOnAWalkableRamp_StopsWhereItLands()
+        {
+            rig.SpawnCharacter(new Vector3(0f, 50f, 0f));
+            yield return rig.WaitForModel();
+            // A ramp a little over half as steep as the steepest walkable slope, rising along +Z from the origin.
+            float angle = 0.55f * rig.MaxSlopeAngle;
+            Quaternion tilt = Quaternion.Euler(-angle, 0f, 0f);
+            rig.Box("Ramp", tilt * new Vector3(0f, -0.25f, 5f), new Vector3(6f, 0.5f, 10f), tilt);
+            float surfaceHeight = Mathf.Tan(angle * Mathf.Deg2Rad) * 3f;
+            Physics.SyncTransforms();
+            rig.Teleport(new Vector3(0f, surfaceHeight + 2f, 3f));
+            Vector3 dropped = rig.Position;
+
+            yield return rig.RunUntilLanded();
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should land on the ramp.");
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+
+            Vector3 moved = rig.Position - dropped;
+            Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.03f), "Landing on a walkable ramp turned the fall into a slide down it.");
+        }
+
         [UnityTest]
         public IEnumerator MovingWall_PushesTheCharacter_InsteadOfPassingThrough()
         {

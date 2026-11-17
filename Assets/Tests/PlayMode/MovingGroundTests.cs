@@ -30,6 +30,70 @@ namespace CharacterShowcase.Tests
             Assert.That(drift.magnitude, Is.LessThan(0.05f), "Character slid relative to the platform instead of riding it.");
         }
 
+        /// <summary>
+        /// A platform parented under a static object (as a level's are, under its Environment) still carries the
+        /// character: the ground is the object hit, not the root of its hierarchy, which never moves.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StandingOnAPlatformParentedUnderAStaticObject_MovesWithIt()
+        {
+            GameObject environment = rig.Box("Environment", new Vector3(0f, -50f, 0f), Vector3.one);
+            var platform = rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(6f, 0f, 0f), 6f, Vector3.zero);
+            platform.transform.SetParent(environment.transform, worldPositionStays: true);
+            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Character should be standing on the platform.");
+            Vector3 offset = rig.Position - platformBody.position;
+            float platformStart = platformBody.position.x;
+
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+
+            Assert.That(platformBody.position.x - platformStart, Is.GreaterThan(1.5f), "Test setup: the platform should have moved.");
+            Vector3 drift = rig.Position - platformBody.position - offset;
+            Assert.That(drift.magnitude, Is.LessThan(0.05f), "Character wasn't carried by a platform parented under a static object.");
+        }
+
+        /// <summary>
+        /// Ground that jumps further in a step than the most the character is carried (Max Ground Carry Per Step, on the
+        /// MovementController) has been teleported: the character isn't dragged across the level with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GroundThatTeleports_DoesntDragTheCharacterWithIt()
+        {
+            GameObject ground = rig.Box("Ground", new Vector3(0f, -0.15f, 0f), new Vector3(4f, 0.3f, 4f));
+            ground.AddComponent<Rigidbody>().isKinematic = true;
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the ground.");
+
+            ground.transform.position += new Vector3(20f, 0f, 0f);
+            Physics.SyncTransforms();
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+
+            Assert.That(Mathf.Abs(rig.Position.x), Is.LessThan(0.5f), "The character was dragged along with ground that teleported.");
+        }
+
+        /// <summary>
+        /// A teleport shorter than the most the character is carried in a step, made standing, stays where it's put: the
+        /// ground it stood on doesn't carry it back to where it stood on it (see MovementController.Teleport).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TeleportingAShortWay_WhileStanding_StaysWhereItsPut()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the floor.");
+
+            var target = new Vector3(1f, 0f, 0.5f);
+            rig.Teleport(target);
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+
+            Assert.That(Vector3.Distance(rig.Position, target), Is.LessThan(0.01f), "The ground carried the character back to where it stood before the teleport.");
+        }
+
         [UnityTest]
         public IEnumerator StandingOnElevator_RidesUp()
         {
