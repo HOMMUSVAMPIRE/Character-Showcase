@@ -5,6 +5,13 @@ docs/ describe what the project does; this file describes how to change it safel
 of how it fits together, docs/decisions.md why, docs/glossary.md its terms, and docs/troubleshooting.md the usual
 pitfalls.
 
+## Open tasks
+
+`ReferenceAssets/OpenTasks.md` lists the improvements chosen for this repo, ordered by impact, each with where, what's
+wrong, the fix and its effort. Check it before starting work, and when asked what's next. When a task is done, delete
+its entry from the list (or note what's left of it). The list is the one file in `ReferenceAssets/` you may edit. It's
+kept out of git, so it exists only on the machine that has it. If it's missing, say so; don't recreate it from memory.
+
 ## The project at a glance
 
 A Unity character controller showcase: movement and its abilities, a standalone camera rig, a generated humanoid
@@ -247,4 +254,4 @@ Match the existing code:
 - Never commit `Library/`, `Temp/`, `Logs/`, `UserSettings/`, `Builds/` or test results (the `.gitignore` covers
   most of these).
 - `ReferenceAssets/` (at the root, ignored by git) holds reference material for you: read from it, but don't commit,
-  move or edit what's in it.
+  move or edit what's in it (except `OpenTasks.md`: see Open tasks).
