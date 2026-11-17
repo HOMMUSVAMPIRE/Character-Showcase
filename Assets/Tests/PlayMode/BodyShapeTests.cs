@@ -131,7 +131,7 @@ namespace CharacterShowcase.Tests
                 rig.Floor(0f, 200f);
                 yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab, settleSeconds: 0f);
                 bool withCollider = run == 0;
-                if (!withCollider) { rig.RemoveCollider(); }
+                if (withCollider) { rig.AddBodyCollider(); }
 
                 // Six steps up to a landing, with a wall along the landing's right.
                 float rise = 0.6f * rig.StepHeight, tread = 4f / 3f * rise, top = 6f * rise, start = rig.FrontExtent + 1f;
@@ -167,14 +167,14 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator TheCharacterPrefab_HasABodyDefinition_ThatsItsCollider()
+        public IEnumerator TheCharacterPrefab_HasABodyDefinition_AndNoCollider()
         {
             yield return OnTheFloor();
             BodyDefinition definition = rig.Movement.BodyDefinition;
             Assert.That(definition, Is.Not.Null, "The character should be shaped from a Body Definition.");
-            Assert.That(BodyShape.TryRead(CharacterTestRig.PrefabCapsule(), out BodyShape prefabShape), Is.True);
-            Assert.That(definition.Shape.Equals(prefabShape), Is.True,
-                $"The prefab's collider should be its body as defined ({definition.Shape}), not {prefabShape}.");
+            Assert.That(CharacterTestRig.CharacterPrefab().GetComponents<Collider>(), Is.Empty,
+                "The prefab should have no collider of its own: its body is a shape, and its model's hitboxes meet the world.");
+            Assert.That(rig.Movement.Body.Collider, Is.Null, "Nor should one be added for its body.");
             // Its body is the definition's, unless it takes its model's (see CharacterModelHost's Collider Fit).
             BodyShape expected = rig.Models.BodyFor(rig.Models.ModelSource, rig.Movement) ?? definition.Shape;
             Assert.That(rig.Movement.AuthoredBody.Equals(expected), Is.True, $"Its body should be {expected}, not {rig.Movement.AuthoredBody}.");
@@ -194,7 +194,7 @@ namespace CharacterShowcase.Tests
             Assume.That(rig.Movement.SetPosture(BodyPosture.Lying, rig.Body.position), Is.True, "Test setup: there's room to lie down.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(thickness).Within(1e-4f), "Lying, the body should be as thick as its lying thickness.");
             Assert.That(rig.FrontExtent + rig.BackExtent, Is.EqualTo(length).Within(1e-4f), "And as long as it stood tall.");
-            Assert.That(rig.Movement.Body.Collider.bounds.min.y - rig.Body.position.y, Is.EqualTo(0f).Within(0.01f), "Resting on its feet.");
+            Assert.That(rig.BodyNow.center.y - 0.5f * rig.CurrentHeight, Is.EqualTo(0f).Within(0.01f), "Resting on its feet.");
             if (kind == "box") { Assert.That(2f * rig.SideExtent, Is.EqualTo(wide).Within(1e-4f), "A box stays as wide."); }
         }
 
@@ -209,11 +209,12 @@ namespace CharacterShowcase.Tests
             Physics.SyncTransforms();
             BodyShape taller = BodyShape.Box(new Vector3(0.8f, standing + 0.5f, 0.6f));
             Assert.That(rig.Movement.SetBody(taller), Is.False, "Under the ceiling, a taller body shouldn't fit.");
-            Assert.That(rig.Movement.Body.Collider, Is.InstanceOf<CapsuleCollider>(), "Nothing should change meanwhile.");
+            Assert.That(rig.BodyNow.kind, Is.EqualTo(BodyShapeKind.Capsule), "Nothing should change meanwhile.");
 
             yield return rig.Run(rig.SecondsToWalk(3f + rig.FrontExtent, 1f), _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.Movement.SetBody(taller), Is.True, "Out in the open, it should fit.");
-            Assert.That(rig.Movement.Body.Collider, Is.InstanceOf<BoxCollider>(), "A box body is a box collider.");
+            Assert.That(rig.BodyNow.kind, Is.EqualTo(BodyShapeKind.Box), "Its body should be a box now.");
+            Assert.That(rig.Movement.Body.Collider, Is.Null, "Without a collider, none is added for it.");
             Assert.That(rig.StandingHeight, Is.EqualTo(taller.size.y).Within(1e-4f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True);
@@ -240,8 +241,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.CurrentHeight, Is.EqualTo(deep).Within(1e-4f), "Lying, the body should be as tall as it was deep standing.");
             Assert.That(rig.FrontExtent + rig.BackExtent, Is.EqualTo(tall).Within(1e-4f), "And as long as it was tall.");
             Assert.That(2f * rig.SideExtent, Is.EqualTo(wide).Within(1e-4f), "And as wide.");
-            Assert.That(rig.Movement.Body.Collider.bounds.min.y - rig.Body.position.y, Is.EqualTo(0f).Within(0.01f),
-                "It should rest on the feet.");
+            Assert.That(rig.BodyNow.center.y - 0.5f * rig.CurrentHeight, Is.EqualTo(0f).Within(0.01f), "It should rest on the feet.");
             Assert.That(rig.Movement.Body.TurnsWithFacing, Is.True, "Lying, it turns with the character.");
         }
     }

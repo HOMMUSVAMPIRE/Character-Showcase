@@ -117,7 +117,7 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             // The ceiling half a step height above the head (the jump clears a step), the wall 2 m ahead.
-            CapsuleCollider capsule = CharacterTestRig.PrefabCapsule();
+            BodyShape capsule = CharacterTestRig.PrefabBody();
             float ceiling = capsule.height + 0.5f * CharacterTestRig.PrefabStepHeight(), face = capsule.radius + 2f;
             rig.Box("Ceiling", new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(10f, 1f, 10f));
             rig.Box("Wall", new Vector3(0f, ceiling / 2f, face + 0.5f), new Vector3(10f, ceiling, 1f));

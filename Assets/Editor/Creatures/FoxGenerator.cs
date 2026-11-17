@@ -347,9 +347,25 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
-        /// <summary>The fox's model prefab: the model, its Animator playing the controller, and its eyes on its head.</summary>
+        /// <summary>
+        /// The bones the fox's hitboxes are on (see HitboxFitter): its body, head and tail, and each leg's three. Its
+        /// muzzle and ears go to its head's, its hind paws to its hind feet's.
+        /// </summary>
+        public static readonly string[] HitboxBones =
+        {
+            "Hips", "Spine1", "Spine2", "Neck", "Head", "Tail1", "Tail2", "Tail3", "Tail4",
+            "FrontUpperLeg_L", "FrontLowerLeg_L", "FrontPaw_L", "FrontUpperLeg_R", "FrontLowerLeg_R", "FrontPaw_R",
+            "HindUpperLeg_L", "HindLowerLeg_L", "HindFoot_L", "HindUpperLeg_R", "HindLowerLeg_R", "HindFoot_R",
+        };
+
+        /// <summary>
+        /// The fox's model prefab: the model, its Animator playing the controller, its eyes on its head, its paw placement,
+        /// and its hitboxes (with the settings its earlier prefab's had).
+        /// </summary>
         private static GameObject SaveModelPrefab(AnimatorController controller)
         {
+            var earlier = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPrefabPath);
+            CharacterHitboxes earlierHitboxes = earlier != null ? earlier.GetComponent<CharacterHitboxes>() : null;
             var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath));
             try
             {
@@ -371,6 +387,7 @@ namespace CharacterShowcase.EditorTools
                 }
                 else { Debug.LogWarning($"[{LogName}] The fox has no '{HeadBone}' bone to put its eyes on."); }
                 AddPawPlacement(model);
+                HitboxFitter.Fit(model, HitboxBones, earlierHitboxes);
                 return PrefabUtility.SaveAsPrefabAsset(model, ModelPrefabPath);
             }
             finally
@@ -485,8 +502,9 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// Fox.prefab: a variant of the Character prefab with a box for its body (the fox's), the fox's movement mode and
-        /// model, its body taken as defined (not fitted to the model), and an eye height for while its model loads.
+        /// Fox.prefab: a variant of the Character prefab with the fox's body (a box: its Body Definition, taken as defined,
+        /// not fitted to the model), movement mode and model, and an eye height for while its model loads. Like the
+        /// Character prefab, it has no collider of its own: its body is a shape, and its model's hitboxes are what meets it.
         /// </summary>
         private static void SavePrefab(DirectCharacterModelSource source, BodyDefinition body, ComposedMovementMode movement)
         {
@@ -496,15 +514,12 @@ namespace CharacterShowcase.EditorTools
             {
                 fox.name = "Fox";
                 var movementController = fox.GetComponent<MovementController>();
-                // A box for its body, in place of the capsule (which the body definition would replace as it wakes).
-                foreach (Collider old in fox.GetComponents<Collider>().Where(c => c is CapsuleCollider || c is SphereCollider)) { Object.DestroyImmediate(old); }
-                if (!fox.TryGetComponent(out BoxCollider box)) { box = fox.AddComponent<BoxCollider>(); }
-                box.size = body.Shape.size;
-                box.center = body.Shape.center;
+                // No collider for its body (one an earlier version added is removed).
+                MannequinGenerator.RemoveBodyColliders(fox);
                 movementController.movementHandler = movement;
 
                 var moved = new SerializedObject(movementController);
-                moved.FindProperty("bodyCollider").objectReferenceValue = box;
+                moved.FindProperty("bodyCollider").objectReferenceValue = null;
                 moved.FindProperty("bodyDefinition").objectReferenceValue = body;
                 moved.ApplyModifiedPropertiesWithoutUndo();
 

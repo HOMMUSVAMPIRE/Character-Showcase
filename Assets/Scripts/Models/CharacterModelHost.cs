@@ -87,6 +87,11 @@ namespace Character
         public Animator Animator => CurrentModel?.Animator;
         /// <summary>IK for the model's hands, feet, elbows and knees, blended over its animations. May be null.</summary>
         public CharacterIK IK => CurrentModel?.IK;
+        /// <summary>
+        /// The model's hitboxes (see CharacterHitboxes): what meets the character, and what it reports. Null without a
+        /// model, or for one without hitboxes. A model swapped in brings its own.
+        /// </summary>
+        public CharacterHitboxes Hitboxes => CurrentModel?.Root != null ? CurrentModel.Root.GetComponentInChildren<CharacterHitboxes>(true) : null;
         /// <summary>Whether a model is in use.</summary>
         public bool IsModelReady => CurrentModel != null;
         /// <summary>Whether a model is being loaded (the current one, if any, stays until it's ready).</summary>

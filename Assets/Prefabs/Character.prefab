@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 8983899932423906658}
   - component: {fileID: 2359205359729717119}
   - component: {fileID: 1999695637673396473}
-  - component: {fileID: 2503010006209077673}
   - component: {fileID: 5209213404800541197}
   - component: {fileID: 456934232584960403}
   - component: {fileID: 2159346865127861795}
@@ -82,6 +81,12 @@ MonoBehaviour:
     collisions: 0
     previousCollisions: 0
     stepChange: 0
+    resolution:
+      groundedBy: 0
+      depenetration: {x: 0, y: 0, z: 0}
+      steppedUp: 0
+      snapped: 0
+      groundSnap: 0
     initialPitch: 0
     targetPitch: 0
     modelDrop: 0
@@ -95,6 +100,12 @@ MonoBehaviour:
     collisions: 0
     previousCollisions: 0
     stepChange: 0
+    resolution:
+      groundedBy: 0
+      depenetration: {x: 0, y: 0, z: 0}
+      steppedUp: 0
+      snapped: 0
+      groundSnap: 0
     initialPitch: 0
     targetPitch: 0
     modelDrop: 0
@@ -151,29 +162,6 @@ MonoBehaviour:
   vaultMinDuration: 0.5
   climbOutOfWaterStart: 0.4
   headWaterMargin: 0.1
---- !u!136 &2503010006209077673
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2098279046411243804}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!54 &5209213404800541197
 Rigidbody:
   m_ObjectHideFlags: 0

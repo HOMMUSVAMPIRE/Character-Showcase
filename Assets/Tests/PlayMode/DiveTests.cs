@@ -55,8 +55,8 @@ namespace CharacterShowcase.Tests
             Assert.That(Diving, Is.True);
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.DiveStarted));
             Assert.That(rig.Movement.Posture.Kind, Is.EqualTo(BodyPostureKind.Lying), "Underwater, the body should lie flat.");
-            Assert.That(rig.Capsule.direction, Is.EqualTo(2), "Lying, the capsule should lie along the way the character faces.");
-            Assert.That(rig.Capsule.center.y - rig.Capsule.radius, Is.EqualTo(0f).Within(1e-4f), "Lying, the body should rest on its feet.");
+            Assert.That(rig.BodyNow.direction, Is.EqualTo(2), "Lying, the capsule should lie along the way the character faces.");
+            Assert.That(rig.BodyNow.center.y - rig.BodyNow.radius, Is.EqualTo(0f).Within(1e-4f), "Lying, the body should rest on its feet.");
             Assert.That(rig.FrontExtent, Is.GreaterThan(rig.SideExtent), "Lying, the body should reach further ahead than to the sides.");
             Assert.That(rig.Movement.lastFrameMovementData.modelDrop, Is.EqualTo(rig.SwimDepth - rig.CurrentHeight / 2f).Within(1e-3f),
                 "The model should be drawn lowered from the swim depth, where the swimming animations float it, to the body's middle.");

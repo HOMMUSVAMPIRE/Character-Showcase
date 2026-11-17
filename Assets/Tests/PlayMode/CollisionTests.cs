@@ -15,8 +15,8 @@ namespace CharacterShowcase.Tests
     public class CollisionTests : CharacterRigFixture
     {
 
-        private float CapsuleRadius => rig.Character.GetComponent<CapsuleCollider>().radius;
-        private float CapsuleHeight => rig.Character.GetComponent<CapsuleCollider>().height;
+        private float CapsuleRadius => rig.BodyNow.radius;
+        private float CapsuleHeight => rig.BodyNow.height;
 
         [UnityTest]
         public IEnumerator JumpingIntoLowCeiling_FallsAwayInsteadOfSticking()

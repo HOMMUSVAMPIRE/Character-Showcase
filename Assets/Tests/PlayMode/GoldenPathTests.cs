@@ -357,13 +357,13 @@ namespace CharacterShowcase.Tests
         // ---- The test ----
 
         /// <summary>
-        /// Each run, with the character's collider, and without it: the movement doesn't need one (see CharacterBody),
-        /// so the character must follow the same path either way. Recorded with it.
+        /// Each run, as the character is (with no collider), and with a collider of its body's added: the movement doesn't
+        /// need one (see CharacterBody), so the character must follow the same path either way. Recorded without.
         /// </summary>
         [UnityTest]
         public IEnumerator FollowsItsRecordedPath([ValueSource(nameof(ScenarioNames))] string name, [Values(true, false)] bool withCollider)
         {
-            if (Recording && !withCollider) { Assert.Ignore("The paths are recorded with the character's collider (and checked without it)."); }
+            if (Recording && withCollider) { Assert.Ignore("The paths are recorded without a collider (and checked with one too)."); }
             Scenario scenario = Scenarios.Single(s => s.name == name);
             string pathFile = Path.Combine(Folder, name + ".csv");
             if (!Recording && (!File.Exists(pathFile) || !File.Exists(TuningPath)))
@@ -374,7 +374,7 @@ namespace CharacterShowcase.Tests
             // Spawned far above where anything's built, then given the recorded tuning (or, recording, the tuning
             // recorded), sized, its world built round it, and put where it starts.
             yield return rig.SpawnSettled(Vector3.up * 50f, settleSeconds: 0f);
-            if (!withCollider) { rig.RemoveCollider(); }
+            if (withCollider) { rig.AddBodyCollider(); }
             if (Recording) { WriteTuning(); } else { ApplyTuning(); }
             if (!Mathf.Approximately(scenario.scale, 1f)) { rig.Controller.SetScale(Vector3.one * scenario.scale, immediately: true); }
             Vector3 start = scenario.build(rig);
@@ -405,7 +405,7 @@ namespace CharacterShowcase.Tests
                 File.WriteAllLines(pathFile, trace);
                 Assert.Pass($"Recorded '{name}' ({steps} steps).");
             }
-            Compare(withCollider ? name : name + "_WithoutCollider", File.ReadAllLines(pathFile), trace);
+            Compare(withCollider ? name + "_WithCollider" : name, File.ReadAllLines(pathFile), trace);
         }
 
         // ---- Phases and inputs ----

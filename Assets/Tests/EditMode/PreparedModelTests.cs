@@ -80,6 +80,37 @@ namespace CharacterShowcase.Tests.EditMode
                 Is.SameAs(AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath)));
         }
 
+        /// <summary>
+        /// Every prepared model has its hitboxes (see CharacterHitboxes), one on each of its body's bones, on the
+        /// CharacterHitbox layer; and nothing that finds the ground or walls (the character's movement, its feet's IK)
+        /// looks at that layer.
+        /// </summary>
+        [Test, Category(SampleContent)]
+        public void EveryPreparedModel_HasHitboxesOnItsBodysBones_OnALayerTheMovementLeavesOut([ValueSource(nameof(PreparedSources))] string path)
+        {
+            DirectCharacterModelSource source = Load(path);
+            int layer = CharacterHitboxes.Layer;
+            Assert.That(layer, Is.GreaterThanOrEqualTo(0), $"The project should have a '{CharacterHitboxes.LayerName}' layer.");
+            var hitboxes = source.ModelPrefab.GetComponent<CharacterHitboxes>();
+            Assert.That(hitboxes, Is.Not.Null, "The model should have hitboxes: run Tools > Character Showcase > Fit Hitboxes.");
+            Animator animator = source.ModelPrefab.GetComponentInChildren<Animator>(true);
+            var bodyBones = new HashSet<Transform>(HitboxFitter.HumanoidBones.Select(b => animator.GetBoneTransform(b)).Where(t => t != null));
+            Assert.That(hitboxes.Hitboxes.Select(h => h.Bone), Is.EquivalentTo(bodyBones), "A hitbox on each of its body's bones.");
+            foreach (Hitbox hitbox in hitboxes.Hitboxes)
+            {
+                Assert.That(hitbox.gameObject.layer, Is.EqualTo(layer), $"'{hitbox.name}' should be on the {CharacterHitboxes.LayerName} layer.");
+                Assert.That(hitbox.Collider.radius, Is.GreaterThan(0f));
+            }
+            foreach (FootPlacementIK feet in source.ModelPrefab.GetComponentsInChildren<FootPlacementIK>(true))
+            {
+                int ground = new SerializedObject(feet).FindProperty("groundLayers").intValue;
+                Assert.That(ground & (1 << layer), Is.Zero, "Foot placement shouldn't stand the feet on hitboxes.");
+            }
+            var character = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character.prefab");
+            Assert.That(character.GetComponent<MovementController>().MovementLayerMask.value & (1 << layer), Is.Zero,
+                "The character's movement shouldn't meet hitboxes.");
+        }
+
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasNothingRotatedAboveItsSkeleton([ValueSource(nameof(PreparedSources))] string path)
         {

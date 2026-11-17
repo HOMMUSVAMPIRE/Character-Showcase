@@ -249,6 +249,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// Sets up the Character prefab's model: a CharacterModelHost loading the mannequin (also its fallback, should
         /// another model fail to load), with a placeholder shown while there's no model and an eye point for the camera.
+        /// The prefab has no collider for its body (see RemoveBodyColliders): its model's hitboxes are what meets it.
         /// The mannequin is the prefab's own model, which the tests spawn; scenes choose their own with the Character
         /// Model window, as an override on their instance of the prefab.
         /// </summary>
@@ -265,6 +266,7 @@ namespace CharacterShowcase.EditorTools
                     return false;
                 }
                 if (!root.TryGetComponent(out CharacterModelHost host)) { host = root.AddComponent<CharacterModelHost>(); }
+                RemoveBodyColliders(root);
 
                 var hostSettings = new SerializedObject(host);
                 hostSettings.FindProperty("modelSource").objectReferenceValue = mannequin;
@@ -286,6 +288,26 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
+        /// <summary>
+        /// Takes the character's own primitive colliders off its root (the capsule an earlier version had for its body), and
+        /// clears its MovementController's Body Collider: the movement needs no collider (its body is a shape: see
+        /// CharacterBody), and what meets the character meets its model's hitboxes (see CharacterHitboxes). Its Body
+        /// Definition is its body.
+        /// </summary>
+        public static void RemoveBodyColliders(GameObject character)
+        {
+            foreach (Collider collider in character.GetComponents<Collider>())
+            {
+                if (collider is CapsuleCollider || collider is BoxCollider || collider is SphereCollider) { Object.DestroyImmediate(collider); }
+            }
+            if (character.TryGetComponent(out MovementController movement))
+            {
+                var settings = new SerializedObject(movement);
+                settings.FindProperty("bodyCollider").objectReferenceValue = null;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
         private const string EyePointName = "Eye Point";
         private const string PlaceholderName = "Model Placeholder";
 
@@ -299,7 +321,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// A plain capsule the size of the character's collider, shown while the character has no model. It lives under
+        /// A plain capsule the size of the character's body, shown while the character has no model. It lives under
         /// the model parent, so it's resized with the character (see ACCharacterController.SetScale). Created once; after
         /// that it's left as it is, so it can be restyled (one made by an earlier version, under the character's root,
         /// is moved under the model parent).
@@ -321,7 +343,7 @@ namespace CharacterShowcase.EditorTools
                 _ => PrimitiveType.Capsule,
             });
             placeholder.name = PlaceholderName;
-            Object.DestroyImmediate(placeholder.GetComponent<Collider>()); // The character's own collider does the colliding.
+            Object.DestroyImmediate(placeholder.GetComponent<Collider>()); // Only something to see: the body is the movement's.
             placeholder.transform.SetParent(modelParent, false);
             placeholder.layer = root.gameObject.layer;
             placeholder.transform.localPosition = body.center;

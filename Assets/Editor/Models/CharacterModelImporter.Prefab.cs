@@ -58,7 +58,8 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// Saves the model as a prefab (a variant of the model file, so it follows changes to the file) with its Animator,
         /// CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK, LadderIK and LineGripIK. IK settings come from an earlier run if there was one, otherwise from the
-        /// mannequin's model prefab, so tuning done there carries over to new models.
+        /// mannequin's model prefab, so tuning done there carries over to new models. Its hitboxes are fitted to it (see
+        /// HitboxFitter), with the settings an earlier run's had.
         /// </summary>
         private static GameObject SaveModelPrefab(GameObject modelAsset, Avatar avatar, AnimatorController controller, string prefabPath)
         {
@@ -105,6 +106,8 @@ namespace CharacterShowcase.EditorTools
                 // Hands on the rope or the zipline's cable while swinging on one or riding the other.
                 if (!model.TryGetComponent(out LineGripIK lineGrip)) { lineGrip = model.AddComponent<LineGripIK>(); }
                 if (lineGripSettings != null) { EditorJsonUtility.FromJsonOverwrite(lineGripSettings, lineGrip); }
+                // Its hitboxes, for what meets the character (the movement doesn't use them).
+                HitboxFitter.Fit(model, settingsFrom: existing != null ? existing.GetComponent<CharacterHitboxes>() : null);
 
                 return PrefabUtility.SaveAsPrefabAsset(model, prefabPath);
             }

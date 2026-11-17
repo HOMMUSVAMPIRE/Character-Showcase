@@ -53,3 +53,11 @@ Choices about how the project is built, why they were made, and what was decided
 **Decided, not yet built:** each character will run its own copy of its movement mode, with tuning presets applied on top of it. Tuning zones apply a preset while the character is inside and undo it when it leaves (zones inside zones stack, and respawning clears them), and a level can set one for all of itself.
 
 **Why:** single levels, or parts of them, can then be played with different movement than the character usually has, without changing the asset.
+
+## The body is a shape; hitboxes meet the world (November 2026)
+**Decided:** the character's movement no longer depends on a collider: its body (`CharacterBody`) is a shape the movement sweeps and overlaps itself, and the Character and Fox prefabs have no collider of their own. What meets the character meets its model's hitboxes (`CharacterHitboxes`): a capsule on each body bone, fitted to the mesh, on the CharacterHitbox layer, which detect (triggers) unless set to collide.
+
+**Why:** one collider round the whole character fit no one: the fox's box covered its head, body and legs, so its corners caught on things far from its paws, and the body's resting contact with the ground was fixed up in shape-specific ways. With the body a shape of its own, it can be shaped for moving (and next held above the ground on probes: see [Collision](movement.md#collision)) while the hitboxes follow the model closely.
+
+**Against:** a trimmed root collider beside the hitboxes, for other characters to meet: the hitboxes are the character's presence, and characters will meet one another through their bodies (a list of them, as ropes and water are found) rather than colliders. Solid hitboxes by default: what comes at the character is only detected for now, as the Response setting allows changing later.
+

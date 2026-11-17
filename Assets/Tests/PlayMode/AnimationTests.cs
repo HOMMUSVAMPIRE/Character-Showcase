@@ -382,7 +382,7 @@ namespace CharacterShowcase.Tests
             Transform bone = animator.GetBoneTransform(foot ? HumanBodyBones.LeftFoot : HumanBodyBones.RightHand);
             // Forward, up and in toward the body, by a few percent of the character's height (8, 6 and 4 cm on a 2 m
             // character): within reach at any of the sizes.
-            float body = CharacterTestRig.PrefabCapsule().height / 2f;
+            float body = CharacterTestRig.PrefabBody().height / 2f;
             Vector3 inward = rig.Character.transform.right * (foot ? 1f : -1f); // The left foot, or the right hand.
             Vector3 goalShift = (rig.Character.transform.forward * 0.08f + Vector3.up * 0.06f + inward * 0.04f) * body;
             Vector3 shift = Vector3.zero;

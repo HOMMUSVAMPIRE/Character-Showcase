@@ -31,7 +31,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator TheFox_StandsOnItsPaws_InABoxBody_ItsEyesOnItsHead()
         {
             yield return SpawnFox();
-            Assert.That(rig.Movement.Body.Collider, Is.InstanceOf<BoxCollider>(), "The fox's body should be a box.");
+            Assert.That(rig.BodyNow.kind, Is.EqualTo(BodyShapeKind.Box), "The fox's body should be a box.");
             Assert.That(rig.Grounded, Is.True, "The fox should stand on the floor.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.02f));
             Assert.That(rig.FrontExtent, Is.GreaterThan(2f * rig.SideExtent), "The fox should be longer than it's wide.");

@@ -31,17 +31,17 @@ namespace CharacterShowcase.Tests
         public IEnumerator SetScale_ScalesTheModelParent_NotTheCharacter_AndResizesItsCollision()
         {
             yield return Spawn();
-            float radius = rig.Capsule.radius, height = rig.Capsule.height, mass = rig.Body.mass;
-            Vector3 center = rig.Capsule.center;
+            float radius = rig.BodyNow.radius, height = rig.BodyNow.height, mass = rig.Body.mass;
+            Vector3 center = rig.BodyNow.center;
 
             rig.Controller.SetScale(new Vector3(2f, 2f, 2f), immediately: true);
 
             Assert.That(rig.Character.transform.localScale, Is.EqualTo(Vector3.one), "The character's own transform shouldn't be scaled.");
             Assert.That(ModelParent.localScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
             Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
-            Assert.That(rig.Capsule.height, Is.EqualTo(height * 2f).Within(1e-4f));
-            Assert.That(rig.Capsule.radius, Is.EqualTo(radius * 2f).Within(1e-4f));
-            Assert.That(rig.Capsule.center, Is.EqualTo(center * 2f));
+            Assert.That(rig.BodyNow.height, Is.EqualTo(height * 2f).Within(1e-4f));
+            Assert.That(rig.BodyNow.radius, Is.EqualTo(radius * 2f).Within(1e-4f));
+            Assert.That(rig.BodyNow.center, Is.EqualTo(center * 2f));
             Assert.That(rig.Body.mass, Is.EqualTo(mass * 8f).Within(1e-3f), "Mass should grow with volume.");
 
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
@@ -69,14 +69,14 @@ namespace CharacterShowcase.Tests
         public IEnumerator GrowingUnderALowCeiling_WaitsForRoom()
         {
             // The ceiling's underside at 1.3 times the character's height: room to stand, not to double in size.
-            float underside = 1.3f * CharacterTestRig.PrefabCapsule().height;
+            float underside = 1.3f * CharacterTestRig.PrefabBody().height;
             GameObject ceiling = rig.Box("Ceiling", new Vector3(0f, underside + 0.5f, 0f), new Vector3(10f, 1f, 10f));
             yield return Spawn();
             rig.Controller.SetScale(new Vector3(2f, 2f, 2f)); // Twice as tall: doesn't fit.
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
 
             Assert.That(rig.Controller.IsResizing, Is.True, "The character should still be waiting to finish growing.");
-            Assert.That(rig.Capsule.height, Is.LessThanOrEqualTo(underside), "It shouldn't grow into the ceiling.");
+            Assert.That(rig.BodyNow.height, Is.LessThanOrEqualTo(underside), "It shouldn't grow into the ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.03f), "It shouldn't be pushed through the floor.");
             Assert.That(rig.Grounded, Is.True);
 
@@ -92,23 +92,23 @@ namespace CharacterShowcase.Tests
             [ValueSource(nameof(NonUniformScales))] Vector3 scale)
         {
             // A wall a couple of body lengths ahead, tall enough for any of the scales.
-            CapsuleCollider prefab = CharacterTestRig.PrefabCapsule();
+            BodyShape prefab = CharacterTestRig.PrefabBody();
             float face = 3f * Mathf.Max(prefab.radius * 3f, prefab.height);
             rig.Box("Wall", new Vector3(0f, 3f * prefab.height, face + 0.5f), new Vector3(10f, 6f * prefab.height, 1f));
             yield return Spawn();
-            float baseRadius = rig.Capsule.radius, baseHeight = rig.Capsule.height;
+            float baseRadius = rig.BodyNow.radius, baseHeight = rig.BodyNow.height;
             rig.Controller.SetScale(scale, immediately: true);
 
             Assert.That(ModelParent.localScale, Is.EqualTo(scale));
-            Assert.That(rig.Capsule.height, Is.EqualTo(baseHeight * scale.y).Within(1e-4f));
-            Assert.That(rig.Capsule.radius, Is.EqualTo(Mathf.Min(baseRadius * Mathf.Max(scale.x, scale.z), baseHeight * scale.y / 2f)).Within(1e-4f));
+            Assert.That(rig.BodyNow.height, Is.EqualTo(baseHeight * scale.y).Within(1e-4f));
+            Assert.That(rig.BodyNow.radius, Is.EqualTo(Mathf.Min(baseRadius * Mathf.Max(scale.x, scale.z), baseHeight * scale.y / 2f)).Within(1e-4f));
 
             yield return rig.Run(rig.SecondsToWalk(face, 1f), _ => CharacterTestRig.Move(Vector3.forward));
             Vector3 position = rig.Position;
             Assert.That(float.IsNaN(position.x) || float.IsNaN(position.y) || float.IsNaN(position.z), Is.False);
             Assert.That(rig.Grounded, Is.True);
             Assert.That(position.y, Is.EqualTo(0f).Within(0.03f), "It should stay on the floor.");
-            Assert.That(position.z, Is.EqualTo(face - rig.Capsule.radius).Within(0.05f), "It should walk up to the wall and stop there (as far from it as it's wide).");
+            Assert.That(position.z, Is.EqualTo(face - rig.BodyNow.radius).Within(0.05f), "It should walk up to the wall and stop there (as far from it as it's wide).");
         }
 
         private static readonly Vector3[] NonUniformScales =

@@ -139,7 +139,6 @@ namespace CharacterShowcase.Tests
 #endif
         }
 
-        /// <summary>The character prefab's capsule (before it's spawned, to build a world around it).</summary>
         /// <summary>A prefab by its asset path (in the editor; null in a player).</summary>
         public static GameObject LoadPrefab(string path)
         {
@@ -150,25 +149,62 @@ namespace CharacterShowcase.Tests
 #endif
         }
 
-        public static CapsuleCollider PrefabCapsule() => CharacterPrefab().GetComponent<CapsuleCollider>();
+        /// <summary>The character prefab's body as authored (before it's spawned, to build a world around it).</summary>
+        public static BodyShape PrefabBody() => CharacterPrefab().GetComponent<MovementController>().AuthoredBody;
         /// <summary>The character prefab's step height at its authored size (before it's spawned).</summary>
         public static float PrefabStepHeight() => CharacterPrefab().GetComponent<MovementController>().MaxStepHeight;
 
         // ---- The character's size and tuning, as it is now (at its current size) ----
 
-        public CapsuleCollider Capsule => Character.GetComponent<CapsuleCollider>();
+        /// <summary>The character's body as it is now, at its size and posture (see PrimitiveBody.Current).</summary>
+        public BodyShape BodyNow => ((PrimitiveBody)Movement.Body).Current;
+
         /// <summary>
-        /// Gives the character a body of another primitive collider (a box, a sphere, or a capsule shaped otherwise),
-        /// shaped by shape, in place of its capsule (see MovementController.RebuildBody). After spawning it.
+        /// Gives the character a body shaped as a primitive collider (a box, a sphere, or a capsule shaped otherwise),
+        /// shaped by shape, which it keeps as its collider (see MovementController.RebuildBody), in place of its body
+        /// (and its collider, if it had one). After spawning it.
         /// </summary>
         public T UseBody<T>(System.Action<T> shape) where T : Collider
         {
-            UnityEngine.Object.DestroyImmediate(Capsule);
+            if (Movement.Body.Collider != null) { UnityEngine.Object.DestroyImmediate(Movement.Body.Collider); }
             var primitive = Character.AddComponent<T>();
             shape(primitive);
             Movement.RebuildBody(primitive);
             Physics.SyncTransforms();
             return primitive;
+        }
+
+        /// <summary>
+        /// Gives the character a collider of its body's kind and shape as authored (a Body Collider, which its body keeps in
+        /// shape from then on): the movement doesn't need one, so the character should move exactly as it did without
+        /// it. After spawning it.
+        /// </summary>
+        public Collider AddBodyCollider()
+        {
+            BodyShape shape = Movement.AuthoredBody;
+            var collider = (Collider)Character.AddComponent(shape.ColliderType);
+            switch (collider)
+            {
+                case CapsuleCollider capsule:
+                    capsule.direction = shape.direction;
+                    capsule.radius = shape.radius;
+                    capsule.height = shape.height;
+                    capsule.center = shape.center;
+                    break;
+                case BoxCollider box:
+                    box.size = shape.size;
+                    box.center = shape.center;
+                    break;
+                case SphereCollider sphere:
+                    sphere.radius = shape.radius;
+                    sphere.center = shape.center;
+                    break;
+            }
+            Movement.RebuildBody(collider);
+            // A collider doesn't hold all of the body (its lying thickness): given it again, whole.
+            Movement.SetBody(shape, checkRoom: false);
+            Physics.SyncTransforms();
+            return collider;
         }
 
         /// <summary>
@@ -249,6 +285,13 @@ namespace CharacterShowcase.Tests
             }
             T value = awaiter.GetResult();
             result?.Invoke(value);
+        }
+
+        /// <summary>Destroys the object with the rig's world, when the test is done (for objects a test makes itself).</summary>
+        public T Track<T>(T obj) where T : Object
+        {
+            created.Add(obj);
+            return obj;
         }
 
         public GameObject Box(string name, Vector3 center, Vector3 size, Quaternion? rotation = null)

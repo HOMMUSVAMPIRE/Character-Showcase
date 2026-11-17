@@ -19,7 +19,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `ButtonPress`, `MovementHelpers` (shared rules: jumps, wall jumps), `FreeSteering` (3D steering off the ground: underwater, and later flying), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
-| `Assets/Scripts/Models` | `CharacterModelHost` and the model sources |
+| `Assets/Scripts/Models` | `CharacterModelHost`, the model sources, and `CharacterHitboxes` (the hitboxes on a model's bones) |
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level mechanics' runtime components |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
@@ -100,7 +100,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   settings reads them with `SettingsOf<T>()` (the mode's, on or off, else T's defaults); one handing the character to
   another finds it with `Mode.Get<T>()` (turned-on only). Shared state rules (wall jumps) are in `MovementHelpers`.
   Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall speed limit, air
-  steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the collider's posture and the
+  steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the body's posture and the
   presses and speeds its components share. A step runs: `AdvanceTimers`, `BeforeAbilities` (gravity), `TakeOver`;
   then, if nothing took the character, `BeforeLocomotion` (crouching), `Locomotion` (ground friction before walking,
   which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (held as
@@ -120,8 +120,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Collision is resolved by `MovementController` with sweeps of the character's body,** not the physics solver.
   Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
   depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
-  `MovementController.Body`, a `CharacterBody` (`PrimitiveBody`: a capsule, box or sphere collider): don't reach for the
-  collider itself. Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
+  `MovementController.Body`, a `CharacterBody` (`PrimitiveBody`: shaped as a capsule, box or sphere, not a collider):
+  don't reach for a collider. The character has none: what meets it meets its model's hitboxes (`CharacterHitboxes`, on
+  the CharacterHitbox layer, triggers unless set to collide), which no movement or IK query may meet (keep the layer
+  out of their masks). Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
   `BackExtent`, `SideExtent`), the one they mean, not by a collider dimension.
 - **Time-since-grounded values update every step, including in the air.** Coyote time, coyote gravity and air
   steering depend on it.
@@ -164,6 +166,7 @@ change and say regeneration is still needed.
 | `Mannequin.fbx` (mesh, rig, clips), `Assets/Animation/Mannequin.controller`, the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender |
 | `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox.controller`, `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
+| Every model prefab's hitboxes (`Hitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Character Models and Generate Fox also run on each model they save, keeping its settings |
 | A scene's Game Setup object (spawner, input manager, camera), and its fixtures made to work | `SceneGameSetup` (Set Up Scene), which runs `LevelFixtureSetup` |
 | The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data | Their builders in `Assets/Editor/Level` |
 | `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |

@@ -371,7 +371,12 @@ namespace Character
         private static void SetLayerRecursively(GameObject gameObject, int layer)
         {
             gameObject.layer = layer;
-            foreach (Transform child in gameObject.transform) { SetLayerRecursively(child.gameObject, layer); }
+            foreach (Transform child in gameObject.transform)
+            {
+                // Hitboxes keep their own layer (see CharacterHitboxes), which the movement leaves out.
+                if (child.TryGetComponent(out Hitbox _)) { continue; }
+                SetLayerRecursively(child.gameObject, layer);
+            }
         }
     }
 

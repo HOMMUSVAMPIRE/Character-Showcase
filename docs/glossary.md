@@ -17,6 +17,8 @@ Terms this project uses with a meaning of its own, and where each is explained.
 
 **Fixture.** A level mechanic as a builder makes it: geometry named "Name | key=value | ..." that Set Up Scene makes work (a moving platform, a rope, a bounce pad). See [Adding Level Content](adding-level-content.md).
 
+**Hitbox.** One of the capsules on a model's bones that meet the world for the character (thrown things, triggers), which has no collider of its own: `CharacterHitboxes`, on the model. The movement never uses them. See [Hitboxes](animation.md#hitboxes).
+
 **Generated asset.** An asset written by an editor tool (the mannequin, the level scenes, the envelope, ...), changed by changing its generator and running it again, never by hand. The table in AGENTS.md lists them.
 
 **Graybox.** The untextured blockout style of the levels, and the library of pieces they're built from (`Graybox`).
@@ -39,7 +41,7 @@ Terms this project uses with a meaning of its own, and where each is explained.
 
 **Piece.** One kind of thing levels are built from (a platform, a stair, a railing), a method of `Graybox` marked `[Piece]`. A level spec is a list of pieces.
 
-**Posture.** How tall the character's collider is: lowered to the crouch height while crouched, sliding or rolling, and raised again where there's room.
+**Posture.** How tall the character's body is: lowered to the crouch height while crouched, sliding or rolling, and raised again where there's room.
 
 **Set Up Scene.** The editor tool that makes a built level playable: it adds the spawner, input manager and camera, and makes the fixtures and spawn markers work (`SceneGameSetup`, `LevelFixtureSetup`). See [Spawning the Character](spawning.md).
 

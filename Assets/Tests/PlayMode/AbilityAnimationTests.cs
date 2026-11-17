@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Character;
 using NUnit.Framework;
 using UnityEngine;
@@ -218,9 +219,11 @@ namespace CharacterShowcase.Tests
             {
                 Assert.That(hand.position.y, Is.EqualTo(top + 0.03f * size).Within(tolerance), $"The {hand.name} should rest on the ledge's top.");
                 Assert.That(hand.position.z - face, Is.EqualTo(0.04f * size).Within(tolerance), $"The {hand.name} should be just back from the ledge's edge.");
-                if (hand.childCount > 0)
+                // Its first finger bone (not its hitbox).
+                Transform finger = hand.Cast<Transform>().FirstOrDefault(child => !child.TryGetComponent(out Hitbox _));
+                if (finger != null)
                 {
-                    Vector3 fingers = hand.GetChild(0).position - hand.position;
+                    Vector3 fingers = finger.position - hand.position;
                     Assert.That(Vector3.Dot(new Vector3(fingers.x, 0f, fingers.z).normalized, Vector3.forward), Is.GreaterThan(0.7f),
                         $"The {hand.name}'s fingers should point over the edge, into the ledge.");
                 }
