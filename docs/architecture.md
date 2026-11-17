@@ -28,7 +28,7 @@ flowchart TD
         D6 --> D7["Posture (body lowered while kept low)"]
         D7 --> D8["FinishStep (fall speed limit)"]
     end
-    D8 --> E["CheckMovementValid: body sweeps against the world<br/>(MovementController.Collision.cs, CharacterBody)"]
+    D8 --> E["CheckMovementValid: body sweeps against the world,<br/>probes put the feet on the ground<br/>(MovementController.Collision.cs, .Hover.cs, CharacterBody)"]
     E --> F["AfterMovementResolved (things moved with the character)"]
     F --> G["CompleteMovement: moves the Rigidbody"]
     G --> H["Events raised (MovementEvents)"]
@@ -37,7 +37,7 @@ flowchart TD
 
 What each part hands on:
 - The mode fills in a `MovementData` for the step: where the character means to go, how fast, which way it faces, and its `CharacterState` flags (grounded, jumping, wall running, ...).
-- `CheckMovementValid` resolves that against the world, removing blocked momentum and recording which sides were blocked.
+- `CheckMovementValid` resolves that against the world, removing blocked momentum and recording which sides were blocked: the body (its parts lifted a step above the feet, hovering over steps) meets walls and ceilings, and probes under the feet put them on the ground (see [Collision](movement.md#collision)). What it did is recorded too (`MovementData.resolution`), for seeing why the character moved as it did.
 - The step's events (`MovementEvents`: jumped, landed, a ledge grabbed, ...) come from its flags changing between steps.
 - Animation never reaches into the movement: it reads the last step's `MovementData` and the events, and its translator sets the model's Animator.
 
@@ -65,6 +65,7 @@ The character's code and the camera's don't reference each other at all, and the
 
 ## State and assets
 - **Movement modes are shared assets.** Every character using a mode uses the same asset, so nothing about one character is kept on it: what each character is doing (its jumps left, a zipline it's riding) is kept on its `MovementController`, in a state class for each ability.
+- **The body moves; the hitboxes meet the world.** The movement's body is a shape it sweeps itself (`CharacterBody`), not a collider; the character has no collider of its own. What comes at it (a thrown ball, a trigger) meets its model's hitboxes (`CharacterHitboxes`, on the CharacterHitbox layer), which no movement or IK query meets. See [Collision](movement.md#collision) and [Hitboxes](animation.md#hitboxes).
 - **Read the physics pose, not the Transform.** The character's and moving platforms' Rigidbodies are interpolated, so a Transform shows a pose between steps. Movement reads `Rigidbody.position` and `rotation`.
 - **Movement has its own clock** (`MovementController.StepTime`), so a copy of the character can be stepped faster than real time: that's how its capabilities are measured (`MovementSimulation`), by running the real movement code.
 - **Generated assets are regenerated, not edited.** The mannequin, its Animator Controller, the model prefabs, the level scenes, the level specs and the movement envelope are all made by editor tools (the table in AGENTS.md, Generated assets).
@@ -72,10 +73,10 @@ The character's code and the camera's don't reference each other at all, and the
 ## Where things live
 | What | Where |
 | --- | --- |
-| The character, its controller, input and spawner | Assets/Scripts/Character (`MovementController` split by area: `.Capsule`, `.Ground`, `.Collision`, `.Queries`, `.Capabilities`) |
+| The character, its controller, input and spawner | Assets/Scripts/Character (`MovementController` split by area: `.Body`, `.Ground`, `.Collision`, `.Hover`, `.Queries`, `.Capabilities`); the body (`CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`) |
 | The movement mode and its components | Assets/Scripts/MovementModes, and Components/ (each component with its state class) |
 | The movement asset | Assets/ScriptableObjects/BasicMovementMode.asset |
-| Animation and its translators; IK; model sources | Assets/Scripts/Animation, IK, Models |
+| Animation and its translators; IK; model sources and hitboxes | Assets/Scripts/Animation, IK, Models |
 | The camera rig | Assets/Scripts/CameraSystem |
 | The level mechanics at runtime | Assets/Scripts/Level |
 | Generators, importers, Set Up Scene, inspectors | Assets/Editor |

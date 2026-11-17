@@ -42,6 +42,12 @@ namespace Character
                  "wide; a box as thick as it's deep)")]
         [Min(0f)] public float lyingThickness;
 
+        /// <summary>
+        /// The body a character has with no Body Definition and no collider to be shaped from: an upright capsule standing on
+        /// the feet, the size of an adult.
+        /// </summary>
+        public static BodyShape Default => Capsule(0.5f, 2f);
+
         /// <summary>An upright capsule standing on the feet, radius (m) round (no more than half its height) and height (m) tall.</summary>
         public static BodyShape Capsule(float radius, float height, float lyingThickness = 0f) => new BodyShape
         {

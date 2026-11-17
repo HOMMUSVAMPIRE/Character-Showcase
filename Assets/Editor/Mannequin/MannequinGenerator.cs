@@ -335,7 +335,7 @@ namespace CharacterShowcase.EditorTools
                 return existing.gameObject;
             }
             // The character's body as authored (its Body Definition's, or its collider's), standing.
-            BodyShape body = root.TryGetComponent(out MovementController movement) ? movement.AuthoredBody : BodyShape.Capsule(0.5f, 2f);
+            BodyShape body = root.TryGetComponent(out MovementController movement) ? movement.AuthoredBody : BodyShape.Default;
             GameObject placeholder = GameObject.CreatePrimitive(body.kind switch
             {
                 BodyShapeKind.Box => PrimitiveType.Cube,

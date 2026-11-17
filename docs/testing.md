@@ -1,6 +1,6 @@
 # Automated Tests
 
-The tests are written to hold for any team's setup, not just this project's: they read what they need from the character (its capsule, step height, slope limit, walking and dashing speeds, jump count) and from whatever model, animations and camera settings it has, and size their test worlds from those.
+The tests are written to hold for any team's setup, not just this project's: they read what they need from the character (its body, step height, slope limit, walking and dashing speeds, jump count) and from whatever model, animations and camera settings it has, and size their test worlds from those.
 
 Play mode tests run on the package's Character prefab unless a CharacterTestSettings asset (Create > Character Showcase > Tests > Character Test Settings) names another: put one anywhere in the project to run the whole suite on your own character. A test of something the character doesn't have (an air jump on a character with one jump, foot placement on a model that isn't a humanoid) is skipped, with the reason, rather than failed. They've been run on a character tuned differently (a smaller capsule, a lower step height and slope limit, a much slower walk, a slower dash and a single jump).
 
@@ -46,7 +46,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - no jump input buffer (only a fresh press jumps) and no coyote time (a jump just after walking off is an air jump).
 
 ### Abilities
-- **CrouchTests**: lowering the collider to the crouch height (in proportion at a larger size too) and moving at the crouch speed; standing again on a second press; staying crouched under a low ceiling and standing by itself once out from under it; hold to crouch; one crouch per held press; jumping from a crouch (and not under a low ceiling); its events.
+- **CrouchTests**: lowering the body to the crouch height (in proportion at a larger size too) and moving at the crouch speed; standing again on a second press; staying crouched under a low ceiling and standing by itself once out from under it; hold to crouch; one crouch per held press; jumping from a crouch (and not under a low ceiling); its events.
 - **SlideTests**: crouching while sprinting slides, starting at least at the slide start speed, only slowing, low, ending crouched within its longest time; crouching while walking just crouches; sliding under a bar too low to stand under; jumping out keeping its speed; stopping at a wall; a second press standing up.
 - **RollTests**: rolling in the input direction for its duration, low, fast, facing it and standing afterwards; straight ahead without input and not steerable; one roll per press, a buffered press waiting out the cooldown; not in the air; ending crouched under a low ceiling; going farther in proportion at a larger size; handing straight over to walking without a burst of speed. On landing from a high fall it rolls on impact the way it's moving, but not standing still, from a lower fall, from an ordinary jump, after a dash or an air jump just before landing (which start the fall again), or with a jump pressed for the landing (which jumps).
 - **WallRunTests**:
@@ -118,7 +118,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - a hanging model's wrists on the ledge's top just back from its edge, either side of the character and as far apart as the library's climbs grip, fingers over the edge, its body against the wall; staying in the climb when crouched;
   - the planted hand on the top mid-vault;
   - a step up onto a low platform easing the model up after the character, never sinking a foot into the top; landing on a staircase on the run (walking or sprinting up it) landing, not staying in the air;
-  - a crouched model fitting its lowered collider;
+  - a crouched model fitting its lowered body;
   - the Ladder state holding still with the hands on different rungs and the hands and feet each on a rung;
   - the Wall Climb state with a hand on the wall and one reaching above the head climbing up, and Climb Enter and Climb Exit playing stepping on and off from the ground;
   - the rope swing with the hands on the rope, and the zipline with both hands on the cable;

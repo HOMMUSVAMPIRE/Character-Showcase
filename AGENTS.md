@@ -55,13 +55,15 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 3. **A refactor of the movement must leave `GoldenPathTests` passing:** it holds the character's movement, step by step,
    to recorded paths (docs/testing.md, Golden paths). Record them again (`CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1`)
    only when a change is meant to change the movement, and check the recorded paths' diff.
-4. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
+4. **A change to collision or the ground** (the body, the probes, `MovementController.Collision`/`.Ground`/`.Hover`)
+   must keep `GroundContactTests` passing: compare its step traces before and after (Logs/StepTraces, docs/testing.md).
+5. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
    e.g. `"LedgeTests|AbilityAnimationTests"`, or a whole area with `-testCategory`: every fixture is in a `TestArea`, as the docs are), plus those of what depends on it: movement reaches the movement,
    ability and scale fixtures; animation, IK and models reach `AnimationTests`, `AbilityAnimationTests`, `ModelTests`,
    `ModelVariantTests` and the EditMode model checks; the camera reaches `CameraRigTests`. Before committing, run both
    full suites and the hygiene check, and only commit on green.
-5. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
-6. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.
+6. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
+7. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.
 
 ## Definition of done
 
@@ -111,7 +113,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
 - **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never the
-  root. `MovementController.ApplyScale` resizes the capsule (collision reads the capsule's size, not transform scale);
+  root. `MovementController.ApplyScale` resizes the body (collision reads the body's size, not transform scale);
   movement multiplies speeds by `SpeedScale` and distances by `HeightScale`; the animation state carries `scale`. New
   size-dependent values scale the same way.
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
@@ -123,7 +125,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   `MovementController.Body`, a `CharacterBody` (`PrimitiveBody`: shaped as a capsule, box or sphere, not a collider):
   don't reach for a collider. The character has none: what meets it meets its model's hitboxes (`CharacterHitboxes`, on
   the CharacterHitbox layer, triggers unless set to collide), which no movement or IK query may meet (keep the layer
-  out of their masks). Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
+  out of their masks). A body can be of several parts (a Body Definition's Extra Parts: the fox's back and head);
+  its proportions are the union of its parts, so measure the character by them, never by one part. Abilities measure the character by the body's proportions (`StandingHeight`, `FrontExtent`,
   `BackExtent`, `SideExtent`), the one they mean, not by a collider dimension.
 - **The body hovers over steps** (Hover Over Steps, on by default): its queries are of the body with its bottom a
   step's height above the feet, which probes keep on the ground (`MovementController.Hover.cs`). So a body swept down

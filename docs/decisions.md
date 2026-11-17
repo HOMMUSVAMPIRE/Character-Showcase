@@ -64,7 +64,7 @@ Choices about how the project is built, why they were made, and what was decided
 ## The body hovers over steps (November 2026)
 **Decided:** the character's body is held a step's height above its feet (Hover Over Steps, on by default), and probes under the feet keep them on the ground: steps pass under the body, and the feet step up and down onto them. The body standing on its feet (the setting off) is kept, as it was, for comparison and for bodies that can't be lifted (a sphere).
 
-**Why:** the body's bottom resting on the ground was where the jitter came from (see the ground contact traces, in [Testing](testing.md)): a rounded bottom rolled over step edges and slopes with the feet in the air under it, the root jumping a tread at once and then settling, and a box rested on its corners, its feet up to most of a metre off the ground. Hovering, the mannequin's feet stay on the ground over ramps, stairs and edges.
+**Why:** the body's bottom resting on the ground was where the jitter came from (see the ground contact traces, in [Testing](testing.md)): a rounded bottom rolled over step edges and slopes with the feet in the air under it, the root jumping a tread at once and then settling, and a box rested on its corners, its feet far off the ground. Hovering, the mannequin's feet stay on the ground over ramps, stairs and edges.
 
 **Against:** a fractional lift (part of the step height): steps between the lift and the step height would need the body's own step-up, which hovering otherwise retires. And treating the long fox's body differently: it still rides slopes and stairs on the ground ahead of its paws, which a rounder or pitched body is next to fix.
 
@@ -73,5 +73,5 @@ Choices about how the project is built, why they were made, and what was decided
 
 **Why:** a box long enough for the fox reached out with its corners: turning in a corridor, coming at a wall to run along it, and over slopes and stairs, where its flat bottom rested on the ground ahead of its paws. Rounded parts have no corners, and held above its legs, they leave the ground to its paws. A single capsule couldn't do it: round across, as wide as the fox would leave it only as tall as its back, or as tall as its head, far too wide.
 
-**Against:** pitching the body along the ground (as its model is), which would keep a long body off the steps behind it going down a flight too, but turn the character's own queries with every stride; it's still open, if the few centimetres it rests on them there matter. And dropping the long-body rules (WallRunning's reach and alongside gap): they're about a body being longer than it's wide, which a rounded one still is, not about corners.
+**Against:** pitching the body along the ground (as its model is), which would keep a long body off the steps behind it going down a flight too, but turn the character's own queries with every stride; it's still open, if how little it rests on them there matters. And dropping the long-body rules (WallRunning's reach and alongside gap): they're about a body being longer than it's wide, which a rounded one still is, not about corners.
 

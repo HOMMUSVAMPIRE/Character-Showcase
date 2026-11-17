@@ -15,17 +15,19 @@ Terms this project uses with a meaning of its own, and where each is explained.
 
 **Envelope.** The default character's capabilities written to a file (Tools/LevelSpec/envelope.json) for the levelspec tool, which checks levels against it. Written again whenever the tuning is saved in the editor. See [Tuning the Character](tuning.md#what-changes-when-you-save).
 
-**Fixture.** A level mechanic as a builder makes it: geometry named "Name | key=value | ..." that Set Up Scene makes work (a moving platform, a rope, a bounce pad). See [Adding Level Content](adding-level-content.md).
-
-**Hover Over Steps.** The MovementController setting holding the body's bottom a step's height above the feet, which probes keep on the ground: steps pass under the body, which never rests on an edge or a corner. See [Collision](movement.md#collision).
-
 **Extra parts.** More primitives beside a body's shape, together one body (a Body Definition's Extra Parts): the fox's back and head. See [Collision](movement.md#collision).
 
-**Hitbox.** One of the capsules on a model's bones that meet the world for the character (thrown things, triggers), which has no collider of its own: `CharacterHitboxes`, on the model. The movement never uses them. See [Hitboxes](animation.md#hitboxes).
+**Fixture.** A level mechanic as a builder makes it: geometry named "Name | key=value | ..." that Set Up Scene makes work (a moving platform, a rope, a bounce pad). See [Adding Level Content](adding-level-content.md).
 
 **Generated asset.** An asset written by an editor tool (the mannequin, the level scenes, the envelope, ...), changed by changing its generator and running it again, never by hand. The table in AGENTS.md lists them.
 
 **Graybox.** The untextured blockout style of the levels, and the library of pieces they're built from (`Graybox`).
+
+**Ground probes.** What keeps a hovering character's feet on the ground: a ray straight down under the feet (or a few round them), and the ground check's sphere for an edge beside them. See [Collision](movement.md#collision).
+
+**Hitbox.** One of the capsules on a model's bones that meet the world for the character (thrown things, triggers), which has no collider of its own: `CharacterHitboxes`, on the model. The movement never uses them. See [Hitboxes](animation.md#hitboxes).
+
+**Hover Over Steps.** The MovementController setting holding the body's bottom a step's height above the feet, which probes keep on the ground: steps pass under the body, which never rests on an edge or a corner. See [Collision](movement.md#collision).
 
 **Hygiene check.** A quick check of the project that needs no Unity (`Tools/CI/check_project_hygiene.py`): `.meta` files, GUIDs, assembly dependencies and setting names. See [Troubleshooting](troubleshooting.md#the-tests).
 
@@ -52,6 +54,8 @@ Terms this project uses with a meaning of its own, and where each is explained.
 **Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MovementController's Size Scaling. See [Character Size](movement.md#character-size).
 
 **Step time.** The character's own clock (`MovementController.StepTime`), which movement times things by, so a movement simulation stepped faster than real time behaves the same.
+
+**Step trace.** A record of a test run step by step (`StepTrace`): where the character was, how it was found on the ground, what collision did and how far its feet were above the ground under them, written to Logs/StepTraces by the ground contact tests. See [Testing](testing.md).
 
 **Takeover.** An ability taking the character for a physics step: the first component in the list whose `TakeOver` says it has the character moves it, and the others wait.
 

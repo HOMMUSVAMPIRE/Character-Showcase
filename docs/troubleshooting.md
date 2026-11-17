@@ -54,5 +54,28 @@ The character's and moving platforms' Rigidbodies are interpolated, so their Tra
 **A timer behaves differently in the capability measurements.**
 Movement must time things by `MovementController.StepTime`, never `Time.time` or `Time.fixedTime`: the measurements step a copy of the character faster than real time.
 
+**A character teleported a short way snaps back.**
+Standing, the next step carries the character with the ground it stood on, back to where it stood on it. Move it with `MovementController.Teleport`, which forgets that ground, not by setting its Rigidbody's position.
+
 **The camera stutters behind the character.**
 The camera's Follow section interpolates a physics-driven target between steps. Check it's turned on, and that the character's Rigidbody is interpolated.
+
+## The body and the ground
+**The character's feet float above slopes or stairs, or the root jumps a tread at a time and settles.**
+Check Hover Over Steps is on (the MovementController, on the Character prefab): standing on its feet, the body's rounded bottom rests on edges and slopes with the feet in the air under it. Hovering, a body reaching out over a slope further than a step clears rests on it (a long body's back end on the steps behind, going down a flight): its parts' extents say how far. `GroundContactTests` writes each run's steps to Logs/StepTraces, with how far the feet were above the ground under them (see [Testing](testing.md)).
+
+**A character's feet sink into the floor.**
+Its body sits above its feet (a Body Definition whose parts' bottoms are above them, as the fox's back is), and Hover Over Steps is off: only hovering stands such a body on its feet. Turn it on.
+
+**A character can't climb a flight of stairs it should.**
+Hovering, a long body meets the next step ahead of its feet, and steps up onto it only if it's no more than a step above the ground in front of it (each step of a flight is). A taller first step, or a gap before the flight, stops it as a wall would.
+
+**Something passes through the character, or isn't reported hitting it.**
+What meets the character meets its model's hitboxes (see [Hitboxes](animation.md#hitboxes)). As made, they detect (triggers): things pass through, and only what has a Rigidbody is reported (Report Static Contacts reports the rest). Set Response to Collide for them to be solid. A model with none hasn't been fitted: run Tools > Character Showcase > Fit Hitboxes.
+
+**The feet's IK, the movement or another character stands on the character's own limbs.**
+The CharacterHitbox layer has crept into a layer mask (the MovementController's, a foot placement's Ground Layers, a camera's): hitboxes must stay out of them (an EditMode check, `PreparedModelTests`, holds the Character prefab and the models to it).
+
+**A new setting's default didn't reach a prefab.**
+Unity keeps an imported copy of each prefab: a serialized field added with one default, and then given another in code, keeps the first in prefabs that don't set it, until they're imported again. Set the value on the asset itself (as Hover Over Steps is, on the Character prefab).
+

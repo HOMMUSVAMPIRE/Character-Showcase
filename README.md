@@ -23,7 +23,7 @@ All of the runtime code is in the Assets/Scripts folder:
 - MovementModes: the movement modes, BasicMovementMode and its movement components (Components/: one file per part of the movement, walking and falling included)
 - Animation: the AnimationController, the animation state it builds, and the translators that drive an Animator from it
 - IK: CharacterIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
-- Models: the character's model host and the sources it gets models from
+- Models: the character's model host, the sources it gets models from, and the hitboxes on its models' bones
 - Level: the level mechanics (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates)
 - CameraSystem: the camera rig, which knows nothing about the character
 

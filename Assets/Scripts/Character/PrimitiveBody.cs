@@ -15,7 +15,7 @@ namespace Character
     /// half its height; a box's sides each with theirs; a sphere with the largest). Its postures are its authored shape
     /// lowered from the top (low) or laid down along the facing, resting on the feet (lying), no thicker than its lying
     /// thickness (see BodyShape). Its queries use the shape shrunk by the skin width on every side. Without a collider or
-    /// a shape given it, it's an upright capsule 2 m tall standing on the feet.
+    /// a shape given it, it's the default body (BodyShape.Default).
     ///
     /// It can have extra parts (see BodyDefinition's Extra Parts): more primitives beside its main shape, together one
     /// body (a long creature's back and head), the way a model's hitboxes are many (see SetExtraParts). Its queries cover
@@ -232,8 +232,8 @@ namespace Character
 
         // ---- Shapes ----
 
-        // No collider: the default upright capsule, 2 m tall, standing on the feet.
-        private static BodyShape Read(Collider c) => BodyShape.TryRead(c, out BodyShape shape) ? shape : BodyShape.Capsule(0.5f, 2f);
+        // No collider: the default body (an upright capsule standing on the feet).
+        private static BodyShape Read(Collider c) => BodyShape.TryRead(c, out BodyShape shape) ? shape : BodyShape.Default;
 
         /// <summary>Shapes a primitive collider of the shape's kind as the shape (see MovementController.QueryCollider, too).</summary>
         internal static void Write(Collider collider, BodyShape s)

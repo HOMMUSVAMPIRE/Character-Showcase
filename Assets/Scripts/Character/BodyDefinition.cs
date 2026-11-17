@@ -13,7 +13,7 @@ namespace Character
     {
         [Tooltip("The body: its kind, its size and where it sits standing (relative to the feet, the character's origin), and " +
                  "how thick it is lying down")]
-        [SerializeField] private BodyShape shape = BodyShape.Capsule(0.5f, 2f);
+        [SerializeField] private BodyShape shape = BodyShape.Default;
         [Tooltip("More primitives beside the body's shape, together one body: a long creature's back and head, say, where a " +
                  "box round all of it would reach out with its corners. The movement's queries cover every part, and the " +
                  "body is as tall as its highest part. Each is placed as the shape is (relative to the feet and facing, " +
