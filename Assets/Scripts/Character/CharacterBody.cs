@@ -90,10 +90,10 @@ namespace Character
 
         /// <summary>
         /// The same body for a copy of the character (see MovementController.CopyForSimulation): a collider of its kind
-        /// added to the copy's object, and its size as authored (or, given an authored footprint radius and height, a body
-        /// of that size standing on its feet). The copy sizes it for itself.
+        /// added to the copy's object, and its shape as authored (or, given a shape as authored, that body, of its kind:
+        /// the one a model would give the character, say). The copy sizes it for itself.
         /// </summary>
-        public abstract CharacterBody CopyFor(MovementController copy, float? authoredRadius = null, float? authoredHeight = null);
+        public abstract CharacterBody CopyFor(MovementController copy, BodyShape? authoredShape = null);
 
         /// <summary>
         /// Everything about the body that what the character can do depends on, written in full, for knowing when its

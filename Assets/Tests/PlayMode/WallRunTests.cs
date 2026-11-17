@@ -59,7 +59,8 @@ namespace CharacterShowcase.Tests
             Assert.That(wallRunningSteps, Is.EqualTo(steps), "The character should run along the wall.");
             Assert.That(drop, Is.LessThan(0.5f * freeFall), "A wall run should fall much slower than falling freely.");
             Assert.That(rig.Position.z - start.z, Is.GreaterThan(0.8f * WallRunSpeed * seconds), "A wall run should keep going along the wall.");
-            Assert.That(rig.Position.x + rig.SideExtent, Is.EqualTo(wallFace).Within(0.05f), "A wall run should stay against the wall.");
+            float held = Mathf.Max(rig.SideExtent, rig.MovementSetting<float>("wallRunClearance") * rig.StandingHeight);
+            Assert.That(wallFace - rig.Position.x, Is.EqualTo(held).Within(0.05f), "A wall run should stay against the wall, or its clearance out from it.");
             Assert.That(rig.Movement.wallRun.side, Is.EqualTo(1f), "The wall is on the character's right.");
             Assert.That(Vector3.Angle(rig.Body.rotation * Vector3.forward, Vector3.forward), Is.LessThan(2f), "The character should face along the wall.");
         }

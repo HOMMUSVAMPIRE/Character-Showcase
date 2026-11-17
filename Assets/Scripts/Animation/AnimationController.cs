@@ -80,6 +80,12 @@ namespace Character
                                   "treading water does, but underwater the body lies on them (see Swimming). 0 = at once.")]
         [Min(0f)] private float modelDropSmoothTime = 0.25f;
 
+        [Header("Eye Point")]
+        [SerializeField] [Tooltip("Seconds over which the eye point (which a camera follows) eases down with the character's body " +
+                                  "as it crouches or lies down, and back up as it stands: kept the same share of the eye height " +
+                                  "as the body is of its standing height. 0 = at once.")]
+        [Min(0f)] private float eyeLoweringSmoothTime = 0.1f;
+
         [Header("Climbing Out Of Water")]
         [SerializeField] [Tooltip("How far into the climb onto a ledge (0 to 1) a climb out of the water starts (see " +
                                   "Swimming): a swimmer at the edge is already part way up, its body higher than one " +
@@ -128,6 +134,8 @@ namespace Character
         private Vector3 modelParentLocalPosition;
         // Lowering the model to the body underwater (see MovementData.modelDrop): how far now (m), and how fast it's changing.
         private float modelDrop, modelDropVelocity;
+        // The share of the eye height the eye point is eased to (see LowerEyePoint), and how fast it's changing.
+        private float eyeShare = 1f, eyeShareVelocity;
         // Whether the model parent was last moved off its own position (by a step up's lag or the model drop), so its
         // own position isn't read back with the offset in it.
         private bool modelParentDisplaced;
@@ -265,6 +273,11 @@ namespace Character
                 wallPoint = movementController.wallClimb.point;
                 Vector3 climbed = movementController.wallClimb.normal;
                 wallNormal = new Vector3(climbed.x, 0f, climbed.z).normalized;
+            }
+            else if (movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null)
+            {
+                wallPoint = movementController.wallRun.wallPoint;
+                wallNormal = movementController.wallRun.wallNormal;
             }
             bool swinging = movementData.state.HasFlag(CharacterState.RopeSwinging) && movementController != null;
             bool ziplining = movementData.state.HasFlag(CharacterState.Ziplining) && movementController != null;
@@ -431,6 +444,24 @@ namespace Character
             // turn about the forward axis toward -z.)
             modelParent.rotation = attitude * Quaternion.Euler(pitch, 0f, -bank);
             EaseUpAfterStepUp(modelParent, attitude, deltaTime);
+            LowerEyePoint(deltaTime);
+        }
+
+        /// <summary>
+        /// Eases the eye point down with the character's body (crouched, lying underwater) and back up: the body's height
+        /// as a share of its standing height (see CharacterModelHost.EyeHeightShare). A camera following the eye point
+        /// (first person, and the third person pivot, which is no higher than it) ducks with the character, so in a low gap
+        /// it isn't up in the ceiling.
+        /// </summary>
+        private void LowerEyePoint(float deltaTime)
+        {
+            if (movementController == null || modelHost == null || movementController.Body.Collider == null) { return; }
+            float standing = movementController.Body.StandingHeight;
+            float target = standing > 0f ? Mathf.Clamp01(movementController.Body.Height / standing) : 1f;
+            if (eyeLoweringSmoothTime <= 0f) { eyeShare = target; eyeShareVelocity = 0f; }
+            else { eyeShare = Mathf.SmoothDamp(eyeShare, target, ref eyeShareVelocity, eyeLoweringSmoothTime, Mathf.Infinity, deltaTime); }
+            if (Mathf.Abs(eyeShare - target) < 1e-4f) { eyeShare = target; eyeShareVelocity = 0f; }
+            modelHost.EyeHeightShare = eyeShare;
         }
 
         /// <summary>

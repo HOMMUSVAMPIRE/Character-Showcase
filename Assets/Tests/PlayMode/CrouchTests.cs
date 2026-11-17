@@ -43,6 +43,29 @@ namespace CharacterShowcase.Tests
             Assert.That(speed, Is.EqualTo(CrouchSpeed).Within(0.05f * CrouchSpeed), "A crouched character should move at its crouch speed.");
         }
 
+        /// <summary>
+        /// The eye point (which a camera follows) eases down with the body as the character crouches, to the same share of
+        /// the eye height as the body is of its standing height, and back up as it stands.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Crouching_LowersTheEyePoint_WithTheBody_AndStandingRaisesIt()
+        {
+            yield return rig.StandOnFloor();
+            CharacterModelHost models = rig.Models;
+            if (models.EyePoint == null) { Assert.Ignore("The character has no eye point."); }
+            void Visuals(int _) => rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+            yield return rig.Run(0.1f, _ => CharacterTestRig.Idle(), Visuals);
+            Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-3f), "Standing, the eye point is at the eye height.");
+
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Visuals);
+            Assume.That(Crouched, Is.True, "Test setup: the character should be crouched.");
+            Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight * rig.CrouchHeight).Within(0.01f),
+                "Crouched, the eye point should be lowered with the body.");
+
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Visuals);
+            Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-3f), "Standing again, it's back up.");
+        }
+
         [UnityTest]
         public IEnumerator PressingCrouchAgain_StandsUp_AndWalksAtWalkSpeed()
         {

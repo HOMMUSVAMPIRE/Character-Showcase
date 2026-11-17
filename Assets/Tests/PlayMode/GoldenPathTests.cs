@@ -511,8 +511,8 @@ namespace CharacterShowcase.Tests
         {
             var pinned = new PinnedTuning
             {
-                colliderRadius = rig.Movement.BaseRadius,
-                colliderHeight = rig.Movement.BaseHeight,
+                colliderRadius = rig.Movement.AuthoredBody.radius,
+                colliderHeight = rig.Movement.AuthoredBody.height,
             };
             foreach (MovementComponent component in rig.ComposedMode.Components)
             {
@@ -557,7 +557,7 @@ namespace CharacterShowcase.Tests
                     : Convert.ChangeType(setting.value, field.FieldType, CultureInfo.InvariantCulture);
                 field.SetValue(rig.Movement, value);
             }
-            Assert.That(rig.Movement.SetBaseSize(pinned.colliderRadius, pinned.colliderHeight), Is.True,
+            Assert.That(rig.Movement.SetBody(BodyShape.Capsule(pinned.colliderRadius, pinned.colliderHeight)), Is.True,
                 "The golden paths' collider should fit where the character is spawned.");
         }
     }

@@ -39,7 +39,8 @@ namespace Character
         {
             if (!movementData.initialGrounded) { return; }
             Vector3 feet = movementData.initialPosition;
-            Water water = Water.At(feet);
+            // A skin's width above the feet, which rest a hair into the floor of the water (see Swimming).
+            Water water = Water.At(feet + Vector3.up * controller.Skin);
             if (water == null) { return; }
             float height = controller.Body.StandingHeight;
             float under = water.SurfaceHeight - feet.y;

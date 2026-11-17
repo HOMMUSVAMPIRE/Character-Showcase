@@ -114,11 +114,13 @@ namespace Character
         /// <summary>The ladder being climbed: where its rungs are, for placing hands and feet on them. Empty otherwise.</summary>
         public LadderPose ladder;
         /// <summary>
-        /// While sliding down a wall or climbing: a point on the wall's face in front of the character. Zero otherwise.
+        /// While sliding down a wall, climbing or running along one: a point on the wall's face nearest the character.
+        /// Zero otherwise.
         /// </summary>
         public Vector3 wallPoint;
         /// <summary>
-        /// While sliding down a wall or climbing: the wall's normal (horizontal, pointing toward the character). Zero
+        /// While sliding down a wall, climbing or running along one: the wall's normal (horizontal, pointing toward the
+        /// character). Zero
         /// otherwise.
         /// </summary>
         public Vector3 wallNormal;

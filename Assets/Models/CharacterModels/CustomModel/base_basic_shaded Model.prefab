@@ -224,6 +224,7 @@ MonoBehaviour:
   handRotationWeight: 0.8
   climbSmoothTime: 0.2
   climbHandFromWall: 0.1
+  wallRunFootFromWall: 0.08
 --- !u!114 &3283297911358423551
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -15,8 +15,9 @@ namespace CameraSystem
         private float previousSampleTime, currentSampleTime;
         private bool hasSamples;
 
-        // The fastest the target has fallen (most negative vertical speed) since it last rose or landed.
-        private float fallPeak;
+        // The fastest the target has fallen (most negative vertical speed) since it last rose or landed, and for how long
+        // (s) it's been falling.
+        private float fallPeak, fallTime;
 
         // If the target has a Rigidbody, its position is the physics pose (the transform may be interpolated).
         // If that Rigidbody also interpolates, the transform is already smooth and must not be interpolated again.
@@ -57,6 +58,7 @@ namespace CameraSystem
             previousSampleTime = currentSampleTime = Time.fixedTime;
             Velocity = Vector3.zero;
             fallPeak = 0f;
+            fallTime = 0f;
             hasSamples = target != null;
             TeleportedThisFrame = true;
             LandingSpeedThisFrame = 0f;
@@ -98,11 +100,17 @@ namespace CameraSystem
                     // fastest fall since the target last rose, not just the last frame's: a frame can hold several
                     // physics steps, and the one in which the target lands averages its fall with its stop, so at low
                     // frame rates the landing read as half as fast (and the camera dipped a quarter as far).
-                    if (fallPeak < -landing.minImpactSpeed * this.sizeScale && Velocity.y > fallPeak * 0.35f)
+                    // And it was a fall, not a drop of a step or two (onto the next stair, as the target's movement snaps
+                    // it down): those read as fast as a hard landing, and walking down stairs dipped and shook the camera
+                    // at every step.
+                    if (fallPeak < -landing.minImpactSpeed * this.sizeScale && Velocity.y > fallPeak * 0.35f && fallTime >= landing.minFallTime)
                     {
                         LandingSpeedThisFrame = -fallPeak;
                         fallPeak = 0f;
                     }
+                    bool falling = Velocity.y < 0f && LandingSpeedThisFrame <= 0f;
+                    // This sample's fall counts if it carries on into the next (a stop reads as not falling).
+                    fallTime = falling ? fallTime + stepTime : 0f;
                 }
                 fallPeak = Velocity.y >= 0f || LandingSpeedThisFrame > 0f ? 0f : Mathf.Min(fallPeak, Velocity.y);
             }

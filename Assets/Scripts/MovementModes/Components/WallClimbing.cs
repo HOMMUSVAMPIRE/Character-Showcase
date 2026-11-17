@@ -132,7 +132,10 @@ namespace Character
             // Along with the surface, if it moves: every probe is made from where that takes the character.
             Vector3 carry = WallClimbCarry(movementData, controller);
             Vector3 feet = movementData.initialPosition + carry;
-            float reach = WallClimbReach(controller);
+            // Still closing in from where it took hold, it reaches as far as the surface was last step: taking hold lying
+            // down underwater, its body reached far ahead of its feet, and climbing stands it up, its front then well
+            // short of the surface. It let go at once, before it could close in (see closingIn).
+            float reach = Mathf.Max(WallClimbReach(controller), climb.closingIn + controller.Skin);
             // Where the character is now, paint just beside its grip counts too: collision can nudge it a hair off the
             // painted cells it climbed onto, and that mustn't drop it.
             if (!ProbeClimbableSurface(controller, feet, climb.normal, reach, out ClimbContact here, WallClimbPaintTolerance * controller.HeightScale))
@@ -140,6 +143,8 @@ namespace Character
                 EndWallClimb(controller); // Nothing climbable within reach any more: it's gone, or moved away.
                 return false;
             }
+            // No further than it's been: it only ever closes in, so a surface moving away is let go of as before.
+            climb.closingIn = Mathf.Min(climb.closingIn, here.distance);
             HoldSurface(climb, here);
             climb.elapsed += movementData.deltaTime;
             Vector3 normal = climb.normal;
@@ -304,6 +309,7 @@ namespace Character
             // Holding onto a climbable surface counts as touching the ground: the character's jumps and air dashes come back.
             GiveBackAirMoves(controller);
             climb.hasLocalFeet = false;
+            climb.closingIn = contact.distance;
             HoldSurface(climb, contact);
             return true;
         }
@@ -556,6 +562,7 @@ namespace Character
             climb.surface = null;
             climb.ladder = null;
             climb.hasLocalFeet = false;
+            climb.closingIn = 0f;
         }
     }
 
@@ -592,6 +599,11 @@ namespace Character
         public Vector3 localFeet;
         /// <summary>Whether localFeet holds the feet from the last step.</summary>
         public bool hasLocalFeet;
+        /// <summary>
+        /// How far (m) the surface was from the grip when the character took hold of it, or since, the nearest: how far it
+        /// reaches for it while it closes in to its holding distance (taking hold lying down, its body reached further).
+        /// </summary>
+        public float closingIn;
         /// <summary>The surface's speed multiplier (see Level.ClimbableSurface).</summary>
         public float speedMultiplier = 1f;
         /// <summary>The ladder climbed, if it's one (see Level.Ladder): straight up and down it, on its middle; null otherwise.</summary>

@@ -321,6 +321,10 @@ namespace CameraSystem
         public bool enabled = true;
         [Tooltip("Downward speed the target must be falling at for a landing to register, for a target of normal size (scaled with its size, as is the dip).")]
         [Min(0f)] public float minImpactSpeed = 4f;
+        [Tooltip("Seconds the target must have been falling for its stop to be a landing: stepping down onto the next stair " +
+                 "drops it as fast as a hard landing, but in a physics step or two, which mustn't dip or shake the camera. " +
+                 "A real fall fast enough to land hard takes far longer than this.")]
+        [Min(0f)] public float minFallTime = 0.1f;
         [Tooltip("Meters of dip per m/s of impact speed above the minimum.")]
         [Min(0f)] public float dipPerSpeed = 0.025f;
         [Tooltip("The deepest a landing can dip the camera (m), for a target of normal size, however hard the landing.")]

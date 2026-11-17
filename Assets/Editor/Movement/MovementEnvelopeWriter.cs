@@ -12,7 +12,7 @@ namespace CharacterShowcase.EditorTools
     /// <summary>
     /// Writes Tools/LevelSpec/envelope.json, the limits the levelspec tool's movement checks hold levels to, from what the
     /// default character can do: the Character prefab, with the collider its model gives it (see
-    /// CharacterModelHost.ColliderFor), measured by running its movement (MovementController.Capabilities, through
+    /// CharacterModelHost.BodyFor), measured by running its movement (MovementController.Capabilities, through
     /// MovementSimulation). The levelspec tool is Python with nothing else to install, so it can't run the movement
     /// itself: this file is how it knows. Never edit it by hand. Saving the tuning in the editor writes it again
     /// (see MovementEnvelopeAutoWriter); MovementEnvelopeTests fails while it's out of date otherwise. The ramp gradient is the levels' own rule (GrayboxSettings'
@@ -57,9 +57,8 @@ namespace CharacterShowcase.EditorTools
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
             var movement = prefab.GetComponent<MovementController>();
-            float radius = movement.BaseRadius, height = movement.BaseHeight;
-            if (prefab.TryGetComponent(out CharacterModelHost host)) { host.ColliderFor(host.ModelSource, movement, out radius, out height); }
-            return MovementSimulation.Measure(movement, radius, height);
+            BodyShape? body = prefab.TryGetComponent(out CharacterModelHost host) ? host.BodyFor(host.ModelSource, movement) : null;
+            return MovementSimulation.Measure(movement, body);
         }
 
         /// <summary>The envelope's JSON for the default character now.</summary>

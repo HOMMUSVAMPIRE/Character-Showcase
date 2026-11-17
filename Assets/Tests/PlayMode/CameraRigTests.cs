@@ -160,6 +160,38 @@ namespace CharacterShowcase.Tests
             Assert.That(cam.transform.position.y, Is.EqualTo(target.position.y + 1.6f).Within(0.01f));
         }
 
+        /// <summary>
+        /// Third person, the pivot is no higher than the target's eyes: one that lowers its eye anchor (ducking under
+        /// something, lying down) is framed from lower down, and a low ceiling over it doesn't pull the camera in.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ThirdPerson_ATargetLoweringItsEyes_LowersThePivot_UnderALowCeiling()
+        {
+            yield return Frames(3);
+            if (!rig.Collision.enabled) { Assert.Ignore("Camera collision is off."); }
+            var anchor = Track(new GameObject("Eye Anchor")).transform;
+            anchor.SetParent(target, false);
+            anchor.localPosition = new Vector3(0f, rig.ThirdPerson.pivotHeight + 0.2f, 0f);
+            rig.FirstPerson.eyeAnchor = anchor;
+            yield return Frames(5);
+            Assert.That(rig.PivotHeight, Is.EqualTo(rig.ThirdPerson.pivotHeight).Within(1e-4f), "Eyes above the pivot height leave it where it is.");
+
+            // Ducked under a ceiling over it all, its eyes below the ceiling, the pivot height above it.
+            float eyes = 0.5f * rig.ThirdPerson.pivotHeight;
+            anchor.localPosition = new Vector3(0f, eyes, 0f);
+            float ceiling = eyes + 1.5f * rig.Collision.probeRadius;
+            Box("Low Ceiling", target.position + new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(40f, 1f, 40f));
+            // Looking level, so the camera stays under the ceiling.
+            rig.SetLookRotation(rig.Yaw, 0f);
+            yield return new WaitForSeconds(rig.Collision.returnSmoothTime * 3f + 0.2f);
+
+            Assert.That(rig.PivotHeight, Is.EqualTo(eyes).Within(1e-4f), "The pivot should be no higher than the eyes.");
+            Vector3 pivot = target.position + Vector3.up * eyes;
+            Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.85f * rig.Zoom.defaultDistance),
+                "Under a low ceiling, with its eyes under it, the camera should stay back behind the target.");
+            Assert.That(cam.transform.position.y, Is.LessThan(target.position.y + ceiling), "And under the ceiling.");
+        }
+
         [UnityTest]
         public IEnumerator SetMode_RefusesDisabledModes()
         {
@@ -283,6 +315,46 @@ namespace CharacterShowcase.Tests
             }
             Assert.That(nearest, Is.GreaterThan(0.85f * rig.Zoom.defaultDistance),
                 "A wall alongside the target, not behind it, shouldn't pull the camera in (it used to snap in to just behind the target's head).");
+        }
+
+        /// <summary>
+        /// A target closer to a wall than the collision probe is wide (a slim character against it): the probe would start
+        /// inside the wall, which read as fully blocked, snapping the camera in. It starts from just clear of it instead.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ATargetCloserToAWallThanTheProbeIsWide_KeepsTheCameraAtFullDistance()
+        {
+            yield return Frames(3);
+            if (!rig.Collision.enabled) { Assert.Ignore("Camera collision is off."); }
+            // On the left, away from the shoulder, its face half the probe's radius from the pivot.
+            float face = 0.5f * rig.Collision.probeRadius;
+            Box("Wall", target.position + new Vector3(-(face + 0.5f), 2f, 0f), new Vector3(1f, 8f, 40f));
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+
+            Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
+            Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.9f * rig.Zoom.defaultDistance),
+                "Right beside a wall, the camera shouldn't be pulled in, with the view behind clear.");
+            Assert.That(cam.transform.position.x, Is.GreaterThan(target.position.x - face + rig.Collision.probeRadius * 0.9f),
+                "It should stay out of the wall.");
+        }
+
+        /// <summary>A corridor narrower than the probe is wide: the probe shrinks to fit, rather than reading as blocked.</summary>
+        [UnityTest]
+        public IEnumerator InACorridorNarrowerThanTheProbe_TheCameraStaysAtFullDistance_BetweenTheWalls()
+        {
+            yield return Frames(3);
+            if (!rig.Collision.enabled) { Assert.Ignore("Camera collision is off."); }
+            float half = 0.6f * rig.Collision.probeRadius;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Box(side < 0f ? "Wall (West)" : "Wall (East)", target.position + new Vector3(side * (half + 0.5f), 2f, 0f), new Vector3(1f, 8f, 40f));
+            }
+            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+
+            Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
+            Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.9f * rig.Zoom.defaultDistance),
+                "Down a narrow corridor, the camera should stay back behind the target.");
+            Assert.That(Mathf.Abs(cam.transform.position.x - target.position.x), Is.LessThan(half), "Between the walls.");
         }
 
         [UnityTest]
@@ -606,6 +678,34 @@ namespace CharacterShowcase.Tests
             Time.captureDeltaTime = 0f;
             timeLimit.enabled = true;
             result((rest - lowest) / size);
+        }
+
+        /// <summary>
+        /// A target walking down stairs drops onto each step in a physics step or two (as a character's movement snaps it
+        /// down onto the next step): that's not a landing, however fast the drop reads, and doesn't dip or shake the camera.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WalkingDownStairs_DoesntDipOrShakeTheCamera()
+        {
+            if (!rig.Landing.enabled) { Assert.Ignore("Landing dips are off."); }
+            target.position = new Vector3(0f, 20f, 0f);
+            rig.SetTarget(target);
+            yield return Frames(3);
+            const float rise = 0.3f, tread = 0.4f, speed = 5f;
+            float lowest = 0f, mostTrauma = 0f, along = 0f;
+            for (int i = 0; i < 100; i++)
+            {
+                yield return new WaitForFixedUpdate();
+                float before = along;
+                along += speed * Time.fixedDeltaTime;
+                // Level along each tread, then down the whole rise in the step that crosses its edge.
+                if (Mathf.FloorToInt(along / tread) > Mathf.FloorToInt(before / tread)) { target.position += Vector3.down * rise; }
+                target.position += Vector3.forward * speed * Time.fixedDeltaTime;
+                lowest = Mathf.Min(lowest, rig.LandingDip);
+                mostTrauma = Mathf.Max(mostTrauma, rig.Trauma);
+            }
+            Assert.That(lowest, Is.EqualTo(0f).Within(1e-4f), "Stepping down stairs shouldn't dip the camera as a landing does.");
+            Assert.That(mostTrauma, Is.EqualTo(0f).Within(1e-4f), "Nor shake it.");
         }
 
         /// <summary>

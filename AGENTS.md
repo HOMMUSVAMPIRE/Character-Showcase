@@ -168,7 +168,7 @@ change and say regeneration is still needed.
 | `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |
 | Climbable paint masks (`Assets/ClimbablePaint`) | A `PaintedClimbableSurface`'s Repaint Masks |
 | `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor), from the default character's capabilities |
-| A model source's measured height and shoulder width | `CharacterModelImporter` (Prepare Character Models) |
+| A model source's measured height, and its body (`[name] Body.asset`, unless its Refit On Prepare is off) | `CharacterModelImporter` (Prepare Character Models) |
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
 New Animator parameters or states belong in `MannequinGenerator`; new clips in the Blender scripts. The levels'
@@ -188,7 +188,7 @@ component and its hooks, its state, flag and events, its place in the mode, anim
 saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside
 the editor needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. No tuning is fixed: tests that need one
 set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together. The
-swimming clips are floated at Swimming's Swim Depth: after changing it, run Generate Mannequin.
+swimming clips are floated at Swimming's Swim Depth, for the height of the body the Character prefab has with its model (its model's, when its host's Collider Fit takes it): after changing either, run Generate Mannequin.
 
 ## Things that aren't obvious
 

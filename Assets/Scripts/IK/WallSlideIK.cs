@@ -12,6 +12,10 @@ namespace Character
     /// the surface's face (the libraries' climbs are made for a wall nearer the body than the collider lets it come),
     /// easing between holds, and leaves the hands where the animation puts them, reaching and pulling.
     ///
+    /// Running along a wall, it puts the feet (and hands) on the wall's face wherever the wall run animation has them
+    /// through it (its feet are out on the wall, further than the character is held from it), and leaves them where it
+    /// has them otherwise.
+    ///
     /// The wall comes from the character's animation state (CharacterAnimationState.wallPoint and wallNormal), found in
     /// the model's parents; hands are placed through CharacterIK's procedural goals.
     /// </summary>
@@ -36,6 +40,9 @@ namespace Character
                  "More than the wrist's distance from a wall slid down: a climbing hand's goal is a few centimetres past the " +
                  "wrist, toward the wall, so less than this put the wrists into the wall")]
         [SerializeField] private float climbHandFromWall = 0.1f;
+        [Tooltip("Running along a wall: how far (m, at the character's authored size) the ankles (the feet's IK goals) are " +
+                 "kept out from the wall's face, at least: about the foot's thickness, so the feet rest on it rather than in it")]
+        [SerializeField] private float wallRunFootFromWall = 0.08f;
 
         // Climbing: how far the body is eased in now, and how far (m) it's moved toward the surface.
         private float climbWeight;
@@ -43,6 +50,9 @@ namespace Character
         private bool hasClimbShift;
         // The last wall slid down, kept while easing out so the hands don't snap.
         private Vector3 wallPoint, wallNormal;
+        // Running along a wall: how far the feet's placement on it is eased in, and the wall, kept while easing out.
+        private float wallRunWeight;
+        private Vector3 runWallPoint, runWallNormal;
 
 
         protected override float Weight => weight;
@@ -53,12 +63,14 @@ namespace Character
             base.OnDisable();
             climbWeight = 0f;
             hasClimbShift = false;
+            wallRunWeight = 0f;
         }
 
         protected override void Solve(Animator animator)
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
+            SolveWallRun(animator, state);
             if (SolveClimbing(animator, state)) { return; }
             bool sliding = state.wallSliding && state.wallNormal != Vector3.zero;
             if (sliding)
@@ -127,6 +139,40 @@ namespace Character
             animator.bodyPosition -= wallNormal * (climbShift * climbWeight);
             return true;
         }
+
+        /// <summary>
+        /// Running along a wall (or easing out of a run): each foot (or hand) that the animation has nearer the wall than
+        /// the foot's (or wrist's) distance from it, or through it, put on the wall's face, keeping its height and how far
+        /// along the wall it is.
+        /// </summary>
+        private void SolveWallRun(Animator animator, CharacterAnimationState state)
+        {
+            bool running = state.wallRunning && state.wallNormal != Vector3.zero;
+            if (running)
+            {
+                runWallPoint = state.wallPoint;
+                runWallNormal = state.wallNormal;
+            }
+            float goal = running ? weight : 0f;
+            wallRunWeight = fadeTime > 0f ? Mathf.MoveTowards(wallRunWeight, goal, Time.deltaTime / fadeTime) : goal;
+            if (wallRunWeight <= 0f || runWallNormal == Vector3.zero) { return; }
+
+            float size = state.scale.y > 0f ? state.scale.y : 1f;
+            foreach ((AvatarIKGoal ikGoal, IKLimb limb, bool isFoot) in WallRunLimbs)
+            {
+                float fromWall = (isFoot ? wallRunFootFromWall : wristFromWall) * size;
+                Vector3 limbAt = animator.GetIKPosition(ikGoal);
+                float outFromWall = Vector3.Dot(limbAt - runWallPoint, runWallNormal);
+                if (outFromWall >= fromWall) { continue; }
+                ik.SetProceduralGoal(limb, limbAt + runWallNormal * (fromWall - outFromWall), animator.GetIKRotation(ikGoal), wallRunWeight, 0f);
+            }
+        }
+
+        private static readonly (AvatarIKGoal, IKLimb, bool)[] WallRunLimbs =
+        {
+            (AvatarIKGoal.LeftFoot, IKLimb.LeftFoot, true), (AvatarIKGoal.RightFoot, IKLimb.RightFoot, true),
+            (AvatarIKGoal.LeftHand, IKLimb.LeftHand, false), (AvatarIKGoal.RightHand, IKLimb.RightHand, false),
+        };
 
         /// <summary>A point moved onto the wall's face (the wrist's distance out from it).</summary>
         private Vector3 OnWall(Vector3 point, float size) =>

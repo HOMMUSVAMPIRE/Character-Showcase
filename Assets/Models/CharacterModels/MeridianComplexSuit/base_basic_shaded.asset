@@ -25,7 +25,7 @@ MonoBehaviour:
   animatedGroundOffset: -0.01806
   facingCorrection: 0
   measuredOwnHeight: 1.7155603
-  measuredOwnShoulderWidth: 0.28815705
+  bodyDefinition: {fileID: 11400000, guid: ac537cfa4a7ff4d018fc21c8a41383b2, type: 2}
   addIK: 1
   addFootPlacement: 1
   matchCharacterLayer: 1

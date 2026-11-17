@@ -23,6 +23,8 @@ namespace CharacterShowcase.Tests
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            yield return rig.WaitForModel();
             // Half a step height above the head: the jump clears a step, so it reaches the ceiling.
             float headroom = 0.5f * rig.StepHeight;
             float ceiling = CapsuleHeight + headroom;
@@ -52,6 +54,8 @@ namespace CharacterShowcase.Tests
         {
             // No floor: the character stays airborne, where nothing else slows it down.
             rig.SpawnCharacter(new Vector3(0f, 20f, 0f));
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            yield return rig.WaitForModel();
             Dashing dash = rig.Component<Dashing>();
             // The wall's face halfway along the dash, so the dash reaches it with speed to spare.
             float face = CapsuleRadius + 0.5f * dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration;

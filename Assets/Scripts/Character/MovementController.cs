@@ -61,7 +61,9 @@ namespace Character
         [Tooltip("A multiplier on the character's jump launch speed (jump heights scale with its square)")]
         public float jumpStrengthModifier;
 
-        [Tooltip("The radius of the sphere cast used to determine whether the character is standing on the ground")]
+        [Tooltip("The radius (m, at the authored size) of the sphere cast used to determine whether the character is standing " +
+                 "on the ground. 0: 90% of the body's footprint, following it as it's refitted (to a model, say). A fixed " +
+                 "radius wider than the body starts inside a slope it stands on, which doesn't count as ground")]
         public float groundCheckRadius;
 
         [Tooltip("A mask which defines the physics layers which affect where the character can move and how")]
@@ -72,6 +74,10 @@ namespace Character
         [Tooltip("The character's collider for collision: a capsule, box or sphere (see Body), whose shape collision sweeps use. Its first solid one of those if left empty.")]
         [UnityEngine.Serialization.FormerlySerializedAs("capsule")]
         private Collider bodyCollider;
+        [SerializeField]
+        [Tooltip("The character's body as authored (see BodyDefinition): the Body Collider is shaped from it as the character " +
+                 "wakes (made a collider of its kind if it isn't one). Empty: the Body Collider as it's authored")]
+        private BodyDefinition bodyDefinition;
         [SerializeField]
         [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
         private float maxStepHeight = 0.35f;
@@ -158,7 +164,7 @@ namespace Character
 
         private void Awake()
         {
-            RememberBaseSize();
+            ShapeFromDefinition();
         }
 
         [Tooltip("The transform on which the character is currently standing")]

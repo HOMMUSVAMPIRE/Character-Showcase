@@ -166,6 +166,71 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Movement.BodyPitch, Is.EqualTo(30f).Within(0.5f), "Steered up off the floor, it has room to pitch up.");
         }
 
+        /// <summary>
+        /// Swimming underwater into a ladder up the pool's wall takes hold of it and climbs it, also from along the pool's
+        /// floor. Lying down underwater, the body reaches far ahead of its feet, so it takes hold further from the ladder
+        /// than it climbs; it once let go as climbing stood it up, the ladder then out of its reach, before it closed in.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Underwater_SwimmingIntoALadder_TakesHoldOfIt_AndClimbsIt([Values(false, true)] bool alongTheFloor)
+        {
+            yield return DivedInThePool();
+            if (alongTheFloor) { yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(step + 1), timeoutSeconds: 10f); }
+            else { yield return rig.Run(0.8f, step => CharacterTestRig.Crouch(step + 1)); }
+            float face = rig.Position.z + rig.FrontExtent + 0.6f;
+            Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, -PoolDepth, face + 0.03f), PoolDepth + 3f);
+            rig.Box("Pool Wall", new Vector3(0f, -PoolDepth / 2f, face + 0.03f + ladder.Depth + 0.5f), new Vector3(PoolSize, PoolDepth + 4f, 1f));
+            Physics.SyncTransforms();
+            bool tookHold = false, letGo = false;
+            float start = rig.Position.y;
+            yield return rig.Run(4f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                bool climbing = rig.InState(CharacterState.WallClimbing);
+                // Back to swimming (climbing over the top of the wall, out of the water, ends the climb too).
+                letGo |= tookHold && rig.Swimming;
+                tookHold |= climbing;
+            });
+            Assert.That(tookHold, Is.True, "Swimming into the ladder underwater, the character should take hold of it.");
+            Assert.That(letGo, Is.False, "It shouldn't let go of it, back into the water.");
+            Assert.That(rig.Position.y - start, Is.GreaterThan(2f), "It should climb up it.");
+        }
+
+        /// <summary>
+        /// Swimming underwater up a beach out of the water surfaces once the feet are shallower than the swimming depth,
+        /// finds its feet in the shallows and walks out. Lying on the slope, the body rode up it on its front, its feet off
+        /// it, and swam on underwater, floating, until its feet were out of the water.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Underwater_SwimmingUpABeach_SurfacesInTheShallows_AndWalksOut([Values(-20f, 0f, 20f)] float lookDown)
+        {
+            // As the Level Playground's shallow end: water 1.6 m deep over a shelf (deeper than the swimming depth), and a
+            // 1:4 beach up out of it ahead, to the ground beyond.
+            const float surface = -0.4f, shelf = -2f, rampStart = 6f, run = 4f * -shelf;
+            rig.Floor(shelf);
+            water = rig.Water(new Vector3(0f, surface, 0f), new Vector3(60f, surface - shelf + 1f, 60f));
+            Quaternion tilt = Quaternion.Euler(-Mathf.Atan2(-shelf, run) * Mathf.Rad2Deg, 0f, 0f);
+            rig.Box("Beach", new Vector3(0f, shelf / 2f, rampStart + run / 2f) - tilt * Vector3.up * 0.5f,
+                new Vector3(20f, 1f, Mathf.Sqrt(shelf * shelf + run * run)), tilt);
+            rig.Box("Ground", new Vector3(0f, -0.5f, rampStart + run + 10f), new Vector3(20f, 1f, 20f));
+            yield return rig.SpawnSettled(new Vector3(0f, surface, 0f), settleSeconds: 0f);
+            float depth = rig.SwimDepth;
+            Assume.That(depth, Is.LessThan(surface - shelf), "Test setup: the water should be deep enough to swim in.");
+            yield return rig.RunUntil(() => rig.Swimming && Mathf.Abs(rig.Velocity.y) < 0.05f, _ => CharacterTestRig.Idle(), timeoutSeconds: 5f);
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Idle());
+            Assume.That(Diving, Is.True, "Test setup: the character should be underwater.");
+            LookDown(lookDown);
+            float shallowestDiving = float.PositiveInfinity, wadedOutAt = float.NaN;
+            yield return rig.RunUntil(() => !rig.Swimming && rig.Grounded, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                if (Diving) { shallowestDiving = Mathf.Min(shallowestDiving, FeetUnder); }
+            }, timeoutSeconds: 10f);
+            wadedOutAt = FeetUnder;
+            Assert.That(shallowestDiving, Is.GreaterThan(depth - 0.1f), "Underwater, it should surface once its feet are shallower than its swimming depth.");
+            Assert.That(rig.Swimming, Is.False, "In the shallows, it should find its feet.");
+            Assert.That(wadedOutAt, Is.GreaterThan(0.25f * depth), "It should find its feet while they're still well under the water, not float out of it.");
+        }
+
         [UnityTest]
         public IEnumerator HoldingCrouchOrJump_SinksOrRises_WhicheverWayTheCameraLooks()
         {

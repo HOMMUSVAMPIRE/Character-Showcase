@@ -81,6 +81,8 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
+    initialPitch: 0
+    targetPitch: 0
     modelDrop: 0
   currentMovementData:
     lastGroundedTime: 0
@@ -91,15 +93,18 @@ MonoBehaviour:
     finalGrounded: 0
     collisions: 0
     previousCollisions: 0
+    initialPitch: 0
+    targetPitch: 0
     modelDrop: 0
   pendingVelocityChange: {x: 0, y: 0, z: 0}
   movementSpeedMultiplier: 1
   jumpStrengthModifier: 1
-  groundCheckRadius: 0.45
+  groundCheckRadius: 0
   movementLayerMask:
     serializedVersion: 2
     m_Bits: 1
   bodyCollider: {fileID: 0}
+  bodyDefinition: {fileID: 11400000, guid: badaeb9d24fe42239a97f35311941910, type: 2}
   maxStepHeight: 0.35
   maxSlopeAngle: 55
   skinWidth: 0.02
@@ -140,7 +145,8 @@ MonoBehaviour:
   stepUpSmoothTime: 0.08
   stepUpMaxLag: 0.35
   modelDropSmoothTime: 0.25
-  climbOutOfWaterStart: 0.35
+  eyeLoweringSmoothTime: 0.1
+  climbOutOfWaterStart: 0.4
   headWaterMargin: 0.1
 --- !u!136 &2503010006209077673
 CapsuleCollider:
@@ -212,7 +218,7 @@ MonoBehaviour:
   eyePoint: {fileID: 296573222870192925}
   defaultEyeHeight: 1.65
   minimumHeightFraction: 0.6
-  colliderFit: 0
+  colliderFit: 2
   colliderWidthMargin: 1.4
 --- !u!114 &2159346865127861795
 MonoBehaviour:

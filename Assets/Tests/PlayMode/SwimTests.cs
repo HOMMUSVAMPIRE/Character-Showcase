@@ -278,7 +278,7 @@ namespace CharacterShowcase.Tests
                 _ => touchedBottom |= rig.Swimming && rig.Grounded, timeoutSeconds: 4f);
             Assume.That(touchedBottom, Is.True, "Test setup: the plunge should reach the floor.");
             yield return rig.Run(2f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Swimming, Is.True);
+            Assert.That(rig.Swimming, Is.True, "Resting on the pool's floor (where its water ends), the character is still in the water.");
             Assert.That(FeetUnder, Is.EqualTo(rig.SwimDepth).Within(0.02f), "Off the bottom, the character should float back up to its swimming depth.");
         }
 

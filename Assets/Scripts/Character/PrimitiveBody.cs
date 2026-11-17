@@ -8,34 +8,18 @@ namespace Character
     /// or lying along an axis), a box or a sphere, centred wherever it's authored. Its size follows the character's (a
     /// capsule's length along its axis with that axis's scale, its radius with the larger of the others, but no more than
     /// half its height; a box's sides each with theirs; a sphere with the largest). Its postures are its authored shape
-    /// lowered from the top (low) or laid down along the facing, resting on the feet (lying). Its queries use the shape
-    /// shrunk by the skin width on every side.
+    /// lowered from the top (low) or laid down along the facing, resting on the feet (lying), no thicker than its lying
+    /// thickness (see BodyShape). Its queries use the shape shrunk by the skin width on every side. Its shape as authored
+    /// is its collider's, or the one it's given (see MovementController.SetBody).
     /// </summary>
     public sealed class PrimitiveBody : CharacterBody
     {
         // Passes made to push the body out of geometry that moved into it, for when several things overlap.
         private const int MaxDepenetrationPasses = 4;
 
-        private enum Kind { Capsule, Box, Sphere }
-
-        /// <summary>A primitive shape, relative to the character's feet and facing (+Z ahead).</summary>
-        private struct Shape
-        {
-            public Kind kind;
-            public Vector3 center;
-            /// <summary>A capsule's or sphere's radius.</summary>
-            public float radius;
-            /// <summary>A capsule's length, end to end, along its axis.</summary>
-            public float height;
-            /// <summary>A capsule's axis: 0 across (X), 1 up (Y), 2 ahead (Z), as CapsuleCollider.direction.</summary>
-            public int axis;
-            /// <summary>A box's size.</summary>
-            public Vector3 size;
-        }
-
         private Collider collider;
         // The shape as authored, which the character's size and posture change.
-        private Shape authored;
+        private BodyShape authored;
         private bool hasAuthored;
 
         /// <summary>
@@ -48,6 +32,9 @@ namespace Character
 
         public override Collider Collider => collider;
         public override bool HasAuthoredSize => hasAuthored;
+
+        /// <summary>The body's shape as authored (at the character's authored size, standing): its collider's, or the one it was given.</summary>
+        public BodyShape AuthoredShape { get { RememberAuthoredSize(); return authored; } }
         public override float AuthoredHeight { get { RememberAuthoredSize(); return UprightHeight(authored); } }
         public override float AuthoredRadius { get { RememberAuthoredSize(); return Footprint(authored); } }
         public override float FootprintRadius => Footprint(Current);
@@ -55,11 +42,11 @@ namespace Character
         {
             get
             {
-                Shape s = Current;
+                BodyShape s = Current;
                 return s.kind switch
                 {
-                    Kind.Box => s.size.y,
-                    Kind.Capsule when s.axis == 1 => s.height,
+                    BodyShapeKind.Box => s.size.y,
+                    BodyShapeKind.Capsule when s.direction == 1 => s.height,
                     _ => 2f * s.radius,
                 };
             }
@@ -70,12 +57,12 @@ namespace Character
             get
             {
                 if (collider == null) { return false; }
-                Shape s = Current;
+                BodyShape s = Current;
                 bool offCentre = s.center.x != 0f || s.center.z != 0f;
                 return s.kind switch
                 {
-                    Kind.Capsule => s.axis != 1 || offCentre,
-                    Kind.Sphere => offCentre,
+                    BodyShapeKind.Capsule => s.direction != 1 || offCentre,
+                    BodyShapeKind.Sphere => offCentre,
                     _ => true,
                 };
             }
@@ -88,7 +75,7 @@ namespace Character
         public override float SideExtent => collider != null ? Mathf.Abs(Current.center.x) + HalfExtents(Current).x : 0.5f * Owner.HeightScale;
 
         /// <summary>The collider's shape as it is now.</summary>
-        private Shape Current => Read(collider);
+        private BodyShape Current => Read(collider);
 
         public override void RememberAuthoredSize()
         {
@@ -118,28 +105,15 @@ namespace Character
 
         // ---- Shapes ----
 
-        private static Shape Read(Collider c)
-        {
-            switch (c)
-            {
-                case CapsuleCollider capsule:
-                    return new Shape { kind = Kind.Capsule, center = capsule.center, radius = capsule.radius, height = capsule.height, axis = capsule.direction };
-                case BoxCollider box:
-                    return new Shape { kind = Kind.Box, center = box.center, size = box.size };
-                case SphereCollider sphere:
-                    return new Shape { kind = Kind.Sphere, center = sphere.center, radius = sphere.radius };
-                default:
-                    // No collider yet: the default upright capsule, 2 m tall, standing on the feet.
-                    return new Shape { kind = Kind.Capsule, center = new Vector3(0f, 1f, 0f), radius = 0.5f, height = 2f, axis = 1 };
-            }
-        }
+        // No collider yet: the default upright capsule, 2 m tall, standing on the feet.
+        private static BodyShape Read(Collider c) => BodyShape.TryRead(c, out BodyShape shape) ? shape : BodyShape.Capsule(0.5f, 2f);
 
-        private void Write(Shape s)
+        private void Write(BodyShape s)
         {
             switch (collider)
             {
                 case CapsuleCollider capsule:
-                    if (capsule.direction != s.axis) { capsule.direction = s.axis; }
+                    if (capsule.direction != s.direction) { capsule.direction = s.direction; }
                     capsule.radius = s.radius;
                     capsule.height = s.height;
                     capsule.center = s.center;
@@ -156,67 +130,68 @@ namespace Character
         }
 
         /// <summary>How tall the shape stands, top to bottom.</summary>
-        private static float UprightHeight(Shape s) => s.kind switch
+        private static float UprightHeight(BodyShape s) => s.kind switch
         {
-            Kind.Box => s.size.y,
-            Kind.Capsule when s.axis == 1 => s.height,
+            BodyShapeKind.Box => s.size.y,
+            BodyShapeKind.Capsule when s.direction == 1 => s.height,
             _ => 2f * s.radius,
         };
 
         /// <summary>The radius of the shape's footprint: a capsule's or sphere's radius, half a box's narrower side.</summary>
-        private static float Footprint(Shape s) => s.kind == Kind.Box ? 0.5f * Mathf.Min(s.size.x, s.size.z) : s.radius;
+        private static float Footprint(BodyShape s) => s.kind == BodyShapeKind.Box ? 0.5f * Mathf.Min(s.size.x, s.size.z) : s.radius;
 
         /// <summary>Half the shape's size along each of the character's axes, about its centre.</summary>
-        private static Vector3 HalfExtents(Shape s)
+        private static Vector3 HalfExtents(BodyShape s)
         {
             switch (s.kind)
             {
-                case Kind.Box: return 0.5f * s.size;
-                case Kind.Sphere: return new Vector3(s.radius, s.radius, s.radius);
+                case BodyShapeKind.Box: return 0.5f * s.size;
+                case BodyShapeKind.Sphere: return new Vector3(s.radius, s.radius, s.radius);
                 default:
                     float half = 0.5f * Mathf.Max(s.height, 2f * s.radius);
-                    return new Vector3(s.axis == 0 ? half : s.radius, s.axis == 1 ? half : s.radius, s.axis == 2 ? half : s.radius);
+                    return new Vector3(s.direction == 0 ? half : s.radius, s.direction == 1 ? half : s.radius, s.direction == 2 ? half : s.radius);
             }
         }
 
         /// <summary>The shape at a size and posture: upright (lowered from the top while low), or laid down along the facing.</summary>
-        private static Shape ShapeAt(Shape authored, Vector3 scale, BodyPosture posture)
+        private static BodyShape ShapeAt(BodyShape authored, Vector3 scale, BodyPosture posture)
         {
-            Shape s = Upright(authored, scale, posture.Kind == BodyPostureKind.Low ? posture.Share : 1f);
-            return posture.Kind == BodyPostureKind.Lying ? LaidDown(s) : s;
+            BodyShape s = Upright(authored, scale, posture.Kind == BodyPostureKind.Low ? posture.Share : 1f);
+            // Its lying thickness scales as its height does, which it is, lying.
+            return posture.Kind == BodyPostureKind.Lying ? LaidDown(s, authored.lyingThickness * scale.y) : s;
         }
 
         /// <summary>
         /// The authored shape at a size and share of its standing height, its bottom staying at the feet's height (so a
         /// lower shape is lowered from the top).
         /// </summary>
-        private static Shape Upright(Shape a, Vector3 scale, float fraction)
+        private static BodyShape Upright(BodyShape a, Vector3 scale, float fraction)
         {
-            Shape s = a;
+            BodyShape s = a;
             switch (a.kind)
             {
-                case Kind.Capsule when a.axis == 1:
+                case BodyShapeKind.Capsule when a.direction == 1:
                     CapsuleAt(scale, fraction, a.radius, a.height, a.center, out s.radius, out s.height, out s.center);
                     break;
-                case Kind.Capsule:
+                case BodyShapeKind.Capsule:
                 {
                     // Lying along X or Z as authored: its length scales with that axis, its radius with the larger of the
                     // others (no more than half its lowered height).
-                    float across = a.axis == 0 ? scale.z : scale.x;
+                    float across = a.direction == 0 ? scale.z : scale.x;
                     float radius = a.radius * Mathf.Max(scale.y, across);
                     s.radius = Mathf.Min(radius, radius * fraction);
-                    s.height = Mathf.Max(a.height * (a.axis == 0 ? scale.x : scale.z), 2f * s.radius);
+                    s.height = Mathf.Max(a.height * (a.direction == 0 ? scale.x : scale.z), 2f * s.radius);
                     s.center = Vector3.Scale(a.center, scale);
                     s.center.y = (a.center.y - a.radius) * scale.y + s.radius;
                     break;
                 }
-                case Kind.Box:
+                case BodyShapeKind.Box:
                     s.size = Vector3.Scale(a.size, scale);
                     s.size.y *= fraction;
                     s.center = Vector3.Scale(a.center, scale);
                     s.center.y = (a.center.y - 0.5f * a.size.y) * scale.y + 0.5f * s.size.y;
                     break;
-                case Kind.Sphere:
+                case BodyShapeKind.Sphere:
                     s.radius = a.radius * Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z)) * fraction;
                     s.center = Vector3.Scale(a.center, scale);
                     s.center.y = (a.center.y - a.radius) * scale.y + s.radius;
@@ -243,83 +218,64 @@ namespace Character
 
         /// <summary>
         /// The upright shape laid down along the facing, its bottom where it was (at the feet): an upright capsule lies
-        /// along +Z, a box's height and depth swap, and a sphere (or a capsule already lying) stays as it is.
+        /// along +Z, a box's height and depth swap, and a sphere (or a capsule already lying) stays as it is. Given a
+        /// thickness (more than 0), it's no thicker than that: a capsule's radius is no more than half of it (its length
+        /// staying as it was), a box no taller. A sphere stays round.
         /// </summary>
-        private static Shape LaidDown(Shape s)
+        private static BodyShape LaidDown(BodyShape s, float thickness)
         {
             float bottom = s.center.y - HalfExtents(s).y;
-            if (s.kind == Kind.Capsule && s.axis == 1) { s.axis = 2; }
-            if (s.kind == Kind.Box) { s.size = new Vector3(s.size.x, s.size.z, s.size.y); }
+            if (s.kind == BodyShapeKind.Capsule && s.direction == 1) { s.direction = 2; }
+            if (s.kind == BodyShapeKind.Box) { s.size = new Vector3(s.size.x, s.size.z, s.size.y); }
+            if (thickness > 0f)
+            {
+                if (s.kind == BodyShapeKind.Capsule && s.direction != 1)
+                {
+                    float length = Mathf.Max(s.height, 2f * s.radius);
+                    s.radius = Mathf.Min(s.radius, 0.5f * thickness);
+                    s.height = length;
+                }
+                else if (s.kind == BodyShapeKind.Box) { s.size.y = Mathf.Min(s.size.y, thickness); }
+            }
             s.center.y = bottom + HalfExtents(s).y;
             return s;
         }
 
         /// <summary>
-        /// The authored shape refitted to a footprint radius and standing height, standing on the feet: an upright capsule
-        /// of that radius (no more than half the height) and height; a box that tall, its sides in proportion and its wider
-        /// side twice the radius; a sphere of that radius (no more than half the height). False for a lying capsule.
+        /// Gives the body another shape as authored (see BodyShape), of its collider's kind. Like growing, it waits for room:
+        /// unless told not to (checkRoom false), if the new body would reach anywhere the current one doesn't and wouldn't
+        /// fit with its feet at feet (turned rotation, at the given scale and posture), nothing changes and this returns
+        /// false; also false for a shape of another kind, or without a size. Doesn't resize the collider: the owner does
+        /// (see MovementController.SetBody).
         /// </summary>
-        private static bool Refit(Shape a, float radius, float height, out Shape s)
-        {
-            s = a;
-            switch (a.kind)
-            {
-                case Kind.Capsule when a.axis == 1:
-                    s.radius = Mathf.Min(radius, height * 0.5f);
-                    s.height = height;
-                    s.center = new Vector3(a.center.x, height * 0.5f, a.center.z);
-                    return true;
-                case Kind.Box:
-                {
-                    float wider = Mathf.Max(a.size.x, a.size.z, 1e-4f);
-                    float k = 2f * radius / wider;
-                    s.size = new Vector3(a.size.x * k, height, a.size.z * k);
-                    s.center = new Vector3(a.center.x, height * 0.5f, a.center.z);
-                    return true;
-                }
-                case Kind.Sphere:
-                    s.radius = Mathf.Min(radius, height * 0.5f);
-                    s.center = new Vector3(a.center.x, s.radius, a.center.z);
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        /// <summary>
-        /// Changes the body's size as authored (the character's scale then multiplies it), standing on the feet (see
-        /// Refit). Used to fit the collider to the character's model (see CharacterModelHost). Like growing, it waits for
-        /// room: if the bigger body wouldn't fit with its feet at feet (turned rotation, at the given scale and posture),
-        /// nothing changes and this returns false. Doesn't resize the collider: the owner does (see
-        /// MovementController.SetBaseSize).
-        /// </summary>
-        public bool SetAuthoredSize(float radius, float height, Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture)
+        public bool SetAuthoredShape(BodyShape shape, Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, bool checkRoom = true)
         {
             RememberAuthoredSize();
-            if (collider == null || radius <= 0f || height <= 0f || !Refit(authored, radius, height, out Shape refitted)) { return false; }
-            bool grows = UprightHeight(refitted) > UprightHeight(authored) + 1e-5f || Footprint(refitted) > Footprint(authored) + 1e-5f;
-            if (grows && !Fits(feet, rotation, scale, posture, refitted)) { return false; }
-            authored = refitted;
+            if (collider == null || !shape.HasSize || !shape.IsKindOf(collider)) { return false; }
+            if (checkRoom && Reaches(ShapeAt(shape, scale, posture), ShapeAt(authored, scale, posture))
+                && !Fits(feet, rotation, scale, posture, shape)) { return false; }
+            authored = shape;
+            hasAuthored = true;
             return true;
         }
 
-        public override CharacterBody CopyFor(MovementController copy, float? authoredRadius = null, float? authoredHeight = null)
+        /// <summary>Whether shape reaches anywhere than doesn't: above, ahead, behind or to either side of the feet (or below them).</summary>
+        private static bool Reaches(BodyShape shape, BodyShape than)
+        {
+            const float tolerance = 1e-5f;
+            Vector3 a = HalfExtents(shape), b = HalfExtents(than);
+            return shape.center.y + a.y > than.center.y + b.y + tolerance || shape.center.y - a.y < than.center.y - b.y - tolerance
+                || shape.center.z + a.z > than.center.z + b.z + tolerance || shape.center.z - a.z < than.center.z - b.z - tolerance
+                || Mathf.Abs(shape.center.x) + a.x > Mathf.Abs(than.center.x) + b.x + tolerance;
+        }
+
+        public override CharacterBody CopyFor(MovementController copy, BodyShape? authoredShape = null)
         {
             RememberAuthoredSize();
-            Collider added = authored.kind switch
-            {
-                Kind.Box => copy.gameObject.AddComponent<BoxCollider>(),
-                Kind.Sphere => copy.gameObject.AddComponent<SphereCollider>(),
-                _ => copy.gameObject.AddComponent<CapsuleCollider>(),
-            };
-            var body = new PrimitiveBody(copy, added) { authored = authored, hasAuthored = true };
-            if (authoredRadius.HasValue && authoredHeight.HasValue && authoredHeight.Value > 0f
-                && Refit(authored, authoredRadius.Value, authoredHeight.Value, out Shape refitted))
-            {
-                body.authored = refitted;
-            }
-            if (added is CapsuleCollider capsule) { capsule.direction = body.authored.axis; }
-            return body;
+            BodyShape shape = authoredShape is { HasSize: true } given ? given : authored;
+            var added = (Collider)copy.gameObject.AddComponent(shape.ColliderType);
+            if (added is CapsuleCollider capsule) { capsule.direction = shape.direction; }
+            return new PrimitiveBody(copy, added) { authored = shape, hasAuthored = true };
         }
 
         // ---- Queries ----
@@ -330,11 +286,18 @@ namespace Character
             return Fits(feet, rotation, scale, posture, authored);
         }
 
+        /// <summary>
+        /// Whether a body of the given authored shape (of any kind) would fit with its feet at feet, turned rotation, at the
+        /// given scale and posture.
+        /// </summary>
+        public bool FitsAs(BodyShape authoredShape, Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture) =>
+            Fits(feet, rotation, scale, posture, authoredShape);
+
         /// <summary>The same, for a body of another authored shape.</summary>
-        private bool Fits(Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, Shape authoredShape)
+        private bool Fits(Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, BodyShape authoredShape)
         {
             if (collider == null) { return true; }
-            Shape s = ShapeAt(authoredShape, scale, posture);
+            BodyShape s = ShapeAt(authoredShape, scale, posture);
             float authoredFootprint = Footprint(authoredShape);
             float skinAtScale = Owner.AuthoredSkinWidth * (authoredFootprint > 0f ? Mathf.Min(scale.y, Footprint(s) / authoredFootprint) : scale.y);
             Collider[] overlaps = Owner.OverlapBuffer;
@@ -353,7 +316,7 @@ namespace Character
             if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
 
             Vector3 dir = direction.normalized;
-            Shape s = Current;
+            BodyShape s = Current;
             float skin = Owner.SkinWidth;
             RaycastHit[] castHits = Owner.CastBuffer;
             int count = Cast(s, feet, rotation, skin, dir, distance, castHits);
@@ -380,7 +343,7 @@ namespace Character
         {
             if (collider == null) { return Vector3.zero; }
 
-            Shape s = Current;
+            BodyShape s = Current;
             float skin = Owner.SkinWidth;
             Collider[] overlaps = Owner.OverlapBuffer;
             Vector3 offset = Vector3.zero;
@@ -406,15 +369,15 @@ namespace Character
         }
 
         /// <summary>The colliders the shape (shrunk by skin), its feet at feet and turned rotation, overlaps, into overlaps.</summary>
-        private int Overlap(Shape s, Vector3 feet, Quaternion rotation, float skin, Collider[] overlaps)
+        private int Overlap(BodyShape s, Vector3 feet, Quaternion rotation, float skin, Collider[] overlaps)
         {
             int mask = Owner.MovementLayerMask;
             switch (s.kind)
             {
-                case Kind.Box:
+                case BodyShapeKind.Box:
                     GetQueryBox(s, feet, rotation, skin, out Vector3 boxCenter, out Vector3 halfExtents);
                     return Physics.OverlapBoxNonAlloc(boxCenter, halfExtents, overlaps, rotation, mask, QueryTriggerInteraction.Ignore);
-                case Kind.Sphere:
+                case BodyShapeKind.Sphere:
                     GetQuerySphere(s, feet, rotation, skin, out Vector3 sphereCenter, out float sphereRadius);
                     return Physics.OverlapSphereNonAlloc(sphereCenter, sphereRadius, overlaps, mask, QueryTriggerInteraction.Ignore);
                 default:
@@ -424,15 +387,15 @@ namespace Character
         }
 
         /// <summary>The shape (shrunk by skin), its feet at feet and turned rotation, cast along direction, into hits.</summary>
-        private int Cast(Shape s, Vector3 feet, Quaternion rotation, float skin, Vector3 direction, float distance, RaycastHit[] hits)
+        private int Cast(BodyShape s, Vector3 feet, Quaternion rotation, float skin, Vector3 direction, float distance, RaycastHit[] hits)
         {
             int mask = Owner.MovementLayerMask;
             switch (s.kind)
             {
-                case Kind.Box:
+                case BodyShapeKind.Box:
                     GetQueryBox(s, feet, rotation, skin, out Vector3 boxCenter, out Vector3 halfExtents);
                     return Physics.BoxCastNonAlloc(boxCenter, halfExtents, direction, hits, rotation, distance, mask, QueryTriggerInteraction.Ignore);
-                case Kind.Sphere:
+                case BodyShapeKind.Sphere:
                     GetQuerySphere(s, feet, rotation, skin, out Vector3 sphereCenter, out float sphereRadius);
                     return Physics.SphereCastNonAlloc(sphereCenter, sphereRadius, direction, hits, distance, mask, QueryTriggerInteraction.Ignore);
                 default:
@@ -445,7 +408,7 @@ namespace Character
         /// Where the shape's centre is, its feet at feet and turned rotation (a centred shape turned only about the vertical
         /// needn't turn).
         /// </summary>
-        private static Vector3 WorldCenter(Shape s, Vector3 feet, Quaternion rotation) =>
+        private static Vector3 WorldCenter(BodyShape s, Vector3 feet, Quaternion rotation) =>
             s.center.x == 0f && s.center.z == 0f && IsLevel(rotation) ? feet + s.center : feet + rotation * s.center;
 
         // Below this, a rotation's x and z parts are rounding: it's a turn about the vertical alone (a facing, unpitched).
@@ -458,7 +421,7 @@ namespace Character
         /// The capsule used for collision queries, placed at the given feet position and turned rotation: the shape shrunk
         /// by the skin width (its radius, so its ends too).
         /// </summary>
-        private static void GetQueryCapsule(Shape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 top, out Vector3 bottom, out float radius)
+        private static void GetQueryCapsule(BodyShape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 top, out Vector3 bottom, out float radius)
         {
             radius = s.radius - skin;
             if (radius <= 0f) { radius = s.radius * 0.5f; }
@@ -466,20 +429,20 @@ namespace Character
             float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skin);
             Vector3 center = WorldCenter(s, feetPos, rotation);
             // Upright and level, straight up: an upright capsule turned about its axis is the same capsule.
-            Vector3 axis = s.axis == 1 && IsLevel(rotation) ? Vector3.up
-                : rotation * (s.axis == 0 ? Vector3.right : s.axis == 1 ? Vector3.up : Vector3.forward);
+            Vector3 axis = s.direction == 1 && IsLevel(rotation) ? Vector3.up
+                : rotation * (s.direction == 0 ? Vector3.right : s.direction == 1 ? Vector3.up : Vector3.forward);
             bottom = center - axis * halfSegment;
             top = center + axis * halfSegment;
         }
 
-        private static void GetQueryBox(Shape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 center, out Vector3 halfExtents)
+        private static void GetQueryBox(BodyShape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 center, out Vector3 halfExtents)
         {
             center = feetPos + rotation * s.center;
             Vector3 half = 0.5f * s.size;
             halfExtents = new Vector3(Shrunk(half.x, skin), Shrunk(half.y, skin), Shrunk(half.z, skin));
         }
 
-        private static void GetQuerySphere(Shape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 center, out float radius)
+        private static void GetQuerySphere(BodyShape s, Vector3 feetPos, Quaternion rotation, float skin, out Vector3 center, out float radius)
         {
             center = WorldCenter(s, feetPos, rotation);
             radius = Shrunk(s.radius, skin);
@@ -493,8 +456,8 @@ namespace Character
             CultureInfo invariant = CultureInfo.InvariantCulture;
             string F(float value) => value.ToString("R", invariant);
             string V(Vector3 v) => $"{F(v.x)},{F(v.y)},{F(v.z)}";
-            Shape a = authored;
-            return string.Join("|", a.kind.ToString(), a.axis.ToString(invariant), F(a.radius), F(a.height), V(a.center), V(a.size));
+            BodyShape a = authored;
+            return string.Join("|", a.kind.ToString(), a.direction.ToString(invariant), F(a.radius), F(a.height), V(a.center), V(a.size), F(a.lyingThickness));
         }
     }
 }

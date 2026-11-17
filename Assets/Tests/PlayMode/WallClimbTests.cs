@@ -158,7 +158,9 @@ namespace CharacterShowcase.Tests
         private IEnumerator SetUpPanel()
         {
             yield return SetUpStanding();
-            const float thickness = 0.1f;
+            // Thinner than a ledge's least depth (Ledges looks for a top 10 cm past a wall's face): its top edge, standing
+            // out from the wall, isn't a ledge to hang from. As thick as that, whether it was depended on rounding.
+            const float thickness = 0.05f;
             rig.ClimbableBox("Panel", new Vector3(0f, 2f, face + thickness / 2f), new Vector3(2f, 4f, thickness));
             rig.Box("Wall", new Vector3(0f, 5f, face + thickness + 0.5f), new Vector3(20f, 10f, 1f));
             yield return TakeHold();

@@ -144,9 +144,46 @@ namespace CharacterShowcase.Tests
                 Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips);
                 float feet = 0.5f * (animator.GetBoneTransform(HumanBodyBones.LeftFoot).position.x + animator.GetBoneTransform(HumanBodyBones.RightFoot).position.x) - hips.position.x;
                 float head = animator.GetBoneTransform(HumanBodyBones.Head).position.x - hips.position.x;
-                Assert.That(feet * side, Is.GreaterThan(0.1f), "The feet should be out toward the wall.");
+                // (On the wall: see WallRunning_KeepsTheModelOutOfTheWall.)
+                Assert.That(feet * side, Is.GreaterThan(0.05f), "The feet should be out toward the wall.");
                 Assert.That(head * side, Is.LessThan(-0.03f), "The body should lean away from the wall.");
             }
+        }
+
+        /// <summary>
+        /// Running along a wall, the model stays out of it: its body held its clearance out from the wall (the wall run's
+        /// feet are well out to the side), and its feet and hands put on the wall's face where the animation has them
+        /// through it. With a slim body (one fitted to the model), the legs and a hand were drawn through the wall.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WallRunning_KeepsTheModelOutOfTheWall([Values(false, true)] bool wideBody)
+        {
+            yield return Spawn();
+            if (wideBody) { Assume.That(rig.Movement.SetBody(BodyShape.Capsule(0.5f, 2f), checkRoom: false), Is.True); }
+            rig.Body.position = new Vector3(0f, 6f, -10f);
+            float face = rig.SideExtent + 0.1f;
+            rig.Box("Wall", new Vector3(face + 0.5f, 10f, 0f), new Vector3(1f, 20f, 40f));
+            rig.Movement.OverrideVelocity(Vector3.forward * rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale);
+            yield return ExpectState("Wall Run", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            HumanBodyBones[] bones = { HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot, HumanBodyBones.LeftHand, HumanBodyBones.RightHand, HumanBodyBones.Hips, HumanBodyBones.Head };
+            float deepest = float.NegativeInfinity;
+            string deepestBone = "";
+            yield return rig.Run(0.8f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+                if (step < 10) { return; } // Once it's settled at its distance from the wall.
+                foreach (HumanBodyBones bone in bones)
+                {
+                    Transform t = animator.GetBoneTransform(bone);
+                    if (t != null && t.position.x - face > deepest) { deepest = t.position.x - face; deepestBone = bone.ToString(); }
+                }
+            });
+            Assume.That(rig.InState(CharacterState.WallRunning), Is.True, "Test setup: the character should still be wall-running.");
+            float clearance = rig.MovementSetting<float>("wallRunClearance") * rig.StandingHeight;
+            Assert.That(face - rig.Position.x, Is.EqualTo(Mathf.Max(clearance, rig.SideExtent)).Within(0.03f),
+                "The character should be held its clearance out from the wall, or against it.");
+            Assert.That(deepest, Is.LessThan(0.02f), $"The model's {deepestBone} shouldn't be drawn through the wall.");
         }
 
         private static bool QuaterniusWallRunsInstalled()

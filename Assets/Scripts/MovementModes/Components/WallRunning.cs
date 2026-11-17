@@ -29,6 +29,10 @@ namespace Character
         [Range(0f, 90f)] [SerializeField] private float wallRunMaxSteerAngle = 35f;
         [Tooltip("How far (m) beside the character a wall can be for it to run along it, at its authored size")]
         [SerializeField] private float wallRunCheckDistance = 0.3f;
+        [Tooltip("How far from the wall the character's middle (its feet, the point it stands on) is held as it runs along " +
+                 "one, as a share of its standing height, at least as far as its body reaches to that side: a wall runner " +
+                 "leans out from the wall, its feet on it. Less than the body's reach holds it against the wall")]
+        [Range(0f, 1f)] [SerializeField] private float wallRunClearance = 0.25f;
         [Tooltip("A wall run only starts this high (m) or more above the ground, at the character's authored size, so " +
                  "brushing a wall in a small hop doesn't start one")]
         [SerializeField] private float wallRunMinHeight = 0.75f;
@@ -52,6 +56,11 @@ namespace Character
         // there. Without this the run carried on round the end of a wall (the sweep finding its corner), once steering
         // off the wall no longer ended it at once (see wallRunReleaseDelay).
         private const float WallRunMinCurveRadius = 2f;
+        // Seconds (at the authored size) over which a wall run closes in on, or eases out to, how far from the wall it's
+        // held (see wallRunClearance); and the fastest (m/s, at the authored size) it eases out.
+        private const float WallRunHoldTime = 0.1f, WallRunMaxEaseOut = 4f;
+        // The furthest out a wall run is held from the wall, as a share of the check distance (beyond which it's lost).
+        private const float WallRunMaxHoldShare = 0.75f;
 
         /// <summary>How fast (m/s) the character runs along a wall, at its authored size.</summary>
         public float WallRunSpeed { get => wallRunSpeed; set => wallRunSpeed = value; }
@@ -88,7 +97,7 @@ namespace Character
             if (!run.IsWallRunning && !TryStartWallRun(ref movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
-            if (movementData.initialGrounded || !FindWall(controller, feet, -run.wallNormal, out Vector3 normal, out _)
+            if (movementData.initialGrounded || !FindWall(controller, feet, -run.wallNormal, out Vector3 normal, out float gap, out Vector3 wallPoint)
                 || !WallReachesFeet(controller, feet, normal))
             {
                 EndWallRun(controller);
@@ -105,6 +114,7 @@ namespace Character
                 return false;
             }
             run.wallNormal = normal;
+            run.wallPoint = wallPoint;
             Vector3 along = Vector3.ProjectOnPlane(new Vector3(inertia.x, 0f, inertia.z), normal);
             along.y = 0f;
             float speed = along.magnitude;
@@ -131,10 +141,10 @@ namespace Character
                 return true;
             }
 
-            // Run along the wall, falling slowly, pressed lightly against it.
+            // Run along the wall, falling slowly, pressed lightly against it, or held its clearance out from it.
             speed = Mathf.MoveTowards(speed, wallRunSpeed * controller.SpeedScale, Mode.AirAcceleration(controller) * movementData.deltaTime);
             float rise = inertia.y - wallRunGravity * controller.AccelerationScale * movementData.deltaTime;
-            movementData.velocityOverride = tangent * speed + Vector3.up * rise - normal * (WallStickSpeed * controller.SpeedScale);
+            movementData.velocityOverride = tangent * speed + Vector3.up * rise - normal * TowardWall(controller, gap - controller.Skin);
             movementData.directMovementVector = Vector3.zero;
             movementData.targetRotation = Quaternion.LookRotation(tangent, Vector3.up);
             // The wall is on the character's right if its normal points to the character's left.
@@ -199,13 +209,39 @@ namespace Character
         }
 
         /// <summary>
+        /// How far (m) out from the wall, beyond the body's side, the character is held as it runs along one: the clearance
+        /// (a share of its standing height) less how far its body reaches to the side; 0 if that's less (it's pressed
+        /// against the wall). No more than most of the check distance, so the wall it's held out from is still found.
+        /// </summary>
+        private float HoldGap(MovementController controller) =>
+            Mathf.Clamp(wallRunClearance * controller.Body.StandingHeight - controller.Body.SideExtent, 0f,
+                WallRunMaxHoldShare * wallRunCheckDistance * controller.HeightScale);
+
+        /// <summary>
+        /// How fast (m/s) to move toward the wall this step, the body's side gap (m) from it: pressed lightly against it,
+        /// or, held out from it (see HoldGap), closing in on that gap (or easing out to it) over the hold time.
+        /// </summary>
+        private float TowardWall(MovementController controller, float gap)
+        {
+            float stick = WallStickSpeed * controller.SpeedScale;
+            float hold = HoldGap(controller);
+            if (hold <= controller.Skin) { return stick; }
+            return Mathf.Clamp((gap - hold) / (WallRunHoldTime * controller.DurationScale), -WallRunMaxEaseOut * controller.SpeedScale, stick);
+        }
+
+        /// <summary>
         /// Whether there's a wall to run along beside the character in the given direction (within the check distance,
         /// and upright enough), and its normal, flattened (pointing away from the wall).
         /// </summary>
-        private bool FindWall(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance)
+        private bool FindWall(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance) =>
+            FindWall(controller, feet, direction, out normal, out distance, out _);
+
+        /// <summary>The same, and the point on the wall the body's sweep hit (distance includes the skin width).</summary>
+        private bool FindWall(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance, out Vector3 point)
         {
             normal = Vector3.zero;
             distance = 0f;
+            point = Vector3.zero;
             float reach = wallRunCheckDistance * controller.HeightScale + controller.Skin;
             if (!controller.SweepBody(feet, direction, reach, out RaycastHit hit)) { return false; }
             if (Mathf.Abs(hit.normal.y) > Mathf.Sin(wallRunMaxWallTilt * Mathf.Deg2Rad)) { return false; }
@@ -215,6 +251,7 @@ namespace Character
             // Facing the character, not a surface it would only graze.
             if (Vector3.Dot(normal, -direction.normalized) < 0.5f) { return false; }
             distance = hit.distance;
+            point = hit.point;
             return true;
         }
 
@@ -350,6 +387,8 @@ namespace Character
         public float cooldownRemaining;
         /// <summary>The wall's normal (horizontal, unit length, pointing away from the wall toward the character).</summary>
         public Vector3 wallNormal;
+        /// <summary>A point on the wall's face, where the character's body was nearest it (for the feet on it: see WallSlideIK).</summary>
+        public Vector3 wallPoint;
         /// <summary>Which side of the character the wall is on: 1 = right, -1 = left (0 when not wall-running).</summary>
         public float side;
         /// <summary>The wall last run along (its normal), which can't be run along again until the character touches the ground.</summary>

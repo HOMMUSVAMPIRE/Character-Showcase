@@ -62,6 +62,45 @@ namespace CharacterShowcase.EditorTools
         public static float MeasureHeight(GameObject modelPrefab) => CharacterModelSource.MeasureHeight(modelPrefab);
 
         /// <summary>
+        /// Fits the model's own body (its source's Body Definition: see BodyFitting) to it, from its meshes in their bind
+        /// pose and its shoulders, as it faces once its source turns it (Facing Correction), in its own units. A source
+        /// without one gets '[name] Body.asset' beside it (or the one already there). A body with Refit On Prepare off is
+        /// left as it is.
+        /// </summary>
+        private static void FitBody(DirectCharacterModelSource definition, string definitionPath, GameObject modelPrefab, Result result)
+        {
+            BodyDefinition body = definition.BodyDefinition;
+            if (body == null)
+            {
+                string bodyPath = BodyPathFor(definitionPath);
+                body = AssetDatabase.LoadAssetAtPath<BodyDefinition>(bodyPath);
+                if (body == null)
+                {
+                    body = ScriptableObject.CreateInstance<BodyDefinition>();
+                    AssetDatabase.CreateAsset(body, bodyPath);
+                }
+                definition.BodyDefinition = body;
+            }
+            if (!body.RefitOnPrepare)
+            {
+                result.notes.Add($"Its body ('{AssetDatabase.GetAssetPath(body)}') has Refit On Prepare off, so it was left as it is.");
+                return;
+            }
+            Vector3 size = CharacterModelSource.MeasureSize(modelPrefab, modelPrefab.transform);
+            // Turned a quarter turn to face forward, it's as wide as it was deep.
+            if (Mathf.Abs(Mathf.DeltaAngle(definition.FacingCorrection, 90f)) < 45f || Mathf.Abs(Mathf.DeltaAngle(definition.FacingCorrection, -90f)) < 45f)
+            {
+                size = new Vector3(size.z, size.y, size.x);
+            }
+            body.Shape = BodyFitting.ForModel(size, MeasureShoulderWidth(modelPrefab));
+            EditorUtility.SetDirty(body);
+        }
+
+        /// <summary>Where a source's body is made: '[name] Body.asset' beside the source ('[name].asset').</summary>
+        private static string BodyPathFor(string definitionPath) =>
+            Path.Combine(Path.GetDirectoryName(definitionPath) ?? "", Path.GetFileNameWithoutExtension(definitionPath) + " Body.asset").Replace('\\', '/');
+
+        /// <summary>
         /// The distance between a humanoid model's upper arm joints, unscaled, across it (as CharacterModelHost measures
         /// a model it loads): 0 if it isn't a humanoid.
         /// </summary>

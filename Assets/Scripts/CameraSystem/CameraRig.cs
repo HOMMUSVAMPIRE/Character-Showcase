@@ -186,6 +186,20 @@ namespace CameraSystem
         public float EyeHeight => firstPerson.eyeAnchor != null && target != null
             ? Vector3.Dot(firstPerson.eyeAnchor.position - target.position, Vector3.up)
             : firstPerson.eyeHeight;
+        /// <summary>
+        /// Height of the third person pivot above the target's origin: the Pivot Height at the target's size, but no higher
+        /// than its eyes when it has an eye anchor (see EyeHeight). So a target that lowers its eyes (ducking under
+        /// something, lying down) is framed from lower down, and the camera's collision probe starts inside the room it's
+        /// in, not in the low ceiling over it.
+        /// </summary>
+        public float PivotHeight
+        {
+            get
+            {
+                float height = thirdPerson.pivotHeight * TargetSize.y;
+                return firstPerson.eyeAnchor != null && target != null ? Mathf.Min(height, EyeHeight) : height;
+            }
+        }
         /// <summary>The view mode currently in effect (a CameraZone may override the requested one).</summary>
         public CameraMode Mode => activeMode;
         /// <summary>The view mode last requested via input or SetMode, ignoring zone overrides.</summary>
@@ -211,6 +225,8 @@ namespace CameraSystem
         public float Distance => targetDistance;
         /// <summary>The current shake trauma, 0 (none) to 1 (full).</summary>
         public float Trauma => shaker.Trauma;
+        /// <summary>How far (m) a landing has dipped the camera now (0 at rest; negative while dipped).</summary>
+        public float LandingDip => landingOffset;
 
         /// <summary>Follow a new target. Smoothing is snapped so the camera doesn't fly across the level.</summary>
         public void SetTarget(Transform newTarget, bool snap = true)
@@ -413,7 +429,7 @@ namespace CameraSystem
                 + yawRotation * Vector3.forward * (firstPerson.eyeForwardOffset * TargetSize.z)
                 + bob;
 
-            Vector3 pivot = followPosition + up * (thirdPerson.pivotHeight * TargetSize.y + landingOffset) + bob;
+            Vector3 pivot = followPosition + up * (PivotHeight + landingOffset) + bob;
             Vector3 thirdPersonPosition = ComputeThirdPersonPosition(pivot, lookRotation, yawRotation, dt);
 
             Vector3 position = Vector3.LerpUnclamped(firstPersonPosition, thirdPersonPosition, tpBlend);
@@ -733,6 +749,9 @@ namespace CameraSystem
 
         private Vector3 ComputeThirdPersonPosition(Vector3 pivot, Quaternion lookRotation, Quaternion yawRotation, float dt)
         {
+            // The sweeps start from the pivot, unless the probe there would be inside something: then from just clear of it.
+            probeRadius = collision.probeRadius * SizeScale;
+            if (collision.enabled) { pivot = ProbeStart(pivot, ref probeRadius); }
             float aimBlend = AimBlend;
             Vector3 size = TargetSize;
             float shoulderX = thirdPerson.shoulderOffset.x * size.x * Mathf.Lerp(1f, aim.shoulderMultiplier, aimBlend);
@@ -811,12 +830,71 @@ namespace CameraSystem
 
         // Reused for every collision sweep, so sweeping doesn't allocate a new array each time.
         private readonly RaycastHit[] sweepHits = new RaycastHit[32];
+        private readonly Collider[] probeOverlaps = new Collider[32];
+        // The collision probe's radius this frame: the Probe Radius at the target's size, or less where there's no room for
+        // it (see ProbeStart).
+        private float probeRadius;
+
+        // Passes made to push the probe's start out of what it overlaps, for a corner (two walls, or a wall and a ceiling).
+        private const int ProbeClearingPasses = 3;
+        // Halvings of the probe, at most, where even pushed out it doesn't fit (between walls closer than it's wide).
+        private const int ProbeShrinkSteps = 4;
+
+        /// <summary>
+        /// Where the collision probe's sweeps start, and how big it is: the pivot, unless the probe there would be inside
+        /// something (the target is closer to a wall or ceiling than the probe is wide: a slim target against a wall, or in
+        /// a tight space), in which case it's pushed out of it, as little as it needs to be. A sweep starting inside
+        /// something reads as fully blocked, so the camera was snapped in to its nearest and its shoulder swapped back and
+        /// forth as the target moved along a wall. Where even pushed out it doesn't fit, the probe is made smaller.
+        /// What the target is made of doesn't count.
+        /// </summary>
+        private Vector3 ProbeStart(Vector3 pivot, ref float radius)
+        {
+            Vector3 origin = pivot;
+            // A little further than it has to, so the sweeps from it don't start touching what it was pushed out of.
+            float margin = 0.1f * radius;
+            for (int pass = 0; pass < ProbeClearingPasses; pass++)
+            {
+                int count = Physics.OverlapSphereNonAlloc(origin, radius, probeOverlaps, collision.layers, collision.triggerInteraction);
+                bool pushed = false;
+                for (int i = 0; i < count; i++)
+                {
+                    Collider other = probeOverlaps[i];
+                    // Only convex colliders have a nearest point to be pushed away from; anything else, the probe shrinks for.
+                    if (IsTargets(other.transform) || !HasClosestPoint(other)) { continue; }
+                    Vector3 away = origin - other.ClosestPoint(origin);
+                    float distance = away.magnitude;
+                    // Inside it (the pivot in a wall): nowhere to push to.
+                    if (distance < 1e-5f || distance >= radius) { continue; }
+                    origin += away / distance * (radius + margin - distance);
+                    pushed = true;
+                }
+                if (!pushed) { break; }
+            }
+            for (int step = 0; step < ProbeShrinkSteps && ProbeOverlaps(origin, radius); step++) { radius *= 0.5f; }
+            return origin;
+        }
+
+        /// <summary>Whether a probe this big at origin overlaps anything that isn't the target.</summary>
+        private bool ProbeOverlaps(Vector3 origin, float radius)
+        {
+            int count = Physics.OverlapSphereNonAlloc(origin, radius, probeOverlaps, collision.layers, collision.triggerInteraction);
+            for (int i = 0; i < count; i++)
+            {
+                if (!IsTargets(probeOverlaps[i].transform)) { return true; }
+            }
+            return false;
+        }
+
+        private bool IsTargets(Transform t) => target != null && t.IsChildOf(target);
+
+        private static bool HasClosestPoint(Collider c) =>
+            c is BoxCollider || c is SphereCollider || c is CapsuleCollider || c is MeshCollider { convex: true };
 
         /// <summary>Sphere-casts the collision probe, ignoring the target's own colliders. Returns the safe travel distance.</summary>
         private bool Sweep(Vector3 origin, Vector3 direction, float maxDistance, out float safeDistance)
         {
             safeDistance = maxDistance;
-            float probeRadius = collision.probeRadius * SizeScale;
             // Each sweep stops this far short of what it hits, so a point placed by one sweep (the shoulder point,
             // pulled in from a wall beside the target) isn't left touching the wall when the next sweep starts from it.
             // A probe starting in contact hits at distance 0, which reads as fully blocked: the camera's backward sweep
@@ -828,7 +906,7 @@ namespace CameraSystem
             for (int i = 0; i < count; i++)
             {
                 RaycastHit hit = sweepHits[i];
-                if (target != null && hit.transform.IsChildOf(target)) { continue; }
+                if (IsTargets(hit.transform)) { continue; }
                 // A distance of 0 means the probe started inside geometry: treat as fully blocked.
                 float d = hit.distance > 0f ? Mathf.Max(0f, hit.distance - margin) : 0f;
                 if (d < safeDistance) { safeDistance = d; found = true; }
@@ -875,7 +953,7 @@ namespace CameraSystem
             Gizmos.DrawWireSphere(debugShoulder, 0.06f);
             Gizmos.color = autoSwapped ? new Color(1f, 0.5f, 0f) : Color.green;
             Gizmos.DrawLine(debugShoulder, debugCamera);
-            Gizmos.DrawWireSphere(debugCamera, collision.probeRadius * SizeScale);
+            Gizmos.DrawWireSphere(debugCamera, probeRadius > 0f ? probeRadius : collision.probeRadius * SizeScale);
         }
 
         [ContextMenu("Test Shake (0.6 trauma)")]

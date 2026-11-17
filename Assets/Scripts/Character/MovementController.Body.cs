@@ -24,6 +24,8 @@ namespace Character
         {
             bodyCollider = primitive;
             body = null;
+            // Its own shape from now on, not the definition's.
+            shapedFromDefinition = true;
             RememberBaseSize();
             ApplyScale(Scale);
         }
@@ -65,27 +67,74 @@ namespace Character
         public float MaxStepHeight => maxStepHeight;
         /// <summary>The steepest slope, in degrees, the character treats as walkable ground.</summary>
         public float MaxSlopeAngle => maxSlopeAngle;
-        /// <summary>The radius (m) of the body's footprint at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
-        public float BaseRadius => Body.AuthoredRadius;
-        /// <summary>The body's height (m) at the character's authored size (1, 1, 1), which its scale multiplies.</summary>
-        public float BaseHeight => Body.AuthoredHeight;
 
         /// <summary>
-        /// Changes the body's size at the character's authored size (its scale then multiplies it), standing on the
-        /// character's feet (see PrimitiveBody.SetAuthoredSize): its footprint's radius and its height. Used to fit the
-        /// collider to the character's model (see CharacterModelHost). Like growing, it waits for room: if the bigger body
-        /// wouldn't fit where the character stands, nothing changes and this returns false. False for a body that can't
-        /// be refitted so (a capsule lying as authored, or one that isn't a primitive).
+        /// The character's body as authored, at its authored size (1, 1, 1), standing (see BodyShape): its Body
+        /// Definition's (before the character wakes, for a prefab asked about), or the shape it's been given since (see
+        /// SetBody), or its Body Collider's as authored.
         /// </summary>
-        public bool SetBaseSize(float radius, float height)
+        public BodyShape AuthoredBody =>
+            bodyDefinition != null && !shapedFromDefinition ? bodyDefinition.Shape
+            : Body is PrimitiveBody primitive ? primitive.AuthoredShape
+            : BodyShape.Capsule(Body.AuthoredRadius, Body.AuthoredHeight);
+
+        /// <summary>The character's Body Definition: what its body is shaped from as it wakes (null: its Body Collider as authored).</summary>
+        public BodyDefinition BodyDefinition => bodyDefinition;
+
+        // Whether the body has been shaped from the Body Definition (as the character woke), so the body's own shape is
+        // the authored one from then on.
+        private bool shapedFromDefinition;
+
+        /// <summary>
+        /// Shapes the body from the Body Definition, if there is one (as the character wakes, without waiting for room:
+        /// it's where it's been put), otherwise remembers the Body Collider's shape as authored.
+        /// </summary>
+        private void ShapeFromDefinition()
         {
-            if (Body is not PrimitiveBody primitive
-                || !primitive.SetAuthoredSize(radius, height, PhysicsPosition, BodyRotation, Scale, posture))
+            if (bodyDefinition != null && !shapedFromDefinition && SetBody(bodyDefinition.Shape, checkRoom: false)) { shapedFromDefinition = true; }
+            else { RememberBaseSize(); }
+        }
+
+        /// <summary>
+        /// Gives the character another body as authored (see BodyShape; its scale then multiplies it), its feet staying
+        /// where they are: the body a model gives it (see CharacterModelHost), say. A body of another kind than the
+        /// collider's replaces the collider with one of its kind (keeping its material, layers and settings). Like growing,
+        /// it waits for room: unless checkRoom is false, if the new body would reach somewhere the current one doesn't and
+        /// wouldn't fit there, nothing changes and this returns false. False for a body without a size, or a character
+        /// whose body isn't a primitive.
+        /// </summary>
+        public bool SetBody(BodyShape shape, bool checkRoom = true)
+        {
+            if (!shape.HasSize || Body is not PrimitiveBody primitive) { return false; }
+            Vector3 feet = PhysicsPosition;
+            Quaternion rotation = BodyRotation;
+            if (primitive.Collider != null && !shape.IsKindOf(primitive.Collider))
             {
-                return false;
+                if (checkRoom && !primitive.FitsAs(shape, feet, rotation, Scale, posture)) { return false; }
+                primitive = new PrimitiveBody(this, ReplaceCollider(primitive.Collider, shape));
+                body = primitive;
             }
+            if (!primitive.SetAuthoredShape(shape, feet, rotation, Scale, posture, checkRoom)) { return false; }
             ApplyScale(Scale);
             return true;
+        }
+
+        /// <summary>A collider of the body's kind in place of the old one, with its settings; the old one is removed.</summary>
+        private Collider ReplaceCollider(Collider old, BodyShape shape)
+        {
+            var replacement = (Collider)old.gameObject.AddComponent(shape.ColliderType);
+            replacement.sharedMaterial = old.sharedMaterial;
+            replacement.isTrigger = old.isTrigger;
+            replacement.includeLayers = old.includeLayers;
+            replacement.excludeLayers = old.excludeLayers;
+            replacement.layerOverridePriority = old.layerOverridePriority;
+            replacement.providesContacts = old.providesContacts;
+            if (replacement is CapsuleCollider capsule) { capsule.direction = shape.direction; }
+            // Off at once, as Destroy only removes it at the end of the frame.
+            old.enabled = false;
+            if (Application.isPlaying) { Destroy(old); } else { DestroyImmediate(old); }
+            bodyCollider = replacement;
+            return replacement;
         }
 
         /// <summary>

@@ -28,7 +28,7 @@ namespace Character
         public const float MeasureRunUp = 0.8f;
 
         private readonly MovementController source;
-        private readonly float? baseRadius, baseHeight;
+        private readonly BodyShape? authoredBody;
         private readonly GameObject root;
         private readonly List<GameObject> obstacles = new();
         private readonly List<Object> modes = new();
@@ -51,24 +51,23 @@ namespace Character
         public static float DeltaTime => Time.fixedDeltaTime;
 
         /// <summary>
-        /// A world to simulate source's movement in. Its collider is the one source has, unless an authored (unscaled) radius
-        /// and height are given: the collider a model would give it (see CharacterModelHost.ColliderFor).
+        /// A world to simulate source's movement in. Its body is the one source has, unless a body as authored is given: the
+        /// one a model would give it (see CharacterModelHost.BodyFor).
         /// </summary>
-        public MovementSimulation(MovementController source, float? authoredRadius = null, float? authoredHeight = null)
+        public MovementSimulation(MovementController source, BodyShape? authoredBody = null)
         {
             this.source = source;
-            baseRadius = authoredRadius;
-            baseHeight = authoredHeight;
+            this.authoredBody = authoredBody;
             root = new GameObject("Movement Simulation") { hideFlags = HideFlags.HideAndDontSave };
             root.transform.position = WorldOrigin;
             Box(new Vector3(0f, -0.5f, 0f), new Vector3(FloorSize, 1f, FloorSize));
             Reset(Vector3.zero, source.movementHandler);
         }
 
-        /// <summary>Measures what source can do (see MovementController.Capabilities), with the given collider if any.</summary>
-        public static MovementCapabilities Measure(MovementController source, float? authoredRadius = null, float? authoredHeight = null)
+        /// <summary>Measures what source can do (see MovementController.Capabilities), with the given body if any.</summary>
+        public static MovementCapabilities Measure(MovementController source, BodyShape? authoredBody = null)
         {
-            using var simulation = new MovementSimulation(source, authoredRadius, authoredHeight);
+            using var simulation = new MovementSimulation(source, authoredBody);
             MovementController copy = simulation.Controller;
             var capabilities = new MovementCapabilities
             {
@@ -97,7 +96,7 @@ namespace Character
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.None;
             Controller = character.AddComponent<MovementController>();
-            Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementHandler, baseRadius, baseHeight);
+            Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementHandler, authoredBody);
             Controller.InputCamera = root.transform;
             Controller.MovementEventRaised += (e, _) => LastEvents |= e;
             character.SetActive(true);

@@ -24,6 +24,8 @@ Moving fast along a wall beside the character in mid-air, high enough above the 
 - steering within Wall Run Max Steer Angle of parallel with the wall (a wall run is asked for, not fallen into);
 - the wall reaching down to the character's feet (to Wall Run Foot Height above them, a share of its height), within Wall Run Check Distance beside it and leaning no more than Wall Run Max Wall Tilt.
 
+Running along it, the character's middle is held Wall Run Clearance out from the wall (a share of its standing height), or against it for a body that reaches further to its side than that: a wall runner leans out, its feet on the wall. The wall run animation's feet (and hands) are put on the wall's face by WallSlideIK wherever they'd go through it (its Wall Run Foot From Wall, and Wrist From Wall, keep them that far out).
+
 The character then runs at Wall Run Speed, facing along the wall, falling slowly (at Wall Run Gravity instead of gravity). A rising jump is cut down to Wall Run Max Rise Speed, and a fall caught. Running on a wall counts as touching the ground: it gives back the character's jumps and air dashes.
 
 The run ends after Wall Run Max Duration, when the wall ends, when something slows it, on pressing Crouch, or on landing. The wall ends where its feet drop below the wall's bottom edge, or at its end: a wall turning more sharply than `WallRunMinCurveRadius` (Components/WallRunning.cs) is an edge or corner, not a curve to follow round. Steering off it (no longer along the wall, or away from it) only lets go once it has lasted Wall Run Release Delay, so turning toward the next wall to jump to doesn't drop the character off this one.

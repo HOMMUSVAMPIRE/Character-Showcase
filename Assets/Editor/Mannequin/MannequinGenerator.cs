@@ -310,16 +310,29 @@ namespace CharacterShowcase.EditorTools
                 if (existing.parent != modelParent) { existing.SetParent(modelParent, true); }
                 return existing.gameObject;
             }
-            GameObject placeholder = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            // The character's body as authored (its Body Definition's, or its collider's), standing.
+            BodyShape body = root.TryGetComponent(out MovementController movement) ? movement.AuthoredBody : BodyShape.Capsule(0.5f, 2f);
+            GameObject placeholder = GameObject.CreatePrimitive(body.kind switch
+            {
+                BodyShapeKind.Box => PrimitiveType.Cube,
+                BodyShapeKind.Sphere => PrimitiveType.Sphere,
+                _ => PrimitiveType.Capsule,
+            });
             placeholder.name = PlaceholderName;
             Object.DestroyImmediate(placeholder.GetComponent<Collider>()); // The character's own collider does the colliding.
             placeholder.transform.SetParent(modelParent, false);
             placeholder.layer = root.gameObject.layer;
-            if (root.TryGetComponent(out CapsuleCollider capsule))
+            placeholder.transform.localPosition = body.center;
+            // Unity's capsule mesh is 2 m tall and 1 m wide, along Y; its cube and sphere 1 m across.
+            placeholder.transform.localScale = body.kind switch
             {
-                // Unity's capsule mesh is 2 m tall and 1 m wide.
-                placeholder.transform.localPosition = capsule.center;
-                placeholder.transform.localScale = new Vector3(capsule.radius * 2f, capsule.height / 2f, capsule.radius * 2f);
+                BodyShapeKind.Box => body.size,
+                BodyShapeKind.Sphere => Vector3.one * (2f * body.radius),
+                _ => new Vector3(body.radius * 2f, Mathf.Max(body.height, 2f * body.radius) / 2f, body.radius * 2f),
+            };
+            if (body.kind == BodyShapeKind.Capsule && body.direction != 1)
+            {
+                placeholder.transform.localRotation = Quaternion.FromToRotation(Vector3.up, body.direction == 0 ? Vector3.right : Vector3.forward);
             }
             return placeholder;
         }

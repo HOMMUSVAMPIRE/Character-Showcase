@@ -353,9 +353,9 @@ namespace CharacterShowcase.EditorTools
             // Measured on the prefab as saved, loaded afresh: the one in hand can still show the avatar as it was before
             // this run changed it.
             GameObject savedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            // Its size, for working out what a character with it can do before one's spawned (a character fitting its
-            // collider to its model takes its height, and its width from its shoulders).
-            definition.RecordMeasurements(CharacterModelSource.MeasureHeight(savedPrefab, savedPrefab.transform), MeasureShoulderWidth(savedPrefab));
+            // Its height, for working out what a character with it can do before one's spawned (a character fitting its
+            // body to its model's height takes it).
+            definition.RecordMeasurements(CharacterModelSource.MeasureHeight(savedPrefab, savedPrefab.transform));
             if (TryMeasureStanding(savedPrefab, ControllerOf(definition), definition.Avatar, out float groundOffset, out float animatedGroundOffset,
                     out StandingPose standing))
             {
@@ -378,6 +378,9 @@ namespace CharacterShowcase.EditorTools
             {
                 result.notes.Add("Couldn't measure how high its feet stand, so its Ground Offset was left as it was.");
             }
+            // Its own body, which a character fitting its body to its model takes (after the facing's measured: it's fitted
+            // as the model faces the character's way).
+            FitBody(definition, definitionPath, savedPrefab, result);
             string skew = RotatedAboveSkeleton(modelPrefab, definition.Avatar);
             if (skew != null)
             {

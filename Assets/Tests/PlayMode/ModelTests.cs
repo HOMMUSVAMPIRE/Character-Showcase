@@ -367,12 +367,12 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Collider Fit makes the collider as tall as the model, standing on the character's feet: its width in proportion
-        /// as authored (Height), or as wide as the model's shoulders, times the margin (Height And Width). The character's
-        /// size still multiplies it.
+        /// as authored (Height), or, for a source without a body of its own, as wide as the model's shoulders, times the
+        /// margin (Model's Body). The character's size still multiplies it.
         /// </summary>
         [UnityTest]
         public IEnumerator ColliderFit_MakesTheColliderAsTallAsTheModel_AndAsWideAsAsked(
-            [Values(ColliderFit.Height, ColliderFit.HeightAndWidth)] ColliderFit fit)
+            [Values(ColliderFit.Height, ColliderFit.ModelsBody)] ColliderFit fit)
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
@@ -433,6 +433,35 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingCollider, Is.False);
             Assert.That(rig.Capsule.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
+        }
+
+        /// <summary>
+        /// With Model's Body, a source's own body (its Body Definition, in the model's units) is the character's, sized as
+        /// the source sizes the model; one of another kind than the character's collider replaces it with one of its kind.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ModelsBody_TakesTheSourcesBodyDefinition_SizedWithTheModel()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.WaitForModel();
+            yield return new WaitForFixedUpdate();
+            rig.Models.ColliderFitting = ColliderFit.ModelsBody;
+            DirectCharacterModelSource source = OwnCopy();
+            const float modelScale = 1.25f;
+            source.Scale = modelScale;
+            var size = new Vector3(0.6f, 1.6f, 0.4f);
+            source.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(size)));
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
+
+            var box = rig.Movement.Body.Collider as BoxCollider;
+            Assert.That(box, Is.Not.Null, "The character's body should be a box, as the model's is.");
+            Assert.That(rig.Character.GetComponents<CapsuleCollider>().Where(c => c.enabled), Is.Empty, "Its capsule should be gone.");
+            Assert.That(Vector3.Distance(box.size, size * modelScale), Is.LessThan(1e-4f), "Sized as the source sizes the model.");
+            Assert.That(box.center.y - box.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Standing on the character's feet.");
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True);
+            Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
         }
 
         /// <summary>A source for the character's own model (or the given prefab), as its own, but a separate asset.</summary>

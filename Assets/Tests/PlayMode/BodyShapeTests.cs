@@ -112,13 +112,74 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator TheCharacterPrefab_HasABodyDefinition_ThatsItsCollider()
+        {
+            yield return OnTheFloor();
+            BodyDefinition definition = rig.Movement.BodyDefinition;
+            Assert.That(definition, Is.Not.Null, "The character should be shaped from a Body Definition.");
+            Assert.That(BodyShape.TryRead(CharacterTestRig.PrefabCapsule(), out BodyShape prefabShape), Is.True);
+            Assert.That(definition.Shape.Equals(prefabShape), Is.True,
+                $"The prefab's collider should be its body as defined ({definition.Shape}), not {prefabShape}.");
+            // Its body is the definition's, unless it takes its model's (see CharacterModelHost's Collider Fit).
+            BodyShape expected = rig.Models.BodyFor(rig.Models.ModelSource, rig.Movement) ?? definition.Shape;
+            Assert.That(rig.Movement.AuthoredBody.Equals(expected), Is.True, $"Its body should be {expected}, not {rig.Movement.AuthoredBody}.");
+        }
+
+        [UnityTest]
+        public IEnumerator ALyingThickness_LaysTheBodyDownThinner([Values("box", "capsule")] string kind)
+        {
+            yield return OnTheFloor();
+            if (kind == "box") { rig.UseBody<BoxCollider>(ABox); }
+            BodyShape shape = rig.Movement.AuthoredBody;
+            float length = rig.StandingHeight, wide = 2f * rig.SideExtent;
+            const float thickness = 0.3f;
+            shape.lyingThickness = thickness;
+            Assert.That(rig.Movement.SetBody(shape), Is.True);
+            Assert.That(rig.StandingHeight, Is.EqualTo(length).Within(1e-4f), "Standing, a lying thickness changes nothing.");
+            Assume.That(rig.Movement.SetPosture(BodyPosture.Lying, rig.Body.position), Is.True, "Test setup: there's room to lie down.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(thickness).Within(1e-4f), "Lying, the body should be as thick as its lying thickness.");
+            Assert.That(rig.FrontExtent + rig.BackExtent, Is.EqualTo(length).Within(1e-4f), "And as long as it stood tall.");
+            Assert.That(rig.Movement.Body.Collider.bounds.min.y - rig.Body.position.y, Is.EqualTo(0f).Within(0.01f), "Resting on its feet.");
+            if (kind == "box") { Assert.That(2f * rig.SideExtent, Is.EqualTo(wide).Within(1e-4f), "A box stays as wide."); }
+        }
+
+        [UnityTest]
+        public IEnumerator SetBody_OfAnotherKind_ReplacesTheCollider_OnceThereIsRoom()
+        {
+            // A ceiling just above the character's head, from z = -2 to z = 2.
+            rig.Floor();
+            yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
+            float standing = rig.StandingHeight;
+            rig.Box("Low Ceiling", new Vector3(0f, standing + 0.1f + 0.5f, 0f), new Vector3(10f, 1f, 4f));
+            Physics.SyncTransforms();
+            BodyShape taller = BodyShape.Box(new Vector3(0.8f, standing + 0.5f, 0.6f));
+            Assert.That(rig.Movement.SetBody(taller), Is.False, "Under the ceiling, a taller body shouldn't fit.");
+            Assert.That(rig.Movement.Body.Collider, Is.InstanceOf<CapsuleCollider>(), "Nothing should change meanwhile.");
+
+            yield return rig.Run(rig.SecondsToWalk(3f + rig.FrontExtent, 1f), _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(rig.Movement.SetBody(taller), Is.True, "Out in the open, it should fit.");
+            Assert.That(rig.Movement.Body.Collider, Is.InstanceOf<BoxCollider>(), "A box body is a box collider.");
+            Assert.That(rig.StandingHeight, Is.EqualTo(taller.size.y).Within(1e-4f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True);
+            Assert.That(rig.BodyFits, Is.True);
+        }
+
+        [UnityTest]
         public IEnumerator LyingDown_LaysTheBodyAlongTheFacing_OnItsFeet([Values("box", "capsule")] string kind)
         {
             yield return OnTheFloor();
             float tall, deep;
             if (kind == "box") { BoxCollider box = rig.UseBody<BoxCollider>(ABox); tall = box.size.y; deep = box.size.z; }
-            else { tall = rig.StandingHeight; deep = 2f * rig.FrontExtent; }
-            float wide = 2f * rig.SideExtent;
+            else
+            {
+                tall = rig.StandingHeight;
+                // As deep as it was standing, or its lying thickness, if it has one (a body fitted to a model has).
+                float thickness = rig.Movement.AuthoredBody.lyingThickness * rig.Movement.Scale.y;
+                deep = thickness > 0f ? Mathf.Min(thickness, 2f * rig.FrontExtent) : 2f * rig.FrontExtent;
+            }
+            // A capsule laid down thinner (its lying thickness) is that much narrower too: it's round.
+            float wide = kind == "box" ? 2f * rig.SideExtent : Mathf.Min(2f * rig.SideExtent, deep);
             Assume.That(rig.Movement.SetPosture(BodyPosture.Lying, rig.Body.position), Is.True, "Test setup: there's room to lie down.");
             Physics.SyncTransforms();
             Assert.That(rig.CurrentHeight, Is.EqualTo(deep).Within(1e-4f), "Lying, the body should be as tall as it was deep standing.");

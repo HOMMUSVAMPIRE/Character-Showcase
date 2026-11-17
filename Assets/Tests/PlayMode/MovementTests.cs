@@ -409,9 +409,13 @@ namespace CharacterShowcase.Tests
             // from different starting points and headings, so the character's path crosses the treads differently.
             rig.Floor(0f, 200f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            yield return rig.WaitForModel();
             if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
             const int steps = 40;
-            float rise = 0.85f * rig.StepHeight, run = 0.9f * rig.FrontExtent, top = steps * rise, width = 40f;
+            // About as steep as the levels' stairs (3 up to 4 along), and shallower than the character is wide. (Treads a
+            // share of its reach made a slim body's, fitted to its model, steeper than a walkable slope.)
+            float rise = 0.85f * rig.StepHeight, run = Mathf.Min(4f / 3f * rise, 0.9f * 2f * rig.FrontExtent), top = steps * rise, width = 40f;
             rig.Box("Top Landing", new Vector3(0f, top / 2f, -5f), new Vector3(width, top, 10f));
             for (int i = 0; i < steps - 1; i++)
             {
@@ -445,6 +449,8 @@ namespace CharacterShowcase.Tests
             // A ramp a little over half as steep as the steepest walkable slope, rising along +Z from the origin. (The
             // character is spawned first, to read its slope limit, then put on the ramp.)
             rig.SpawnCharacter(new Vector3(0f, 50f, 0f));
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            yield return rig.WaitForModel();
             float angle = 0.55f * rig.MaxSlopeAngle;
             Quaternion tilt = Quaternion.Euler(-angle, 0f, 0f);
             rig.Box("Ramp", tilt * new Vector3(0f, -0.25f, 5f), new Vector3(6f, 0.5f, 10f), tilt);

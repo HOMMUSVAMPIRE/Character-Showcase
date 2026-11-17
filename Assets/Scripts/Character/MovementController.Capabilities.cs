@@ -67,14 +67,14 @@ namespace Character
         /// <summary>
         /// Makes this controller (on a bare object with the given Rigidbody, not yet active) a copy of source for
         /// simulating its movement: the same settings, movement mode, body (a collider of its kind, as authored, and at the
-        /// same size; or, given an authored radius and height, that body standing on its feet: see CharacterBody.CopyFor),
+        /// same size; or, given a shape as authored, that body: see CharacterBody.CopyFor),
         /// but none of its state. See MovementSimulation.
         /// </summary>
         internal void CopyForSimulation(MovementController source, Rigidbody body, MovementMode mode,
-            float? authoredRadius = null, float? authoredHeight = null)
+            BodyShape? authoredShape = null)
         {
             rb = body;
-            this.body = source.Body.CopyFor(this, authoredRadius, authoredHeight);
+            this.body = source.Body.CopyFor(this, authoredShape ?? source.AuthoredBody);
             movementHandler = mode;
             movementSpeedMultiplier = source.movementSpeedMultiplier;
             jumpStrengthModifier = source.jumpStrengthModifier;

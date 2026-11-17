@@ -89,6 +89,20 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         [Test, Category(SampleContent)]
+        public void EveryPreparedModel_HasABody_FittedToIt([ValueSource(nameof(PreparedSources))] string path)
+        {
+            DirectCharacterModelSource source = Load(path);
+            Assert.That(source.BodyDefinition, Is.Not.Null, $"'{path}' should have a body of its own: run Prepare Character Models.");
+            if (!source.BodyDefinition.RefitOnPrepare) { Assert.Ignore("Its body is shaped by hand."); }
+            BodyShape body = source.BodyDefinition.Shape;
+            float height = CharacterModelSource.MeasureHeight(source.ModelPrefab, source.ModelPrefab.transform);
+            Assert.That(BodyFitting.StandingHeightOf(body), Is.EqualTo(height).Within(1e-3f), "Its body should be as tall as it is.");
+            Assert.That(body.center.y - 0.5f * Mathf.Max(body.height, 2f * body.radius), Is.EqualTo(0f).Within(1e-4f), "Standing on its feet.");
+            // As deep as it is (0: as thick as it's wide, for a model deeper than that in its bind pose).
+            Assert.That(body.lyingThickness, Is.EqualTo(0f).Or.LessThan(2f * body.radius), "Lying, it should be no thicker than it's wide.");
+        }
+
+        [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasGroundOffsets_MatchingAFreshMeasurement([ValueSource(nameof(PreparedSources))] string path)
         {
             DirectCharacterModelSource source = Load(path);

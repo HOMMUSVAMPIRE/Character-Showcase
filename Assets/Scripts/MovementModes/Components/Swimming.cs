@@ -104,7 +104,9 @@ namespace Character
             SwimState swim = controller.swim;
             Vector3 feet = movementData.initialPosition;
             float depth = swimDepth * controller.Body.StandingHeight;
-            Water water = depth > 0f ? Water.At(feet) : null;
+            // Looked for a skin's width above the feet: standing on the floor of the water (a pool's, where its water
+            // ends), they rest a hair into it, below the water, and the character swimming there stopped.
+            Water water = depth > 0f ? Water.At(feet + Vector3.up * controller.Skin) : null;
             float under = water != null ? water.SurfaceHeight - feet.y : float.NegativeInfinity;
             float surfacingSpeed = swimSurfacingSpeed * controller.SpeedScale;
 
@@ -130,6 +132,11 @@ namespace Character
             if ((movementData.previousCollisions & CollisionFlags.Below) != 0 && verticalSpeed < 0f) { verticalSpeed = 0f; }
             if ((movementData.previousCollisions & CollisionFlags.Above) != 0 && verticalSpeed > 0f) { verticalSpeed = 0f; }
 
+            // Underwater, its feet come up shallower than its swimming depth, it's at the surface again: rising (see
+            // SwimUnderwater), or carried up a slope out of the water. Up a beach, lying on it, its body rode up the slope
+            // on its front, its feet off the ground, so it never found its feet, and swam on underwater until its feet
+            // were out of the water.
+            if (swim.underwater && under < depth) { swim.underwater = false; }
             if (swim.underwater) { return SwimUnderwater(ref movementData, inputs, controller, water, depth, verticalSpeed); }
 
             if (swimJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller))

@@ -57,9 +57,13 @@ namespace Character
                  "Character Models); 0 if it hasn't been. With its sizing above, how tall it stands (Measured Height), which " +
                  "a character fitting its collider to its model takes as its standing height")]
         [Min(0f)] [SerializeField] private float measuredOwnHeight;
-        [Tooltip("The distance between the model's upper arm joints, unscaled (m), measured when it was prepared; 0 if it " +
-                 "hasn't been, or isn't a humanoid. A character fitting its collider's width to its model takes its width from it")]
-        [Min(0f)] [SerializeField] private float measuredOwnShoulderWidth;
+
+        [Header("Body")]
+        [Tooltip("The model's own body (see BodyDefinition), in the model's own units (before Scale or Fit To Height, which " +
+                 "size it with the model): what a character fitting its body to its model takes (CharacterModelHost's " +
+                 "Collider Fit). Prepare Character Models fits one to the model. Empty: a character fitting its body to the " +
+                 "model fits one as the model loads")]
+        [SerializeField] private BodyDefinition bodyDefinition;
 
         [Header("Setup")]
         [Tooltip("Add CharacterIK to humanoid models that don't have it, so their hands and feet can be posed with IK")]
@@ -114,19 +118,24 @@ namespace Character
         /// </summary>
         public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
-        /// <summary>Records the model's measurements, unscaled (see Measured Height). Done by Prepare Character Models.</summary>
-        public void RecordMeasurements(float ownHeight, float ownShoulderWidth)
-        {
-            measuredOwnHeight = Mathf.Max(0f, ownHeight);
-            measuredOwnShoulderWidth = Mathf.Max(0f, ownShoulderWidth);
-        }
+        /// <summary>Records the model's height, unscaled (see Measured Height). Done by Prepare Character Models.</summary>
+        public void RecordMeasurements(float ownHeight) => measuredOwnHeight = Mathf.Max(0f, ownHeight);
+
+        /// <summary>The model's own body, in the model's own units (see ModelBody); null for none.</summary>
+        public BodyDefinition BodyDefinition { get => bodyDefinition; set => bodyDefinition = value; }
+
+        /// <summary>
+        /// The model's own body (its Body Definition's) once sized by this source, at the character's authored size; null
+        /// if it has none, or it's fitted to a height and the model hasn't been measured (prepared).
+        /// </summary>
+        public BodyShape? ModelBody =>
+            bodyDefinition == null || (height == ModelHeight.FitToHeight && measuredOwnHeight <= 0f) ? null
+            : bodyDefinition.Shape.Scaled(ModelScaleFor(measuredOwnHeight));
 
         /// <summary>Whether the model's measurements have been recorded (it's been prepared).</summary>
         public bool HasMeasurements => measuredOwnHeight > 0f;
         /// <summary>How tall (m) the model stands once sized by this source, at the character's authored size; 0 if not measured.</summary>
         public float MeasuredHeight => StandingHeightFor(measuredOwnHeight);
-        /// <summary>How broad (m) its shoulders are once sized by this source (upper arm to upper arm); 0 if not measured.</summary>
-        public float MeasuredShoulderWidth => measuredOwnShoulderWidth * ModelScaleFor(measuredOwnHeight);
 
         /// <summary>
         /// Creates the model under the context's parent and sets it up for the character (usually by calling
@@ -309,9 +318,15 @@ namespace Character
         /// The same, measured in the given transform's space (its units, along its up axis) rather than the world's, so
         /// that transform's scale, and its parents', don't count. Null measures in world space.
         /// </summary>
-        public static float MeasureHeight(GameObject model, Transform space)
+        public static float MeasureHeight(GameObject model, Transform space) => MeasureSize(model, space).y;
+
+        /// <summary>
+        /// How big a model is (m: across, up, front to back), as it stands now, measured as MeasureHeight measures its
+        /// height, in the given transform's space (or, null, the world's): its meshes' bounds in their bind pose.
+        /// </summary>
+        public static Vector3 MeasureSize(GameObject model, Transform space)
         {
-            float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
+            Vector3 min = Vector3.positiveInfinity, max = Vector3.negativeInfinity;
             Matrix4x4 fromWorld = space != null ? space.worldToLocalMatrix : Matrix4x4.identity;
             foreach (Renderer renderer in model.GetComponentsInChildren<Renderer>(true))
             {
@@ -324,12 +339,12 @@ namespace Character
                 {
                     Vector3 point = local.center + Vector3.Scale(local.extents,
                         new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
-                    float y = toWorld.MultiplyPoint3x4(point).y;
-                    bottom = Mathf.Min(bottom, y);
-                    top = Mathf.Max(top, y);
+                    Vector3 placed = toWorld.MultiplyPoint3x4(point);
+                    min = Vector3.Min(min, placed);
+                    max = Vector3.Max(max, placed);
                 }
             }
-            return top > bottom ? top - bottom : 0f;
+            return max.y > min.y ? max - min : Vector3.zero;
         }
 
         /// <summary>

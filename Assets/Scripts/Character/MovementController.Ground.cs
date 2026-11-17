@@ -140,7 +140,26 @@ namespace Character
                     groundTransform = hit.transform;
                 }
             }
-            return float.IsFinite(best);
+            if (float.IsFinite(best)) { return true; }
+            return RestsOnSomething(position, out groundTransform);
+        }
+
+        /// <summary>
+        /// Whether the body itself, its feet at position, rests on walkable ground or a step's edge (within the grounded
+        /// tolerance below it), for when the ground check's sphere, a little narrower, finds nothing. Walking down stairs
+        /// whose treads are shallower than the body is wide, the body rolls over each step's edge on its rounded bottom,
+        /// and the ground snap rests it on that edge (see IsStepEdge), its feet above the tread below. For a slim body
+        /// (one fitted to its model), the edge was beyond the narrower sphere, and the tread beyond the tolerance below
+        /// it, so the character left the ground for a step there, and sprinting, flew on down the stairs.
+        /// </summary>
+        private bool RestsOnSomething(Vector3 position, out Transform groundTransform)
+        {
+            groundTransform = null;
+            if (Body.Collider == null || !Body.Sweep(position, BodyRotation, Vector3.down, SkinWidth + GroundedTolerance, out RaycastHit rest)) { return false; }
+            if (IsOwnCollider(rest.transform)) { return false; }
+            if (Vector3.Angle(rest.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(rest, position)) { return false; }
+            groundTransform = rest.transform;
+            return true;
         }
 
         // Reused by IsStepEdge, which runs while castHits is being read.
