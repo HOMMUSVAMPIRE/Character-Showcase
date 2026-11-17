@@ -441,9 +441,18 @@ namespace Character
             }
         }
 
-        /// <summary>Where the shape's centre is, its feet at feet and turned rotation (an upright, centred shape needn't turn).</summary>
+        /// <summary>
+        /// Where the shape's centre is, its feet at feet and turned rotation (a centred shape turned only about the vertical
+        /// needn't turn).
+        /// </summary>
         private static Vector3 WorldCenter(Shape s, Vector3 feet, Quaternion rotation) =>
-            s.center.x == 0f && s.center.z == 0f ? feet + s.center : feet + rotation * s.center;
+            s.center.x == 0f && s.center.z == 0f && IsLevel(rotation) ? feet + s.center : feet + rotation * s.center;
+
+        // Below this, a rotation's x and z parts are rounding: it's a turn about the vertical alone (a facing, unpitched).
+        private const float LevelTolerance = 1e-6f;
+
+        /// <summary>Whether a rotation only turns about the vertical (a facing, not pitched or tilted).</summary>
+        private static bool IsLevel(Quaternion rotation) => Mathf.Abs(rotation.x) < LevelTolerance && Mathf.Abs(rotation.z) < LevelTolerance;
 
         /// <summary>
         /// The capsule used for collision queries, placed at the given feet position and turned rotation: the shape shrunk
@@ -456,8 +465,9 @@ namespace Character
             float height = Mathf.Max(s.height, s.radius * 2f);
             float halfSegment = Mathf.Max(0f, (height * 0.5f) - radius - skin);
             Vector3 center = WorldCenter(s, feetPos, rotation);
-            // Upright, straight up: an upright capsule turned about its axis is the same capsule.
-            Vector3 axis = s.axis == 1 ? Vector3.up : rotation * (s.axis == 0 ? Vector3.right : Vector3.forward);
+            // Upright and level, straight up: an upright capsule turned about its axis is the same capsule.
+            Vector3 axis = s.axis == 1 && IsLevel(rotation) ? Vector3.up
+                : rotation * (s.axis == 0 ? Vector3.right : s.axis == 1 ? Vector3.up : Vector3.forward);
             bottom = center - axis * halfSegment;
             top = center + axis * halfSegment;
         }

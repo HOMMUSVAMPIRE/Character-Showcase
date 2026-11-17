@@ -549,6 +549,42 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
+        public IEnumerator SwimmingDownUnderwater_TiltsTheModelWithTheBody()
+        {
+            yield return Spawn();
+            Level.Water water = rig.Water(new Vector3(0f, 12f, 0f), new Vector3(40f, 10f, 40f));
+            float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
+            rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
+            yield return ExpectState("Swim Underwater", 0.6f, step => CharacterTestRig.Crouch(step));
+            Assume.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
+            const float lookDown = 30f;
+            Camera.main.transform.rotation = Quaternion.Euler(lookDown, 0f, 0f);
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+            });
+            Assume.That(rig.Movement.BodyPitch, Is.EqualTo(-lookDown).Within(0.5f), "Test setup: the body should pitch down the way it swims.");
+            Transform modelParent = rig.Animation.ModelHost.ModelParent;
+            float modelPitch = Vector3.SignedAngle(Vector3.forward, modelParent.forward, Vector3.right);
+            Assert.That(modelPitch, Is.EqualTo(lookDown).Within(2f), "The model should be tilted down with the body.");
+            // Drawn inside the pitched body: its hips between the body's bottom and top, as the body is turned.
+            Quaternion attitude = MovementController.Attitude(rig.Body.rotation, rig.Movement.BodyPitch);
+            Vector3 hips = Quaternion.Inverse(attitude) * (animator.GetBoneTransform(HumanBodyBones.Hips).position - rig.Position);
+            Assert.That(hips.y, Is.InRange(0f, rig.CurrentHeight), "Pitched, the swimmer should still be drawn inside its lying body.");
+
+            // Steering no more, the body levels out, and the model with it.
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), step =>
+            {
+                StepAnimator(step);
+                rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
+            });
+            Assert.That(rig.Movement.BodyPitch, Is.EqualTo(0f), "Without steering, the body should level out.");
+            Assert.That(Vector3.Angle(modelParent.forward, Vector3.ProjectOnPlane(modelParent.forward, Vector3.up)), Is.LessThan(1f),
+                "And the model with it.");
+        }
+
+        [UnityTest]
         public IEnumerator SwimmingIntoALowSide_PlaysClimb_NotVault()
         {
             yield return Spawn();

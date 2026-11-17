@@ -106,10 +106,30 @@ namespace Character
         // The character's physics pose (the Rigidbody's, which the transform lags behind while it's interpolated).
         private Vector3 PhysicsPosition => rb != null ? rb.position : transform.position;
 
-        // Set while collision resolves a step: the way the body faces as it moves (the step's turn, as far as it has room).
+        // Set while collision resolves a step: the way the body faces as it moves (the step's turn, as far as it has room),
+        // and how far it's pitched.
         private Quaternion? resolvingRotation;
+        private float? resolvingPitch;
 
-        /// <summary>The way the body faces for queries: as the step turns it while collision resolves it, else the physics pose's.</summary>
-        internal Quaternion BodyRotation => resolvingRotation ?? (rb != null ? rb.rotation : transform.rotation);
+        /// <summary>
+        /// The way the body is turned for queries: its facing (as the step turns it while collision resolves it, else the
+        /// physics pose's) pitched by its pitch (see BodyPitch).
+        /// </summary>
+        internal Quaternion BodyRotation => Attitude(resolvingRotation ?? (rb != null ? rb.rotation : transform.rotation), resolvingPitch ?? bodyPitch);
+
+        // How far (degrees, positive nose up) the body is pitched: see BodyPitch.
+        private float bodyPitch;
+
+        /// <summary>
+        /// How far (degrees, positive nose up) the character's body is pitched about its feet, from level: tilted along the
+        /// way it moves, swimming underwater (see MovementData.targetPitch). Only the body pitches: the character itself
+        /// (its Rigidbody and transform) only ever turns about the vertical, so its facing, its ground probe and gravity
+        /// stay as they are. The model is tilted to match (see AnimationController).
+        /// </summary>
+        public float BodyPitch => bodyPitch;
+
+        /// <summary>The way a body facing facing (a turn about the vertical) is turned, pitched pitch degrees nose up about its feet.</summary>
+        public static Quaternion Attitude(Quaternion facing, float pitch) =>
+            pitch == 0f ? facing : facing * Quaternion.AngleAxis(-pitch, Vector3.right);
     }
 }

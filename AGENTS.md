@@ -16,7 +16,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | Folder | What's there |
 | --- | --- |
 | `Assets/Scripts/Character` | `ACCharacterController`, `ACInputManager`, `CharacterSpawner`, `MovementController` and the types it works on (`MovementData`, `Inputs`, `CharacterState`, `MovementEvents`, `MovementSizeScaling`) |
-| `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `ButtonPress`, `MovementHelpers` (shared rules: jumps, wall jumps), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
+| `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `ButtonPress`, `MovementHelpers` (shared rules: jumps, wall jumps), `FreeSteering` (3D steering off the ground: underwater, and later flying), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
 | `Assets/Scripts/Models` | `CharacterModelHost` and the model sources |

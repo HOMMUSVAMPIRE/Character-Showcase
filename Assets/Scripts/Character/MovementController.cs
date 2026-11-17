@@ -321,6 +321,9 @@ namespace Character
             // Setup initial movement data before calculation to avoid weird behaviour
             data.directMovementVector = Vector3.zero;
             data.targetRotation = data.initialRotation; // Includes any turn from rotating ground.
+            // Level unless a component holds the body pitched (see MovementData.targetPitch).
+            data.initialPitch = bodyPitch;
+            data.targetPitch = 0f;
 
             data.velocityChange = pendingVelocityChange;
             pendingVelocityChange = Vector3.zero;

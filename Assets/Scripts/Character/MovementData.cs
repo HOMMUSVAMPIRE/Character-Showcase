@@ -134,6 +134,17 @@ namespace Character
         /// </summary>
         [System.NonSerialized] public MovementEvents events;
 
+        /// <summary>How far (degrees, positive nose up) the character's body was pitched at the start of the step (see MovementController.BodyPitch).</summary>
+        public float initialPitch;
+
+        /// <summary>
+        /// How far (degrees, positive nose up) the character's body is to be pitched about its feet by the end of the step:
+        /// level (0) unless a component holds it pitched each step (swimming underwater, along the way it swims; see
+        /// FreeSteering). Like a turn, it pitches only as far as the body has room to (see
+        /// MovementController.CheckMovementValid).
+        /// </summary>
+        public float targetPitch;
+
         /// <summary>
         /// How far (m) below where its animations draw it the character's body is this step, for the model to be drawn
         /// lowered to it (see AnimationController): underwater, the body lies on its feet, but the swimming animations

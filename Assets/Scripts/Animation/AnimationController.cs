@@ -32,7 +32,8 @@ namespace Character
         [Header("Smooth Rotation Variables")]
         [SerializeField] [Tooltip("How quickly the model turns to face the way the character does (which turns at once, " +
                                   "for responsiveness): about the inverse of the seconds a turn takes. The model eases into " +
-                                  "and out of each turn, rather than snapping round at its start.")]
+                                  "and out of each turn, rather than snapping round at its start. It pitches after the " +
+                                  "character's body (swimming underwater, say) as quickly.")]
         private float rotationFixSpeed = 10f;
         [SerializeField] [Tooltip("The fastest (degrees per second) the model turns while standing still")]
         private float maxTurnSpeedStanding = 900f;
@@ -105,6 +106,9 @@ namespace Character
         private float visualYaw, yawVelocity;
         private float bank, bankVelocity, pitch, pitchVelocity;
         private bool hasVisualYaw;
+        // The model's pitch after the body's (degrees, positive nose up; see CharacterAnimationState.bodyPitch), and how
+        // fast it's changing.
+        private float visualBodyPitch, bodyPitchVelocity;
         // The character's horizontal velocity last frame, and its acceleration, smoothed, for leaning; and its velocity
         // smoothed, whose heading turning is the character's path curving.
         private Vector3 lastHorizontalVelocity;
@@ -280,6 +284,7 @@ namespace Character
                 verticalSpeed = touchingGround ? 0f : velocity.y,
                 turnSpeed = turnSpeed,
                 facing = facing,
+                bodyPitch = movementData.targetPitch,
                 grounded = touchingGround || (!jumping && airTime < airborneDelay),
                 touchingGround = touchingGround,
                 timeInAir = airTime,
@@ -416,10 +421,16 @@ namespace Character
             bank = Mathf.SmoothDamp(bank, Mathf.Clamp(targetBank, -leanLimit, leanLimit), ref bankVelocity, leanSmoothTime, Mathf.Infinity, deltaTime);
             pitch = Mathf.SmoothDamp(pitch, Mathf.Clamp(targetPitch, -leanLimit, leanLimit), ref pitchVelocity, leanSmoothTime, Mathf.Infinity, deltaTime);
 
+            // Pitched after the body, as it turns: about the feet, as the body pitches (see MovementController.BodyPitch).
+            visualBodyPitch = Mathf.SmoothDampAngle(visualBodyPitch, state.bodyPitch, ref bodyPitchVelocity,
+                1f / Mathf.Max(rotationFixSpeed, 0.01f), Mathf.Infinity, deltaTime);
+            if (Mathf.Abs(visualBodyPitch) < 1e-3f && state.bodyPitch == 0f) { visualBodyPitch = 0f; bodyPitchVelocity = 0f; }
+            Quaternion attitude = MovementController.Attitude(Quaternion.Euler(0f, visualYaw, 0f), visualBodyPitch);
+
             // The model parent pivots at the character's feet, so leaning tilts the body over them. (Banking right is a
             // turn about the forward axis toward -z.)
-            modelParent.rotation = Quaternion.Euler(0f, visualYaw, 0f) * Quaternion.Euler(pitch, 0f, -bank);
-            EaseUpAfterStepUp(modelParent, deltaTime);
+            modelParent.rotation = attitude * Quaternion.Euler(pitch, 0f, -bank);
+            EaseUpAfterStepUp(modelParent, attitude, deltaTime);
         }
 
         /// <summary>
@@ -441,9 +452,11 @@ namespace Character
         /// is quick (it feels right that way), but the model popping up with the collider looked wrong. From where the
         /// model was when the step began, it follows the character's height, a critically damped spring, never above it
         /// and no further below than the most it may lag. Foot placement tucks the feet up onto the top meanwhile
-        /// (CharacterAnimationState.stepUpLag tells it how far the model lags). Moves the model parent only.
+        /// (CharacterAnimationState.stepUpLag tells it how far the model lags). Moves the model parent only. The model drop
+        /// (see EaseModelDrop) lowers it along the way the body's up is turned (attitude: pitched with it), so a pitched
+        /// model stays on the body.
         /// </summary>
-        private void EaseUpAfterStepUp(Transform modelParent, float deltaTime)
+        private void EaseUpAfterStepUp(Transform modelParent, Quaternion attitude, float deltaTime)
         {
             float rootHeight = transform.position.y;
             float scale = modelParent.lossyScale.y > 0f ? modelParent.lossyScale.y : 1f;
@@ -475,7 +488,7 @@ namespace Character
             if (stepUpLag != 0f || drop != 0f || modelParent.localPosition != modelParentLocalPosition)
             {
                 modelParent.localPosition = modelParentLocalPosition;
-                modelParent.position += Vector3.up * (stepUpLag - drop);
+                modelParent.position += Vector3.up * stepUpLag - attitude * Vector3.up * drop;
             }
             modelParentDisplaced = stepUpLag != 0f || drop != 0f;
         }
@@ -486,5 +499,7 @@ namespace Character
         public float Bank => bank;
         /// <summary>How far the model leans forward with acceleration (degrees, positive forward).</summary>
         public float Pitch => pitch;
+        /// <summary>How far (degrees, positive nose up) the model is pitched after the character's body (see MovementController.BodyPitch).</summary>
+        public float VisualBodyPitch => visualBodyPitch;
     }
 }

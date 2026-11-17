@@ -4,6 +4,7 @@ using Level;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.TestTools.Utils;
 
 namespace CharacterShowcase.Tests
 {
@@ -120,6 +121,49 @@ namespace CharacterShowcase.Tests
             Assert.That(Vector3.Angle(rig.Velocity, looking), Is.LessThan(2f), "Pushing forward underwater, the character should swim the way the camera looks.");
             Assert.That(rig.Velocity.magnitude, Is.EqualTo(SwimSpeed).Within(0.05f), "Underwater, the character should swim at the swim speed.");
             Assert.That(Diving, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator Underwater_SteeredUpOrDown_PitchesTheBodyAlongTheWayItSwims_UpToTheMaxPitch([Values(30f, 80f, -45f)] float lookDown)
+        {
+            yield return DivedInThePool();
+            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch(step + 1)); // Well under, so looking up doesn't surface.
+            LookDown(lookDown);
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            float maxPitch = rig.MovementSetting<float>("swimMaxPitch");
+            Assert.That(rig.Movement.BodyPitch, Is.EqualTo(Mathf.Clamp(-lookDown, -maxPitch, maxPitch)).Within(0.5f),
+                "Steered, the body should pitch along the way it swims, no further than the swim max pitch.");
+            Assert.That(rig.Body.rotation * Vector3.up, Is.EqualTo(Vector3.up).Using(Vector3EqualityComparer.Instance),
+                "Only the body pitches: the character itself stays upright.");
+            Assert.That(rig.BodyFits, Is.True);
+
+            yield return rig.Run(0.2f, step => CharacterTestRig.Crouch(step + 1));
+            Assert.That(rig.Movement.BodyPitch, Is.EqualTo(0f), "Sinking with Crouch alone isn't steering: the body levels out.");
+        }
+
+        [UnityTest]
+        public IEnumerator Underwater_AtThePoolFloor_PitchesDownOnlyAsFarAsItHasRoom()
+        {
+            yield return DivedInThePool();
+            yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(step + 1), timeoutSeconds: 10f);
+            Assume.That(rig.Grounded, Is.True, "Test setup: the character should have sunk to the pool's floor.");
+            LookDown(45f);
+            float lowest = 0f;
+            bool alwaysFits = true;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
+            {
+                lowest = Mathf.Min(lowest, rig.Movement.BodyPitch);
+                alwaysFits &= rig.BodyFits;
+            });
+            Assert.That(lowest, Is.GreaterThan(-5f), "Lying on the floor, the body shouldn't pitch its front down into it.");
+            Assert.That(rig.Grounded, Is.True, "Nor be lifted off the floor it's steered into.");
+            Assert.That(alwaysFits, Is.True, "Pitching shouldn't take the body into the floor.");
+            Assert.That(rig.Position.z, Is.GreaterThan(0.5f * SwimSpeed), "It should still swim along the floor.");
+
+            LookDown(-30f);
+            // (Pitching about its feet, its tail dips as its nose rises: once it's risen clear of the floor.)
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward));
+            Assert.That(rig.Movement.BodyPitch, Is.EqualTo(30f).Within(0.5f), "Steered up off the floor, it has room to pitch up.");
         }
 
         [UnityTest]

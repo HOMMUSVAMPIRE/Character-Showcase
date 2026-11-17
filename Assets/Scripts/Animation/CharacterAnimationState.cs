@@ -24,6 +24,11 @@ namespace Character
         public float turnSpeed;
         /// <summary>The way the character faces (yaw only).</summary>
         public Quaternion facing;
+        /// <summary>
+        /// How far (degrees, positive nose up) the character's body is pitched about its feet, from level (see
+        /// MovementController.BodyPitch): swimming underwater, along the way it swims. The model is tilted to match.
+        /// </summary>
+        public float bodyPitch;
 
         /// <summary>
         /// Whether the character should be animated as on the ground. Stays true for a moment after leaving the ground

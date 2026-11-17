@@ -53,6 +53,10 @@ namespace Character
         [Tooltip("How fast (m/s) the character drifts up underwater without any input, at its authored size: reaching its " +
                  "swimming depth, it's back at the surface. 0 stays where it is")]
         [Min(0f)] [SerializeField] private float swimBuoyancy = 0.5f;
+        [Tooltip("The furthest (degrees) the character's body pitches up or down underwater, along the way it's steered to " +
+                 "swim (lying, it heads into a dive nose first), where it has room to. Without steering it levels out. 0 " +
+                 "keeps it level")]
+        [Range(0f, 90f)] [SerializeField] private float swimMaxPitch = 60f;
 
         // Seconds over which the character closes in on its swimming depth (rising back up, or settling down onto it):
         // quickly, but not in one step.
@@ -176,11 +180,13 @@ namespace Character
         }
 
         /// <summary>
-        /// Swimming underwater: the way the movement input points relative to the camera, up and down with it as it looks
-        /// (looking down and pushing forward swims down), at the swim speed; holding Jump rises and Crouch sinks, at the
-        /// swim vertical speed, whichever way it looks. Without any input, it drifts up at the swim buoyancy; back up at its
-        /// swimming depth, rising, it's at the surface again. A press of Jump only rises: it isn't kept to jump out with
-        /// once the character's at the surface. Speeds change at the swim acceleration; it faces the way it swims across.
+        /// Swimming underwater, steered free of the ground (see FreeSteering): the way the movement input points relative
+        /// to the camera, up and down with it as it looks (looking down and pushing forward swims down), at the swim
+        /// speed; holding Jump rises and Crouch sinks, at the swim vertical speed, whichever way it looks. Without any
+        /// input, it drifts up at the swim buoyancy; back up at its swimming depth, rising, it's at the surface again. A
+        /// press of Jump only rises: it isn't kept to jump out with once the character's at the surface. Speeds change at
+        /// the swim acceleration; it faces the way it swims across, and, steered, its body pitches along the way it's
+        /// steered to swim, up to the swim max pitch.
         /// </summary>
         private bool SwimUnderwater(ref MovementData movementData, Inputs inputs, MovementController controller, Water water, float depth,
             float verticalSpeed)
@@ -189,18 +195,19 @@ namespace Character
             float dt = movementData.deltaTime;
             if (Mode.IsNewJumpPress(inputs, controller)) { controller.jump.press.Use(); }
 
-            // movementVector is the stick in camera space, flat: turned by the whole camera, pitch and all.
-            Vector3 steer = Vector3.ClampMagnitude(movementData.cameraLook * inputs.movementVector, 1f);
-            float upOrDown = (Held(inputs.jump) ? 1f : 0f) - (Held(inputs.crouch) ? 1f : 0f);
+            Vector3 steer = FreeSteering.Direction(movementData, inputs);
             float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier;
-            Vector3 target = steer * topSpeed;
-            if (upOrDown != 0f) { target.y = upOrDown * swimVerticalSpeed * controller.SpeedScale; }
-            else if (steer.sqrMagnitude < 1e-4f) { target.y = swimBuoyancy * controller.SpeedScale; }
+            Vector3 target = FreeSteering.TargetVelocity(steer, FreeSteering.UpOrDown(inputs), topSpeed,
+                swimVerticalSpeed * controller.SpeedScale, swimBuoyancy * controller.SpeedScale);
 
             Vector3 velocity = movementData.initialVelocity;
             velocity = Vector3.MoveTowards(new Vector3(velocity.x, verticalSpeed, velocity.z), target, swimAcceleration * controller.AccelerationScale * dt);
-            Vector3 across = new Vector3(steer.x, 0f, steer.z);
-            if (across.sqrMagnitude > 1e-4f && topSpeed > 0f) { movementData.targetRotation = Quaternion.LookRotation(across.normalized, Vector3.up); }
+            if (topSpeed > 0f && FreeSteering.IsSteering(steer))
+            {
+                FreeSteering.FaceAcross(ref movementData, steer);
+                // Along where it's steered to (rising or sinking as Jump or Crouch ask), not the way it's drifting.
+                FreeSteering.PitchAlong(ref movementData, target, swimMaxPitch);
+            }
 
             // Back up to its swimming depth, rising: at the surface again, arriving at it rather than past it.
             float surface = water.SurfaceHeight - depth, feet = movementData.initialPosition.y;
@@ -224,8 +231,6 @@ namespace Character
             if (velocity.sqrMagnitude > 1e-4f) { movementData.state |= CharacterState.Moving; }
             return true;
         }
-
-        private static bool Held(InputButton button) => button != null && button.value;
 
         /// <summary>
         /// The speed (m/s) to swim at for these inputs, at full movement input and the character's authored size: the

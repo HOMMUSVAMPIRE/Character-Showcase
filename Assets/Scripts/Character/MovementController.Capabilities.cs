@@ -90,6 +90,7 @@ namespace Character
             inheritGroundVelocity = source.inheritGroundVelocity;
             maxGroundCarryPerStep = source.maxGroundCarryPerStep;
             posture = BodyPosture.Standing;
+            bodyPitch = 0f;
             ApplyScale(source.Scale);
         }
     }

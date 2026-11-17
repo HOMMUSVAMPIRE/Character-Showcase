@@ -159,7 +159,7 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>Whether the character's body, as it is now, overlaps nothing (more than the skin width).</summary>
-        public bool BodyFits => Movement.Body.Fits(Body.position, Body.rotation, Movement.Scale, Movement.Posture);
+        public bool BodyFits => Movement.Body.Fits(Body.position, MovementController.Attitude(Body.rotation, Movement.BodyPitch), Movement.Scale, Movement.Posture);
 
         /// <summary>How far (m) the character's body reaches out in front of its feet (see CharacterBody.FrontExtent).</summary>
         public float FrontExtent => Movement.Body.FrontExtent;

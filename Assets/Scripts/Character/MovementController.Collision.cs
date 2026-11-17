@@ -11,27 +11,34 @@ namespace Character
         /// character, sweep its body, slide along walls and walkable slopes, step up onto low ledges (stairs), slide
         /// off surfaces too steep to stand on, and stick to descending slopes. Momentum that a collision blocks is
         /// removed, and data.collisions records which sides were blocked. A body that turns with the character (see
-        /// CharacterBody.TurnsWithFacing) turns only as far as it has room to.
+        /// CharacterBody.TurnsWithFacing, or any body while it's pitched) turns only as far as it has room to, and the body
+        /// pitches (see MovementData.targetPitch) only as far as it has room to.
         /// </summary>
         public bool CheckMovementValid(ref MovementData data)
         {
             resolvingRotation = data.initialRotation;
+            resolvingPitch = data.initialPitch;
             try { return ResolveStep(ref data); }
-            finally { resolvingRotation = null; }
+            finally
+            {
+                bodyPitch = data.targetPitch;
+                resolvingRotation = null;
+                resolvingPitch = null;
+            }
         }
 
         // Halvings of a blocked turn made to find how far of it there's room for (to within 1/32 of it).
         private const int TurnRoomSteps = 5;
 
         /// <summary>
-        /// The way the character can turn to, from from toward to, with its body (one that turns with it) at pos: all the
-        /// way where there's room, otherwise as far as there is. Turning sweeps nothing (a turn's sweep isn't worth it): the
-        /// body is checked for room facing the new way, and the turn is halved until it fits. Already without room as it
-        /// faces (pushed into something), it turns freely, so it isn't stuck facing that way.
+        /// How much (0 to 1) of a turn of the body at pos, from from to to, it has room for: all of it where it fits turned
+        /// to, otherwise as much as does. Turning sweeps nothing (a turn's sweep isn't worth it): the body is checked for
+        /// room turned the new way, and the turn is halved until it fits. Already without room as it is (pushed into
+        /// something), it turns freely, so it isn't stuck that way.
         /// </summary>
-        private Quaternion TurnWithRoom(Vector3 pos, Quaternion from, Quaternion to)
+        private float ShareOfTurnWithRoom(Vector3 pos, Quaternion from, Quaternion to)
         {
-            if (Quaternion.Angle(from, to) < 0.01f || Body.Fits(pos, to, Scale, posture) || !Body.Fits(pos, from, Scale, posture)) { return to; }
+            if (Quaternion.Angle(from, to) < 0.01f || Body.Fits(pos, to, Scale, posture) || !Body.Fits(pos, from, Scale, posture)) { return 1f; }
             float fits = 0f, blocked = 1f;
             for (int i = 0; i < TurnRoomSteps; i++)
             {
@@ -39,7 +46,7 @@ namespace Character
                 if (Body.Fits(pos, Quaternion.Slerp(from, to, half), Scale, posture)) { fits = half; }
                 else { blocked = half; }
             }
-            return Quaternion.Slerp(from, to, fits);
+            return fits;
         }
 
         private bool ResolveStep(ref MovementData data)
@@ -50,7 +57,7 @@ namespace Character
 
             // Sweeps can't see anything they start inside of, so first push out of anything that moved into the
             // character since the last step (a moving wall, a platform's side, a lowering ceiling).
-            Vector3 depenetration = Body.Depenetrate(pos, data.initialRotation);
+            Vector3 depenetration = Body.Depenetrate(pos, BodyRotation);
             if (depenetration != Vector3.zero)
             {
                 pos += depenetration;
@@ -60,10 +67,23 @@ namespace Character
                 RemoveInertiaInto(ref inertia, pushDirection);
             }
 
-            // Turning, a body that isn't round about the feet swings into somewhere else: only as far as there's room. It
-            // moves facing the way it ends up.
-            if (Body.TurnsWithFacing) { data.targetRotation = TurnWithRoom(pos, data.initialRotation, data.finalRotation); }
-            resolvingRotation = data.finalRotation;
+            // Turning, a body that isn't round about the feet (or is pitched) swings into somewhere else: only as far as
+            // there's room. Then it pitches, also only as far as there's room. It moves turned the way it ends up.
+            float fromPitch = data.initialPitch;
+            if (Body.TurnsWithFacing || fromPitch != 0f)
+            {
+                Quaternion from = data.initialRotation, to = data.finalRotation;
+                float share = ShareOfTurnWithRoom(pos, Attitude(from, fromPitch), Attitude(to, fromPitch));
+                if (share < 1f) { data.targetRotation = Quaternion.Slerp(from, to, share); }
+            }
+            Quaternion facing = data.finalRotation;
+            if (data.targetPitch != fromPitch)
+            {
+                float share = ShareOfTurnWithRoom(pos, Attitude(facing, fromPitch), Attitude(facing, data.targetPitch));
+                data.targetPitch = Mathf.Lerp(fromPitch, data.targetPitch, share);
+            }
+            resolvingRotation = facing;
+            resolvingPitch = data.targetPitch;
 
             Vector3 move = data.finalMovementVector;
             if (move.sqrMagnitude < 1e-12f && depenetration == Vector3.zero) { return true; }
