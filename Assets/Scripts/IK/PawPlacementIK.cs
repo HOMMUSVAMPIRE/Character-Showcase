@@ -1004,15 +1004,8 @@ namespace Character
                 if (h.distance < best) { best = h.distance; closest = h; }
             }
             if (best == float.PositiveInfinity) { return false; }
-            // Where the ground is drawn, not where physics has it: a moving platform's Rigidbody is interpolated, drawn
-            // between its physics steps, as the character is, while a ray hits it at its latest step; placed there, the
-            // paws jumped up and down against it each frame.
-            Rigidbody moving = closest.rigidbody;
-            if (moving != null && moving.interpolation != RigidbodyInterpolation.None)
-            {
-                Transform drawn = moving.transform;
-                closest.point = drawn.position + drawn.rotation * Quaternion.Inverse(moving.rotation) * (closest.point - moving.position);
-            }
+            // Where the ground is drawn: placed where physics has a moving platform, the paws jumped up and down on it.
+            CharacterUtilities.ToDrawnPose(ref closest);
             return true;
         }
 

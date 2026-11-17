@@ -136,5 +136,26 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Component<Ziplines>().ZiplineGrabReach, Is.EqualTo(authored + 1f));
             Assert.That(asset.Get<Ziplines>(includeDisabled: true).ZiplineGrabReach, Is.EqualTo(authored), "The asset's component should be left as it was.");
         }
+
+        /// <summary>
+        /// A test asking for a setting as the wrong type (an int literal for a float setting) fails, rather than being
+        /// ignored as a test of a setting the mode doesn't have, which would quietly stop it testing anything.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ASettingOfAnotherType_FailsTheTest_WhereAMissingOneIgnoresIt()
+        {
+            yield return rig.StandOnFloor();
+            Assert.Throws<AssertionException>(() => rig.MovementSetting<int>("ziplineGrabReach"),
+                "Reading a float setting as an int should fail the test.");
+            Assert.Throws<AssertionException>(() => rig.SetMovementSetting("ziplineGrabReach", 0),
+                "Setting a float setting with an int should fail the test.");
+            // Named through a constant: the hygiene check fails a setting name the tests use that no movement code
+            // declares, as this one deliberately isn't.
+            const string missing = "noSuchSetting";
+            Assert.Throws<IgnoreException>(() => rig.MovementSetting<float>(missing),
+                "A setting the mode doesn't have should ignore the test.");
+            Assert.That(rig.MovementSetting<float>("ziplineGrabReach"), Is.EqualTo(rig.Component<Ziplines>().ZiplineGrabReach),
+                "Asked for as its own type, the setting should be found.");
+        }
     }
 }

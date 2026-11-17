@@ -71,5 +71,19 @@ namespace Character
                     return right != null ? right : animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
             }
         }
+
+        /// <summary>
+        /// Moves a ground hit to where the ground is drawn, not where physics has it. A moving platform's Rigidbody is
+        /// interpolated, drawn between its physics steps as the character is, while a ray hits it at its latest step: a
+        /// foot or paw placed at the hit jumped up and down against the platform each frame. Hits on anything else
+        /// (not interpolated) are left as they are.
+        /// </summary>
+        public static void ToDrawnPose(ref RaycastHit hit)
+        {
+            Rigidbody moving = hit.rigidbody;
+            if (moving == null || moving.interpolation == RigidbodyInterpolation.None) { return; }
+            Transform drawn = moving.transform;
+            hit.point = drawn.position + drawn.rotation * Quaternion.Inverse(moving.rotation) * (hit.point - moving.position);
+        }
     }
 }

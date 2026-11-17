@@ -59,16 +59,33 @@ jobs:
           tool-cache: false
           large-packages: false
 
+      # The motion-capture clips and other large assets are stored with Git LFS. Rather than downloading every LFS file
+      # on every run (which counts against the repository's LFS bandwidth), they're kept in a cache keyed on the list of
+      # LFS objects, and only what the cache lacks is pulled.
       - uses: actions/checkout@v5
         with:
-          lfs: true # the motion-capture clips (Assets/Animation/CMU) are stored with Git LFS
-
-      # The Library folder is Unity's import cache. Restoring it turns a long first import into a short one.
-      - name: Restore Unity Library cache
+          lfs: false
+      - name: List the LFS objects
+        run: git lfs ls-files --long | cut -d ' ' -f 1 | sort > .lfs-objects
+      - name: Restore the LFS cache
         uses: actions/cache@v5
         with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-objects') }}
+          restore-keys: lfs-
+      - name: Pull LFS files
+        run: git lfs pull
+
+      # The Library folder is Unity's import cache. Restoring it turns a long first import into a short one. Any older
+      # Library is better than none (Unity reimports only what changed), so the key changes only when the set of assets
+      # or their import settings do (the .meta files), not on every commit: each new key is a new multi-GB entry, which
+      # pushes older ones out of the repository's cache.
+      - name: Restore Unity Library cache
+        id: library
+        uses: actions/cache/restore@v5
+        with:
           path: Library
-          key: Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/packages-lock.json') }}-${{ hashFiles('Assets/**') }}
+          key: Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/packages-lock.json') }}-${{ hashFiles('Assets/**/*.meta') }}
           restore-keys: |
             Library-${{ runner.os }}-${{ hashFiles('ProjectSettings/ProjectVersion.txt', 'Packages/packages-lock.json') }}-
             Library-${{ runner.os }}-
@@ -88,6 +105,16 @@ jobs:
           checkName: Unity test results
           # unityVersion: 6000.6.7f1  # defaults to ProjectSettings/ProjectVersion.txt
           # customImage: ...          # see the note at the top of this file
+
+      # Saved whether the tests passed or failed (the project imported either way), so a red run's import isn't lost,
+      # but not from a cancelled run (a newer push superseding it): stopped mid-import, its Library could be half
+      # written, and every later run would restore it. Skipped when this exact key was restored (it's saved already).
+      - name: Save Unity Library cache
+        if: (success() || failure()) && steps.library.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: Library
+          key: ${{ steps.library.outputs.cache-primary-key }}
 
       - name: Upload test results
         if: always()

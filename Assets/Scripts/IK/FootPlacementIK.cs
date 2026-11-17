@@ -359,7 +359,10 @@ namespace Character
                 if (Vector3.Angle(h.normal, Vector3.up) > maxSlopeAngle) { continue; }
                 if (h.distance < best) { best = h.distance; closest = h; }
             }
-            return best < float.PositiveInfinity;
+            if (best == float.PositiveInfinity) { return false; }
+            // Where the ground is drawn: placed where physics has a moving platform, the feet jumped up and down on it.
+            CharacterUtilities.ToDrawnPose(ref closest);
+            return true;
         }
 
         private void OnDrawGizmosSelected()

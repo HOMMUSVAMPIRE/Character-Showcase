@@ -7,9 +7,10 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of foot locking (FootPlacementIK): the model turns after the character about its feet, which drags planted
-    /// feet round with it; locking holds a planted foot where it was put down, so the feet stay put as the model turns.
-    /// Compared with locking turned off on the same model.
+    /// Tests of foot placement (FootPlacementIK): the model turns after the character about its feet, which drags planted
+    /// feet round with it; locking holds a planted foot where it was put down, so the feet stay put as the model turns
+    /// (compared with locking turned off on the same model). On a moving platform, the feet are placed on it as it's drawn,
+    /// so they don't jitter against it from frame to frame.
     /// </summary>
     [Category(TestArea.Animation)]
     public class FootLockTests : AnimationTestsBase
@@ -55,6 +56,82 @@ namespace CharacterShowcase.Tests
             Assert.That(unlocked, Is.GreaterThan(0.05f), "Test setup: unlocked, the turn should drag the feet round.");
             Assert.That(locked, Is.LessThan(0.3f * unlocked), "Locked, planted feet should stay where they were put down as the model turns.");
             Assert.That(locked, Is.LessThan(0.03f * rig.Controller.Scale.y), "Locked feet should barely move.");
+        }
+
+        /// <summary>
+        /// Records, each frame after the feet are placed (LateUpdate, late in the frame), how high each foot is above a
+        /// platform's top as drawn (its Transform, interpolated between physics steps), and the character (its root, as
+        /// drawn).
+        /// </summary>
+        [DefaultExecutionOrder(10000)]
+        private class FootHeightRecorder : MonoBehaviour
+        {
+            public Transform left, right, root, platform;
+            public float platformHalfHeight;
+            public readonly System.Collections.Generic.List<Vector3> frames = new();
+
+            private void LateUpdate()
+            {
+                if (left == null || right == null || root == null || platform == null) { return; }
+                float top = platform.position.y + platformHalfHeight;
+                frames.Add(new Vector3(left.position.y - top, right.position.y - top, root.position.y - top));
+            }
+        }
+
+        /// <summary>
+        /// Standing on a platform rising and falling, frame by frame as the game draws it (the platform and the character
+        /// each interpolated between physics steps, the feet placed each frame after the Animator), the feet stay on the
+        /// platform: their height above it barely changes from one frame to the next. Placed where physics has the
+        /// platform (its latest step), they jumped up and down against it. Only frames in which the character itself kept
+        /// its height above the platform count: as the platform turns round, the movement settles the character a little
+        /// higher or lower on it, which the feet follow, and that isn't the feet's placement.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OnARisingAndFallingPlatform_TheFeetStayOnIt_FrameByFrame()
+        {
+            var size = new Vector3(4f, 0.3f, 4f);
+            Level.MovingPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
+            platform.enabled = false; // Held still while the model loads (frames in which the character isn't stepped).
+            Physics.SyncTransforms();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            animation = rig.Animation;
+            yield return rig.WaitForModel();
+            animator = rig.Models.Animator;
+            if (animator == null || !animator.isHuman || animator.GetComponent<FootPlacementIK>() == null)
+            {
+                Assert.Ignore("The character's model isn't a humanoid with foot placement.");
+            }
+            platform.enabled = true;
+            // The Animator plays and the feet are placed each frame, as in the game; only the movement is fed to it here.
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), FeedAnimator);
+            var recorder = new GameObject("Foot Height Recorder").AddComponent<FootHeightRecorder>();
+            recorder.left = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            recorder.right = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            recorder.root = rig.Character.transform;
+            recorder.platform = platform.transform;
+            recorder.platformHalfHeight = size.y / 2f;
+            try
+            {
+                yield return rig.Run(3f, _ => CharacterTestRig.Idle(), FeedAnimator);
+            }
+            finally { Object.Destroy(recorder.gameObject); }
+            // A frame counts if the character's height above the platform is as it was a few frames before (the feet
+            // ease after it when it changes).
+            const int SettleFrames = 6;
+            const float Kept = 0.0005f;
+            float jump = 0f;
+            int counted = 0;
+            for (int f = SettleFrames; f < recorder.frames.Count; f++)
+            {
+                if (Mathf.Abs(recorder.frames[f].z - recorder.frames[f - SettleFrames].z) > Kept) { continue; }
+                Vector3 change = recorder.frames[f] - recorder.frames[f - 1];
+                jump = Mathf.Max(jump, Mathf.Abs(change.x), Mathf.Abs(change.y));
+                counted++;
+            }
+            TestContext.WriteLine($"Over {counted} of {recorder.frames.Count} frames (the character keeping its height on the platform), " +
+                                  $"a foot's height above the platform changed by at most {jump * 1000f:0.0} mm from one frame to the next.");
+            Assume.That(counted, Is.GreaterThan(20), "Test setup: there should be frames to measure.");
+            Assert.That(jump, Is.LessThan(0.002f), "The feet shouldn't jitter on the platform from one frame to the next.");
         }
     }
 }

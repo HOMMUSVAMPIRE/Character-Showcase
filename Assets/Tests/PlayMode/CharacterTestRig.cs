@@ -691,7 +691,7 @@ namespace CharacterShowcase.Tests
         /// Reads a tuning value the movement mode interfaces don't have (BasicMovementMode's gravity, coyote time and dash
         /// cooldown, say) from the character's movement mode, or one of its components, by name (setting names are unique
         /// across a mode and its components). Ignores the test if the mode has no such value: it tests a behaviour of
-        /// BasicMovementMode, which another mode may not have.
+        /// BasicMovementMode, which another mode may not have. Fails it if the value is there but of another type than T.
         /// </summary>
         public T MovementSetting<T>(string fieldName)
         {
@@ -716,13 +716,25 @@ namespace CharacterShowcase.Tests
             object handler = Movement.movementHandler;
             var owners = new List<object> { handler };
             if (handler is ComposedMovementMode composed) { owners.AddRange(composed.Components.Where(c => c != null)); }
+            FieldInfo otherType = null;
+            object otherOwner = null;
             foreach (object owner in owners)
             {
                 for (Type type = owner?.GetType(); type != null; type = type.BaseType)
                 {
                     FieldInfo field = type.GetField(fieldName, Fields | BindingFlags.DeclaredOnly);
-                    if (field != null && field.FieldType == typeof(T)) { return (owner, field); }
+                    if (field == null) { continue; }
+                    if (field.FieldType == typeof(T)) { return (owner, field); }
+                    if (otherType == null) { (otherType, otherOwner) = (field, owner); }
                 }
+            }
+            // The setting is there, but the test asks for it as another type (an int literal for a float setting, say, or
+            // a setting whose type changed): that's the test's mistake, not a mode without the setting, so it fails. Ignored,
+            // the test would quietly stop testing anything.
+            if (otherType != null)
+            {
+                Assert.Fail($"'{fieldName}' (on {otherOwner.GetType().Name}) is a {otherType.FieldType.Name} setting, but the test reads or sets it " +
+                            $"as a {typeof(T).Name}: use a {otherType.FieldType.Name} (a float literal needs an f, say).");
             }
             Assert.Ignore($"The character's movement mode ({handler?.GetType().Name ?? "none"}) has no {typeof(T).Name} '{fieldName}' setting.");
             return default;
