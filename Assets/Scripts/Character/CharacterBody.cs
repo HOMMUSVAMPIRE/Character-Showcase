@@ -48,6 +48,13 @@ namespace Character
         /// </summary>
         public abstract bool TurnsWithFacing { get; }
 
+        /// <summary>
+        /// Whether the body's bottom is flat (a box's), so it rests on whatever's under any of it as on level ground,
+        /// rather than round (a capsule's), which rests on an edge only as far as it rolls onto it. Stepping up, a flat
+        /// body is on the step once it's over its top (see MovementController.TryStepUp).
+        /// </summary>
+        public virtual bool FlatBottomed => false;
+
         // Its proportions: what the abilities measure the character by (how tall it stands, how far it reaches out in front,
         // behind and to the sides of its feet), rather than the collider's dimensions, so a body of another shape answers
         // them for itself. Its posture (lowered while crouching, say) doesn't change its standing height.

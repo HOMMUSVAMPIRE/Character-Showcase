@@ -66,9 +66,12 @@ namespace CharacterShowcase.Tests
             yield return SpawnSettled(new Vector3(0f, 0.05f, 0f));
         }
 
-        public void SpawnCharacter(Vector3 position)
+        public void SpawnCharacter(Vector3 position) => SpawnCharacter(position, null);
+
+        /// <summary>Spawns the given character prefab (another than the one tested, a creature's, say), or the tested one if null.</summary>
+        public void SpawnCharacter(Vector3 position, GameObject prefab)
         {
-            GameObject prefab = CharacterPrefab();
+            prefab ??= CharacterPrefab();
             if (prefab == null) { throw new InvalidOperationException($"Could not load the character prefab ('{DefaultCharacterPrefabPath}', or a CharacterTestSettings asset's)."); }
 
             Character = Object.Instantiate(prefab, position, Quaternion.identity);
@@ -137,6 +140,16 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>The character prefab's capsule (before it's spawned, to build a world around it).</summary>
+        /// <summary>A prefab by its asset path (in the editor; null in a player).</summary>
+        public static GameObject LoadPrefab(string path)
+        {
+#if UNITY_EDITOR
+            return UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path);
+#else
+            return null;
+#endif
+        }
+
         public static CapsuleCollider PrefabCapsule() => CharacterPrefab().GetComponent<CapsuleCollider>();
         /// <summary>The character prefab's step height at its authored size (before it's spawned).</summary>
         public static float PrefabStepHeight() => CharacterPrefab().GetComponent<MovementController>().MaxStepHeight;
@@ -560,9 +573,12 @@ namespace CharacterShowcase.Tests
         /// settled before a test builds a world around it), then lets it stand for a moment. With no settling time, the
         /// character stays exactly where it was spawned (in mid-air, say), as nothing moves it until the test runs it.
         /// </summary>
-        public IEnumerator SpawnSettled(Vector3 position, float settleSeconds = 0.3f)
+        public IEnumerator SpawnSettled(Vector3 position, float settleSeconds = 0.3f) => SpawnSettled(position, null, settleSeconds);
+
+        /// <summary>The same, for the given character prefab (the tested one if null).</summary>
+        public IEnumerator SpawnSettled(Vector3 position, GameObject prefab, float settleSeconds = 0.3f)
         {
-            SpawnCharacter(position);
+            SpawnCharacter(position, prefab);
             yield return WaitForModel();
             if (settleSeconds > 0f) { yield return Run(settleSeconds, _ => Idle()); }
         }

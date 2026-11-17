@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using UnityEngine;
 
@@ -353,10 +354,13 @@ namespace Character
             }
         }
 
+        /// <summary>The name of a transform marking a model's eyes, for one that isn't a humanoid (see FindEyeHeight).</summary>
+        public const string EyesName = "Eyes";
+
         /// <summary>
         /// The eye height above the character's feet: from the eye bones if the model has them, else partway up the
         /// head (eyes sit a little under halfway from the head bone at the skull's base to the top of the head), else
-        /// most of the way up the model. Measured as the model was created, before it's animated, so it's the rest pose.
+        /// from a transform named Eyes on a model that isn't a humanoid (a fox, say), else most of the way up the model. Measured as the model was created, before it's animated, so it's the rest pose.
         /// </summary>
         private float FindEyeHeight(CharacterModel created)
         {
@@ -375,6 +379,9 @@ namespace Character
                     if (top > headHeight) { return headHeight + 0.45f * (top - headHeight); }
                 }
             }
+            // A model that isn't a humanoid (a fox, say) can mark where its eyes are with a transform named Eyes.
+            Transform marked = created.Root.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == EyesName);
+            if (marked != null) { return HeightOf(marked.position); }
             return ModelHeightMeters > 0f ? 0.93f * ModelHeightMeters : defaultEyeHeight * ScaleY;
         }
 

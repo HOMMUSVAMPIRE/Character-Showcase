@@ -60,6 +60,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Test levels](docs/levels.md): the Meridian Complex, the Level Playground, level mechanics
 - [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Spawning the character](docs/spawning.md)
+- [Creatures](docs/creatures.md): the fox, a character on four legs, and generating it
 - [Automated tests](docs/testing.md)
 - [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
 - [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs

@@ -68,6 +68,8 @@ namespace Character
             }
         }
 
+        public override bool FlatBottomed => collider is BoxCollider;
+
         // How far the shape reaches ahead of, behind and beside the feet, in the character's frame. A round shape on the
         // feet reaches its radius every way (or, before it has a collider, half a metre at the character's height).
         public override float FrontExtent => collider != null ? Current.center.z + HalfExtents(Current).z : 0.5f * Owner.HeightScale;

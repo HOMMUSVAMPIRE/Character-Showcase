@@ -7704,9 +7704,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61406ae840a24a5fb6db19765a6966bd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: CharacterShowcase::Character.CharacterSpawner
-  characterPrefab: {fileID: 2098279046411243804, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-  modelSource: {fileID: 11400000, guid: e3a30bb6ba9e54e7d89c6706a3949eff, type: 2}
-  movementMode: {fileID: 0}
+  characterPrefab: {fileID: 6387620508109588887, guid: afea97175d4bb418686bc33c21462672, type: 3}
+  modelSource: {fileID: 11400000, guid: 8239ca8ab51304cdca59d8b9a7eedb0b, type: 2}
+  movementMode: {fileID: 11400000, guid: 5cadb8145cdaf4f7587d65c171b68cb3, type: 2}
   spawnPoints:
   - position: {x: 0, y: 0.05, z: -10}
     rotation: {x: -0, y: -0, z: -0, w: 1}
@@ -30790,6 +30790,7 @@ MonoBehaviour:
   landing:
     enabled: 1
     minImpactSpeed: 4
+    minFallTime: 0.1
     dipPerSpeed: 0.025
     maxDip: 0.35
     springStiffness: 140

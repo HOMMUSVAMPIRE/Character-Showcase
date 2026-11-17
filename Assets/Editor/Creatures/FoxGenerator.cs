@@ -1,0 +1,399 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using Character;
+using UnityEditor;
+using UnityEditor.Animations;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace CharacterShowcase.EditorTools
+{
+    /// <summary>
+    /// Generates the fox, the first creature that isn't a humanoid: a wolf-sized, low-poly fox with flat-coloured regions,
+    /// and a character to play it with. Tools > Character Showcase > Generate Fox (or GenerateFromCommandLine):
+    /// - runs Tools/Fox/generate_fox.py in Blender, which builds, rigs (a Generic rig, not a Humanoid), skins and
+    ///   animates it (Tools/Fox/fox_animations.py), writing Fox.fbx (skipped with -skipBlender, rebuilding the rest from
+    ///   the Fox.fbx that's there);
+    /// - imports it as a Generic rig with its clips looping;
+    /// - builds its Animator Controller: Locomotion (Idle, Walk, Trot, Gallop by Speed), Crouch (Crouch Idle and Crouch
+    ///   Walk by Speed, while Crouching) and Airborne (Jump Fall and Jump Rise by VerticalSpeed, while not Grounded);
+    /// - saves its model prefab (with an "Eyes" point on its head, which the character's eye point and camera follow),
+    ///   an Animator parameter translator for it, and its model source;
+    /// - makes, if they aren't there, its body (a box, about its body's size: see BodyDefinition) and its movement mode
+    ///   (the humanoid's, with what a fox can't do turned off and tuned for a fox), which are then the user's to tune;
+    /// - and saves Fox.prefab, a variant of the Character prefab with the fox's body, movement and model: put it in a
+    ///   scene's character spawner (its Character Prefab) to play the fox there.
+    /// </summary>
+    public static class FoxGenerator
+    {
+        private const string Folder = "Assets/Models/Creatures/Fox";
+        public const string ModelPath = Folder + "/Fox.fbx";
+        public const string ModelPrefabPath = Folder + "/Fox Model.prefab";
+        public const string SourcePath = Folder + "/Fox.asset";
+        public const string BodyPath = Folder + "/Fox Body.asset";
+        public const string ControllerPath = Folder + "/Fox.controller";
+        public const string TranslatorPath = Folder + "/Fox Animator Translator.asset";
+        public const string MovementPath = "Assets/ScriptableObjects/Fox Movement.asset";
+        public const string PrefabPath = "Assets/Prefabs/Fox.prefab";
+        private const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        private const string HumanoidMovementPath = "Assets/ScriptableObjects/BasicMovementMode.asset";
+        private const string GeneratorScript = "Tools/Fox/generate_fox.py";
+        private const string BindPoseTake = "!BindPose";
+        private const string LogName = nameof(FoxGenerator);
+
+        // The transform on the fox's head its eye point follows (see CharacterModelHost.EyesName).
+        private const string EyesName = CharacterModelHost.EyesName;
+        // Where its eyes are, in the model's space (on its head bone), and which bone that is.
+        private static readonly Vector3 EyesPosition = new(0f, 0.98f, 0.64f);
+        private const string HeadBone = "Head";
+
+        // The speeds (m/s, at its authored size) the clips are authored for (fox_animations.SPEEDS): the Speed blend's
+        // thresholds, so each clip plays at the speed its paws keep to the ground.
+        private const float WalkClipSpeed = 1.3f, TrotClipSpeed = 3.5f, GallopClipSpeed = 10f, CrouchWalkClipSpeed = 1f;
+        // The Airborne blend: falling this fast (m/s) shows the fall; rising this fast, the rise.
+        private const float FallingSpeed = -4f, RisingSpeed = 2f;
+        // Seconds the Animator blends between its states over.
+        private const float BlendTime = 0.12f, CrouchBlendTime = 0.15f;
+
+        private const string SpeedParameter = AnimatorParameterTranslator.DefaultSpeedParameter;
+        private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
+        private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
+        private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
+
+        private static readonly string[] Clips = { "Idle", "Walk", "Trot", "Gallop", "Jump Rise", "Jump Fall", "Crouch Idle", "Crouch Walk" };
+
+        [MenuItem("Tools/Character Showcase/Generate Fox", priority = 3)]
+        public static void GenerateFromMenu()
+        {
+            string blender = MannequinGenerator.FindBlender();
+            if (blender == null)
+            {
+                int choice = EditorUtility.DisplayDialogComplex("Generate Fox",
+                    "Blender is needed to generate the fox, but wasn't found. Locate it, or rebuild the fox's setup from the " +
+                    "Fox.fbx that's already in the project.", "Locate Blender…", "Cancel", "Use Existing Fox.fbx");
+                if (choice == 1) { return; }
+                if (choice == 0)
+                {
+                    blender = MannequinGenerator.LocateBlender();
+                    if (blender == null) { return; }
+                }
+            }
+            Generate(blender);
+        }
+
+        /// <summary>
+        /// Generates the fox from the command line (-executeMethod CharacterShowcase.EditorTools.FoxGenerator.GenerateFromCommandLine):
+        /// -blender &lt;path&gt; to say where Blender is, or -skipBlender to rebuild from the Fox.fbx that's there.
+        /// </summary>
+        public static void GenerateFromCommandLine()
+        {
+            bool skipBlender = CommandLine.Has("-skipBlender");
+            string blender = skipBlender ? null : CommandLine.Argument("-blender") ?? MannequinGenerator.FindBlender();
+            if (blender == null && !skipBlender)
+            {
+                Debug.LogError($"[{LogName}] Blender wasn't found. Pass -blender <path>, or -skipBlender to use the existing Fox.fbx.");
+                CommandLine.Finish(false);
+                return;
+            }
+            CommandLine.Finish(Generate(blender));
+        }
+
+        /// <summary>Generates the fox (in Blender, unless blenderPath is null) and its setup. Returns whether it succeeded.</summary>
+        public static bool Generate(string blenderPath)
+        {
+            Directory.CreateDirectory(Folder);
+            if (blenderPath != null && !MannequinGenerator.RunBlenderScript(blenderPath, GeneratorScript, ModelPath, "fox", "Generate Fox", LogName))
+            {
+                return false;
+            }
+            // Blender wrote the file (and maybe its folder) outside Unity: found and imported afresh.
+            AssetDatabase.Refresh();
+            AssetDatabase.ImportAsset(ModelPath, ImportAssetOptions.ForceUpdate);
+            if (!ConfigureImport()) { return false; }
+
+            Dictionary<string, AnimationClip> clips = LoadClips();
+            string[] missing = Clips.Where(c => !clips.ContainsKey(c)).ToArray();
+            if (missing.Length > 0)
+            {
+                Debug.LogError($"[{LogName}] '{ModelPath}' is missing clips: {string.Join(", ", missing)}. Generate the fox with Blender.");
+                return false;
+            }
+
+            AnimatorController controller = BuildController(clips);
+            GameObject modelPrefab = SaveModelPrefab(controller);
+            var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
+            BodyDefinition body = LoadOrCreateBody();
+            DirectCharacterModelSource source = SaveSource(modelPrefab, translator, body);
+            ComposedMovementMode movement = LoadOrCreateMovement();
+            if (movement == null) { return false; }
+            SavePrefab(source, body, movement);
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[{LogName}] Generated the fox: '{PrefabPath}' (put it in a scene's character spawner to play it).");
+            return true;
+        }
+
+        // ---- The model ----
+
+        /// <summary>Imports the fox as a Generic rig (its own avatar), each clip looping, without the bind pose take.</summary>
+        private static bool ConfigureImport()
+        {
+            if (AssetImporter.GetAtPath(ModelPath) is not ModelImporter importer)
+            {
+                Debug.LogError($"[{LogName}] '{ModelPath}' isn't there, or isn't a model. Generate the fox with Blender.");
+                return false;
+            }
+            importer.animationType = ModelImporterAnimationType.Generic;
+            importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+            importer.importAnimation = true;
+            importer.clipAnimations = importer.defaultClipAnimations
+                .Where(take => take.takeName.Split('|').Last() != BindPoseTake)
+                .Select(take =>
+                {
+                    take.name = take.takeName.Split('|').Last();
+                    take.loopTime = true;
+                    take.loopPose = false;
+                    return take;
+                })
+                .ToArray();
+            importer.SaveAndReimport();
+            return true;
+        }
+
+        private static Dictionary<string, AnimationClip> LoadClips() =>
+            AssetDatabase.LoadAllAssetsAtPath(ModelPath)
+                .OfType<AnimationClip>()
+                .Where(c => !c.name.StartsWith("__preview__"))
+                .ToDictionary(c => c.name);
+
+        /// <summary>
+        /// The fox's Animator Controller, built from scratch each time: Locomotion by Speed (the default), Crouch by Speed
+        /// while Crouching, and Airborne by VerticalSpeed while not Grounded.
+        /// </summary>
+        private static AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
+        {
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
+            if (controller == null) { controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath); }
+            foreach (Object part in AssetDatabase.LoadAllAssetsAtPath(ControllerPath))
+            {
+                if (part != null && part != controller) { Object.DestroyImmediate(part, true); }
+            }
+            controller.parameters = Array.Empty<AnimatorControllerParameter>();
+            controller.layers = Array.Empty<AnimatorControllerLayer>();
+            controller.AddLayer("Base Layer");
+            controller.AddParameter(SpeedParameter, AnimatorControllerParameterType.Float);
+            controller.AddParameter(VerticalSpeedParameter, AnimatorControllerParameterType.Float);
+            controller.AddParameter(new AnimatorControllerParameter { name = GroundedParameter, type = AnimatorControllerParameterType.Bool, defaultBool = true });
+            controller.AddParameter(CrouchingParameter, AnimatorControllerParameterType.Bool);
+
+            AnimatorStateMachine machine = controller.layers[0].stateMachine;
+            AnimatorState locomotion = machine.AddState("Locomotion");
+            locomotion.motion = Blend(controller, "Locomotion", SpeedParameter,
+                (clips["Idle"], 0f), (clips["Walk"], WalkClipSpeed), (clips["Trot"], TrotClipSpeed), (clips["Gallop"], GallopClipSpeed));
+            AnimatorState crouch = machine.AddState("Crouch");
+            crouch.motion = Blend(controller, "Crouch", SpeedParameter, (clips["Crouch Idle"], 0f), (clips["Crouch Walk"], CrouchWalkClipSpeed));
+            AnimatorState airborne = machine.AddState("Airborne");
+            airborne.motion = Blend(controller, "Airborne", VerticalSpeedParameter, (clips["Jump Fall"], FallingSpeed), (clips["Jump Rise"], RisingSpeed));
+            machine.defaultState = locomotion;
+
+            AnimatorStateTransition toAir = machine.AddAnyStateTransition(airborne);
+            toAir.canTransitionToSelf = false;
+            Configure(toAir, BlendTime, (AnimatorConditionMode.IfNot, GroundedParameter));
+            Configure(airborne.AddTransition(locomotion), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.IfNot, CrouchingParameter));
+            Configure(airborne.AddTransition(crouch), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.If, CrouchingParameter));
+            Configure(locomotion.AddTransition(crouch), CrouchBlendTime, (AnimatorConditionMode.If, CrouchingParameter));
+            Configure(crouch.AddTransition(locomotion), CrouchBlendTime, (AnimatorConditionMode.IfNot, CrouchingParameter));
+            EditorUtility.SetDirty(controller);
+            return controller;
+        }
+
+        private static void Configure(AnimatorStateTransition transition, float duration, params (AnimatorConditionMode mode, string parameter)[] conditions)
+        {
+            transition.hasExitTime = false;
+            transition.duration = duration;
+            foreach (var (mode, parameter) in conditions) { transition.AddCondition(mode, 0f, parameter); }
+        }
+
+        private static BlendTree Blend(AnimatorController controller, string name, string parameter, params (Motion motion, float threshold)[] children)
+        {
+            var tree = new BlendTree
+            {
+                name = name,
+                blendType = BlendTreeType.Simple1D,
+                blendParameter = parameter,
+                useAutomaticThresholds = false,
+                hideFlags = HideFlags.HideInHierarchy,
+            };
+            foreach (var (motion, threshold) in children) { tree.AddChild(motion, threshold); }
+            AssetDatabase.AddObjectToAsset(tree, controller);
+            return tree;
+        }
+
+        /// <summary>The fox's model prefab: the model, its Animator playing the controller, and its eyes on its head.</summary>
+        private static GameObject SaveModelPrefab(AnimatorController controller)
+        {
+            var model = (GameObject)PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath));
+            try
+            {
+                PrefabUtility.UnpackPrefabInstance(model, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+                model.name = "Fox Model";
+                Animator animator = model.GetComponent<Animator>();
+                if (animator == null) { animator = model.AddComponent<Animator>(); }
+                animator.avatar = AssetDatabase.LoadAllAssetsAtPath(ModelPath).OfType<Avatar>().FirstOrDefault();
+                animator.runtimeAnimatorController = controller;
+                animator.applyRootMotion = false; // Movement is driven by MovementController, not animation.
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+                Transform head = model.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name == HeadBone);
+                if (head != null)
+                {
+                    var eyes = new GameObject(EyesName).transform;
+                    eyes.SetParent(head, false);
+                    eyes.position = model.transform.TransformPoint(EyesPosition);
+                }
+                else { Debug.LogWarning($"[{LogName}] The fox has no '{HeadBone}' bone to put its eyes on."); }
+                return PrefabUtility.SaveAsPrefabAsset(model, ModelPrefabPath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(model);
+            }
+        }
+
+        /// <summary>
+        /// The fox's body, made if it isn't there (then left as it's tuned): a box about its body's size, standing on its
+        /// paws, from just behind its nose to its rump (not its ears or tail), not refitted to the model.
+        /// </summary>
+        private static BodyDefinition LoadOrCreateBody()
+        {
+            var body = AssetDatabase.LoadAssetAtPath<BodyDefinition>(BodyPath);
+            if (body != null) { return body; }
+            body = ScriptableObject.CreateInstance<BodyDefinition>();
+            BodyShape box = BodyShape.Box(new Vector3(0.34f, 0.95f, 1.25f));
+            box.center.z = 0.125f; // Its head reaches further ahead of its middle than its rump does behind.
+            body.Shape = box;
+            body.RefitOnPrepare = false;
+            AssetDatabase.CreateAsset(body, BodyPath);
+            return body;
+        }
+
+        private static DirectCharacterModelSource SaveSource(GameObject modelPrefab, AnimatorParameterTranslator translator, BodyDefinition body)
+        {
+            var source = LoadOrCreate<DirectCharacterModelSource>(SourcePath);
+            source.ModelPrefab = modelPrefab;
+            source.Translator = translator;
+            source.Height = ModelHeight.KeepModelSize;
+            source.Scale = 1f;
+            // Built standing on its paws at its origin, facing forward: nothing to measure as it loads.
+            source.MeasureGroundOnLoad = false;
+            source.GroundOffset = 0f;
+            source.AnimatedGroundOffset = 0f;
+            source.FacingCorrection = 0f;
+            source.BodyDefinition = body;
+            source.RecordMeasurements(CharacterModelSource.MeasureHeight(modelPrefab, modelPrefab.transform));
+            EditorUtility.SetDirty(source);
+            return source;
+        }
+
+        // ---- The character ----
+
+        // The humanoid's movement components a fox can't use (yet): turned off in its movement mode.
+        private static readonly Type[] HumanOnly =
+        {
+            typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting), typeof(PushingAndPulling), typeof(WallClimbing),
+            typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling), typeof(Dashing),
+        };
+
+        /// <summary>
+        /// The fox's movement mode, made if it isn't there (then left as it's tuned): the humanoid's, with what the fox
+        /// can't do turned off, sliding off, one jump, and a fox's speeds (it trots as it walks, and gallops sprinting).
+        /// </summary>
+        private static ComposedMovementMode LoadOrCreateMovement()
+        {
+            var mode = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(MovementPath);
+            if (mode != null) { return mode; }
+            var humanoid = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(HumanoidMovementPath);
+            if (humanoid == null)
+            {
+                Debug.LogError($"[{LogName}] '{HumanoidMovementPath}' isn't there to start the fox's movement from.");
+                return null;
+            }
+            mode = Object.Instantiate(humanoid);
+            foreach (Type type in HumanOnly)
+            {
+                if (mode.Get(type, includeDisabled: true) is { } component) { component.Enabled = false; }
+            }
+            Set<WalkingAndRunning>(mode, "walkSpeed", 3.5f);
+            Set<WalkingAndRunning>(mode, "runSpeed", 10f);
+            Set<Jumping>(mode, "maxJumps", 1);
+            Set<Jumping>(mode, "minJumpHeight", 0.5f);
+            Set<Jumping>(mode, "maxJumpHeight", 1.4f);
+            Set<Crouching>(mode, "crouchSpeed", 1f);
+            Set<Crouching>(mode, "crouchHeight", 0.65f);
+            Set<Crouching>(mode, "slidingEnabled", false);
+            AssetDatabase.CreateAsset(mode, MovementPath);
+            return mode;
+        }
+
+        private static void Set<T>(ComposedMovementMode mode, string field, object value) where T : MovementComponent
+        {
+            MovementComponent component = mode.Get(typeof(T), includeDisabled: true);
+            FieldInfo info = typeof(T).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (component == null || info == null)
+            {
+                Debug.LogWarning($"[{LogName}] Couldn't set {typeof(T).Name}'s '{field}' for the fox.");
+                return;
+            }
+            info.SetValue(component, value);
+        }
+
+        /// <summary>
+        /// Fox.prefab: a variant of the Character prefab with a box for its body (the fox's), the fox's movement mode and
+        /// model, its body taken as defined (not fitted to the model), and an eye height for while its model loads.
+        /// </summary>
+        private static void SavePrefab(DirectCharacterModelSource source, BodyDefinition body, ComposedMovementMode movement)
+        {
+            var basePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
+            var fox = (GameObject)PrefabUtility.InstantiatePrefab(basePrefab);
+            try
+            {
+                fox.name = "Fox";
+                var movementController = fox.GetComponent<MovementController>();
+                // A box for its body, in place of the capsule (which the body definition would replace as it wakes).
+                foreach (Collider old in fox.GetComponents<Collider>().Where(c => c is CapsuleCollider || c is SphereCollider)) { Object.DestroyImmediate(old); }
+                if (!fox.TryGetComponent(out BoxCollider box)) { box = fox.AddComponent<BoxCollider>(); }
+                box.size = body.Shape.size;
+                box.center = body.Shape.center;
+                movementController.movementHandler = movement;
+
+                var moved = new SerializedObject(movementController);
+                moved.FindProperty("bodyCollider").objectReferenceValue = box;
+                moved.FindProperty("bodyDefinition").objectReferenceValue = body;
+                moved.ApplyModifiedPropertiesWithoutUndo();
+
+                var host = new SerializedObject(fox.GetComponent<CharacterModelHost>());
+                host.FindProperty("modelSource").objectReferenceValue = source;
+                host.FindProperty("colliderFit").enumValueIndex = (int)ColliderFit.Off;
+                host.FindProperty("defaultEyeHeight").floatValue = EyesPosition.y;
+                host.ApplyModifiedPropertiesWithoutUndo();
+
+                PrefabUtility.SaveAsPrefabAsset(fox, PrefabPath);
+            }
+            finally
+            {
+                Object.DestroyImmediate(fox);
+            }
+        }
+
+        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset != null) { return asset; }
+            asset = ScriptableObject.CreateInstance<T>();
+            AssetDatabase.CreateAsset(asset, path);
+            return asset;
+        }
+    }
+}

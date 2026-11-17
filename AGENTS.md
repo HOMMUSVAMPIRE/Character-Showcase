@@ -23,10 +23,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level mechanics' runtime components |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects) |
+| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests |
-| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` (Blender scripts) |
+| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
@@ -162,6 +162,7 @@ change and say regeneration is still needed.
 | Generated | Generator |
 | --- | --- |
 | `Mannequin.fbx` (mesh, rig, clips), `Assets/Animation/Mannequin.controller`, the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender |
+| `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox.controller`, `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
 | A scene's Game Setup object (spawner, input manager, camera), and its fixtures made to work | `SceneGameSetup` (Set Up Scene), which runs `LevelFixtureSetup` |
 | The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data | Their builders in `Assets/Editor/Level` |

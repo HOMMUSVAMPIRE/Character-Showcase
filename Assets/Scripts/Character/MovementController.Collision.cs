@@ -246,7 +246,10 @@ namespace Character
             // contact point, not the hit normal, which for an edge can be either face's.
             float landingReach = Mathf.Min(SweepRadius, GroundCheckRadius) * Mathf.Sin(StepLandingAngle * Mathf.Deg2Rad);
             float ahead = Vector3.Dot(downHit.point - raised, dir);
-            if (ahead > landingReach)
+            // A flat-bottomed body (a box) is on the step once it's over its top, however far ahead of its feet that is:
+            // a long one (a fox's) reaches a step well ahead of its feet, and carried on to have its feet over it, was
+            // carried into the next step's riser, so it never stepped up at all.
+            if (ahead > landingReach && !Body.FlatBottomed)
             {
                 float extra = ahead - landingReach;
                 if (Body.Sweep(raised, BodyRotation, dir, extra + SkinWidth, out _)) { return Vector3.zero; }
