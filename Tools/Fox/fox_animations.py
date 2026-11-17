@@ -84,6 +84,9 @@ def leg_depth(segments, angles):
 REACH_SCAN_STEP = 1.0
 REACH_MAX_FLEX = 120.0
 
+# How far (radians) each tail bone's sway lags the one before it, so the sway ripples down the tail.
+TAIL_LAG = 0.6
+
 # A stride's swing lifts the front paw by these shares of its lift (lift_front, degrees): the upper leg swung back, the
 # elbow flexing the forearm forward, the wrist folding the paw back.
 FRONT_LIFT_SHOULDER = 0.5
@@ -133,7 +136,7 @@ class Gait:
     """
 
     def __init__(self, speed, duration, stance, legs, lift_front=60.0, lift_hind=40.0, crouch=False, spine_flex=0.0,
-                 bob=0.01, head_bob=2.0):
+                 bob=0.01, head_bob=2.0, tail_sway=10.0, neck=0.0, head=0.0, ears=0.0):
         self.speed = speed
         self.duration = duration
         self.stance = stance
@@ -144,6 +147,12 @@ class Gait:
         self.spine_flex = spine_flex
         self.bob = bob
         self.head_bob = head_bob
+        # The tail's sway side to side, once a stride (degrees, its amplitude: see body), counterbalancing the legs; the
+        # neck lowered forward, the head's nod (positive nose down) and the ears turned (negative back), held through it.
+        self.tail_sway = tail_sway
+        self.neck = neck
+        self.head = head
+        self.ears = ears
         travel = speed * duration * stance
         self.front_sweep = sweep_angle(travel, FRONT_LENGTH)
         self.hind_sweep = sweep_angle(travel, HIND_LENGTH)
@@ -187,8 +196,8 @@ class Gait:
                            planted=q < self.stance)
             set_leg(pose, FRONT_BONES if leg.front else HIND_BONES, leg.side, angles)
         flex = self.spine_flex * math.cos(TAU * p)
-        body(pose, crouch=self.crouch, spine=flex, head=self.head_bob * math.sin(2.0 * TAU * p),
-             tail_sway=6.0 * math.sin(TAU * p), tail_lift=4.0 if not self.crouch else -8.0)
+        body(pose, crouch=self.crouch, spine=flex, head=self.head + self.head_bob * math.sin(2.0 * TAU * p), neck=self.neck,
+             tail_sway=self.tail_sway, tail_phase=TAU * p, tail_lift=4.0 if not self.crouch else -8.0, ears=self.ears)
         pose.hips_offset = Vector((0.0, 0.0, height))
         return pose
 
@@ -258,16 +267,24 @@ def reach(front, angles, height, planted):
     return flexed(front, angles, sign * high)
 
 
-def body(pose, crouch=False, spine=0.0, pitch=0.0, head=0.0, head_turn=0.0, tail_sway=0.0, tail_lift=0.0, ears=0.0):
-    """The spine, neck, head and tail: the spine flexing (positive arches it), the head nodding, the tail swaying."""
+def body(pose, crouch=False, spine=0.0, pitch=0.0, head=0.0, head_turn=0.0, tail_sway=0.0, tail_lift=0.0, ears=0.0,
+         neck=0.0, tail_phase=None):
+    """
+    The spine, neck, head and tail: the spine flexing (positive arches it), the head nodding (positive nose down), the
+    neck lowered forward (positive), the ears turned (negative folds them back), the tail swaying side to side. With a
+    tail_phase (radians), tail_sway is the sway's amplitude, as a wave down the tail: each bone a little behind the one
+    before it (TAIL_LAG), so it ripples rather than swinging stiffly; without, each bone is turned by its share of it.
+    """
     pose.set("Hips", rx(pitch + spine))
     pose.set("Spine1", rx(pitch))
     pose.set("Spine2", rx(pitch - spine))
-    neck = (22.0 if crouch else 0.0) + pitch
-    pose.set("Neck", rz(head_turn * 0.5) @ rx(neck + head * 0.5))
+    neck_angle = (22.0 if crouch else 0.0) + pitch + neck
+    pose.set("Neck", rz(head_turn * 0.5) @ rx(neck_angle + head * 0.5))
     pose.set("Head", rz(head_turn) @ rx((-12.0 if crouch else 0.0) + pitch + head))
     for i, bone in enumerate(("Tail1", "Tail2", "Tail3", "Tail4")):
-        pose.set(bone, rz(tail_sway * (0.5 + 0.4 * i)) @ rx(tail_lift * (1.0 - 0.15 * i)))
+        share = 0.5 + 0.4 * i
+        sway = tail_sway * share * (math.sin(tail_phase - TAIL_LAG * i) if tail_phase is not None else 1.0)
+        pose.set(bone, rz(sway) @ rx(tail_lift * (1.0 - 0.15 * i)))
     for side, sx in (("L", 1.0), ("R", -1.0)):
         pose.set(f"Ear_{side}", rx(ears))
 
@@ -383,21 +400,23 @@ def legs(*offsets):
 
 
 # A walk: four beats, each hind leg followed by the front on its side (lateral sequence).
-WALK = Gait(speed=1.3, duration=0.7, stance=0.65, legs=legs(0.75, 0.25, 0.0, 0.5), bob=0.008, head_bob=2.0)
+WALK = Gait(speed=1.3, duration=0.7, stance=0.65, legs=legs(0.75, 0.25, 0.0, 0.5), bob=0.008, head_bob=2.0, tail_sway=14.0)
 # A trot: diagonal pairs together.
-TROT = Gait(speed=3.5, duration=0.36, stance=0.45, legs=legs(0.0, 0.5, 0.5, 0.0), bob=0.015, head_bob=1.5)
-# A gallop (rotary): the hind legs, then the front, each pair a little apart; the spine flexing with the stride.
+TROT = Gait(speed=3.5, duration=0.36, stance=0.45, legs=legs(0.0, 0.5, 0.5, 0.0), bob=0.015, head_bob=1.5, tail_sway=11.0)
+# A gallop (rotary): the hind legs, then the front, each pair a little apart; the spine flexing with the stride. Running
+# flat out: the neck lowered and stretched forward, the head looking ahead, the ears folded back flat, the tail streaming
+# out behind, barely swaying.
 GALLOP = Gait(speed=10.0, duration=0.3, stance=0.2, legs=legs(0.5, 0.6, 0.1, 0.0), lift_front=75.0, lift_hind=55.0,
-              spine_flex=7.0, bob=0.03, head_bob=4.0)
+              spine_flex=7.0, bob=0.03, head_bob=4.0, tail_sway=2.0, neck=16.0, head=5.0, ears=-55.0)
 # Stalking: the walk, crouched.
 CROUCH_WALK = Gait(speed=1.0, duration=0.8, stance=0.65, legs=legs(0.75, 0.25, 0.0, 0.5), lift_front=35.0, lift_hind=25.0,
-                   crouch=True, bob=0.004, head_bob=0.5)
+                   crouch=True, bob=0.004, head_bob=0.5, tail_sway=8.0)
 
 # Stepping in place, to turn on the spot: the trot's diagonal pairs, slower, with small lifts and no stride. Played as the
 # fox turns standing (by its turn speed), its paws lift and are put down again where the turning body has them, so it
 # steps round (PawPlacementIK locks each where it's put down).
 TURN_STEP = Gait(speed=0.0, duration=0.5, stance=0.5, legs=legs(0.0, 0.5, 0.5, 0.0), lift_front=35.0, lift_hind=25.0,
-                 bob=0.006, head_bob=1.0)
+                 bob=0.006, head_bob=1.0, tail_sway=8.0)
 
 # Clip name -> (pose function of phase, duration in seconds). Speeds (m/s) the gaits are authored for are in SPEEDS.
 CLIPS = {
