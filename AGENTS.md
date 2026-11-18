@@ -32,7 +32,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
 | `Assets/Editor` | `Blender/` (`BlenderRunner`: finding Blender and running the generators' scripts), `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, the movement envelope) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
-| `Assets/Tests` | `EditMode/` and `PlayMode/` tests |
+| `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/`, `Spawning/`; what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
 | `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
 | Assembly | Folder | Namespace | May reference |
@@ -42,8 +42,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem, PhysicsQueries **only** |
 | `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
 | `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
-| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared, PhysicsQueries |
-| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared, PhysicsQueries |
+| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode`, a fixture in `.EditMode.<Area>` (its folder) | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared, PhysicsQueries |
+| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` (shared), a fixture in `.<Area>` (its folder) | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared, PhysicsQueries |
 | `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
 
 The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its

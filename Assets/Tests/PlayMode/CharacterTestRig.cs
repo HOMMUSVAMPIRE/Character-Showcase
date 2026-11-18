@@ -61,11 +61,8 @@ namespace CharacterShowcase.Tests
             created.Add(stepper.gameObject);
             stepper.gameObject.AddComponent<LevelTicker>().rig = this;
 
-            // A main camera, as a scene has (what's drawn looks for one). The movement doesn't read it: the inputs' look is
-            // the rig's own (Look).
-            var camera = new GameObject("Test Camera") { tag = "MainCamera" };
-            camera.AddComponent<Camera>();
-            created.Add(camera);
+            // No camera: the movement never reads one (the inputs' look is the rig's own, Look), and without one nothing is
+            // drawn each frame. A test of something that needs one (the camera rig, the underwater view) makes its own.
         }
 
         /// <summary>A floor, and the character standing on it at the origin, its model loaded and settled.</summary>

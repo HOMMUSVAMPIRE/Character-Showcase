@@ -1,0 +1,182 @@
+using System.Collections;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace CharacterShowcase.Tests.Movement
+{
+    /// <summary>Tests that the character rides moving and spinning platforms and keeps their momentum when leaving.</summary>
+    [Category(TestArea.Movement)]
+    public class MovingGroundTests : CharacterRigFixture
+    {
+
+        /// <summary>
+        /// On a platform rising and falling, and one sliding to and fro, the character rides it exactly, step by step: it
+        /// stays on the ground, its feet stay on the platform's top, and keep their place across it. Read the platform a
+        /// step late (before it moved), it rode a step behind: on a platform rising at 1 m/s, 2 cm low, and as high above
+        /// it falling.
+        /// </summary>
+        /// <summary>
+        /// A moving platform is where the level's clock (LevelClock) says, not where its own time since it was enabled
+        /// does: one made and enabled steps after another, the same, is in exactly the same pose at the same tick, and
+        /// both are off their start by then. So two machines on the same tick, or a character replayed against a past
+        /// step, see it in the same place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator APlatformEnabledLate_IsWhereAnEarlyOneIs_AtTheSameTick()
+        {
+            // Unity's own clock (its fixed steps), which these raw physics steps advance; the rig's counts only its character's steps.
+            Level.LevelClock.TickSource = null;
+            var top = new Vector3(0f, 1f, 0f);
+            var size = new Vector3(2f, 0.2f, 2f);
+            Level.MovingPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            for (int i = 0; i < 37; i++) { yield return new WaitForFixedUpdate(); }
+            Level.MovingPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            for (int i = 0; i < 3; i++) { yield return new WaitForFixedUpdate(); }
+            Rigidbody a = early.GetComponent<Rigidbody>(), b = late.GetComponent<Rigidbody>();
+            Assume.That(Vector3.Distance(b.position, top - Vector3.up * (size.y / 2f)), Is.GreaterThan(0.1f), "Test setup: the platforms should be under way.");
+            Assert.That(b.position, Is.EqualTo(a.position), "A platform enabled late should be where an early one is, at the same tick.");
+            Assert.That(b.rotation, Is.EqualTo(a.rotation), "And turned as far.");
+        }
+
+        [UnityTest]
+        public IEnumerator OnAMovingPlatform_TheCharacterRidesIt_StepByStep([Values(true, false)] bool vertical)
+        {
+            // 1.5 m out and back in 3 s, at a constant 1 m/s (no easing or pauses).
+            var size = new Vector3(4f, 0.3f, 4f);
+            Vector3 travel = vertical ? new Vector3(0f, 1.5f, 0f) : new Vector3(1.5f, 0f, 0f);
+            var platform = rig.Platform(Vector3.zero, size, travel, 3f, Vector3.zero);
+            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the platform.");
+            Vector3 offset = rig.Position - platformBody.position;
+
+            float worstHeight = 0f, worstDrift = 0f;
+            bool alwaysGrounded = true;
+            yield return rig.Run(3f, _ => CharacterTestRig.Idle(), _ =>
+            {
+                alwaysGrounded &= rig.Grounded;
+                Vector3 now = rig.Position - platformBody.position;
+                worstHeight = Mathf.Max(worstHeight, Mathf.Abs(now.y - size.y / 2f));
+                worstDrift = Mathf.Max(worstDrift, new Vector2(now.x - offset.x, now.z - offset.z).magnitude);
+            });
+            TestContext.WriteLine($"Over a trip out and back, the feet were at most {worstHeight * 1000f:0.0} mm off the platform's top, " +
+                                  $"and moved at most {worstDrift * 1000f:0.0} mm across it.");
+            Assert.That(worstHeight, Is.LessThan(0.002f), "The feet should stay on the platform's top, step by step.");
+            Assert.That(worstDrift, Is.LessThan(0.002f), "The feet should keep their place on the platform, step by step.");
+            Assert.That(alwaysGrounded, Is.True, "The character lost contact with the moving platform.");
+        }
+
+        /// <summary>
+        /// A platform parented under a static object (as a level's are, under its Environment) still carries the
+        /// character: the ground is the object hit, not the root of its hierarchy, which never moves.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator StandingOnAPlatformParentedUnderAStaticObject_MovesWithIt()
+        {
+            GameObject environment = rig.Box("Environment", new Vector3(0f, -50f, 0f), Vector3.one);
+            var platform = rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(6f, 0f, 0f), 6f, Vector3.zero);
+            platform.transform.SetParent(environment.transform, worldPositionStays: true);
+            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Character should be standing on the platform.");
+            Vector3 offset = rig.Position - platformBody.position;
+            float platformStart = platformBody.position.x;
+
+            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+
+            Assert.That(platformBody.position.x - platformStart, Is.GreaterThan(1.5f), "Test setup: the platform should have moved.");
+            Vector3 drift = rig.Position - platformBody.position - offset;
+            Assert.That(drift.magnitude, Is.LessThan(0.05f), "Character wasn't carried by a platform parented under a static object.");
+        }
+
+        /// <summary>
+        /// Ground that jumps further in a step than the most the character is carried (Max Ground Carry Per Step, on the
+        /// MovementController) has been teleported: the character isn't dragged across the level with it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator GroundThatTeleports_DoesntDragTheCharacterWithIt()
+        {
+            GameObject ground = rig.Box("Ground", new Vector3(0f, -0.15f, 0f), new Vector3(4f, 0.3f, 4f));
+            ground.AddComponent<Rigidbody>().isKinematic = true;
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the ground.");
+
+            ground.transform.position += new Vector3(20f, 0f, 0f);
+            Physics.SyncTransforms();
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+
+            Assert.That(Mathf.Abs(rig.Position.x), Is.LessThan(0.5f), "The character was dragged along with ground that teleported.");
+        }
+
+        /// <summary>
+        /// A teleport shorter than the most the character is carried in a step, made standing, stays where it's put: the
+        /// ground it stood on doesn't carry it back to where it stood on it (see MovementController.Teleport).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TeleportingAShortWay_WhileStanding_StaysWhereItsPut()
+        {
+            rig.Floor();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the floor.");
+
+            var target = new Vector3(1f, 0f, 0.5f);
+            rig.Teleport(target);
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+
+            Assert.That(Vector3.Distance(rig.Position, target), Is.LessThan(0.01f), "The ground carried the character back to where it stood before the teleport.");
+        }
+
+        [UnityTest]
+        public IEnumerator StandingOnSpinningPlatform_IsCarriedAroundAndTurned()
+        {
+            const float degreesPerSecond = 90f;
+            var platform = rig.Platform(Vector3.zero, new Vector3(6f, 0.3f, 6f), Vector3.zero, 6f, new Vector3(0f, degreesPerSecond, 0f));
+            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
+            rig.SpawnCharacter(new Vector3(1.5f, 0.05f, 0f));
+
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Vector3 startOffset = Vector3.ProjectOnPlane(rig.Position - platformBody.position, Vector3.up);
+            float startYaw = rig.Body.rotation.eulerAngles.y;
+
+            const float seconds = 1f;
+            yield return rig.Run(seconds, _ => CharacterTestRig.Idle());
+
+            Vector3 endOffset = Vector3.ProjectOnPlane(rig.Position - platformBody.position, Vector3.up);
+            float carriedAngle = Vector3.SignedAngle(startOffset, endOffset, Vector3.up);
+            float turnedAngle = Mathf.DeltaAngle(startYaw, rig.Body.rotation.eulerAngles.y);
+            float expected = degreesPerSecond * seconds;
+
+            Assert.That(endOffset.magnitude, Is.EqualTo(startOffset.magnitude).Within(0.05f),
+                "Character should stay the same distance from the platform's center.");
+            Assert.That(carriedAngle, Is.EqualTo(expected).Within(5f), "Character should be carried around with the platform.");
+            Assert.That(turnedAngle, Is.EqualTo(expected).Within(5f), "Character should turn with the platform.");
+        }
+
+        [UnityTest]
+        public IEnumerator JumpingOffMovingPlatform_KeepsItsMomentum()
+        {
+            // A long, fast platform: 20 m out over 4 s = 5 m/s.
+            var platform = rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(20f, 0f, 0f), 8f, Vector3.zero);
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True);
+
+            float startX = rig.Position.x;
+            int holdSteps = CharacterTestRig.StepsFor(0.15f);
+            const float airTime = 0.3f;
+            yield return rig.Run(airTime, step => step < holdSteps ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
+
+            float travelled = rig.Position.x - startX;
+            const float platformSpeed = 5f;
+            Assert.That(travelled, Is.GreaterThan(0.6f * platformSpeed * airTime),
+                "Character stopped dead on leaving the platform instead of keeping its velocity.");
+            Assert.That(travelled, Is.LessThan(1.4f * platformSpeed * airTime), "Character gained far more speed than the platform had.");
+        }
+    }
+}
