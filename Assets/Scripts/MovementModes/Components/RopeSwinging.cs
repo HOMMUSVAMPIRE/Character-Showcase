@@ -183,7 +183,8 @@ namespace Character
                 float top = Mathf.Min(ropeMinGripDistance, rope.Length);
                 Vector3 from = rope.Anchor + rope.Direction * top;
                 float sqrDistance = MovementHelpers.SqrDistanceBetweenSegments(from, rope.Tip, grip, gripNext, out _, out _);
-                if (sqrDistance > bestSqrDistance) { continue; }
+                // The nearest; of two as near, the first by where it is (StableOrder), not the order they were enabled in.
+                if (sqrDistance > bestSqrDistance || (sqrDistance == bestSqrDistance && best != null && StableOrder.Compare(rope.Anchor, best.Anchor) >= 0)) { continue; }
                 best = rope;
                 bestSqrDistance = sqrDistance;
             }

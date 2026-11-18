@@ -151,7 +151,7 @@ namespace Character
         public void Step(Inputs inputs)
         {
             LastEvents = MovementEvents.None;
-            Controller.ProcessMovementInputs(CharacterInputFrame.Holding(inputs, Controller.Tick));
+            Controller.ProcessMovementInputs(CharacterInputFrame.Holding(inputs, Controller.Tick), DeltaTime);
             MovementData data = Controller.currentMovementData;
             Vector3 position = data.initialPosition + data.finalMovementVector;
             Quaternion rotation = data.finalRotation;

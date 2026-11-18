@@ -58,7 +58,9 @@ namespace Character
                     RaycastHit hit = stepHits[i];
                     if (IsOwnCollider(hit.collider.transform) || !IsWalkable(hit.normal)) { continue; }
                     float height = top - hit.distance;
-                    if (height > offset)
+                    // The highest; of two as high (two coplanar floors), the first in the stable order, whatever order
+                    // they came in.
+                    if (StableOrder.Better(height, offset, hit, ground, higherWins: true))
                     {
                         offset = height;
                         ground = hit;
@@ -79,7 +81,7 @@ namespace Character
                 // Beside the feet, no higher than them: only the rays step the feet up.
                 if (hit.point.y > feet.y + SkinWidth) { continue; }
                 if (!IsWalkable(hit.normal) && !IsStepEdge(hit, feet)) { continue; }
-                if (hit.distance < nearest)
+                if (StableOrder.Better(hit.distance, nearest, hit, ground))
                 {
                     nearest = hit.distance;
                     ground = hit;

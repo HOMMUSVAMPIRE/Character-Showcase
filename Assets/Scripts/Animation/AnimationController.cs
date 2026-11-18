@@ -314,6 +314,7 @@ namespace Character
             else if (ziplining) { movementController.zipline.TryGetGrip(transform.position, out gripPoint, out gripDirection); }
             return new CharacterAnimationState
             {
+                deltaTime = deltaTime,
                 velocity = velocity,
                 localVelocity = Quaternion.Inverse(facing) * velocity,
                 horizontalSpeed = horizontalSpeed,

@@ -246,7 +246,7 @@ namespace Character
             // Tagged with the step it's for, whatever its source tagged it.
             frame.tick = tick;
             if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
-            movementController.ProcessMovementInputs(frame);
+            movementController.ProcessMovementInputs(frame, deltaTime);
             movementController.MovementCleanup();
         }
     }

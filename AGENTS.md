@@ -137,8 +137,8 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
   Transform holds a lagging render pose. Movement reads `Rigidbody.position` / `rotation` (see `GetGroundPose`).
   Moving platforms are kinematic Rigidbodies that move first each physics step (`MovingPlatform.MoveOrder`, before
-  the characters' FixedUpdate), their pose set at once so the characters ride and query them where they'll be; they're
-  drawn interpolated by themselves. Anything that steps a character in FixedUpdate must run after them.
+  the characters' FixedUpdate), their pose set at once (a function of `LevelClock.Tick`) so the characters ride and
+  query them where they'll be; they're drawn interpolated by themselves. Anything that steps a character in FixedUpdate must run after them.
 - **Collision is resolved by `MovementController` with sweeps of the character's body,** not the physics solver.
   Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
   depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
@@ -251,9 +251,19 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
 - **The body doesn't wait for the model.** With Body Fit on, `CharacterModelHost` fits the body its source was prepared
   with (`BodyFor`) in `Start`, before the first step, and keeps it when the model arrives, so a character moves the same
   body with its model, before it, or without one (`LoadModelOnStart` off, as a server would run it).
-- **Movement times things by `MovementController.StepTime`,** its own clock, never `Time.fixedTime`, so a copy stepped
-  faster than real time (`MovementSimulation`, which measures `Capabilities`) behaves the same. Don't read global time
-  in movement code.
+- **Movement times things in ticks, by `MovementController.StepTick`,** its own clock in whole steps, never
+  `Time.fixedTime`: keep the tick something happened at (`NeverTick` for never) and ask `SecondsSince(tick)`. The step's
+  length is given (`ProcessMovementInputs(frame, stepLength)`), not read. So timing is exact however long a character
+  runs (`SetClock` starts it anywhere), and a copy stepped faster than real time (`MovementSimulation`, which measures
+  `Capabilities`), or restored and replayed, behaves the same. Don't read global time in movement code.
+- **The movement is deterministic on one build:** the same state, frames and world give bit-identical steps
+  (`DeterminismTests`).
+  - Where two candidates are equally good (two hits as near, two ropes), choose by `StableOrder`, never by the order
+    results came in or instance IDs.
+  - A character's state can be saved and put back between steps (`MovementController.SaveState`, `RestoreState`;
+    `Summarize` gives the compact, unmanaged part).
+  - The level's mechanics that move a character go by `Level.LevelClock` (a tick), not their own time since they were
+    enabled.
 - **Abilities query the world through the `MovementController`** (`SweepBody`, `Raycast`, `OverlapSphere`,
   `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders and its `IgnoredCollisionRoot`.
   `SetPosture` holds the body standing, low or lying (a `BodyPosture`), keeping the feet in place.

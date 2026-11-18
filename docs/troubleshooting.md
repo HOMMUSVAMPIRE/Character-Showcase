@@ -55,7 +55,7 @@ The spec has changed since it was exported (in the Level Editor, say). Check tha
 The character's Rigidbody is interpolated, and moving platforms interpolate themselves, so their Transforms show a pose between physics steps. Movement code reads `Rigidbody.position` and `rotation` (see `MovementController.GetPhysicsPose`).
 
 **A timer behaves differently in the capability measurements.**
-Movement must time things by `MovementController.StepTime`, never `Time.time` or `Time.fixedTime`: the measurements step a copy of the character faster than real time.
+Movement must time things by its own clock, in ticks (`MovementController.StepTick`, `SecondsSince`), never `Time.time` or `Time.fixedTime`: the measurements step a copy of the character faster than real time.
 
 **A character teleported a short way snaps back.**
 Standing, the next step carries the character with the ground it stood on, back to where it stood on it. Move it with `MovementController.Teleport`, which forgets that ground, not by setting its Rigidbody's position.

@@ -158,7 +158,7 @@ namespace Character
 
         protected override void Solve(Animator animator)
         {
-            float dt = Time.deltaTime;
+            float dt = DeltaTime;
 
             // Only place feet while on the ground. The animation state's grounded flag already includes a short grace
             // period, so small step-offs don't switch placement off.

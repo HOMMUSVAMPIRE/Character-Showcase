@@ -49,11 +49,17 @@ namespace CharacterShowcase.Tests
 
         public CharacterTestRig()
         {
+            // The level's clock is the rig's: it counts the physics steps the rig steps its character in (see LevelTicker),
+            // so a test's moving platforms start their trips as its character starts moving, however many physics steps
+            // passed before (loading the model takes as many frames as it takes).
+            Level.LevelClock.TickSource = () => levelTick;
+
             // Run the simulation faster than real time. Physics steps stay the same size, so results are unchanged.
             previousTimeScale = Time.timeScale;
             created.Add(FrameTimeLimit.Start(TimeScale, MaxFrameTime).gameObject);
             stepper = new GameObject("Test Stepper").AddComponent<FixedStepper>();
             created.Add(stepper.gameObject);
+            stepper.gameObject.AddComponent<LevelTicker>().rig = this;
 
             // A main camera, as a scene has (what's drawn looks for one). The movement doesn't read it: the inputs' look is
             // the rig's own (Look).
@@ -363,6 +369,7 @@ namespace CharacterShowcase.Tests
             }
             created.Clear();
             Time.timeScale = previousTimeScale;
+            Level.LevelClock.TickSource = null;
         }
     }
 }

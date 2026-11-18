@@ -164,6 +164,7 @@ namespace Character
 
             int count = castHits.SphereCast(start, r, Vector3.down, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
             float best = float.PositiveInfinity;
+            RaycastHit bestHit = default;
             bool bestOnEdge = false;
             for (int i = 0; i < count; i++)
             {
@@ -172,9 +173,11 @@ namespace Character
                 if (hit.distance <= 0f) { continue; }
                 bool steep = !IsWalkable(hit.normal);
                 if (steep && !IsStepEdge(hit, position)) { continue; }
-                if (hit.distance < best)
+                // The nearest; of two as near, the first in the stable order (see StableOrder).
+                if (StableOrder.Better(hit.distance, best, hit, bestHit))
                 {
                     best = hit.distance;
+                    bestHit = hit;
                     bestOnEdge = steep;
                     // The object actually hit (its Rigidbody's transform, if it has one) - not the hierarchy root,
                     // which for a platform parented under a static "Environment" object would never move.

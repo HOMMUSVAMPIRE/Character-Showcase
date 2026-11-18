@@ -16,6 +16,29 @@ namespace CharacterShowcase.Tests
         /// step late (before it moved), it rode a step behind: on a platform rising at 1 m/s, 2 cm low, and as high above
         /// it falling.
         /// </summary>
+        /// <summary>
+        /// A moving platform is where the level's clock (LevelClock) says, not where its own time since it was enabled
+        /// does: one made and enabled steps after another, the same, is in exactly the same pose at the same tick, and
+        /// both are off their start by then. So two machines on the same tick, or a character replayed against a past
+        /// step, see it in the same place.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator APlatformEnabledLate_IsWhereAnEarlyOneIs_AtTheSameTick()
+        {
+            // Unity's own clock (its fixed steps), which these raw physics steps advance; the rig's counts only its character's steps.
+            Level.LevelClock.TickSource = null;
+            var top = new Vector3(0f, 1f, 0f);
+            var size = new Vector3(2f, 0.2f, 2f);
+            Level.MovingPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            for (int i = 0; i < 37; i++) { yield return new WaitForFixedUpdate(); }
+            Level.MovingPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            for (int i = 0; i < 3; i++) { yield return new WaitForFixedUpdate(); }
+            Rigidbody a = early.GetComponent<Rigidbody>(), b = late.GetComponent<Rigidbody>();
+            Assume.That(Vector3.Distance(b.position, top - Vector3.up * (size.y / 2f)), Is.GreaterThan(0.1f), "Test setup: the platforms should be under way.");
+            Assert.That(b.position, Is.EqualTo(a.position), "A platform enabled late should be where an early one is, at the same tick.");
+            Assert.That(b.rotation, Is.EqualTo(a.rotation), "And turned as far.");
+        }
+
         [UnityTest]
         public IEnumerator OnAMovingPlatform_TheCharacterRidesIt_StepByStep([Values(true, false)] bool vertical)
         {

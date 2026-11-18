@@ -29,7 +29,14 @@ namespace Character
         /// <summary>Seconds the placement takes to ease in and out (the subclass's fade time setting): 0 is at once.</summary>
         protected abstract float FadeTime { get; }
 
-        protected virtual void Awake() => ik = GetComponent<CharacterIK>();
+        protected virtual void Awake()
+        {
+            ik = GetComponent<CharacterIK>();
+            timedBy = GetComponent<Animator>();
+        }
+
+        // The Animator whose update this solves in (see DeltaTime).
+        private Animator timedBy;
         protected virtual void OnEnable() => ik.BeforeSolve += Solve;
 
         protected virtual void OnDisable()
@@ -43,8 +50,14 @@ namespace Character
         /// <summary>Places the limbs for this frame (from CharacterIK's BeforeSolve, before it solves).</summary>
         protected abstract void Solve(Animator animator);
 
+        /// <summary>
+        /// The time this solve eases by: the Animator update's it's solved in (see CharacterAnimationStates.DeltaTimeOf),
+        /// so a test stepping the Animator by hand gets its step's, not the frame's.
+        /// </summary>
+        protected float DeltaTime => CharacterAnimationStates.DeltaTimeOf(stateSource, timedBy);
+
         /// <summary>Eases ActiveWeight toward goal over the fade time (at once with none).</summary>
         protected void FadeTo(float goal) =>
-            activeWeight = FadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, Time.deltaTime / FadeTime) : goal;
+            activeWeight = FadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, DeltaTime / FadeTime) : goal;
     }
 }

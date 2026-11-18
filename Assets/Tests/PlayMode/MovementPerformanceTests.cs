@@ -112,7 +112,7 @@ namespace CharacterShowcase.Tests
                 stopwatch.Restart();
                 for (int i = 0; i < characters.Count; i++)
                 {
-                    characters[i].ProcessMovementInputs(CharacterInputFrame.Holding(InputsFor(i, step), characters[i].Tick));
+                    characters[i].ProcessMovementInputs(CharacterInputFrame.Holding(InputsFor(i, step), characters[i].Tick), Time.fixedDeltaTime);
                     characters[i].MovementCleanup();
                 }
                 stopwatch.Stop();

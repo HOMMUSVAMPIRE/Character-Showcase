@@ -117,7 +117,7 @@ namespace Character
                 wallPoint = state.wallPoint;
                 wallNormal = state.wallNormal;
             }
-            climbWeight = fadeTime > 0f ? Mathf.MoveTowards(climbWeight, climbing ? weight : 0f, Time.deltaTime / fadeTime) : (climbing ? weight : 0f);
+            climbWeight = fadeTime > 0f ? Mathf.MoveTowards(climbWeight, climbing ? weight : 0f, DeltaTime / fadeTime) : (climbing ? weight : 0f);
             if (climbWeight <= 0f || wallNormal == Vector3.zero)
             {
                 hasClimbShift = false;
@@ -133,7 +133,7 @@ namespace Character
                 // Eased toward the wall, but never so far a hand goes into it: the nearer of the two hands moves smoothly
                 // (as each does), so following it back at once doesn't jerk, and easing after it put the hands through.
                 climbShift = !hasClimbShift || climbSmoothTime <= 0f ? target
-                    : Mathf.Min(target, Mathf.Lerp(climbShift, target, 1f - Mathf.Exp(-Time.deltaTime / climbSmoothTime)));
+                    : Mathf.Min(target, Mathf.Lerp(climbShift, target, 1f - Mathf.Exp(-DeltaTime / climbSmoothTime)));
                 hasClimbShift = true;
             }
             animator.bodyPosition -= wallNormal * (climbShift * climbWeight);
@@ -154,7 +154,7 @@ namespace Character
                 runWallNormal = state.wallNormal;
             }
             float goal = running ? weight : 0f;
-            wallRunWeight = fadeTime > 0f ? Mathf.MoveTowards(wallRunWeight, goal, Time.deltaTime / fadeTime) : goal;
+            wallRunWeight = fadeTime > 0f ? Mathf.MoveTowards(wallRunWeight, goal, DeltaTime / fadeTime) : goal;
             if (wallRunWeight <= 0f || runWallNormal == Vector3.zero) { return; }
 
             float size = state.scale.y > 0f ? state.scale.y : 1f;

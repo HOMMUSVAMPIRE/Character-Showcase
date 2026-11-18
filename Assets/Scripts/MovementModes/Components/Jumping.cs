@@ -126,8 +126,8 @@ namespace Character
     {
         /// <summary>How many more times the character can start a jump before landing (given back on the ground).</summary>
         public int remaining;
-        /// <summary>The time (StepTime) the character last started a jump (negative infinity if it never has).</summary>
-        public float lastJumpTime = float.NegativeInfinity;
+        /// <summary>The step (MovementController.StepTick) the character last started a jump in (NeverTick if it never has).</summary>
+        public long lastJumpTick = MovementController.NeverTick;
         /// <summary>How high the character's feet were when it last started a jump (for cutting a jump short: see Jumping).</summary>
         public float startHeight;
         /// <summary>

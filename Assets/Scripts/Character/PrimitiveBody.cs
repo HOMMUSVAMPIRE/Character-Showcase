@@ -583,7 +583,8 @@ namespace Character
                 if (Owner.IsOwnCollider(h.collider.transform)) { continue; }
                 // hit.distance of 0 means we started already overlapping — skip so we can slide out instead of locking up.
                 if (h.distance <= 0f) { continue; }
-                if (h.distance < min) { min = h.distance; closest = h; found = true; }
+                // The nearest; of two as near, the first in the stable order (see StableOrder).
+                if (StableOrder.Better(h.distance, min, h, closest)) { min = h.distance; closest = h; found = true; }
             }
             return found;
         }
@@ -612,6 +613,8 @@ namespace Character
         private bool PushOut(BodyShape s, int part, Vector3 feet, Quaternion rotation, float skin, ColliderBuffer overlaps, ref Vector3 offset)
         {
             int count = Overlap(s, feet + offset, rotation, skin, overlaps);
+            // Pushed out of each in turn, so the order changes where it ends up: the stable order, not the order they came in.
+            if (count > 1) { StableOrder.Sort(overlaps, count); }
             bool pushed = false;
             Collider query = null;
             try

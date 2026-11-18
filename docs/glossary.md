@@ -53,7 +53,9 @@ Terms this project uses with a meaning of its own, and where each is explained.
 
 **Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MovementController's Size Scaling. See [Character Size](movement.md#character-size).
 
-**Step time.** The character's own clock (`MovementController.StepTime`), which movement times things by, so a movement simulation stepped faster than real time behaves the same.
+**Step tick.** The character's own clock, in whole steps (`MovementController.StepTick`; `StepTime` is it in seconds), which movement times things by (`SecondsSince`), so a movement simulation stepped faster than real time behaves the same.
+
+**Level clock.** The tick the level's moving mechanics (platforms, pushables, ropes) go by (`Level.LevelClock`): Unity's fixed steps, unless something sets it (a networked game's tick, the test rig's).
 
 **Step trace.** A record of a test run step by step (`StepTrace`): where the character was, how it was found on the ground, what collision did and how far its feet were above the ground under them, written to Logs/StepTraces by the ground contact tests. See [Testing](testing.md).
 

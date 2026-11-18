@@ -30,8 +30,6 @@ namespace Character
         /// </summary>
         public float deltaTime { get; set; }
 
-        /// <summary>When the character was last on the ground, in the MovementController's StepTime.</summary>
-        public float lastGroundedTime = 0f;
 
         /// <summary>
         /// Seconds since the character was last on the ground (0 while grounded). Drives coyote time, the coyote
@@ -173,7 +171,6 @@ namespace Character
             lookFlat = default;
             lookForward = default;
             deltaTime = 0f;
-            lastGroundedTime = 0f;
             timeSinceGrounded = 0f;
             previousState = default;
             _initialPosition = default;

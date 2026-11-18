@@ -36,8 +36,8 @@ namespace Level
         // may move this box and then ask about it within one step.
         private Vector3 position;
         private float fallSpeed;
-        // When it last moved itself (Time.fixedTime), to know when its Rigidbody has caught up (see FixedUpdate).
-        private float lastMoveTime = float.NegativeInfinity;
+        // The step it last moved itself in (LevelClock.Tick), to know when its Rigidbody has caught up (see FixedUpdate).
+        private long lastMoveTick = long.MinValue / 4;
         private Transform holder;
         private readonly RaycastHitBuffer hits = new(16, "PushableObject.hits");
 
@@ -109,7 +109,7 @@ namespace Level
             Vector3 moved = delta * (FreeDistance(delta, distance) / distance);
             position += moved;
             body.MovePosition(position);
-            lastMoveTime = Time.fixedTime;
+            lastMoveTick = LevelClock.Tick;
             return moved;
         }
 
@@ -121,7 +121,7 @@ namespace Level
             // Something else may have moved it (by its transform, say). Only once no move of its own is still on its
             // way: a MovePosition reaches Rigidbody.position at the physics step after it's made, which may be after
             // this one, so a move made in the last step may not have arrived yet.
-            if (!IsHeld && lastMoveTime < Time.fixedTime - 1.5f * Time.fixedDeltaTime) { position = body.position; }
+            if (!IsHeld && LevelClock.Tick - lastMoveTick >= 2) { position = body.position; }
             if (IsHeld || gravity <= 0f) { return; }
             if (IsSupported)
             {

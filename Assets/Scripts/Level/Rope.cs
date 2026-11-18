@@ -38,9 +38,9 @@ namespace Level
         // drawing between them), and, swinging by itself, its bottom end's velocity.
         private Vector3 direction = Vector3.down, previousDirection = Vector3.down;
         private Vector3 tipVelocity;
-        // The physics step (Time.fixedTime) direction was last moved on from, so it's moved on once per step, whether the
+        // The physics step (LevelClock.Tick) direction was last moved on from, so it's moved on once per step, whether the
         // rope's own FixedUpdate or a holder comes first.
-        private float snapshotTime = float.NegativeInfinity;
+        private long snapshotTick = long.MinValue;
         private Object holder;
 
         private Mesh mesh;
@@ -122,8 +122,8 @@ namespace Level
         /// <summary>The rope's way down as the last physics step left it becomes the one before, once each step.</summary>
         private void Snapshot()
         {
-            if (snapshotTime == Time.fixedTime) { return; }
-            snapshotTime = Time.fixedTime;
+            if (snapshotTick == LevelClock.Tick) { return; }
+            snapshotTick = LevelClock.Tick;
             previousDirection = direction;
         }
 

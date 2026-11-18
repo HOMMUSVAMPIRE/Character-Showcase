@@ -204,18 +204,45 @@ namespace Character
         // doesn't touch this file.
 
         /// <summary>
-        /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times
-        /// things by it rather than by Time.fixedTime, so a copy of the character stepped faster than real time (see
-        /// MovementSimulation) times them the same.
+        /// The character's own clock, in whole steps: the step under way, counted from 1 (0 before its first; SetClock
+        /// starts it elsewhere). Movement times things by it, never by Time.fixedTime: it keeps the tick something
+        /// happened at and asks SecondsSince, so timing is exact however long the character has run (a float of seconds
+        /// added to step by step drifts, and loses its fractions as it grows), and a copy of the character stepped faster
+        /// than real time (see MovementSimulation), or replayed from any tick, times things the same.
         /// </summary>
-        public float StepTime { get; private set; }
+        public long StepTick { get; private set; }
+
+        /// <summary>The length (s) of the character's steps: the last one's, as it was given (see ProcessMovementInputs).</summary>
+        public float StepLength { get; private set; }
+
+        /// <summary>The clock in seconds (StepTick steps of StepLength), for showing it. To time something, keep its tick (SecondsSince).</summary>
+        public float StepTime => (float)(StepTick * (double)StepLength);
+
+        /// <summary>
+        /// How long (s) since the step tick given: the whole steps between, times the step length (as an input's hold
+        /// duration is: see InputState), exact however long the character has run.
+        /// </summary>
+        public float SecondsSince(long tick) => (StepTick - tick) * StepLength;
+
+        /// <summary>A tick that never was (before any): SecondsSince it is longer than anything is timed for.</summary>
+        public const long NeverTick = long.MinValue / 4;
+
+        /// <summary>
+        /// Starts the character's clock at tick (its Tick, and the step its next step is), before its first step: for a
+        /// character that joins a clock already running (a networked game's), or a test of a long session.
+        /// </summary>
+        public void SetClock(uint tick)
+        {
+            Tick = tick;
+            StepTick = tick;
+        }
 
         // Runtime state, so not serialized: a saved value (the prefab used to store 0) would override "never grounded".
-        /// <summary>The time (StepTime) at which the character was last on the ground (negative infinity until they first touch it).</summary>
-        [System.NonSerialized] public float lastGroundedTime = float.NegativeInfinity;
+        /// <summary>The step (StepTick) the character was last on the ground in (NeverTick until it first touches it).</summary>
+        [System.NonSerialized] public long lastGroundedTick = NeverTick;
 
         /// <summary>Whether the character has started a jump since they were last on the ground.</summary>
-        public bool HasJumpedSinceGrounded => jump.lastJumpTime >= lastGroundedTime;
+        public bool HasJumpedSinceGrounded => jump.lastJumpTick >= lastGroundedTick;
 
         // Caps time since grounded so "never grounded" stays a finite number when evaluating curves with it.
         private const float MaxTimeSinceGrounded = 1000f;
@@ -232,10 +259,11 @@ namespace Character
         /// worked out from the frame (InputState), what the movement mode makes of it (RunMovementMode), then resolving
         /// that against the world and moving the Rigidbody (ResolveAndApply).
         /// </summary>
-        public void ProcessMovementInputs(in CharacterInputFrame frame)
+        public void ProcessMovementInputs(in CharacterInputFrame frame, float stepLength)
         {
             using (StepMarker.Auto())
             {
+                StepLength = stepLength;
                 MovementData data = StartStep();
                 InputState.Advance(frame, data.deltaTime);
                 // The move input is relative to the frame's look (the player's camera, an AI's aim): the movement never
@@ -266,7 +294,7 @@ namespace Character
         /// </summary>
         private MovementData StartStep()
         {
-            StepTime += Time.fixedDeltaTime;
+            StepTick++;
             // Whether the last frame's movement data is valid to be used (will be false on the first frame)
             bool hasLastFrameMovement = lastFrameMovementData != null;
 
@@ -274,7 +302,7 @@ namespace Character
             // from), reset, so a step allocates none. Populated with some initial data.
             MovementData data = lastFrameMovementData == stepData[0] ? stepData[1] : stepData[0];
             data.Reset();
-            data.deltaTime = Time.fixedDeltaTime;
+            data.deltaTime = StepLength;
             data.initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position;
             // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a smoothed render
             // pose that lags behind the simulation.
@@ -305,14 +333,13 @@ namespace Character
             // If we are on the ground, update related data on the movement data object
             if (data.initialGrounded)
             {
-                lastGroundedTime = StepTime;
+                lastGroundedTick = StepTick;
                 data.state = data.state | CharacterState.Grounded;
             }
             // Always pass these on, including while airborne: coyote time and the coyote gravity and air steering
             // curves all measure time since leaving the ground. (Previously they were only set while grounded, so in
             // the air they measured time since the game started and those features never took effect.)
-            data.lastGroundedTime = lastGroundedTime;
-            data.timeSinceGrounded = Mathf.Min(StepTime - lastGroundedTime, MaxTimeSinceGrounded);
+            data.timeSinceGrounded = Mathf.Min(SecondsSince(lastGroundedTick), MaxTimeSinceGrounded);
 
             // Setup initial movement data before calculation to avoid weird behaviour
             data.directMovementVector = Vector3.zero;
@@ -433,7 +460,8 @@ namespace Character
         /// <param name="force"></param>
         public void AddForce(Vector3 force)
         {
-            AddVelocityChange(force * Time.fixedDeltaTime / rb.mass);
+            // Over a step: the last step's length (the physics step's before the first).
+            AddVelocityChange(force * (StepLength > 0f ? StepLength : Time.fixedDeltaTime) / rb.mass);
         }
 
         /// <summary>

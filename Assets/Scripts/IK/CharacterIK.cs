@@ -81,6 +81,9 @@ namespace Character
     [DisallowMultipleComponent]
     public class CharacterIK : MonoBehaviour
     {
+        // Where the animation state (its update's time) comes from: the character's AnimationController.
+        private ICharacterAnimationStateSource stateSource;
+
         [Tooltip("Scales every limb's IK weights. Set to 0 to turn all IK off without losing per-limb settings.")]
         [Range(0f, 1f)] public float masterWeight = 1f;
 
@@ -247,7 +250,9 @@ namespace Character
         {
             if (layerIndex != 0) { return; }
             receivedIKCallback = true;
-            float dt = Time.deltaTime;
+            // The Animator update's time (see CharacterAnimationStates.DeltaTimeOf): the frame's in the game, and what a
+            // test stepping the Animator by hand stepped it by.
+            float dt = CharacterAnimationStates.DeltaTimeOf(stateSource ??= GetComponentInParent<ICharacterAnimationStateSource>(), animator);
 
             BeforeSolve?.Invoke(animator);
 

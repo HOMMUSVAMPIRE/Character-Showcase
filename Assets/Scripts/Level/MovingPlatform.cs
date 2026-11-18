@@ -3,7 +3,9 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A platform that travels back and forth along an offset and/or spins, a kinematic Rigidbody. Each physics step it
+    /// A platform that travels back and forth along an offset and/or spins, a kinematic Rigidbody. Where it is is a function
+    /// of the level's clock (LevelClock), not of when it was enabled: one enabled late is where an early one is, and two
+    /// machines on the same tick see it in the same place. Each physics step it
     /// moves first, before the characters (see FixedUpdate), so a character standing on it rides it exactly; each frame
     /// it's drawn between its last two physics poses, as the characters' interpolated Rigidbodies are (see Update), so
     /// it's smooth in step with them.
@@ -37,7 +39,6 @@ namespace Level
         private Rigidbody body;
         private Vector3 startPosition;
         private Quaternion startRotation;
-        private float elapsed;
         // Its last two physics poses, drawn between (see Update).
         private Vector3 previousPosition, currentPosition;
         private Quaternion previousRotation, currentRotation;
@@ -52,6 +53,26 @@ namespace Level
             body.interpolation = RigidbodyInterpolation.None;
             startPosition = previousPosition = currentPosition = body.position;
             startRotation = previousRotation = currentRotation = body.rotation;
+        }
+
+        private void OnEnable()
+        {
+            // Where the clock has it now, rather than jumping there at its next step.
+            if (body == null) { return; }
+            PoseAt(LevelClock.Tick, out currentPosition, out currentRotation);
+            previousPosition = currentPosition;
+            previousRotation = currentRotation;
+            body.position = currentPosition;
+            body.rotation = currentRotation;
+            transform.SetPositionAndRotation(currentPosition, currentRotation);
+        }
+
+        /// <summary>Where the platform is at a tick of the level's clock: its start pose, moved along its trip and spun for the time since tick 0.</summary>
+        public void PoseAt(long tick, out Vector3 position, out Quaternion rotation)
+        {
+            float elapsed = (float)LevelClock.SecondsAt(tick);
+            position = startPosition + startRotation * travel * TravelFraction(elapsed / period + phaseOffset);
+            rotation = startRotation * Quaternion.Euler(spinDegreesPerSecond * elapsed);
         }
 
         private void OnDisable()
@@ -72,11 +93,9 @@ namespace Level
         /// </summary>
         private void FixedUpdate()
         {
-            elapsed += Time.fixedDeltaTime;
             previousPosition = currentPosition;
             previousRotation = currentRotation;
-            currentPosition = startPosition + startRotation * travel * TravelFraction(elapsed / period + phaseOffset);
-            currentRotation = startRotation * Quaternion.Euler(spinDegreesPerSecond * elapsed);
+            PoseAt(LevelClock.Tick, out currentPosition, out currentRotation);
             body.position = currentPosition;
             body.rotation = currentRotation;
             transform.SetPositionAndRotation(currentPosition, currentRotation);

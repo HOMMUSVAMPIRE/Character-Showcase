@@ -97,7 +97,7 @@ namespace Character
         public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallSlideState slide = controller.wallSlide;
-            RememberApproach(movementData, slide, controller.StepTime);
+            RememberApproach(movementData, slide, controller.StepTick);
             if (!slide.IsWallSliding && !TryStartWallSlide(movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
@@ -209,15 +209,15 @@ namespace Character
         /// Remembers how the character is moving (horizontally) while it's moving: hitting a wall stops it, and the
         /// speed it hit with is what a slide starts from (see Approach).
         /// </summary>
-        private static void RememberApproach(MovementData movementData, WallSlideState slide, float now)
+        private static void RememberApproach(MovementData movementData, WallSlideState slide, long now)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 horizontal = new Vector3(inertia.x, 0f, inertia.z);
-            if (movementData.initialGrounded) { slide.approachTime = float.NegativeInfinity; return; }
+            if (movementData.initialGrounded) { slide.approachTick = MovementController.NeverTick; return; }
             if (horizontal.sqrMagnitude > 0.25f)
             {
                 slide.approachVelocity = horizontal;
-                slide.approachTime = now;
+                slide.approachTick = now;
             }
         }
 
@@ -229,7 +229,7 @@ namespace Character
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
-            bool remembered = controller.StepTime - slide.approachTime <= WallSlideApproachMemory * controller.DurationScale;
+            bool remembered = controller.SecondsSince(slide.approachTick) <= WallSlideApproachMemory * controller.DurationScale;
             return remembered && slide.approachVelocity.sqrMagnitude > moving.sqrMagnitude ? slide.approachVelocity : moving;
         }
 
@@ -296,8 +296,8 @@ namespace Character
         /// stopped it.
         /// </summary>
         public Vector3 approachVelocity;
-        /// <summary>When (MovementController.StepTime) approachVelocity was last recorded.</summary>
-        public float approachTime = float.NegativeInfinity;
+        /// <summary>The step (MovementController.StepTick) approachVelocity was last recorded in (NeverTick for none).</summary>
+        public long approachTick = MovementController.NeverTick;
         /// <summary>
         /// A wall (its normal) the character slid off the end of, or dropped from: not slid down again until it touches
         /// the ground.

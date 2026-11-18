@@ -413,7 +413,7 @@ namespace Character
         private void LateUpdate()
         {
             // Only on a pose the Animator has just written: one stepped by hand is solved by whoever steps it.
-            if (animator != null && animator.isActiveAndEnabled) { Solve(Time.deltaTime); }
+            if (animator != null && animator.isActiveAndEnabled) { Solve(CharacterAnimationStates.DeltaTimeOf(stateSource, animator)); }
         }
 
         /// <summary>

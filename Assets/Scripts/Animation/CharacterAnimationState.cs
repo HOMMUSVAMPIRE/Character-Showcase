@@ -31,6 +31,13 @@ namespace Character
         public float bodyPitch;
 
         /// <summary>
+        /// The time (seconds) the animation update this state was built for covers: what the IK eases by when the Animator
+        /// is stepped by hand (see CharacterAnimationStates.DeltaTimeOf), so a test stepping it with the physics gets the
+        /// step's, not the render frame's. 0 before the first update.
+        /// </summary>
+        public float deltaTime;
+
+        /// <summary>
         /// Whether the character should be animated as on the ground. Stays true for a moment after leaving the ground
         /// without jumping, so stepping off small ledges and bumps doesn't flash the falling animation.
         /// </summary>
@@ -226,5 +233,27 @@ namespace Character
     {
         /// <summary>The character's animation state as of its latest update.</summary>
         CharacterAnimationState AnimationState { get; }
+    }
+
+    /// <summary>Helpers for what reads the animation state.</summary>
+    public static class CharacterAnimationStates
+    {
+        /// <summary>
+        /// The time the Animator's update that IK is solving in covers, for the IK to ease by. An Animator that updates
+        /// itself (enabled) updates by the frame's time, or the physics step's or the unscaled frame's for those update
+        /// modes. One turned off is being stepped by hand (a test's, with Animator.Update) as its animation state was fed:
+        /// by the state's time (CharacterAnimationState.deltaTime), the frame's if there's none yet.
+        /// </summary>
+        public static float DeltaTimeOf(ICharacterAnimationStateSource source, Animator animator)
+        {
+            if (animator == null || animator.enabled)
+            {
+                return animator != null && animator.updateMode == AnimatorUpdateMode.Fixed ? Time.fixedDeltaTime
+                    : animator != null && animator.updateMode == AnimatorUpdateMode.UnscaledTime ? Time.unscaledDeltaTime
+                    : Time.deltaTime;
+            }
+            float dt = source != null ? source.AnimationState.deltaTime : 0f;
+            return dt > 0f ? dt : Time.deltaTime;
+        }
     }
 }

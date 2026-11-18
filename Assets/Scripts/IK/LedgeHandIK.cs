@@ -50,7 +50,7 @@ namespace Character
         [Tooltip("Vaulting: seconds over which the body, lowered for the planted hand to reach the top, eases down and back up. A vault " +
                  "swings over the top in a moment, its progress racing through the end of the planting, so eased by progress " +
                  "alone the body popped back up in a frame or two")]
-        [Min(0f)] [SerializeField] private float vaultSmoothTime = 0.08f;
+        [Min(0f)] [SerializeField] private float vaultSmoothTime = 0.03f;
 
         // The last ledge held, kept while easing out after letting go so the hands don't snap.
         private Vector3 edge, wallNormal;
@@ -153,7 +153,7 @@ namespace Character
             // Planted at once, but let go of over the fade time: the body passes over the hand in a step or two, and let go
             // of with it, the hand snapped from the top to where the animation has it.
             if (!state.vaulting) { goal = 0f; }
-            vaultWeight = goal >= vaultWeight || fadeTime <= 0f ? goal : Mathf.MoveTowards(vaultWeight, goal, Time.deltaTime / fadeTime);
+            vaultWeight = goal >= vaultWeight || fadeTime <= 0f ? goal : Mathf.MoveTowards(vaultWeight, goal, DeltaTime / fadeTime);
             if (vaultNormal == Vector3.zero) { return; }
             if (vaultWeight <= 0f)
             {
@@ -184,7 +184,7 @@ namespace Character
         private void EaseVaultShift(Animator animator, float target)
         {
             vaultShift = vaultSmoothTime > 0f
-                ? Mathf.SmoothDamp(vaultShift, target, ref vaultShiftVelocity, vaultSmoothTime, Mathf.Infinity, Time.deltaTime) : target;
+                ? Mathf.SmoothDamp(vaultShift, target, ref vaultShiftVelocity, vaultSmoothTime, Mathf.Infinity, DeltaTime) : target;
             if (target == 0f && Mathf.Abs(vaultShift) < 1e-4f) { vaultShift = 0f; vaultShiftVelocity = 0f; }
             animator.bodyPosition += Vector3.up * vaultShift;
         }

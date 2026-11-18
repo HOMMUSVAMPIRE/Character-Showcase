@@ -91,7 +91,7 @@ namespace Character
             JumpState jump = controller.jump;
             if (jump.remaining <= 0) { return false; }
             jump.remaining--;
-            jump.lastJumpTime = controller.StepTime;
+            jump.lastJumpTick = controller.StepTick;
             return true;
         }
 
@@ -173,7 +173,7 @@ namespace Character
         /// </summary>
         public static void StartWallJumpSteeringRecovery(MovementController controller)
         {
-            controller.lastGroundedTime = controller.StepTime;
+            controller.lastGroundedTick = controller.StepTick;
             controller.wallJump.recovering = true;
             controller.wallJump.elapsed = 0f;
         }

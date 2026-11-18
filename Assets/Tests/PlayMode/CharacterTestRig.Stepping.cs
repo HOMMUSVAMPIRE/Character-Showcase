@@ -119,6 +119,29 @@ namespace CharacterShowcase.Tests
 
         private readonly FixedStepper stepper;
 
+        // The level's clock while the rig is in use (see LevelClock.TickSource): the physics steps a character step was
+        // due in, ticked before the level's platforms move (LevelTicker).
+        private long levelTick;
+
+        /// <summary>The level's clock (LevelClock.Tick) while the rig is in use: set it back to put the level back as it was then (its moving platforms where they were).</summary>
+        public long LevelTick { get => levelTick; set => levelTick = value; }
+
+        /// <summary>
+        /// Ticks the rig's level clock at the start of each physics step the rig steps its character in, before the moving
+        /// platforms move to the tick (their MoveOrder): so in the first step a platform is at tick 1, its first step's
+        /// pose, as it was when platforms counted their own time from when they were made.
+        /// </summary>
+        [DefaultExecutionOrder(Level.MovingPlatform.MoveOrder - 10)]
+        private sealed class LevelTicker : MonoBehaviour
+        {
+            public CharacterTestRig rig;
+
+            private void FixedUpdate()
+            {
+                if (rig != null && rig.stepper != null && rig.stepper.Next != null) { rig.levelTick++; }
+            }
+        }
+
         /// <summary>
         /// Runs the rig's next character step in FixedUpdate, after the level's moving platforms (MovingPlatform.MoveOrder)
         /// have moved and before the physics step, as ACCharacterController does in the game. Stepped after the physics

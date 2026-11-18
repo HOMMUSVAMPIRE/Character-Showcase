@@ -29,7 +29,7 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit candidate = castHits[i];
-                if (IsOwnCollider(candidate.collider.transform) || candidate.distance >= nearest) { continue; }
+                if (IsOwnCollider(candidate.collider.transform) || !StableOrder.Better(candidate.distance, nearest, candidate, hit)) { continue; }
                 nearest = candidate.distance;
                 hit = candidate;
             }

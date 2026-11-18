@@ -171,7 +171,8 @@ namespace Character
                 Vector3 direction = line.Direction;
                 Vector3 from = line.Start + direction * margin, to = line.End - direction * margin;
                 float sqrDistance = MovementHelpers.SqrDistanceBetweenSegments(from, to, grip, gripNext, out float onCable, out _);
-                if (sqrDistance > bestSqrDistance) { continue; }
+                // The nearest; of two as near, the first by where it is (StableOrder), not the order they were enabled in.
+                if (sqrDistance > bestSqrDistance || (sqrDistance == bestSqrDistance && best != null && StableOrder.Compare(line.Start, best.Start) >= 0)) { continue; }
                 best = line;
                 bestSqrDistance = sqrDistance;
                 bestAlong = margin + onCable * (length - 2f * margin);
