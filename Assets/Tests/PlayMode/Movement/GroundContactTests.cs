@@ -66,7 +66,7 @@ namespace CharacterShowcase.Tests.Movement
         {
             if (!character.StartsWith("Fox")) { return CharacterTestRig.CharacterPrefab(); }
             GameObject fox = CharacterTestRig.LoadPrefab(FoxPrefabPath);
-            if (fox == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (fox == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             return fox;
         }
 

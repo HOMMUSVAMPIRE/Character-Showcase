@@ -10,9 +10,9 @@ namespace CharacterShowcase.EditorTools
     /// Sets up the motion-capture clips in Assets/Animation/CMU as Humanoid animations, so they play on any humanoid
     /// model. Each clip gets its own avatar, as each was captured from a performer of their own proportions, mapped by
     /// the CMU skeleton's bone names (not left to Unity's guesswork, which can take a buttock for a thigh) and with the
-    /// T-pose the file rests in as its reference pose (see Tools/Animation/tpose_rest.py). The clip starts after its
-    /// first frame, which is that T-pose rather than part of the motion. Its root motion has already been taken out (see
-    /// Tools/Animation/remove_root_motion.py); the height and sway that are left are baked into the pose, and its facing
+    /// T-pose the file rests in as its reference pose (each file was made to rest in one before it was added). The clip
+    /// starts after its first frame, which is that T-pose rather than part of the motion. Its root motion has already been
+    /// taken out (before it was added, too); the height and sway that are left are baked into the pose, and its facing
     /// is taken from the body, so every clip faces the way the character does, whichever way it was captured.
     /// </summary>
     public static class MotionCaptureClipImporter

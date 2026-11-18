@@ -83,7 +83,7 @@ namespace CharacterShowcase.EditorTools
 
             ModelImporterClipAnimation[] takes = importer.defaultClipAnimations;
             if (takes == null || takes.Length == 0) { return "It has no animation."; }
-            // Each clip's height offset is kept: MannequinGenerator sets it, to stand the clip on the mannequin's floor.
+            // Each clip's height offset is kept: Prepare Animations sets it, to stand the clip on the mannequin's floor.
             Dictionary<string, float> offsets = (importer.clipAnimations ?? new ModelImporterClipAnimation[0])
                 .GroupBy(c => c.name).ToDictionary(g => g.Key, g => g.First().heightOffset);
             ModelImporterClipAnimation[] wanted = takes

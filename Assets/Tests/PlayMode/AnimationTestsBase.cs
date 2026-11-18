@@ -17,6 +17,23 @@ namespace CharacterShowcase.Tests
 
         protected AnimationController animation;
         protected Animator animator;
+        // The steps the Animator has been stepped by hand this test, for recording its parameters (see AnimationRecorder).
+        private int animatorSteps;
+
+        [SetUp]
+        public void BeginRecording()
+        {
+            animatorSteps = 0;
+            AnimationRecorder.BeginTest();
+        }
+
+        /// <summary>A picture of the model as the test ends, if poses are being captured (see AnimationRecorder).</summary>
+        [UnityTearDown]
+        public IEnumerator CaptureTheEndPose()
+        {
+            if (rig != null && rig.Character != null) { AnimationRecorder.CapturePose(rig.Character); }
+            yield break;
+        }
 
 
         /// <summary>Feeds the latest movement to the animator, as ACCharacterController does each frame in the game.</summary>
@@ -48,6 +65,7 @@ namespace CharacterShowcase.Tests
         {
             FeedAnimator(step);
             animator.Update(Time.fixedDeltaTime);
+            if (AnimationRecorder.RecordingParameters) { AnimationRecorder.RecordParameters(animator, animatorSteps++); }
         }
 
         /// <summary>Spawns the character on a floor with its own model, and skips the test if that isn't a humanoid.</summary>

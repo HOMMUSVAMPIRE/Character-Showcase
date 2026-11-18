@@ -41,6 +41,9 @@ namespace CharacterShowcase.EditorTools
                 "The button a press of which starts it, or None. A button of its own is a step of its own (see AGENTS.md, Input)."), answers.button);
             answers.levelElement = EditorGUILayout.Toggle(new GUIContent("At A Level Element",
                 "It starts near a level element of its own, made with it (as a zipline is caught near a cable)."), answers.levelElement);
+            answers.needsIK = EditorGUILayout.Toggle(new GUIContent("Needs IK",
+                "It gets an IK component of its own, placing the limbs while it's under way (hands on what it holds, say), " +
+                "which every humanoid model gets once Prepare Character Models runs."), answers.needsIK);
             answers.area = (AbilityScaffold.Area)EditorGUILayout.EnumPopup(new GUIContent("Kind",
                 "Abilities: what the character does by itself. Traversal: getting about the level (climbing, ropes, water). Picks its " +
                 "docs page and its tests' folder."), answers.area);
@@ -115,7 +118,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// For -executeMethod: makes the ability given by -abilityName [Name], with -kind [TakesOver|OnTopOfWalking],
         /// -button [None|Jump|Dash|Crouch|Roll|Grab], -after [a default component, or first], -area [Abilities|Traversal] and
-        /// -levelElement, then exits (code 1 if it can't). Run MovementModeSync.AddToAllModesFromCommandLine after it, once
+        /// -levelElement and -needsIK, then exits (code 1 if it can't). Run MovementModeSync.AddToAllModesFromCommandLine after it, once
         /// it's compiled, to give it to the movement modes.
         /// </summary>
         public static void MakeFromCommandLine()
@@ -124,6 +127,7 @@ namespace CharacterShowcase.EditorTools
             {
                 name = CommandLine.Argument("-abilityName") ?? "",
                 levelElement = CommandLine.Has("-levelElement"),
+                needsIK = CommandLine.Has("-needsIK"),
             };
             string after = CommandLine.Argument("-after");
             if (after != null) { made.after = after == "first" ? null : after; }

@@ -129,6 +129,12 @@ namespace Character
         public virtual StateEvent[] StateEvents => System.Array.Empty<StateEvent>();
 
         /// <summary>
+        /// The names of the values this component publishes for its look (AbilityValues, set during its step), so an
+        /// Animator Parameter Translator's inspector can offer them (Shows > Ability Value). Empty for none.
+        /// </summary>
+        public virtual string[] AbilityValueNames => System.Array.Empty<string>();
+
+        /// <summary>
         /// When no ability has the character this step (none took it over), before it walks, dashes and jumps: for what
         /// changes how it moves on its own (crouching, say).
         /// </summary>

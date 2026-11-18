@@ -84,6 +84,34 @@ namespace CharacterShowcase.Tests.Animations
         }
 
         [UnityTest]
+        public IEnumerator AFloatShowingAnAbilityValue_IsSetFromIt_AndLeftAsItIsUntilItsSet()
+        {
+            yield return AnimatorWithTheModelsController();
+            var translator = rig.Track(ScriptableObject.CreateInstance<AnimatorParameterTranslator>());
+            translator.BoolParameters = new AnimatorParameterTranslator.BoolParameter[0];
+            translator.PlaybackParameters = new AnimatorParameterTranslator.PlaybackParameter[0];
+            translator.FloatParameters = new[]
+            {
+                new AnimatorParameterTranslator.FloatParameter(AnimatorParameterTranslator.AbilitySourceOf("Test Tilt"), AnimatorParameterTranslator.DefaultRollProgressParameter),
+                new AnimatorParameterTranslator.FloatParameter("Wall Side", AnimatorParameterTranslator.DefaultWallSideParameter),
+            };
+            ICharacterAnimationDriver driver = translator.CreateDriver(animator.gameObject, animator);
+            var values = new AbilityValues();
+            animator.SetFloat(AnimatorParameterTranslator.DefaultRollProgressParameter, 0.25f);
+            driver.UpdateAnimation(new CharacterAnimationState { abilityValues = values }, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultRollProgressParameter), Is.EqualTo(0.25f),
+                "An ability value not set yet leaves its parameter as it is.");
+
+            values.Set(new AbilityValueId("Test Tilt"), 0.75f);
+            driver.UpdateAnimation(new CharacterAnimationState { abilityValues = values, wallRunning = true, wallSide = -1f }, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultRollProgressParameter), Is.EqualTo(0.75f), "Set, it shows the value.");
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultWallSideParameter), Is.EqualTo(-1f));
+            driver.UpdateAnimation(new CharacterAnimationState { abilityValues = values }, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultWallSideParameter), Is.EqualTo(-1f),
+                "Out of a wall run, Wall Side keeps the side it was (its source shows nothing).");
+        }
+
+        [UnityTest]
         public IEnumerator ANewTranslatorsBools_NameTheMannequinsParameters_AndSourcesThatExist()
         {
             yield return AnimatorWithTheModelsController();

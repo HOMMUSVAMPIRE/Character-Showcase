@@ -13,6 +13,7 @@ namespace Character
     /// The line comes from the character's animation state (CharacterAnimationState.gripPoint and gripDirection), found in
     /// the model's parents, as FootPlacementIK finds it; hands are placed through CharacterIK's procedural goals.
     /// </summary>
+    [HumanoidIK(40)]
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
     public class LineGripIK : AbilityIK

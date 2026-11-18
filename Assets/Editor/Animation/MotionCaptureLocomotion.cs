@@ -10,7 +10,7 @@ namespace CharacterShowcase.EditorTools
 {
     /// <summary>
     /// The character's walk, run, rise and fall animations, cut from the motion-capture clips in Assets/Animation/CMU,
-    /// for MannequinGenerator to build the shared Animator Controller from. (Standing idle is the mannequin's own: a
+    /// and the measurements an Animator Layout's numbers are measured by (AnimatorControllerBuilder). (Standing idle is the mannequin's own: a
     /// performer standing still is never quite still or evenly balanced, which foot placement and the camera notice.)
     ///
     /// Walking and running are made to loop: in the steady middle of each candidate take (away from the

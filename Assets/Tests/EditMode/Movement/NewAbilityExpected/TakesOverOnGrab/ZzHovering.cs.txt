@@ -21,6 +21,14 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.zzHovering.IsActive;
         /// <summary>Under way, it holds the character up (it isn't falling).</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Hovering Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Hovering Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
         /// <summary>The events of ZzHovering starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =
@@ -50,7 +58,14 @@ namespace Character
             // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
             movementData.velocityOverride = Vector3.zero;
             movementData.state |= CharacterState.ZzHovering;
+            PublishProgress(controller);
             return true;
+        }
+
+        private void PublishProgress(MovementController controller)
+        {
+            float duration = zzHoveringDuration * controller.DurationScale;
+            controller.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - controller.zzHovering.timeLeft / duration : 1f);
         }
 
         /// <summary>Whether Zz Hovering can start this step: turned on by a duration, and what starts it.</summary>

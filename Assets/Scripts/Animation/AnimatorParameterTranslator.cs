@@ -155,6 +155,82 @@ namespace Character
             }
         }
 
+        /// <summary>
+        /// A float Animator parameter, and what it shows: one of the animation state's own values (AnimationFloats, by
+        /// name), or a value an ability publishes (AbilityPrefix and its name: see AbilityValues). A source with nothing to
+        /// show this frame (NaN: Wall Side out of a wall run, an ability value not yet set) leaves the parameter as it is.
+        /// </summary>
+        [Serializable]
+        public struct FloatParameter
+        {
+            [Tooltip("What the parameter shows: a value of the animation state, or a value an ability publishes (Ability: ...)")]
+            public string source;
+            [Tooltip("The name of the Animator float parameter it sets")]
+            public string parameter;
+            [Tooltip("Whether it's eased toward its value over Speed Damp Time, so changes blend rather than snap")]
+            public bool smoothed;
+
+            /// <summary>A float parameter, by name, showing the given source.</summary>
+            public FloatParameter(string source, string parameter, bool smoothed = false)
+            {
+                this.source = source;
+                this.parameter = parameter;
+                this.smoothed = smoothed;
+            }
+        }
+
+        /// <summary>One way a playback parameter measures how fast the character goes: a speed and the speeds its loops are made for.</summary>
+        [Serializable]
+        public struct PlaybackAxis
+        {
+            [Tooltip("The float parameter giving the speed (m/s) this way, read as the Animator shows it (smoothed)")]
+            public string speedParameter;
+            [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the loop for a positive speed is made for, written there by whatever built the Animator Controller")]
+            public string topSpeedParameter;
+            [Tooltip("As Top Speed Parameter, for a negative speed (climbing down, or left); empty for the same")]
+            public string negativeTopSpeedParameter;
+
+            public PlaybackAxis(string speedParameter, string topSpeedParameter, string negativeTopSpeedParameter = "")
+            {
+                this.speedParameter = speedParameter;
+                this.topSpeedParameter = topSpeedParameter;
+                this.negativeTopSpeedParameter = negativeTopSpeedParameter;
+            }
+        }
+
+        /// <summary>
+        /// A playback parameter: set to how much faster than its loops are made for the character goes (at least 1), for a
+        /// speed-driven state's speed multiplier, so past the end of its blend tree its fastest loop plays faster, its feet
+        /// keeping up with the ground, however fast the character goes. With more than one axis (climbing across and up),
+        /// whichever it's furthest past.
+        /// </summary>
+        [Serializable]
+        public struct PlaybackParameter
+        {
+            [Tooltip("The name of the Animator float parameter set, a state's speed multiplier")]
+            public string parameter;
+            [Tooltip("The speeds it's worked out from, and the speeds their loops are made for")]
+            public PlaybackAxis[] axes;
+
+            public PlaybackParameter(string parameter, params PlaybackAxis[] axes)
+            {
+                this.parameter = parameter;
+                this.axes = axes;
+            }
+        }
+
+        /// <summary>What a float parameter's source starts with when it's a value an ability publishes (Ability: Glide Tilt).</summary>
+        public const string AbilityPrefix = "Ability: ";
+
+        /// <summary>The source of a float parameter showing the ability value of the given name.</summary>
+        public static string AbilitySourceOf(string valueName) => AbilityPrefix + valueName;
+
+        /// <summary>The translator's float parameters (Float Parameters, in its inspector), for code setting them up.</summary>
+        public FloatParameter[] FloatParameters { get => floatParameters; set => floatParameters = value ?? Array.Empty<FloatParameter>(); }
+
+        /// <summary>The translator's playback parameters (Playback Parameters, in its inspector).</summary>
+        public PlaybackParameter[] PlaybackParameters { get => playbackParameters; set => playbackParameters = value ?? Array.Empty<PlaybackParameter>(); }
+
         /// <summary>What a bool parameter's source starts with when it's one of the character's states (State: WallRunning).</summary>
         public const string StatePrefix = "State: ";
 
@@ -165,58 +241,18 @@ namespace Character
         public BoolParameter[] BoolParameters { get => boolParameters; set => boolParameters = value ?? Array.Empty<BoolParameter>(); }
 
         [Header("Float parameters")]
-        [Tooltip("Horizontal speed in m/s")]
-        [SerializeField] private string speedParameter = DefaultSpeedParameter;
-        [Tooltip("Seconds over which the speed is smoothed, so starting and stopping ease between clips")]
+        [Tooltip("The float parameters set each frame, each from what it shows: a value of the animation state (Speed, " +
+                 "Vault Progress, ...: worked out from the movement as the animation should show it), or a value an ability " +
+                 "publishes (Ability: ..., with no code). Parameters the controller doesn't have are skipped")]
+        [SerializeField] private FloatParameter[] floatParameters = DefaultFloatParameters();
+        [Tooltip("Seconds over which the smoothed float parameters are eased, so starting and stopping blend between clips")]
         [SerializeField] private float speedDampTime = 0.1f;
-        [Tooltip("Vertical speed in m/s (positive = rising)")]
-        [SerializeField] private string verticalSpeedParameter = DefaultVerticalSpeedParameter;
-        [Tooltip("Speed in m/s in the direction the character faces (for strafing blend trees)")]
-        [SerializeField] private string forwardSpeedParameter = "";
-        [Tooltip("Speed in m/s to the character's right (for strafing blend trees)")]
-        [SerializeField] private string sidewaysSpeedParameter = "";
-        [Tooltip("Turn rate in degrees per second (for leaning or turn-on-the-spot animations)")]
-        [SerializeField] private string turnSpeedParameter = "";
-        [Tooltip("Which side the wall is on during a wall run: 1 = right, -1 = left. Kept after a wall run ends, so an animation leaving it doesn't swing through the middle")]
-        [SerializeField] private string wallSideParameter = DefaultWallSideParameter;
-        [Tooltip("While holding an object: speed in m/s toward it (positive pushing, negative pulling); 0 otherwise")]
-        [SerializeField] private string grabSpeedParameter = DefaultGrabSpeedParameter;
-        [Tooltip("While climbing a climbable surface: speed in m/s to the right across it, as the model would climb at its authored size; 0 otherwise")]
-        [SerializeField] private string climbRightParameter = DefaultClimbRightParameter;
-        [Tooltip("While climbing a climbable surface: speed in m/s up it (negative climbing down), as the model would climb at its authored size; 0 otherwise")]
-        [SerializeField] private string climbUpParameter = DefaultClimbUpParameter;
-        [Tooltip("How far through stepping onto a climbable surface from the ground, or off its bottom onto the ground (0 to 1), for animations timed to it")]
-        [SerializeField] private string climbStepProgressParameter = DefaultClimbStepProgressParameter;
-        [Tooltip("How far through a roll (0 to 1), for a roll animation timed to it")]
-        [SerializeField] private string rollProgressParameter = DefaultRollProgressParameter;
-        [Tooltip("How far through a climb onto a ledge (0 to 1), for a climbing animation timed to it")]
-        [SerializeField] private string climbProgressParameter = DefaultClimbProgressParameter;
-        [Tooltip("About how far through a vault over something low (0 to 1), for a vaulting animation timed to it")]
-        [SerializeField] private string vaultProgressParameter = DefaultVaultProgressParameter;
 
         [Header("Playback past the fastest loop")]
-        [Tooltip("Set to how much faster than its fastest loop is made for the character moves (at least 1), for the " +
-                 "Locomotion state's speed multiplier: so past the end of its blend tree, the fastest loop plays faster, its feet " +
-                 "keeping up with the ground, however fast the character goes")]
-        [SerializeField] private string locomotionPlaybackParameter = DefaultLocomotionPlaybackParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the Locomotion state's fastest loop is made " +
-                 "for, written there by whatever built the Animator Controller (Generate Mannequin does)")]
-        [SerializeField] private string locomotionTopSpeedParameter = DefaultLocomotionTopSpeedParameter;
-        [Tooltip("As Locomotion Playback, for the crouch walk (from the same speed)")]
-        [SerializeField] private string crouchPlaybackParameter = DefaultCrouchPlaybackParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the crouch walk is made for")]
-        [SerializeField] private string crouchTopSpeedParameter = DefaultCrouchTopSpeedParameter;
-        [Tooltip("As Locomotion Playback, for climbing a climbable surface (from Climb Right and Climb Up): past the speed a " +
-                 "climbing loop is made for, the way the character climbs, it plays faster")]
-        [SerializeField] private string climbPlaybackParameter = DefaultClimbPlaybackParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-up loop is made for")]
-        [SerializeField] private string climbUpTopSpeedParameter = DefaultClimbUpTopSpeedParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-down loop is made for")]
-        [SerializeField] private string climbDownTopSpeedParameter = DefaultClimbDownTopSpeedParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-left loop is made for")]
-        [SerializeField] private string climbLeftTopSpeedParameter = DefaultClimbLeftTopSpeedParameter;
-        [Tooltip("Read, not set: a parameter whose default value is the speed (m/s) the climbing-right loop is made for")]
-        [SerializeField] private string climbRightTopSpeedParameter = DefaultClimbRightTopSpeedParameter;
+        [Tooltip("Parameters set to how much faster than their loops are made for the character goes (at least 1), for " +
+                 "speed-driven states' speed multipliers: past the end of a blend tree, its fastest loop plays faster, its " +
+                 "feet keeping up with the ground, however fast the character goes")]
+        [SerializeField] private PlaybackParameter[] playbackParameters = DefaultPlaybackParameters();
 
         [Header("Bool parameters")]
         [Tooltip("The bool parameters set each frame, each from what it shows: a value of the animation state (Grounded, " +
@@ -232,37 +268,92 @@ namespace Character
         /// <summary>Reads a flag of the animation state (by reference: the state is large, and read 20-odd times a frame).</summary>
         public delegate bool StateFlag(in CharacterAnimationState state);
 
+
         /// <summary>Works out a float parameter's value from the animation state (by reference, as StateFlag).</summary>
-        private delegate float StateValue(in CharacterAnimationState state);
+        public delegate float StateValue(in CharacterAnimationState state);
 
         /// <summary>
-        /// The float parameters set each frame: each one's name setting (above, under Float parameters), its value from the
-        /// animation state, and whether it's smoothed (over Speed Damp Time). A new one is a row here and its name setting.
-        /// Speeds are given as the authored model would move: a scaled model's strides are scaled too, so playing its
-        /// clips for its speed divided by its stride scale keeps its planted feet in place at any size. Set by hand in
-        /// Driver.UpdateAnimation instead: Wall Side (set only during a wall run) and the playback parameters (worked out
-        /// from these as the Animator shows them).
+        /// The animation state's own values a float parameter can show, by name (its source). Speeds are given as the
+        /// authored model would move: a scaled model's strides are scaled too, so playing its clips for its speed divided by
+        /// its stride scale keeps its planted feet in place at any size. NaN leaves the parameter as it is (Wall Side, out
+        /// of a wall run, keeps the side it was, so an animation leaving the wall doesn't swing through the middle). A value
+        /// an ability publishes is a source too, with no row here (AbilityPrefix).
         /// </summary>
-        private static readonly (System.Func<AnimatorParameterTranslator, string> name, StateValue value, bool smoothed)[] FloatParameters =
+        public static readonly (string name, StateValue value)[] AnimationFloats =
         {
-            (t => t.speedParameter, (in CharacterAnimationState s) => s.horizontalSpeed / s.StrideScale, true),
+            ("Speed", (in CharacterAnimationState s) => s.horizontalSpeed / s.StrideScale),
             // Jump speeds scale with the character's speeds (see MovementController.SpeedScale), so this keeps the rising
             // and falling poses at the same points of a jump at any size.
-            (t => t.verticalSpeedParameter, (in CharacterAnimationState s) => s.verticalSpeed / (s.speedScale > 0f ? s.speedScale : 1f), false),
-            (t => t.forwardSpeedParameter, (in CharacterAnimationState s) => s.localVelocity.z / ModelScale(s).z, true),
-            (t => t.sidewaysSpeedParameter, (in CharacterAnimationState s) => s.localVelocity.x / ModelScale(s).x, true),
-            (t => t.turnSpeedParameter, (in CharacterAnimationState s) => s.turnSpeed, true),
+            ("Vertical Speed", (in CharacterAnimationState s) => s.verticalSpeed / (s.speedScale > 0f ? s.speedScale : 1f)),
+            ("Forward Speed", (in CharacterAnimationState s) => s.localVelocity.z / ModelScale(s).z),
+            ("Sideways Speed", (in CharacterAnimationState s) => s.localVelocity.x / ModelScale(s).x),
+            ("Turn Speed", (in CharacterAnimationState s) => s.turnSpeed),
             // As the authored model would push or pull.
-            (t => t.grabSpeedParameter, (in CharacterAnimationState s) => s.grabbing ? s.localVelocity.z / ModelScale(s).z : 0f, true),
-            (t => t.rollProgressParameter, (in CharacterAnimationState s) => s.rollProgress, false),
-            (t => t.climbProgressParameter, (in CharacterAnimationState s) => s.climbProgress, false),
-            (t => t.vaultProgressParameter, (in CharacterAnimationState s) => s.vaultProgress, false),
+            ("Grab Speed", (in CharacterAnimationState s) => s.grabbing ? s.localVelocity.z / ModelScale(s).z : 0f),
+            ("Roll Progress", (in CharacterAnimationState s) => s.rollProgress),
+            ("Climb Progress", (in CharacterAnimationState s) => s.climbProgress),
+            ("Vault Progress", (in CharacterAnimationState s) => s.vaultProgress),
             // Climbing, the character faces the surface, so its velocity relative to its facing is the climb: x to the
             // right, y up. As the authored model would climb, so its hands keep their holds.
-            (t => t.climbRightParameter, (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.x / ModelScale(s).x : 0f, true),
-            (t => t.climbUpParameter, (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.y / ModelScale(s).y : 0f, true),
-            (t => t.climbStepProgressParameter, (in CharacterAnimationState s) => s.climbStepProgress, false),
+            ("Climb Right", (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.x / ModelScale(s).x : 0f),
+            ("Climb Up", (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.y / ModelScale(s).y : 0f),
+            ("Climb Step Progress", (in CharacterAnimationState s) => s.climbStepProgress),
+            // Only during a wall run, and kept after it ends (NaN), so an animation leaving the wall doesn't swing through the middle.
+            ("Wall Side", (in CharacterAnimationState s) => s.wallRunning && s.wallSide != 0f ? s.wallSide : float.NaN),
         };
+
+        /// <summary>
+        /// A new translator's float parameters: the mannequin's Animator Controller's (each named its Default...Parameter),
+        /// each from the animation state's value of that name; the speeds smoothed.
+        /// </summary>
+        public static FloatParameter[] DefaultFloatParameters() => new[]
+        {
+            new FloatParameter("Speed", DefaultSpeedParameter, smoothed: true),
+            new FloatParameter("Vertical Speed", DefaultVerticalSpeedParameter),
+            new FloatParameter("Wall Side", DefaultWallSideParameter),
+            new FloatParameter("Grab Speed", DefaultGrabSpeedParameter, smoothed: true),
+            new FloatParameter("Climb Right", DefaultClimbRightParameter, smoothed: true),
+            new FloatParameter("Climb Up", DefaultClimbUpParameter, smoothed: true),
+            new FloatParameter("Climb Step Progress", DefaultClimbStepProgressParameter),
+            new FloatParameter("Roll Progress", DefaultRollProgressParameter),
+            new FloatParameter("Climb Progress", DefaultClimbProgressParameter),
+            new FloatParameter("Vault Progress", DefaultVaultProgressParameter),
+        };
+
+        /// <summary>
+        /// A new translator's playback parameters: the mannequin's Animator Controller's Locomotion and Crouch (by Speed),
+        /// and Wall Climb (by Climb Right and Climb Up, each way's loop made for its own speed).
+        /// </summary>
+        public static PlaybackParameter[] DefaultPlaybackParameters() => new[]
+        {
+            new PlaybackParameter(DefaultLocomotionPlaybackParameter, new PlaybackAxis(DefaultSpeedParameter, DefaultLocomotionTopSpeedParameter)),
+            new PlaybackParameter(DefaultCrouchPlaybackParameter, new PlaybackAxis(DefaultSpeedParameter, DefaultCrouchTopSpeedParameter)),
+            new PlaybackParameter(DefaultClimbPlaybackParameter,
+                new PlaybackAxis(DefaultClimbRightParameter, DefaultClimbRightTopSpeedParameter, DefaultClimbLeftTopSpeedParameter),
+                new PlaybackAxis(DefaultClimbUpParameter, DefaultClimbUpTopSpeedParameter, DefaultClimbDownTopSpeedParameter)),
+        };
+
+        /// <summary>
+        /// Where a float parameter's source is found: the index of one of AnimationFloats, or an ability value (index -1),
+        /// or neither (false: an unknown source, skipped).
+        /// </summary>
+        public static bool TryResolveFloat(string source, out int animationFloat, out AbilityValueId abilityValue)
+        {
+            animationFloat = -1;
+            abilityValue = default;
+            if (string.IsNullOrEmpty(source)) { return false; }
+            if (source.StartsWith(AbilityPrefix, StringComparison.Ordinal))
+            {
+                string name = source.Substring(AbilityPrefix.Length);
+                abilityValue = new AbilityValueId(name);
+                return name.Length > 0;
+            }
+            for (int i = 0; i < AnimationFloats.Length; i++)
+            {
+                if (AnimationFloats[i].name == source) { animationFloat = i; return true; }
+            }
+            return false;
+        }
 
         /// <summary>The model's scale in the animation state (unscaled if it gives none).</summary>
         private static Vector3 ModelScale(in CharacterAnimationState state) => state.scale == Vector3.zero ? Vector3.one : state.scale;
@@ -350,17 +441,14 @@ namespace Character
 
         private sealed class Driver : ICharacterAnimationDriver
         {
-            // Parameter hashes, or 0 for parameters to skip
-            // The float parameters' hashes, in FloatParameters' order (0 to skip one).
-            private readonly int[] floatHashes = new int[FloatParameters.Length];
-            // Those the playback parameters read back (also in floatHashes), and Wall Side, set by hand; 0 to skip one.
-            private readonly int speed, climbRight, climbUp, wallSide;
+            // The float parameters, resolved: each one's hash, its source (an AnimationFloats index, else an ability value)
+            // and whether it's smoothed. Those the controller doesn't have, or whose source is unknown, are left out.
+            private readonly (int hash, int animationFloat, AbilityValueId abilityValue, bool smoothed)[] floats;
             // The bool parameters, resolved: each one's hash, and its source (an AnimationBools index, else a state's flag).
-            // Those the controller doesn't have, or whose source is unknown, are left out.
             private readonly (int hash, int animationBool, CharacterState state)[] bools;
-            private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
-            // The speeds (m/s) the controller's fastest loops are made for (its parameters' defaults), or 0 if it has none.
-            private readonly float locomotionTop, crouchTop, climbUpTop, climbDownTop, climbLeftTop, climbRightTop;
+            // The playback parameters, resolved: each one's hash and its axes (each the hash of the speed it reads back, and
+            // the speeds, m/s, its loops are made for each way: the top speed parameters' defaults, or 0 for none).
+            private readonly (int hash, (int speed, float top, float negativeTop)[] axes)[] playbacks;
             private readonly (MovementEvents events, int trigger)[] triggers;
             private readonly float speedDampTime;
             private readonly Animator animator;
@@ -380,32 +468,6 @@ namespace Character
                     }
                     return 0;
                 }
-
-                for (int i = 0; i < floatHashes.Length; i++) { floatHashes[i] = Find(FloatParameters[i].name(settings), AnimatorControllerParameterType.Float); }
-                speed = Find(settings.speedParameter, AnimatorControllerParameterType.Float);
-                climbRight = Find(settings.climbRightParameter, AnimatorControllerParameterType.Float);
-                climbUp = Find(settings.climbUpParameter, AnimatorControllerParameterType.Float);
-                wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
-
-                var resolved = new System.Collections.Generic.List<(int, int, CharacterState)>();
-                foreach (BoolParameter entry in settings.boolParameters)
-                {
-                    int hash = Find(entry.parameter, AnimatorControllerParameterType.Bool);
-                    if (hash == 0) { continue; }
-                    if (!TryResolve(entry.source, out int animationBool, out CharacterState state))
-                    {
-                        Debug.LogWarning($"[{nameof(AnimatorParameterTranslator)}] '{settings.name}': the bool parameter '{entry.parameter}' " +
-                                         $"shows '{entry.source}', which is neither a value of the animation state nor one of the " +
-                                         "character's states, so it isn't set.", settings);
-                        continue;
-                    }
-                    resolved.Add((hash, animationBool, state));
-                }
-                bools = resolved.ToArray();
-
-                locomotionPlayback = Find(settings.locomotionPlaybackParameter, AnimatorControllerParameterType.Float);
-                crouchPlayback = Find(settings.crouchPlaybackParameter, AnimatorControllerParameterType.Float);
-                climbPlayback = Find(settings.climbPlaybackParameter, AnimatorControllerParameterType.Float);
                 // A parameter's default value, as the controller was built with it (not what it's been set to since).
                 float DefaultOf(string name)
                 {
@@ -416,12 +478,47 @@ namespace Character
                     }
                     return 0f;
                 }
-                locomotionTop = DefaultOf(settings.locomotionTopSpeedParameter);
-                crouchTop = DefaultOf(settings.crouchTopSpeedParameter);
-                climbUpTop = DefaultOf(settings.climbUpTopSpeedParameter);
-                climbDownTop = DefaultOf(settings.climbDownTopSpeedParameter);
-                climbLeftTop = DefaultOf(settings.climbLeftTopSpeedParameter);
-                climbRightTop = DefaultOf(settings.climbRightTopSpeedParameter);
+                void Unknown(string kind, string parameter, string source) =>
+                    Debug.LogWarning($"[{nameof(AnimatorParameterTranslator)}] '{settings.name}': the {kind} parameter '{parameter}' shows '{source}', " +
+                                     $"which is neither a value of the animation state nor {(kind == "bool" ? "one of the character's states" : "an ability value")}, " +
+                                     "so it isn't set.", settings);
+
+                var resolvedFloats = new System.Collections.Generic.List<(int, int, AbilityValueId, bool)>();
+                foreach (FloatParameter entry in settings.floatParameters)
+                {
+                    int hash = Find(entry.parameter, AnimatorControllerParameterType.Float);
+                    if (hash == 0) { continue; }
+                    if (!TryResolveFloat(entry.source, out int animationFloat, out AbilityValueId abilityValue)) { Unknown("float", entry.parameter, entry.source); continue; }
+                    resolvedFloats.Add((hash, animationFloat, abilityValue, entry.smoothed));
+                }
+                floats = resolvedFloats.ToArray();
+
+                var resolvedBools = new System.Collections.Generic.List<(int, int, CharacterState)>();
+                foreach (BoolParameter entry in settings.boolParameters)
+                {
+                    int hash = Find(entry.parameter, AnimatorControllerParameterType.Bool);
+                    if (hash == 0) { continue; }
+                    if (!TryResolve(entry.source, out int animationBool, out CharacterState state)) { Unknown("bool", entry.parameter, entry.source); continue; }
+                    resolvedBools.Add((hash, animationBool, state));
+                }
+                bools = resolvedBools.ToArray();
+
+                var resolvedPlaybacks = new System.Collections.Generic.List<(int, (int, float, float)[])>();
+                foreach (PlaybackParameter entry in settings.playbackParameters)
+                {
+                    int hash = Find(entry.parameter, AnimatorControllerParameterType.Float);
+                    if (hash == 0 || entry.axes == null) { continue; }
+                    var axes = new (int, float, float)[entry.axes.Length];
+                    for (int i = 0; i < axes.Length; i++)
+                    {
+                        PlaybackAxis axis = entry.axes[i];
+                        float top = DefaultOf(axis.topSpeedParameter);
+                        axes[i] = (Find(axis.speedParameter, AnimatorControllerParameterType.Float), top,
+                                   string.IsNullOrEmpty(axis.negativeTopSpeedParameter) ? top : DefaultOf(axis.negativeTopSpeedParameter));
+                    }
+                    resolvedPlaybacks.Add((hash, axes));
+                }
+                playbacks = resolvedPlaybacks.ToArray();
 
                 triggers = new (MovementEvents, int)[settings.eventTriggers.Length];
                 for (int i = 0; i < triggers.Length; i++)
@@ -433,17 +530,17 @@ namespace Character
 
             public void UpdateAnimation(in CharacterAnimationState state, float deltaTime)
             {
-                for (int i = 0; i < floatHashes.Length; i++)
+                for (int i = 0; i < floats.Length; i++)
                 {
-                    if (floatHashes[i] == 0) { continue; }
-                    float value = FloatParameters[i].value(state);
-                    if (FloatParameters[i].smoothed) { animator.SetFloat(floatHashes[i], value, speedDampTime, deltaTime); }
-                    else { animator.SetFloat(floatHashes[i], value); }
+                    (int hash, int animationFloat, AbilityValueId abilityValue, bool smoothed) = floats[i];
+                    float value = animationFloat >= 0 ? AnimationFloats[animationFloat].value(state)
+                        : state.abilityValues != null && state.abilityValues.TryGet(abilityValue, out float published) ? published : float.NaN;
+                    if (float.IsNaN(value)) { continue; } // Nothing to show: left as it is.
+                    if (smoothed) { animator.SetFloat(hash, value, speedDampTime, deltaTime); }
+                    else { animator.SetFloat(hash, value); }
                 }
-                // Only during a wall run, and kept after it ends, so an animation leaving the wall doesn't swing through the middle.
-                if (wallSide != 0 && state.wallRunning && state.wallSide != 0f) { animator.SetFloat(wallSide, state.wallSide); }
                 // After the speeds they're worked out from (as the Animator shows them, smoothed).
-                SetPlayback(state);
+                SetPlayback();
                 for (int i = 0; i < bools.Length; i++)
                 {
                     (int hash, int animationBool, CharacterState flags) = bools[i];
@@ -455,20 +552,21 @@ namespace Character
             /// How much faster than their fastest loops the speed-driven states play: a blend tree ends at the speed its
             /// fastest loop is made for, and past it the loop plays faster by however much faster the character moves, so
             /// its feet keep up with the ground at any speed (rather than up to a top speed fixed when the controller was
-            /// built, which a retuned character could outrun). From the speeds as the animator shows them (smoothed).
+            /// built, which a retuned character could outrun). From the speeds as the animator shows them (smoothed); with
+            /// several axes (climbing across and up), whichever it's furthest past.
             /// </summary>
-            private void SetPlayback(in CharacterAnimationState state)
+            private void SetPlayback()
             {
-                float shownSpeed = speed != 0 ? animator.GetFloat(speed) : state.horizontalSpeed / state.StrideScale;
-                if (locomotionPlayback != 0) { animator.SetFloat(locomotionPlayback, Past(shownSpeed, locomotionTop)); }
-                if (crouchPlayback != 0) { animator.SetFloat(crouchPlayback, Past(shownSpeed, crouchTop)); }
-                if (climbPlayback != 0)
+                for (int i = 0; i < playbacks.Length; i++)
                 {
-                    // Past the loop the climb is heading toward: whichever of across and up it's further past.
-                    float right = climbRight != 0 ? animator.GetFloat(climbRight) : 0f, up = climbUp != 0 ? animator.GetFloat(climbUp) : 0f;
-                    float across = Past(Mathf.Abs(right), right >= 0f ? climbRightTop : climbLeftTop);
-                    float along = Past(Mathf.Abs(up), up >= 0f ? climbUpTop : climbDownTop);
-                    animator.SetFloat(climbPlayback, Mathf.Max(across, along));
+                    (int hash, (int speed, float top, float negativeTop)[] axes) = playbacks[i];
+                    float playback = 1f;
+                    for (int a = 0; a < axes.Length; a++)
+                    {
+                        float speed = axes[a].speed != 0 ? animator.GetFloat(axes[a].speed) : 0f;
+                        playback = Mathf.Max(playback, Past(Mathf.Abs(speed), speed >= 0f ? axes[a].top : axes[a].negativeTop));
+                    }
+                    animator.SetFloat(hash, playback);
                 }
             }
 

@@ -5,7 +5,11 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Ability traits.** What an ability does with the character while it's under way (`MovementComponent.Traits`, an `AbilityTraits`: it holds the character up, it holds on to something), which other abilities ask the mode about (`AbilityInProgressWith`) rather than listing the abilities they mean. See [Adding a Movement Ability](adding-an-ability.md).
 
+**Ability value.** A number an ability publishes for its look during its step (`AbilityValues`, named in the component's `AbilityValueNames`), which an Animator Parameter Translator's float parameter can show with no animation code. See [Character Model and Animations](animation.md#replacing-the-model).
+
 **Animation translator.** What turns the character's animation state into a particular model's Animator parameters (`CharacterAnimationTranslator`), so movement never needs to know which model it's animating. See [Character Model and Animations](animation.md).
+
+**Animator layout.** An asset describing a character's Animator Controller as data (clip slots, parameters, blend trees, states, transitions, with measured numbers and notes), which Build Animator Controllers builds it from. See [Animator layouts](animation.md#animator-layouts).
 
 **Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MovementController's Body Definition; the Character prefab's is Assets/ScriptableObjects/Character Body.asset, and Prepare Character Models writes one beside each model's source. See [Collision](movement.md#collision).
 

@@ -9,7 +9,7 @@ using UnityEngine;
 namespace CharacterShowcase.Tests.EditMode.Animations
 {
     /// <summary>
-    /// Checks of the shared Animator Controller's Locomotion blend tree, as MannequinGenerator builds it, played on the
+    /// Checks of the shared Animator Controller's Locomotion blend tree, as its layout builds it, played on the
     /// mannequin: every loop is offset to land its left foot at the same moment, so blending between them doesn't mix
     /// one foot's stride with the other's; and each loop shown at the speed its strides are made for (from the walk to
     /// the sprint, the tree's last: past it, the translator plays the sprint faster) keeps its planted feet in step with

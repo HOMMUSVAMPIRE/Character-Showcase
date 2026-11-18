@@ -54,6 +54,8 @@ MonoBehaviour:
   movementController: {fileID: 2359205359729717119}
   animationController: {fileID: 1999695637673396473}
   modelHost: {fileID: 0}
+  owner: 0
+  inputSource: {fileID: 0}
   scale: {x: 1, y: 1, z: 1}
   scaleChangeDuration: 0.25
 --- !u!114 &2359205359729717119
@@ -72,10 +74,7 @@ MonoBehaviour:
   rb: {fileID: 5209213404800541197}
   movementHandler: {fileID: 11400000, guid: ee973badba204454bb67677c21875fb7, type: 2}
   lastFrameMovementData:
-    lastGroundedTime: 0
     timeSinceGrounded: 0
-    previousState: 0
-    state: 0
     finalGroundTransform: {fileID: 0}
     finalGrounded: 0
     collisions: 0
@@ -91,10 +90,7 @@ MonoBehaviour:
     targetPitch: 0
     modelDrop: 0
   currentMovementData:
-    lastGroundedTime: 0
     timeSinceGrounded: 0
-    previousState: 0
-    state: 0
     finalGroundTransform: {fileID: 0}
     finalGrounded: 0
     collisions: 0
@@ -210,8 +206,8 @@ MonoBehaviour:
   eyePoint: {fileID: 296573222870192925}
   defaultEyeHeight: 1.65
   minimumHeightFraction: 0.6
-  colliderFit: 2
-  colliderWidthMargin: 1.4
+  bodyFit: 2
+  bodyWidthMargin: 1.4
 --- !u!114 &2159346865127861795
 MonoBehaviour:
   m_ObjectHideFlags: 0

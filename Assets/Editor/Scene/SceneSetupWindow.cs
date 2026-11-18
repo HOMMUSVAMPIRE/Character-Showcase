@@ -151,9 +151,9 @@ namespace CharacterShowcase.EditorTools
                     CharacterModelImporter.PrepareAllFromMenu();
                     Refresh();
                 }
-                if (GUILayout.Button(new GUIContent("Prepare Animations", "Sets up the animation files: the Quaternius libraries in " +
+                if (GUILayout.Button(new GUIContent("Prepare Animations", "Sets up the animation files (the Quaternius libraries in " +
                                                     QuaterniusAnimationImporter.LibraryFolder + " and the motion-capture clips in " +
-                                                    MotionCaptureClipImporter.ClipsFolder + ".")))
+                                                    MotionCaptureClipImporter.ClipsFolder + "), then builds the Animator Controllers from their layouts.")))
                 {
                     PrepareAnimations();
                     Refresh();
@@ -384,12 +384,9 @@ namespace CharacterShowcase.EditorTools
 
         private static void PrepareAnimations()
         {
-            List<string> problems = QuaterniusAnimationImporter.PrepareAll();
-            problems.AddRange(MotionCaptureClipImporter.PrepareAll());
-            EditorUtility.DisplayDialog("Prepare Animations", problems.Count == 0
-                ? "The animation files are set up. To use changed clips in the mannequin's Animator Controller, run " +
-                  "Tools > Character Showcase > Generate Mannequin."
-                : "Some animation files couldn't be set up:\n\n" + string.Join("\n", problems), "OK");
+            EditorUtility.DisplayDialog("Prepare Animations", AnimationPreparation.Prepare(showProgress: true)
+                ? "The animation files are set up, and the Animator Controllers built from their layouts."
+                : "Some of it couldn't be done: see the Console.", "OK");
         }
 
         private MovementMode PrefabMovementMode() =>

@@ -18,6 +18,7 @@ namespace Character
     /// Feeds CharacterIK's procedural channel, so goals set manually on CharacterIK still take priority. Fades in and
     /// out as an AbilityIK does (ActiveWeight, toward Weight, over Grounded Fade Time).
     /// </summary>
+    [HumanoidIK(0)]
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
     public class FootPlacementIK : AbilityIK, IModelHandover

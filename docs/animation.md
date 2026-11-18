@@ -24,13 +24,13 @@ Foot placement fades out while sliding, rolling and vaulting, as it does dashing
 
 ## Walking and running
 
-The Locomotion blend tree plays, by speed, each loop at the speed its strides are made for, measured on the mannequin when the controller was built (see [Building the clips and controller](#building-the-clips-and-controller)), so its planted feet stay put there. From slowest to fastest:
+The Locomotion blend tree plays, by speed, each loop at the speed its strides are made for, measured on the mannequin when the controller was built from its layout (see [Animator layouts](#animator-layouts)), so its planted feet stay put there. From slowest to fastest:
 
 | Animation | Where its speed comes from |
 |---|---|
 | the stance (the mannequin's) | standing still |
 | Quaternius's walk | its measured strides |
-| the mannequin's brisk walk | its measured strides, then shown a little past them (`BriskWalkReach` times its own speed, played up to `BriskWalkPlayback` times faster: Assets/Editor/Pipeline/Mannequin/MannequinGenerator.cs), so a walk a little faster than people naturally walk still looks like a walk |
+| the mannequin's brisk walk | its measured strides, then shown a little past them (by the Locomotion tree's second Brisk Walk child in the mannequin's layout: its Multiply times its own speed, played up to its Time Scale times faster), so a walk a little faster than people naturally walk still looks like a walk |
 | the mannequin's run | its measured strides |
 | Quaternius's jog (sprinting) | its measured strides |
 | Quaternius's sprint | its measured strides: the end of the tree (see below) |
@@ -41,17 +41,17 @@ Each loop is offset to land its left foot at the same moment (TouchDownPhase, me
 
 ## Jumping and landing
 
-Jumping plays Quaternius's jump start from its take-off (the Jump trigger, fired by the Jumped and AirJumped movement events), skipping the crouch before it, since the character has already left the ground. Then it plays their jump loop while in the air, and their landing as soon as the character is grounded and no longer rising. Moving on (faster than `MoveOnFromLanding` in MannequinGenerator.cs) cuts the landing short. Every clip shares one floor (see [Building the clips and controller](#building-the-clips-and-controller)).
+Jumping plays Quaternius's jump start from its take-off (the Jump trigger, fired by the Jumped and AirJumped movement events), skipping the crouch before it, since the character has already left the ground. Then it plays their jump loop while in the air, and their landing as soon as the character is grounded and no longer rising. Moving on (faster than the Land state's Speed condition, in the mannequin's layout) cuts the landing short. Every clip shares one floor (see [Prepare Animations](#prepare-animations)).
 
 The Animator is given a vertical speed of 0 while the character touches the ground, where its vertical movement only follows the ground. Walking up stairs lifts the character quickly at each step, which used to keep a character that landed on a staircase on the run in its jump all the way up.
 
 ## Swimming
 
-Swimming underwater (the Diving parameter, set with Swimming) has a state of its own, Swim Underwater, so a controller can give it its own clips. The generated one plays the library's swim stroke alone, never its treading water: underwater the body lies flat, so drifting without swimming it strokes slowly (at the generator's UnderwaterDriftStrokePace), rather than treading upright with its legs hanging below the body (through the floor, near the bottom). Without the library, it plays the same as Swim. It's entered from any state while diving, and swimming back at the surface returns to Swim. Underwater the body lies on the character's feet while the swimming clips float it Swim Depth above them, so the AnimationController draws the model lowered by the movement's model drop (`MovementData.modelDrop`), easing to it (and back up at the surface) over Model Drop Smooth Time. Pitched underwater (see [Pitch](movement.md#collision)), the model is tilted with the body about its feet, lowered along the body's up, so it stays inside it.
+Swimming underwater (the Diving parameter, set with Swimming) has a state of its own, Swim Underwater, so a controller can give it its own clips. The mannequin's plays the library's swim stroke alone, never its treading water: underwater the body lies flat, so drifting without swimming it strokes slowly (its Swim Underwater tree's first child's Time Scale, in the mannequin's layout), rather than treading upright with its legs hanging below the body (through the floor, near the bottom). Without the library, it plays the same as Swim. It's entered from any state while diving, and swimming back at the surface returns to Swim. Underwater the body lies on the character's feet while the swimming clips float it Swim Depth above them, so the AnimationController draws the model lowered by the movement's model drop (`MovementData.modelDrop`), easing to it (and back up at the surface) over Model Drop Smooth Time. Pitched underwater (see [Pitch](movement.md#collision)), the model is tilted with the body about its feet, lowered along the body's up, so it stays inside it.
 
-The Swim state plays Quaternius's treading water still, blending by Speed into their swim stroke, shown fully from `SwimStrokeSpeed` (in MannequinGenerator.cs) up: the stroke is on the spot, with no strides to measure, so it's shown at any swimming speed past that.
+The Swim state plays Quaternius's treading water still, blending by Speed into their swim stroke, shown fully from its Swim tree's stroke threshold (in the mannequin's layout) up: the stroke is on the spot, with no strides to measure, so it's shown at any swimming speed past that.
 
-The swimming clips are floated for the Character prefab's Swim Depth (Swimming's, on its movement mode), so after retuning it, run Generate Mannequin again, or the swimmer floats too high or too low (see [Floating the swimming clips](#floating-the-swimming-clips)).
+The swimming clips are floated for the Character prefab's Swim Depth (Swimming's, on its movement mode), so retuning it floats them again by itself, with a progress bar (see [Floating the swimming clips](#floating-the-swimming-clips)).
 
 ## Replacing the model
 The model and its animations are kept separate from the character's movement, so they can be replaced without touching the character.
@@ -90,7 +90,13 @@ A model swapped in mid-move carries on where the old one was, rather than starti
 
 **Movement events** are raised by `MovementController.MovementEventRaised` after each physics step, one for each that happened in it: Jumped, AirJumped, Landed, LeftGround, HitCeiling and HitWall, and each ability's start and end (DashStarted and DashEnded, SlideStarted, LedgeGrabbed, WallRunEnded, SwimStarted and so on); `MovementEvents` lists them all. The movement's components report the ones they cause (jumps, and each ability's start and end, declared by the component that sets its state), and the controller detects the rest. `AnimationController.MovementEventReceived` passes them on with the animation state, for effects and sound.
 
-**CharacterAnimationTranslator** (a ScriptableObject) turns the animation state and events into a particular model's animations. The included **AnimatorParameterTranslator** sets Animator parameters you name and fires triggers on chosen movement events, skipping any the controller doesn't have. Its float parameters are speeds, progress and the rest, each named in its inspector. Its **Bool Parameters** are a list, each entry an Animator bool and what it shows (Shows, a menu): a value of the animation state, worked out for how it should look (Grounded keeps a grace period over small step-offs, say), or any of the character's states as the movement has it (Character State > …: `CharacterAnimationState.state`), so a new ability's state can drive an Animator bool with no code. An entry whose source is unknown is skipped, with a warning. A different animation system can be supported by writing another translator.
+**CharacterAnimationTranslator** (a ScriptableObject) turns the animation state and events into a particular model's animations. The included **AnimatorParameterTranslator** sets Animator parameters you name, each from what it shows, and fires triggers on chosen movement events, skipping any the controller doesn't have. Its inspector holds three lists, each entry an Animator parameter and its source (Shows, a menu):
+
+- **Float Parameters:** a value of the animation state, worked out for how it should look (Speed, Vertical Speed, Vault Progress and the rest), or a value an ability publishes (Ability Value > …: see `AbilityValues`, which a movement component sets during its step and names in its `AbilityValueNames`), with whether it's smoothed over Speed Damp Time. A source with nothing to show leaves its parameter as it is (Wall Side, out of a wall run, keeps the side it was).
+- **Bool Parameters:** a value of the animation state (Grounded keeps a grace period over small step-offs, say), or any of the character's states as the movement has it (Character State > …: `CharacterAnimationState.state`).
+- **Playback Parameters:** each a speed-driven state's speed multiplier, set to how much faster than its loops are made for the character goes (at least 1), so past the end of its blend tree its fastest loop plays faster and its feet keep up with the ground. Its axes are the speed parameters it's worked out from and the parameters whose defaults are the speeds their loops are made for (an Animator Layout measures and sets them: see [Animator layouts](#animator-layouts)); with several (climbing across and up), whichever it's furthest past.
+
+So a new ability's state, and any value it publishes, can drive the Animator with no animation code. An entry whose source is unknown is skipped, with a warning. A different animation system can be supported by writing another translator.
 
 In the editor, where the model isn't loaded, the CharacterModelHost draws it as a gizmo so the character can still be seen and placed.
 
@@ -145,7 +151,7 @@ Assets/Animation/CMU holds motion-capture clips from the CMU Graphics Lab Motion
 
 They've been edited for a character controller, in Blender (see [The Blender scripts for clip libraries](#the-blender-scripts-for-clip-libraries)). Tools > Character Showcase > Prepare Motion Capture Clips then makes each a Humanoid animation with its own avatar (each performer had their own proportions), mapped by the CMU skeleton's bone names. Each starts after the T-pose frame, has its height based on the feet (so its floor is the model's own), and faces the way the body does, so every clip faces the character's forward whichever way it was captured.
 
-MotionCaptureLocomotion can cut loops from them: it searches a take's steady middle for the two frames a cycle apart whose poses, and how they're moving, match best. It also measures any loop's stride speed, the moment it lands its left foot, a jump's take-off and landing, and a clip's lowest foot, which Generate Mannequin uses on every clip (see [Building the clips and controller](#building-the-clips-and-controller)).
+MotionCaptureLocomotion can cut loops from them: it searches a take's steady middle for the two frames a cycle apart whose poses, and how they're moving, match best. It also measures any loop's stride speed, the moment it lands its left foot, a jump's take-off and landing, and a clip's lowest foot, which an Animator Layout's measured numbers use (see [Animator layouts](#animator-layouts)).
 
 Two things turned up fitting real motion capture to foot placement:
 
@@ -177,6 +183,21 @@ The IK that places limbs for the character derives from `AbilityIK`, which solve
 
 The fox's PawPlacementIK isn't one of them: it poses its Generic rig itself (see [Creatures](creatures.md#paw-placement)).
 
+Each of these carries `[HumanoidIK]`, and Prepare Character Models adds every `AbilityIK` that does to each humanoid model prefab it saves (in their `Order`, with the settings the model's earlier prefab had, else the mannequin's): a new one is on every model with no change to the importer.
+
+### IK for your own model
+
+The IK reads its inputs from the animation state's typed fields (where a ledge's edge is, what's gripped, a ladder's rungs: `CharacterAnimationState`), which `AnimationController.BuildState` fills from the movement. A new ability's IK needs its own field there if it places limbs on something (filled in `BuildState`), or only its state (`CharacterAnimationState.state`) if it doesn't. What to copy for what:
+
+| To place | Start from | Why that one |
+| --- | --- | --- |
+| A humanoid's hands on something during an ability | `LineGripIK` | The simplest: eases in while the character holds a rope or cable, puts the hands on it, moves the body so they reach |
+| A humanoid's hands on an edge, and the body by them | `LedgeHandIK` | Hands on a ledge or a vaulted top, with the body lowered to reach, and eased with the ability's own progress |
+| A humanoid's feet on the ground | `FootPlacementIK` | Rays under each foot, planted feet locked, the pelvis lowered so the lower foot reaches |
+| The legs of any creature on legs (a Generic rig) | `PawPlacementIK` | Its own two-bone solve per leg and the body pitched with the ground: set it up as [Creatures](creatures.md#paw-placement) says (`SetLegs`, `SetContact`) |
+
+Each `AbilityIK` only places the limbs, in `Solve`: the base class hooks it into CharacterIK and eases it in and out (`FadeTo`, by its Weight and Fade Time). New Ability's Needs IK makes one to start from (see [Adding a Movement Ability](adding-an-ability.md#the-quick-way-new-ability)).
+
 **Timing.** The IK eases by the time of the Animator update it's solved in (`CharacterAnimationStates.DeltaTimeOf`), not always the frame's. An Animator that updates itself does so by the frame's time (or the physics step's, or the unscaled frame's, for those update modes), and the IK eases by the same. One turned off and stepped by hand (`Animator.Update`, as the tests do, or a replay) is fed its animation state for each step, and the IK eases by that state's `deltaTime`, so it keeps pace with the steps rather than with however long the render frame was.
 
 ### On stretched models
@@ -201,42 +222,66 @@ LineGripIK, on every model, puts the hands on the rope or the cable while swingi
 - On a rope, the right hand goes where the character caught hold and the left below it (Rope Hand Gap), the body hanging back behind the rope (Rope Body Back) and leaning with it, about the hands, as it swings (Rope Lean).
 - On a zipline, both hands go on the cable overhead, a little apart along it (Cable Hand Gap).
 
+## Animator layouts
+
+Each character's Animator Controller is built from a layout: an **Animator Layout** asset (Create > Character Showcase > Animation > Animator Layout) that describes it as data, edited in its inspector. The mannequin's is `Assets/Animation/Mannequin Layout.asset`, for the controller every humanoid shares (`Mannequin.controller`); the fox's is `Assets/Models/Creatures/Fox/Fox Layout.asset`. A state, a clip or a transition is changed in the layout, never in the controller: building replaces the controller's contents (in place, so every model keeps its reference to it).
+
+A layout holds:
+
+- **Clip slots:** each a name the rest of the layout uses, and its clips in order of preference. The first that's there is used, so a clip from a library that isn't installed falls back to one that is (the mannequin's slots list the Quaternius clip first, then the mannequin's own).
+- **Parameters:** the controller's, and their defaults.
+- **Blend trees:** by name, each blending clip slots (or other trees: the fox's Locomotion holds its Standing tree) by one parameter or two. A motion names one as `tree:` and its name, and states naming the same tree share it.
+- **States:** each with its motions in order of preference. The first whose clips are all there (and whose measured numbers can be measured) is used, with its own speed, speed parameter, time parameter (a progress driving how far through it plays), cycle offset, and parameters whose defaults it sets (a playback parameter's top speeds: see [Replacing the model](#replacing-the-model), the translator's Playback).
+- **Transitions:** from a state or from Any State, with their exit time, duration and conditions. From the same state, the first whose conditions hold is taken, so their order matters.
+- **Requirements:** anything (a parameter, a state, a transition, a condition, a tree's child) can require clip slots or states to be there, or not, so one layout builds the right controller with a library installed and without it.
+- **Measured numbers:** a number can be given, or measured from a clip slot as it plays on the layout's Measuring Model (`MotionCaptureLocomotion`): the speed a loop's strides are made for, where its left foot lands, where a jump takes off, how fast a climbing loop's hands climb. It can be multiplied, inverted (a state's speed against a speed parameter) or eased toward another, and given a fallback for when it can't be measured. The Locomotion blend tree's thresholds are its loops' measured stride speeds (see [Walking and running](#walking-and-running)), and each loop is offset to land its left foot when the others do.
+- **Notes:** every part has a note saying why it's as it is (what it shows, and what tuning it taught), for whoever changes it next. Read them before changing a value.
+
+**Building.** Tools > Character Showcase > Build Animator Controllers builds every layout in the project (or `-executeMethod CharacterShowcase.EditorTools.AnimatorControllerBuilder.BuildFromCommandLine`, with `-layout <path>` for one), and says in the Console what it chose and measured. An Animator Controller's structure can be written out as text to compare two (`AnimatorControllerDescription`: parameters, states, motions, transitions, in an order that doesn't depend on how they were made).
+
+**A new ability's state.** Add its clip slot, a state for it with its motion, and its transitions (typically: in from Any State while its bool is set, out to Locomotion or Airborne when it isn't), with the bool on the translator (see [Replacing the model](#replacing-the-model)), then build. The crouch's transition in excludes every other ability's bool, so add the new one there too, or the two Any State transitions keep swapping the states.
+
+### Prepare Animations
+
+Tools > Character Showcase > Prepare Animations (also Set Up Scene's Prepare Animations button, and `-executeMethod CharacterShowcase.EditorTools.AnimationPreparation.PrepareFromCommandLine`) gets the clips ready, then builds every layout:
+
+- the Quaternius libraries' clips and the motion-capture clips are set up as clips (see [Quaternius animations](#quaternius-animations) and [Motion capture clips](#motion-capture-clips));
+- the libraries' clips that stand on the floor are raised or lowered so their lowest foot stands where the mannequin's idle stands it (their root height offsets, which it logs), so every clip shares one floor. The landing's crouch still puts the soles a few millimetres off it, as the libraries' proportions differ a little from the mannequin's;
+- the swimming clips are floated at the swim depth (below);
+- every Animator Controller is built from its layout.
+
+#### Floating the swimming clips
+
+The library's swimming is made around the water line: where a grounded clip has its floor, its swimmer has the water's surface. A swimming character's origin is still its feet, hanging Swimming's Swim Depth below the surface, so the swimming clips are raised (their root height offsets, which it logs), measured on the mannequin with its feet the Character prefab's Swim Depth below the surface: treading water so its head stands just above it (the chin out of the water), and the stroke so its hips are just under it (the back breaking the surface). Those heights are `AnimationPreparation`'s `HeadAboveWater` and `HipsBelowWater`.
+
+The Swim Depth is the movement's tuning, so the swims are floated again by themselves when it changes: saving the Character prefab, its movement asset or its body (or its model's) with a different swim depth (a share of the standing height) opens a progress bar while the swimming library is reimported. It isn't done in batch mode or while playing. Without the libraries, the Swim state is the mannequin's own treading water, made for the default Swim Depth.
+
+### Without the libraries
+
+Without the libraries in the project, the mannequin's layout falls back to the mannequin's own clips throughout:
+
+- a walk, the brisk walk, run and sprint (a gait that keeps its planted feet from sliding: each foot's pivot moves straight back at the sprint's speed while down, reached by inverse kinematics);
+- rising, a tuck at the top and falling, blended by vertical speed.
+
 ## The mannequin and its clips (the model pipeline)
 
-This part isn't in the package, and needs Blender (though most of it can rebuild from the files already made). It's the model pipeline: the generators and `BlenderRunner` in Assets/Editor/Pipeline (Mannequin, Creatures and Blender: their own editor assembly, `CharacterShowcase.Pipeline.Editor`), and the Blender scripts in Tools/Mannequin, Tools/Fox, Tools/Blender and Tools/Animation. Without it, the mannequin, its clips and the shared Animator Controller in the project are used as they are, and Prepare Character Models prepares models as before. The fox's generator is described with the fox (see [Generating the fox](creatures.md#generating-the-fox-the-model-pipeline)).
+This part isn't in the package, and needs Blender (though most of it can rebuild from the files already made). It's the model pipeline: the generators and `BlenderRunner` in Assets/Editor/Pipeline (Mannequin, Creatures and Blender: their own editor assembly, `CharacterShowcase.Pipeline.Editor`), and the Blender scripts in Tools/Mannequin, Tools/Fox, Tools/Blender and Tools/Animation. Without it, the mannequin and its clips in the project are used as they are, its controller is still built from its layout (see [Animator layouts](#animator-layouts)), and Prepare Character Models prepares models as before. The fox's generator is described with the fox (see [Generating the fox](creatures.md#generating-the-fox-the-model-pipeline)).
 
 ### Generate Mannequin
 
 **Generate Mannequin** (Tools > Character Showcase > Generate Mannequin) runs Tools/Mannequin/generate_mannequin.py in Blender to build the mannequin's mesh, rig and animation clips (its own clips are keyframed in Tools/Mannequin/mannequin_animations.py). It then:
 
 - imports them as looping, in-place Humanoid clips;
-- builds the Animator Controller every model shares (Assets/Animation/Mannequin.controller, rebuilt in place so the models' references to it never break) and its translator;
+- runs Prepare Animations (see [Prepare Animations](#prepare-animations)), which builds the Animator Controller every model shares from its layout;
 - prepares the mannequin like any other model (its file and model prefab are where `CharacterModelImporter.MannequinModelPath` and `MannequinPrefabPath` say), and makes it the Character prefab's model.
 
-If Blender isn't available, it can rebuild everything from the Mannequin.fbx already in the project. To change the mannequin or its animations, edit generate_mannequin.py or mannequin_animations.py and run this again. From the command line: `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`; it quits Unity when it's done, with code 1 if it failed).
+If Blender isn't available, it can rebuild everything from the Mannequin.fbx already in the project. To change the mannequin's mesh or its own clips, edit generate_mannequin.py or mannequin_animations.py and run this again; to change which clips it plays and how, edit its layout (see [Animator layouts](#animator-layouts)), which needs no Blender. From the command line: `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`; it quits Unity when it's done, with code 1 if it failed).
 
 When Mannequin.fbx changes some other way (regenerated with Blender by hand, say), the rest is rebuilt from it by itself: before Prepare Character Models' own run prepares changed models (`CharacterModelPostprocessor.BeforePreparing`), the pipeline regenerates the mannequin's clips and controller from the file if it has changed since it was prepared (`MannequinRegeneration`). Without the pipeline, nothing is regenerated there.
 
 ### Finding Blender
 
 Generate Mannequin finds Blender through `BlenderRunner` (Assets/Editor/Pipeline/Blender/BlenderRunner.cs), which Generate Fox uses too: where Blender was last located (remembered in the editor's preferences) or a usual install place, and otherwise it asks once, offering to rebuild from the FBX that's there instead. From the command line, `-blender <path>` names it and `-skipBlender` rebuilds from the FBX. The Blender scripts share what both generators need (posing helpers, materials, the skinning check, reading their arguments, and the FBX export written the way Unity imports it) in Tools/Blender/blender_common.py.
-
-### Building the clips and controller
-
-Generate Mannequin measures each locomotion loop's stride speed when it builds the controller (MotionCaptureLocomotion's StrideSpeed), which the Locomotion blend tree's thresholds are (see [Walking and running](#walking-and-running)), and logs it ("[MannequinGenerator] Walk_Loop: strides made for … m/s").
-
-The libraries' clips are raised or lowered so their lowest foot stands where the mannequin's stance does (their root height offsets, set by Generate Mannequin, which logs them), so every clip shares one floor. The landing's crouch still puts the soles a few millimetres off it, as the libraries' proportions differ a little from the mannequin's.
-
-#### Floating the swimming clips
-
-The library's swimming is made around the water line: where a grounded clip has its floor, its swimmer has the water's surface. A swimming character's origin is still its feet, hanging Swimming's Swim Depth below the surface, so Generate Mannequin raises the swimming clips (their root height offsets, which it logs), measured on the mannequin with its feet the Character prefab's Swim Depth below the surface: treading water so its head stands `HeadAboveWater` above the surface (the chin just out of the water), and the stroke so its hips are `HipsBelowWater` under it (the back just breaking the surface). The Swim Depth is the movement's tuning, so after changing it, run Generate Mannequin again, or the swimmer floats too high or too low. Without the libraries, the Swim state is the mannequin's own treading water, made for the default Swim Depth.
-
-### Without the libraries
-
-Without the libraries in the project, Generate Mannequin uses the mannequin's own clips throughout:
-
-- a walk, the brisk walk, run and sprint (a gait that keeps its planted feet from sliding: each foot's pivot moves straight back at the sprint's speed while down, reached by inverse kinematics);
-- rising, a tuck at the top and falling, blended by vertical speed.
 
 ### The Blender scripts for clip libraries
 

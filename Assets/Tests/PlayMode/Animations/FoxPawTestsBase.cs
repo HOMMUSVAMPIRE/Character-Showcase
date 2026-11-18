@@ -24,7 +24,7 @@ namespace CharacterShowcase.Tests.Animations
         protected IEnumerator SpawnFox(Vector3 feet)
         {
             GameObject prefab = CharacterTestRig.LoadPrefab(FoxPrefabPath);
-            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             Physics.SyncTransforms();
             rig.SpawnCharacter(feet, prefab);
             animation = rig.Animation;

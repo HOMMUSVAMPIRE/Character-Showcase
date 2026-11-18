@@ -57,7 +57,8 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Saves the model as a prefab (a variant of the model file, so it follows changes to the file) with its Animator,
-        /// CharacterIK, FootPlacementIK, LedgeHandIK, WallSlideIK, LadderIK and LineGripIK. IK settings come from an earlier run if there was one, otherwise from the
+        /// CharacterIK, and every IK a humanoid gets ([HumanoidIK]: FootPlacementIK, LedgeHandIK, WallSlideIK, LadderIK,
+        /// LineGripIK, and any of your own). IK settings come from an earlier run if there was one, otherwise from the
         /// mannequin's model prefab, so tuning done there carries over to new models. Its hitboxes are fitted to it (see
         /// HitboxFitter), with the settings an earlier run's had.
         /// </summary>
@@ -66,11 +67,14 @@ namespace CharacterShowcase.EditorTools
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(MannequinPrefabPath);
             string ikSettings = SettingsOf<CharacterIK>(existing) ?? SettingsOf<CharacterIK>(mannequin);
-            string footPlacementSettings = SettingsOf<FootPlacementIK>(existing) ?? SettingsOf<FootPlacementIK>(mannequin);
-            string ledgeHandSettings = SettingsOf<LedgeHandIK>(existing) ?? SettingsOf<LedgeHandIK>(mannequin);
-            string wallSlideSettings = SettingsOf<WallSlideIK>(existing) ?? SettingsOf<WallSlideIK>(mannequin);
-            string ladderSettings = SettingsOf<LadderIK>(existing) ?? SettingsOf<LadderIK>(mannequin);
-            string lineGripSettings = SettingsOf<LineGripIK>(existing) ?? SettingsOf<LineGripIK>(mannequin);
+            // Every IK a humanoid gets ([HumanoidIK]: foot placement, and each ability's hands and feet), in its order, with
+            // its settings from the earlier prefab or the mannequin's.
+            var abilityIK = TypeCache.GetTypesDerivedFrom<AbilityIK>()
+                .Select(type => (type, attribute: (HumanoidIKAttribute)System.Attribute.GetCustomAttribute(type, typeof(HumanoidIKAttribute))))
+                .Where(entry => entry.attribute != null && !entry.type.IsAbstract)
+                .OrderBy(entry => entry.attribute.Order).ThenBy(entry => entry.type.Name, System.StringComparer.Ordinal)
+                .Select(entry => (entry.type, settings: SettingsOf(entry.type, existing) ?? SettingsOf(entry.type, mannequin)))
+                .ToArray();
 
             var model = (GameObject)PrefabUtility.InstantiatePrefab(modelAsset);
             try
@@ -91,21 +95,14 @@ namespace CharacterShowcase.EditorTools
                 // (Not `??`: it bypasses Unity's null check, so a "missing" component could be returned instead of added.)
                 if (!model.TryGetComponent(out CharacterIK ik)) { ik = model.AddComponent<CharacterIK>(); }
                 if (ikSettings != null) { EditorJsonUtility.FromJsonOverwrite(ikSettings, ik); }
-                // Automatic foot placement on uneven ground, fed through CharacterIK's procedural channel.
-                if (!model.TryGetComponent(out FootPlacementIK footPlacement)) { footPlacement = model.AddComponent<FootPlacementIK>(); }
-                if (footPlacementSettings != null) { EditorJsonUtility.FromJsonOverwrite(footPlacementSettings, footPlacement); }
-                // Hands on the ledge while hanging from one, through the same channel.
-                if (!model.TryGetComponent(out LedgeHandIK ledgeHands)) { ledgeHands = model.AddComponent<LedgeHandIK>(); }
-                if (ledgeHandSettings != null) { EditorJsonUtility.FromJsonOverwrite(ledgeHandSettings, ledgeHands); }
-                // Hands on the wall and the body against it while sliding down one.
-                if (!model.TryGetComponent(out WallSlideIK wallSlide)) { wallSlide = model.AddComponent<WallSlideIK>(); }
-                if (wallSlideSettings != null) { EditorJsonUtility.FromJsonOverwrite(wallSlideSettings, wallSlide); }
-                // Hands and feet on the rungs while climbing a ladder.
-                if (!model.TryGetComponent(out LadderIK ladder)) { ladder = model.AddComponent<LadderIK>(); }
-                if (ladderSettings != null) { EditorJsonUtility.FromJsonOverwrite(ladderSettings, ladder); }
-                // Hands on the rope or the zipline's cable while swinging on one or riding the other.
-                if (!model.TryGetComponent(out LineGripIK lineGrip)) { lineGrip = model.AddComponent<LineGripIK>(); }
-                if (lineGripSettings != null) { EditorJsonUtility.FromJsonOverwrite(lineGripSettings, lineGrip); }
+                // Foot placement on uneven ground, and each ability's hands and feet (a ledge, a wall slid down, a ladder's
+                // rungs, a rope or cable), fed through CharacterIK's procedural channel.
+                foreach ((System.Type type, string settings) in abilityIK)
+                {
+                    Component placement = model.GetComponent(type);
+                    if (placement == null) { placement = model.AddComponent(type); }
+                    if (settings != null) { EditorJsonUtility.FromJsonOverwrite(settings, placement); }
+                }
                 // Its hitboxes, for what meets the character (the movement doesn't use them).
                 HitboxFitter.Fit(model, settingsFrom: existing != null ? existing.GetComponent<CharacterHitboxes>() : null);
 
@@ -117,7 +114,9 @@ namespace CharacterShowcase.EditorTools
             }
         }
 
-        private static string SettingsOf<T>(GameObject gameObject) where T : Component =>
-            gameObject != null && gameObject.TryGetComponent(out T component) ? EditorJsonUtility.ToJson(component) : null;
+        private static string SettingsOf<T>(GameObject gameObject) where T : Component => SettingsOf(typeof(T), gameObject);
+
+        private static string SettingsOf(System.Type type, GameObject gameObject) =>
+            gameObject != null && gameObject.TryGetComponent(type, out Component component) ? EditorJsonUtility.ToJson(component) : null;
     }
 }

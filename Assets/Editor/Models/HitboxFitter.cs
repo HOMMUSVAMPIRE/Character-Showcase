@@ -13,7 +13,7 @@ namespace CharacterShowcase.EditorTools
     /// own space (through the mesh's bind poses), so the model's pose doesn't matter. Each capsule runs along whichever
     /// of the bone's mesh's principal axes, or the way to a child bone with a hitbox, makes it smallest, and covers most of
     /// it: its ends trimmed of the furthest few vertices, its radius reaching most of them, so it's a little inside the
-    /// skin rather than a box round everything. Run by Prepare Character Models and Generate Fox as they save a model's
+    /// skin rather than a box round everything. Run by Prepare Character Models (and the model generators) as they save a model's
     /// prefab, and by Fit Hitboxes (Tools > Character Showcase) for every model there is.
     /// </summary>
     public static class HitboxFitter

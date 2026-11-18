@@ -240,7 +240,7 @@ namespace CharacterShowcase.Tests.Animations
         public IEnumerator OnARisingAndFallingPlatform_ThePawsStayOnIt_FrameByFrame()
         {
             GameObject prefab = CharacterTestRig.LoadPrefab(FoxPrefabPath);
-            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             var size = new Vector3(4f, 0.3f, 4f);
             Level.MovingPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
             platform.enabled = false; // Held still while the fox's model loads (frames in which the fox isn't stepped).

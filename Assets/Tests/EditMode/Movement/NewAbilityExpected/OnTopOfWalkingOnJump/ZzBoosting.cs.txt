@@ -21,6 +21,14 @@ namespace Character
         [Min(0f)] [SerializeField] private float zzBoostingInputBuffer = 0.1f;
 
         public override bool IsActive(MovementController controller) => controller.zzBoosting.IsActive;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Boosting Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Boosting Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
         /// <summary>The events of ZzBoosting starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =
@@ -50,6 +58,13 @@ namespace Character
             Vector3 forward = movementData.initialRotation * Vector3.forward;
             movementData.directMovementVector += forward * (zzBoostingSpeed * controller.SpeedScale * movementData.deltaTime);
             movementData.state |= CharacterState.ZzBoosting;
+            PublishProgress(controller);
+        }
+
+        private void PublishProgress(MovementController controller)
+        {
+            float duration = zzBoostingDuration * controller.DurationScale;
+            controller.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - controller.zzBoosting.timeLeft / duration : 1f);
         }
 
         /// <summary>Whether Zz Boosting can start this step: turned on by a duration, and what starts it.</summary>

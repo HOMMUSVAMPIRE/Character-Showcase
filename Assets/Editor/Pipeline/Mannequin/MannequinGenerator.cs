@@ -41,95 +41,13 @@ namespace CharacterShowcase.EditorTools
         private const string PrefabPath = SceneGameSetup.CharacterPrefabPath;
         private const string ModelParentName = "ModelParent";
 
-        // The controller is built with the parameter names the translator uses by default.
-        private const string SpeedParameter = AnimatorParameterTranslator.DefaultSpeedParameter;
-        private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
-        private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
-        private const string DashingParameter = AnimatorParameterTranslator.DefaultDashingParameter;
-        private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
-        private const string SlidingParameter = AnimatorParameterTranslator.DefaultSlidingParameter;
-        private const string RollingParameter = AnimatorParameterTranslator.DefaultRollingParameter;
-        private const string WallRunningParameter = AnimatorParameterTranslator.DefaultWallRunningParameter;
-        private const string WallSlidingParameter = AnimatorParameterTranslator.DefaultWallSlidingParameter;
-        private const string WallClimbingParameter = AnimatorParameterTranslator.DefaultWallClimbingParameter;
-        private const string ClimbRightParameter = AnimatorParameterTranslator.DefaultClimbRightParameter;
-        private const string ClimbUpParameter = AnimatorParameterTranslator.DefaultClimbUpParameter;
-        private const string ClimbEnteringParameter = AnimatorParameterTranslator.DefaultClimbEnteringParameter;
-        private const string OnLadderParameter = AnimatorParameterTranslator.DefaultOnLadderParameter;
-        private const string ClimbExitingParameter = AnimatorParameterTranslator.DefaultClimbExitingParameter;
-        private const string ClimbStepProgressParameter = AnimatorParameterTranslator.DefaultClimbStepProgressParameter;
-        private const string HangingParameter = AnimatorParameterTranslator.DefaultHangingParameter;
-        private const string ClimbingParameter = AnimatorParameterTranslator.DefaultClimbingParameter;
-        private const string GrabbingParameter = AnimatorParameterTranslator.DefaultGrabbingParameter;
-        private const string GrabSpeedParameter = AnimatorParameterTranslator.DefaultGrabSpeedParameter;
-        private const string WallSideParameter = AnimatorParameterTranslator.DefaultWallSideParameter;
-        private const string RollProgressParameter = AnimatorParameterTranslator.DefaultRollProgressParameter;
-        private const string ClimbProgressParameter = AnimatorParameterTranslator.DefaultClimbProgressParameter;
-        private const string VaultingParameter = AnimatorParameterTranslator.DefaultVaultingParameter;
-        private const string VaultProgressParameter = AnimatorParameterTranslator.DefaultVaultProgressParameter;
-        private const string RopeSwingingParameter = AnimatorParameterTranslator.DefaultRopeSwingingParameter;
-        private const string ZipliningParameter = AnimatorParameterTranslator.DefaultZipliningParameter;
-        private const string SwimmingParameter = AnimatorParameterTranslator.DefaultSwimmingParameter;
-        private const string DivingParameter = AnimatorParameterTranslator.DefaultDivingParameter;
-        // Past the end of the Locomotion, Crouch and Wall Climb blend trees, the translator plays the fastest loop faster
-        // through these speed multipliers, from the speeds each loop is made for, which the controller carries as the
-        // TopSpeed parameters' defaults (see AnimatorParameterTranslator's Playback section). So no top speed, which a
-        // retuned character could outrun, is fixed here.
-        private const string LocomotionPlaybackParameter = AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter;
-        private const string LocomotionTopSpeedParameter = AnimatorParameterTranslator.DefaultLocomotionTopSpeedParameter;
-        private const string CrouchPlaybackParameter = AnimatorParameterTranslator.DefaultCrouchPlaybackParameter;
-        private const string CrouchTopSpeedParameter = AnimatorParameterTranslator.DefaultCrouchTopSpeedParameter;
-        private const string ClimbPlaybackParameter = AnimatorParameterTranslator.DefaultClimbPlaybackParameter;
-        private const string ClimbUpTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbUpTopSpeedParameter;
-        private const string ClimbDownTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbDownTopSpeedParameter;
-        private const string ClimbLeftTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbLeftTopSpeedParameter;
-        private const string ClimbRightTopSpeedParameter = AnimatorParameterTranslator.DefaultClimbRightTopSpeedParameter;
         // Fired by the translator on every jump, from the ground, in the air, off a wall or a rope or a zipline, and on
         // every launch off a bounce pad (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
         private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped | MovementEvents.Bounced;
-        // The libraries' landing plays this far (normalized) before handing back, or until the character moves faster than this (m/s).
-        private const float LandingLength = 0.45f, MoveOnFromLanding = 0.5f;
-        // The Quaternius libraries' clips used, where they're installed.
-        private static readonly string[] LibraryClips = { "Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop", "Jump_Start", "Jump_Loop", "Jump_Land" };
-        // The libraries' clips for the movement abilities, each used where it's installed (the mannequin's own fallback
-        // otherwise; see BuildAbilityStates). Of them, those standing on the floor are raised onto the mannequin's, as
-        // the locomotion clips are (see StandLibraryOnMannequinsFloor).
-        private static readonly string[] AbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Slide_Loop", "Roll", "Push_Loop", "ClimbUp_1m", "SafetyVault", "WallRun_L_Loop", "WallRun_R_Loop",
-            "Climb_Idle_Loop", "Climb_Up_Loop", "Climb_Down_Loop", "Climb_Left_Loop", "Climb_Right_Loop", "Climb_Enter", "Climb_Exit", "ClimbLedge",
-            "Swim_Idle_Loop", "Swim_Fwd_Loop" };
-        private static readonly string[] GroundedAbilityLibraryClips = { "Crouch_Idle_Loop", "Crouch_Fwd_Loop", "Push_Loop" };
-        // A climbing loop's speed (m/s) if it can't be measured on the mannequin (see MotionCaptureLocomotion.ClimbSpeed).
-        private const float ClimbLoopFallbackSpeed = 1f;
-        // Treading water, how far (m, on the mannequin) its head's pivot (the top of its neck) stands above the surface: the
-        // chin just out of the water. Swimming along, how far below the surface its hips' pivot is: the back just breaking
-        // it, the head at the water line (see FloatLibrarySwimsAtTheSwimDepth).
-        private const float HeadAboveWater = 0.15f, HipsBelowWater = 0.05f;
-        // The swimming speed (m/s, at the authored size) from which the Swim state shows the library's swim stroke fully:
-        // below it, it blends from treading water. The stroke is on the spot (it has no strides to measure), so it's
-        // shown at any swimming speed past this.
-        private const float SwimStrokeSpeed = 1.5f;
-        // How fast (a share of its own pace) Swim Underwater plays the swim stroke while the character drifts without
-        // swimming: an easy stroke, lying flat as the body does underwater, rather than treading water upright.
-        private const float UnderwaterDriftStrokePace = 0.35f;
-        // How far through a roll (RollProgress) it starts blending into walking or running, if the character is moving
-        // on, and how long that blend takes (s): it's done as the roll ends, so the roll flows into the stride.
-        private const float RollBlendOutAt = 0.75f, RollBlendOutTime = 0.15f;
-        // Seconds the Animator blends into a vault over (from a run, say): at 0.05, the stride's feet snapped to the vault's.
-        private const float VaultBlendInTime = 0.12f;
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
-        // The brisk walk is also shown past the speed its strides are made for, up to this many times it, played up to
-        // the second this many times faster: so it quickens a little and its planted feet slide a little (it reaches
-        // further than it's sped up). Few people walk much faster than a brisk walk (they break into a run), so a walk
-        // past it must hurry or slide; this keeps both small. The run takes over past it, so a walking speed beyond it
-        // shows the run. Both are shares of the clip's own speed, so they hold whatever it's measured at.
-        private const float BriskWalkReach = 1.5f, BriskWalkPlayback = 1.25f;
-        // Airborne, by vertical speed (m/s): rising at take-off (a jump leaves the ground faster than RiseThreshold), tucked at the top,
-        // falling. Falling locks in quickly, so walking off a ledge only passes through the tuck.
-        private const float FallThreshold = -5f;
-        private const float RiseThreshold = 8f;
 
         /// <summary>
         /// Generates the mannequin in Blender and builds everything from it. If Blender isn't found, offers to locate

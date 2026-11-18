@@ -46,6 +46,14 @@ namespace Character
         /// <summary>Under way, it holds the character up (it isn't falling).</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;
 {{/takesOver}}
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > {{Display}} Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("{{Display}} Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
         /// <summary>The events of {{StateFlag}} starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =
@@ -78,6 +86,7 @@ namespace Character
             // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
             movementData.velocityOverride = Vector3.zero;
             movementData.state |= CharacterState.{{StateFlag}};
+            PublishProgress(controller);
             return true;
         }
 {{/takesOver}}
@@ -95,8 +104,15 @@ namespace Character
             Vector3 forward = movementData.initialRotation * Vector3.forward;
             movementData.directMovementVector += forward * ({{name}}Speed * controller.SpeedScale * movementData.deltaTime);
             movementData.state |= CharacterState.{{StateFlag}};
+            PublishProgress(controller);
         }
 {{/onTopOfWalking}}
+
+        private void PublishProgress(MovementController controller)
+        {
+            float duration = {{name}}Duration * controller.DurationScale;
+            controller.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - controller.{{name}}.timeLeft / duration : 1f);
+        }
 
         /// <summary>Whether {{Display}} can start this step: turned on by a duration, and what starts it.</summary>
         private bool CanStart(Inputs inputs, MovementController controller)

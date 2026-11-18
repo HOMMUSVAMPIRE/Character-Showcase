@@ -10,7 +10,7 @@ namespace CharacterShowcase.Tests.Animations
 {
     /// <summary>
     /// Checks that the movement abilities show on the character's own model, through the shared Animator Controller
-    /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting, pushing, swinging on a
+    /// (built from Mannequin Layout.asset): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting, pushing, swinging on a
     /// rope, riding a zipline and swimming each play their state, a crouched model fits its lowered body, a hanging
     /// model's hands reach up to the ledge, the rope or the cable, and a swimmer's head is just out of the water. In the
     /// SampleContent category, as they check the package's own controller and model.
@@ -607,7 +607,7 @@ namespace CharacterShowcase.Tests.Animations
             Assert.That(rig.InState(CharacterState.Swimming), Is.True, "Test setup: the character should be swimming.");
 
             // Treading water, the head (its pivot, at the top of the neck) is just above the surface: the swimming clips
-            // are floated at the swim depth (see MannequinGenerator.FloatLibrarySwimsAtTheSwimDepth).
+            // are floated at the swim depth (see AnimationPreparation.FloatSwimsAtTheSwimDepth).
             float size = rig.Controller.Scale.y;
             float head = animator.GetBoneTransform(HumanBodyBones.Head).position.y - water.SurfaceHeight;
             Assert.That(head, Is.InRange(0f, 0.35f * size), "Treading water, the swimmer's head should be just out of the water.");

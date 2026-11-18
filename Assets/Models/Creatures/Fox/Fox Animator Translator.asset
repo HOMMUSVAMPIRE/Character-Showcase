@@ -12,29 +12,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fea169c6f94934098aa49da53584a11c, type: 3}
   m_Name: Fox Animator Translator
   m_EditorClassIdentifier: CharacterShowcase::Character.AnimatorParameterTranslator
-  speedParameter: Speed
+  floatParameters:
+  - source: Speed
+    parameter: Speed
+    smoothed: 1
+  - source: Vertical Speed
+    parameter: VerticalSpeed
+    smoothed: 0
+  - source: Wall Side
+    parameter: WallSide
+    smoothed: 0
+  - source: Grab Speed
+    parameter: GrabSpeed
+    smoothed: 1
+  - source: Climb Right
+    parameter: ClimbRight
+    smoothed: 1
+  - source: Climb Up
+    parameter: ClimbUp
+    smoothed: 1
+  - source: Climb Step Progress
+    parameter: ClimbStepProgress
+    smoothed: 0
+  - source: Roll Progress
+    parameter: RollProgress
+    smoothed: 0
+  - source: Climb Progress
+    parameter: ClimbProgress
+    smoothed: 0
+  - source: Vault Progress
+    parameter: VaultProgress
+    smoothed: 0
+  - source: Turn Speed
+    parameter: TurnSpeed
+    smoothed: 1
   speedDampTime: 0.1
-  verticalSpeedParameter: VerticalSpeed
-  forwardSpeedParameter: 
-  sidewaysSpeedParameter: 
-  turnSpeedParameter: TurnSpeed
-  wallSideParameter: WallSide
-  grabSpeedParameter: GrabSpeed
-  climbRightParameter: ClimbRight
-  climbUpParameter: ClimbUp
-  climbStepProgressParameter: ClimbStepProgress
-  rollProgressParameter: RollProgress
-  climbProgressParameter: ClimbProgress
-  vaultProgressParameter: VaultProgress
-  locomotionPlaybackParameter: LocomotionPlayback
-  locomotionTopSpeedParameter: LocomotionTopSpeed
-  crouchPlaybackParameter: CrouchPlayback
-  crouchTopSpeedParameter: CrouchTopSpeed
-  climbPlaybackParameter: ClimbPlayback
-  climbUpTopSpeedParameter: ClimbUpTopSpeed
-  climbDownTopSpeedParameter: ClimbDownTopSpeed
-  climbLeftTopSpeedParameter: ClimbLeftTopSpeed
-  climbRightTopSpeedParameter: ClimbRightTopSpeed
+  playbackParameters:
+  - parameter: LocomotionPlayback
+    axes:
+    - speedParameter: Speed
+      topSpeedParameter: LocomotionTopSpeed
+      negativeTopSpeedParameter: 
+  - parameter: CrouchPlayback
+    axes:
+    - speedParameter: Speed
+      topSpeedParameter: CrouchTopSpeed
+      negativeTopSpeedParameter: 
+  - parameter: ClimbPlayback
+    axes:
+    - speedParameter: ClimbRight
+      topSpeedParameter: ClimbRightTopSpeed
+      negativeTopSpeedParameter: ClimbLeftTopSpeed
+    - speedParameter: ClimbUp
+      topSpeedParameter: ClimbUpTopSpeed
+      negativeTopSpeedParameter: ClimbDownTopSpeed
   boolParameters:
   - source: Grounded
     parameter: Grounded

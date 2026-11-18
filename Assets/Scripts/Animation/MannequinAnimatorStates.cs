@@ -1,9 +1,9 @@
 namespace Character
 {
     /// <summary>
-    /// The names of the base layer's states in the Animator Controller MannequinGenerator builds (Mannequin.controller,
-    /// shared by the humanoid models): one place for the generator, which makes them, and the tests, which check the
-    /// character plays them. A state renamed here is renamed in both; Generate Mannequin then builds it so.
+    /// The names of the base layer's states in the shared Animator Controller (Mannequin.controller, shared by the humanoid
+    /// models), built from its layout (Mannequin Layout.asset): one place for the tests, which check the character plays
+    /// them. A state renamed in the layout is renamed here too.
     /// </summary>
     public static class MannequinAnimatorStates
     {

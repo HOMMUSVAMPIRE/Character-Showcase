@@ -8,7 +8,7 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests.Movement
 {
     /// <summary>
-    /// Tests of the fox (Fox.prefab, made by FoxGenerator), the first creature that isn't a humanoid: it stands on its
+    /// Tests of the fox (Fox.prefab, the showcase's), the first creature that isn't a humanoid: it stands on its
     /// paws in a box body, its eye point at its eyes; trots as it walks and gallops sprinting, at its speeds; jumps once,
     /// to its jump height; crouches under what's too low to stand under; turns only as far as a corridor narrower than
     /// it's long lets it; walks up and down stairs; and, jumping onto a wall at an angle, runs along it. (Its Animator's states are
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Movement
         private IEnumerator SpawnFox()
         {
             GameObject prefab = CharacterTestRig.LoadPrefab(FoxPrefabPath);
-            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab);
         }

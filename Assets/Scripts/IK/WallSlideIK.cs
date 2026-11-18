@@ -19,6 +19,7 @@ namespace Character
     /// The wall comes from the character's animation state (CharacterAnimationState.wallPoint and wallNormal), found in
     /// the model's parents; hands are placed through CharacterIK's procedural goals.
     /// </summary>
+    [HumanoidIK(20)]
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
     public class WallSlideIK : AbilityIK

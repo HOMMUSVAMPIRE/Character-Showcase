@@ -15,7 +15,7 @@ namespace Character
 
     /// <summary>
     /// A model's hitboxes: a capsule on each part of its body (see Hitbox), fitted to its mesh (Fit Hitboxes, which Prepare
-    /// Character Models and Generate Fox run), moving with its bones as it's animated, on the CharacterHitbox layer. They're
+    /// Character Models runs too), moving with its bones as it's animated, on the CharacterHitbox layer. They're
     /// the character's physical presence for what meets it (a thrown ball, a trigger it walks into), and raise HitStarted
     /// and HitEnded as something does. The movement never uses them: it moves the character's body, a shape of its own (see
     /// CharacterBody), and the CharacterHitbox layer is kept out of the movement's layers. On the model, so each model has

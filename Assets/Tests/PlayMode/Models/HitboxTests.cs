@@ -30,7 +30,7 @@ namespace CharacterShowcase.Tests.Models
         private IEnumerator Spawn(string character)
         {
             GameObject prefab = character == "Fox" ? CharacterTestRig.LoadPrefab(FoxPrefabPath) : CharacterTestRig.CharacterPrefab();
-            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab);
         }

@@ -239,7 +239,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - IK on stretched models: moving a hand or foot goal moving the hand or foot as far, and a knee hint on its own moving the foot no more than unstretched;
   - sample content (SampleContentAnimationTests, in the same file): every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor with its arms hanging down (the character's own model, when it's one of them, checked in AnimationTests' stand-on-the-ground case instead), and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up).
 - **AnimationEventTests**: the movement's events passed on by the AnimationController, with the animation state.
-- **AnimatorParameterTranslatorTests**: an Animator Parameter Translator's bool parameters: one showing a character's state (State: …) set while the state is, one showing the animation state's own bool set from it, an unknown source or a parameter the controller lacks skipped (the first with a warning), and a new translator's defaults naming the mannequin's parameters and sources that exist.
+- **AnimatorParameterTranslatorTests**: an Animator Parameter Translator's parameters: a bool showing a character's state (State: …) set while the state is, one showing the animation state's own bool set from it, an unknown source or a parameter the controller lacks skipped (the first with a warning), a float showing an ability value set from it and left as it is until it's set (as Wall Side is out of a wall run), and a new translator's defaults naming the mannequin's parameters and sources that exist.
 - **FootLockTests**: turning on the spot, planted feet staying where they were put down (none of the slide they have without it); a model swapped in while standing carrying on the old one's foot placement (faded in as far, the pelvis as low) rather than fading back in; and standing on a rising and falling platform, frame by frame as drawn, the feet staying on it.
 - **VisualRotationTests**: the model turning after the character: the character turning at once and the model easing round after it without overshooting; turning slower at a run than standing (no faster than its moving limit); leaning into curves by the configured share of the balancing lean (either way); walking a curve leaning about half as much as sprinting it; walking a sharp corner leaning no more than walking speed allows; leaning forward speeding up and back stopping, and upright otherwise; facing a roll at once without leaning; turning with a spinning platform without lagging.
 - **AbilityAnimationTests** (sample content):
@@ -344,6 +344,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
   - a recording keeping the latest frames, and reading back from its file exactly (and refusing what isn't one).
 
 ### Animations (the Animation category; see [Character Model and Animations](animation.md))
+- **AbilityValuesTests**: the values abilities publish for their look (`AbilityValues`): kept by their names' hashes, the same in every process; set and read back, a name never set not found; a table holding its capacity and saying so past it; and setting and reading allocating nothing.
 - **LocomotionBlendTests** (sample content): the shared Animator Controller's Locomotion blend tree lines up every loop to land its left foot at the same moment, and each loop shown at its own strides' speed (the walks, the jog and the sprint) keeps its feet in step with the ground there.
 - **MotionCaptureClipTests** (sample content): every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame; played on the mannequin, every clip that moves about on its feet stays on the spot and faces forward; each check lists every clip that fails it.
 
@@ -417,6 +418,15 @@ The markers are the project's (see Performance, above) and the engine's physics 
 - **Frame-based tests run sped up, within a limit.** Those tests run up to `CharacterTestRig.TimeScale` times real speed (the fastest the suite passes at reliably), but never let one frame cover more than `CharacterTestRig.MaxFrameTime` of game time (`FrameTimeLimit`), and the camera tests likewise: what's done once a frame (animation, IK, foot placement, the camera easing) is checked against the steps, and sped up as much, a frame of the editor's (far longer than one in batch mode) would cover most of a second, enough to finish a camera blend before it could be seen, or leave the feet off the floor. So the editor runs these tests slower than batch mode does, and they pass in both.
 - **Remove things with `Object.DestroyImmediate`** in a test that steps the physics itself, since `Destroy` waits for the end of a frame that doesn't come between its steps.
 - **Every `yield return` costs a frame**, however little it waits for, and in the editor a frame is long: wait for something with `rig.RunUntil` (which runs its steps back to back) rather than a loop of `rig.Run(1, …)`, and start again with a second character with `ReplaceRig()` (which makes it as the first was), not a new rig.
+
+## Recording the animation tests
+
+For comparing the animation before and after a change to how it's driven or built (the translator, an Animator layout), which a test passing can miss, `AnimationRecorder` records the animation tests when asked, each by an environment variable naming a folder:
+
+- `CHARACTER_SHOWCASE_RECORD_ANIMATOR`: every Animator parameter's value, and each layer's state, after each step a test steps the Animator by hand, a file per test. Stepped with the physics, they're the same on every run, so two runs' files can be compared. How far into its state each layer is varies (the Animator runs for a moment before a test takes it over), so compare the parameters and the states, not that.
+- `CHARACTER_SHOWCASE_CAPTURE_POSES`: a picture of the model as each animation test ends, from its right, from behind on its left and from in front on its right, a PNG per test, to look at side by side.
+
+`AnimatorControllerDescription.DescribeFromCommandLine` writes a controller's structure as text, to compare two builds of it (see [Animator layouts](animation.md#animator-layouts)).
 
 ## Running them
 

@@ -30,17 +30,19 @@ namespace CharacterShowcase.EditorTools
     {
         /// <summary>The folder the models are in, a subfolder per model (or per model and its variants).</summary>
         public const string ModelsFolder = "Assets/Models/CharacterModels";
-        /// <summary>The mannequin's model file (made by Generate Mannequin, where the model pipeline is in the project).</summary>
+        /// <summary>The mannequin's model file: the model every model's animations are made for.</summary>
         public const string MannequinModelPath = ModelsFolder + "/Mannequin/Mannequin.fbx";
         /// <summary>The mannequin's model prefab, whose IK settings new models start from.</summary>
         public const string MannequinPrefabPath = ModelsFolder + "/Mannequin/Mannequin Model.prefab";
         /// <summary>
-        /// The Animator Controller, shared by every model: Humanoid animation plays on any Humanoid model. Built by
-        /// MannequinGenerator.
+        /// The Animator Controller, shared by every model: Humanoid animation plays on any Humanoid model. Built from its
+        /// layout (LayoutPath) by the Animator Controller Builder.
         /// </summary>
         public const string ControllerPath = "Assets/Animation/Mannequin.controller";
+        /// <summary>The shared Animator Controller's layout (an AnimatorLayout): its states, clips and transitions, edited there.</summary>
+        public const string LayoutPath = "Assets/Animation/Mannequin Layout.asset";
         /// <summary>
-        /// The translator every model's source names, shared like the controller. Built by MannequinGenerator.
+        /// The translator every model's source names, shared like the controller: an asset of its own, set in its inspector.
         /// </summary>
         public const string TranslatorPath = "Assets/Animation/Mannequin Animator Translator.asset";
 
@@ -254,7 +256,7 @@ namespace CharacterShowcase.EditorTools
             translator = AssetDatabase.LoadAssetAtPath<AnimatorParameterTranslator>(TranslatorPath);
             if (controller != null && translator != null && controller.layers.Length > 0) { return true; }
             Debug.LogError($"[CharacterModelImporter] '{ControllerPath}' or '{TranslatorPath}' is missing or empty. Run Tools > Character " +
-                           "Showcase > Generate Mannequin first: the mannequin's animations are the ones every model plays.");
+                           "Showcase > Prepare Animations first, which builds the controller from its layout: the mannequin's animations are the ones every model plays.");
             return false;
         }
 

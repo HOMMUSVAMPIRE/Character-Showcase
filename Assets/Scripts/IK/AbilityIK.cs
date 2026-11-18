@@ -60,4 +60,18 @@ namespace Character
         protected void FadeTo(float goal) =>
             activeWeight = FadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, DeltaTime / FadeTime) : goal;
     }
+
+    /// <summary>
+    /// Marks an AbilityIK every humanoid model gets: Prepare Character Models adds it to each model prefab it saves (with the
+    /// settings the model's earlier prefab had, else the mannequin's), so a new one is on every model with no change to the
+    /// importer. Order puts it among the others on the model (lower first), which is the order they're added in.
+    /// </summary>
+    [System.AttributeUsage(System.AttributeTargets.Class, Inherited = false)]
+    public sealed class HumanoidIKAttribute : System.Attribute
+    {
+        /// <summary>Where it goes among the others (lower first; the built-in ones are 0 to 40).</summary>
+        public int Order { get; }
+
+        public HumanoidIKAttribute(int order = 100) { Order = order; }
+    }
 }

@@ -1,0 +1,6166 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: baa6d5b3ec5140868a275394ef40cc1a, type: 3}
+  m_Name: Mannequin Layout
+  m_EditorClassIdentifier: CharacterShowcase::Character.AnimatorLayout
+  controller: {fileID: 9100000, guid: 0e62825eea9ca44eda12def1fb1dd704, type: 2}
+  measuringModel: {fileID: 5392532283294212038, guid: ef978c06d96cd4a0fa7ca8e8ab8b5c2d, type: 3}
+  ikPass: 1
+  defaultState: Locomotion
+  notes: The mannequin's Animator Controller (Mannequin.controller), which every humanoid model plays through Humanoid retargeting. With the Quaternius libraries installed, their clips; without them, the mannequin's own (each clip slot's candidates in order). Its parameters are the ones an Animator Parameter Translator names by default. Built by Build Animator Controllers, and by Generate Mannequin after making its clips.
+  clips:
+  - name: Idle
+    candidates:
+    - {fileID: -8945691123924629249, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Brisk Walk
+    candidates:
+    - {fileID: 4355010261646147397, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Run
+    candidates:
+    - {fileID: -7551964380084998518, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Rise
+    candidates:
+    - {fileID: 4733286433499938339, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Apex
+    candidates:
+    - {fileID: 2233925740391540593, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Fall
+    candidates:
+    - {fileID: -5025487861805838091, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Dash
+    candidates:
+    - {fileID: -2246502780319343731, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Hang
+    candidates:
+    - {fileID: 1227577430105836932, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Wall Slide
+    candidates:
+    - {fileID: 6711710935412770219, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Rope Swing
+    candidates:
+    - {fileID: -3444852781527508840, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Zipline
+    candidates:
+    - {fileID: 4874873376800704871, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Swim
+    candidates:
+    - {fileID: -4086864642940237741, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Walk Loop
+    candidates:
+    - {fileID: -7003542030617561338, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 8349542763059015795, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Jog
+    candidates:
+    - {fileID: -8815886378510225334, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Sprint Loop
+    candidates:
+    - {fileID: -4950333804767787469, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: -3112965366749432192, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Jump Start
+    candidates:
+    - {fileID: -1862932125039169580, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Jump Loop
+    candidates:
+    - {fileID: -3659967873887649963, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Jump Land
+    candidates:
+    - {fileID: 4832780573735333345, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Crouch Idle
+    candidates:
+    - {fileID: -7993625790543202706, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 6589755540219670814, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Crouch Walk
+    candidates:
+    - {fileID: 4366774653929184976, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Push
+    candidates:
+    - {fileID: 2931362099718132477, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 8349542763059015795, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Slide
+    candidates:
+    - {fileID: 5337448645578394443, guid: f49c6152cb24446829de8bd80a6c72b4, type: 3}
+    - {fileID: -2246502780319343731, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Roll
+    candidates:
+    - {fileID: 3031411921458128146, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 2233925740391540593, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Wall Run Left
+    candidates:
+    - {fileID: -3739669880138559822, guid: f49c6152cb24446829de8bd80a6c72b4, type: 3}
+  - name: Wall Run Right
+    candidates:
+    - {fileID: -8258060238703837533, guid: f49c6152cb24446829de8bd80a6c72b4, type: 3}
+  - name: Swim Idle
+    candidates:
+    - {fileID: 1532177651469301551, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Swim Stroke
+    candidates:
+    - {fileID: 5539243244057379418, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Idle
+    candidates:
+    - {fileID: 1442269360403125084, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Up Loop
+    candidates:
+    - {fileID: -2828013064107677548, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Down Loop
+    candidates:
+    - {fileID: 2676984727341982789, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Left Loop
+    candidates:
+    - {fileID: 6622226979305741504, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Right Loop
+    candidates:
+    - {fileID: 5530952548391809541, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Ladder
+    candidates:
+    - {fileID: 1442269360403125084, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 1227577430105836932, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Climb Enter
+    candidates:
+    - {fileID: -7760359080451054123, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Exit
+    candidates:
+    - {fileID: 5119089375067427328, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+  - name: Climb Ledge
+    candidates:
+    - {fileID: -7833374897513126579, guid: 0a041a29cf92f44b592635dc698598d8, type: 3}
+    - {fileID: 4767187060131454731, guid: f49c6152cb24446829de8bd80a6c72b4, type: 3}
+    - {fileID: 4733286433499938339, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  - name: Vault
+    candidates:
+    - {fileID: 2250709570056444933, guid: f49c6152cb24446829de8bd80a6c72b4, type: 3}
+    - {fileID: 4733286433499938339, guid: 3022c8572970842cf91f3ca29d242abc, type: 3}
+  parameters:
+  - name: Speed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: VerticalSpeed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Grounded
+    note: 
+    type: 4
+    defaultBool: 1
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Dashing
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Jump
+    note: 
+    type: 9
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips:
+      - Jump Start
+      - Jump Loop
+      - Jump Land
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Crouching
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Sliding
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Rolling
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallRunning
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallSliding
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallClimbing
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: OnLadder
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbEntering
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbExiting
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Hanging
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Climbing
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Vaulting
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Grabbing
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: RopeSwinging
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Ziplining
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Swimming
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Diving
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: GrabSpeed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: RollProgress
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbProgress
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: VaultProgress
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallSide
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbRight
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbUp
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: ClimbStepProgress
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  blendTrees:
+  - name: Locomotion
+    note: 'Idle, then each loop at the speed its strides are made for, offset to land its left foot at the same moment as the others, so blending between them never mixes one foot''s stride with the other''s. The libraries'' walk is slow and their jog (what sprinting shows) quick: the mannequin''s brisk walk and run fill the speeds between.'
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Walk Loop
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Walk Loop
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Walk Loop
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Brisk Walk
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Brisk Walk
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Brisk Walk
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Brisk Walk
+      note: 'The brisk walk is also shown past the speed its strides are made for, up to this many times it (Multiply), played up to this many times faster (Time Scale): so it quickens a little and its planted feet slide a little (it reaches further than it''s sped up). Few people walk much faster than a brisk walk (they break into a run), so a walk past it must hurry or slide; this keeps both small. The run takes over past it. Both are shares of the clip''s own speed, so they hold whatever it''s measured at.'
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Brisk Walk
+        direction: {x: 0, y: 0}
+        multiply: 1.5
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1.25
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Brisk Walk
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Run
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Run
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Run
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Jog
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Jog
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Jog
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips:
+        - Jog
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Sprint Loop
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Sprint Loop
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 2
+        constant: 0
+        clip: Sprint Loop
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Airborne
+    note: 'By vertical speed (m/s): rising at take-off (a jump leaves the ground faster than Rise''s threshold), tucked at the top, falling. Falling locks in quickly, so walking off a ledge only passes through the tuck.'
+    type: 0
+    parameter: VerticalSpeed
+    parameterY: 
+    children:
+    - motion: Fall
+      note: 
+      threshold:
+        kind: 0
+        constant: -5
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Apex
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Rise
+      note: 
+      threshold:
+        kind: 0
+        constant: 8
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Crouch
+    note: 
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Crouch Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Crouch Walk
+      note: 
+      threshold:
+        kind: 1
+        constant: 0
+        clip: Crouch Walk
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0.05
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Wall Run
+    note: 
+    type: 0
+    parameter: WallSide
+    parameterY: 
+    children:
+    - motion: Wall Run Left
+      note: 
+      threshold:
+        kind: 0
+        constant: -1
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Wall Run Right
+      note: 
+      threshold:
+        kind: 0
+        constant: 1
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Swim
+    note: 'The stroke''s threshold is the swimming speed (m/s, at the authored size) from which it''s shown fully: below it, it blends from treading water. The stroke is on the spot (it has no strides to measure), so it''s shown at any swimming speed past this.'
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Swim Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Swim Stroke
+      note: 
+      threshold:
+        kind: 0
+        constant: 1.5
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Swim Underwater
+    note: 'Drifting without swimming, the stroke plays at an easy pace (its first child''s Time Scale, a share of its own): lying flat as the body does underwater, rather than treading water upright.'
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Swim Stroke
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 0.35
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Swim Stroke
+      note: 
+      threshold:
+        kind: 0
+        constant: 1.5
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Wall Climb
+    note: 
+    type: 1
+    parameter: ClimbRight
+    parameterY: ClimbUp
+    children:
+    - motion: Climb Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 1
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Climb Up Loop
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 1}
+      positionScale:
+        kind: 4
+        constant: 0
+        clip: Climb Up Loop
+        direction: {x: 0, y: 1}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 1
+        minimum: 0.05
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Climb Down Loop
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: -1}
+      positionScale:
+        kind: 4
+        constant: 0
+        clip: Climb Down Loop
+        direction: {x: 0, y: -1}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 1
+        minimum: 0.05
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Climb Left Loop
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: -1, y: 0}
+      positionScale:
+        kind: 4
+        constant: 0
+        clip: Climb Left Loop
+        direction: {x: -1, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 1
+        minimum: 0.05
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Climb Right Loop
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 1, y: 0}
+      positionScale:
+        kind: 4
+        constant: 0
+        clip: Climb Right Loop
+        direction: {x: 1, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 1
+        minimum: 0.05
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  states:
+  - name: Locomotion
+    note: 'Each loop at the speed its strides are made for (measured on the mannequin), so its planted feet stay put there, from walking to sprinting; past the fastest loop''s own speed, the translator plays it faster to match (Locomotion Playback, from the top speed this sets: see AnimatorParameterTranslator''s Playback). No Foot IK on any state: on a model stretched along one axis, Unity''s Foot IK puts the feet where it reports their goals, which is off by the stretch (see CharacterUtilities.AnimatedIKGoalPosition). Foot placement plants them at the goals, corrected, instead.'
+    motions:
+    - motion: tree:Locomotion
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: LocomotionPlayback
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters:
+      - name: LocomotionPlayback
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 0
+          constant: 1
+          clip: 
+          direction: {x: 0, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 0
+          fallback: 0
+          minimum: 0
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: LocomotionTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 1
+          constant: 0
+          clip: Sprint Loop
+          direction: {x: 0, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 0
+          fallback: 0
+          minimum: 0
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Airborne
+    note: 'In the air, the libraries'' jump: a jump starts from its take-off (skipping its crouch, so the jump shows the moment it''s pressed) and carries on into its loop; walking off an edge goes straight to the loop; landing plays the start of its landing, which hands back to walking or running as soon as the character moves. Without them: rising, tucked at the top, and falling, by vertical speed.'
+    motions:
+    - motion: Jump Loop
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips:
+        - Jump Start
+        - Jump Loop
+        - Jump Land
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: tree:Airborne
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Jump
+    note: Starts from the jump's take-off (measured), skipping its crouch, so the jump shows the moment it's pressed.
+    motions:
+    - motion: Jump Start
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 3
+        constant: 0
+        clip: Jump Start
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips:
+      - Jump Start
+      - Jump Loop
+      - Jump Land
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Land
+    note: 
+    motions:
+    - motion: Jump Land
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips:
+      - Jump Start
+      - Jump Loop
+      - Jump Land
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Dash
+    note: 
+    motions:
+    - motion: Dash
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Crouch
+    note: Still, then crouch-walking at the speed its strides are made for, played faster past it (Crouch Playback).
+    motions:
+    - motion: tree:Crouch
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: CrouchPlayback
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters:
+      - name: CrouchPlayback
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 0
+          constant: 1
+          clip: 
+          direction: {x: 0, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 0
+          fallback: 0
+          minimum: 0
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: CrouchTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 1
+          constant: 0
+          clip: Crouch Walk
+          direction: {x: 0, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 0
+          fallback: 0
+          minimum: 0.05
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Crouch Idle
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Slide
+    note: 
+    motions:
+    - motion: Slide
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Roll
+    note: Plays through once over the roll, however long it's tuned to take.
+    motions:
+    - motion: Roll
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: RollProgress
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Wall Run
+    note: 'Running along a wall: the library''s wall runs (the Source edition of Universal Animation Library 2 has them), one for a wall on each side, chosen by WallSide (-1 left, 1 right: their feet are toward the wall, and the body leans away from it); or else sprinting. At the speed the character runs (Speed, over the speed its strides are made for).'
+    motions:
+    - motion: tree:Wall Run
+      note: 
+      speed:
+        kind: 1
+        constant: 0
+        clip: Wall Run Right
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 1
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0.05
+      speedParameter: Speed
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Sprint Loop
+      note: 
+      speed:
+        kind: 1
+        constant: 0
+        clip: Sprint Loop
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 1
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0.05
+      speedParameter: Speed
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Hang
+    note: 
+    motions:
+    - motion: Hang
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Wall Slide
+    note: 
+    motions:
+    - motion: Wall Slide
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Rope Swing
+    note: The mannequin's own hang (the libraries have none), which LineGripIK puts the hands of on the rope.
+    motions:
+    - motion: Rope Swing
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Zipline
+    note: The mannequin's own hang (the libraries have none), which LineGripIK puts the hands of on the cable.
+    motions:
+    - motion: Zipline
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Swim
+    note: 'Swimming at the surface: the library''s treading water, blending into its swim stroke by swimming speed (Speed, as at the authored size); or else the mannequin''s own treading water.'
+    motions:
+    - motion: tree:Swim
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Swim
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Swim Underwater
+    note: 'A state of its own, so a controller can give it clips of its own. Underwater the body lies flat, resting on the character''s feet, with the model lowered to it (see Swimming), so this is always the library''s stroke, lying, never its treading water (upright, its legs hanging through the floor below a swimmer near the bottom): drifting along slowly without swimming, at its own pace swimming. Or else the surface''s.'
+    motions:
+    - motion: tree:Swim Underwater
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Swim
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Wall Climb
+    note: 'Climbing a climbable surface: the library''s climbing loops (the Pro edition of Universal Animation Library 1 has them), blended by which way and how fast the character climbs (ClimbRight and ClimbUp, m/s): each loop at the speed its holding hands are made for (measured: a fallback speed if it can''t be), played faster past it (Climb Playback), and the climbing idle in the middle. Without them, the mannequin''s hang, held still.'
+    motions:
+    - motion: tree:Wall Climb
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: ClimbPlayback
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters:
+      - name: ClimbPlayback
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 0
+          constant: 1
+          clip: 
+          direction: {x: 0, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 0
+          fallback: 0
+          minimum: 0
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: ClimbUpTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 4
+          constant: 0
+          clip: Climb Up Loop
+          direction: {x: 0, y: 1}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 1
+          fallback: 1
+          minimum: 0.05
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: ClimbDownTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 4
+          constant: 0
+          clip: Climb Down Loop
+          direction: {x: 0, y: -1}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 1
+          fallback: 1
+          minimum: 0.05
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: ClimbLeftTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 4
+          constant: 0
+          clip: Climb Left Loop
+          direction: {x: -1, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 1
+          fallback: 1
+          minimum: 0.05
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      - name: ClimbRightTopSpeed
+        note: 
+        type: 1
+        defaultBool: 0
+        defaultFloat:
+          kind: 4
+          constant: 0
+          clip: Climb Right Loop
+          direction: {x: 1, y: 0}
+          multiply: 0
+          reciprocal: 0
+          lerp: 0
+          lerpTo: 0
+          hasFallback: 1
+          fallback: 1
+          minimum: 0.05
+        requires:
+          clips: []
+          missingClips: []
+          states: []
+          missingStates: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Hang
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Ladder
+    note: The library's climbing idle (or the mannequin's hang) as the pose, which LadderIK puts the hands and feet of on the rungs, moving them rung to rung as the character climbs.
+    motions:
+    - motion: Ladder
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Climb Enter
+    note: 'Stepping onto a climbable surface from standing on the ground: the library''s climbing enter (on the spot: the feet step onto the wall), played through once over however long it''s tuned to take. Without it, none: straight into the climb.'
+    motions:
+    - motion: Climb Enter
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: ClimbStepProgress
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips:
+      - Climb Enter
+      - Climb Exit
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Climb Exit
+    note: 'Stepping off a climbable surface''s bottom onto the ground: the library''s climbing exit, played through once. Without it, none.'
+    motions:
+    - motion: Climb Exit
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: ClimbStepProgress
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips:
+      - Climb Enter
+      - Climb Exit
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Climb
+    note: 'Climbing up onto a ledge, from hanging or from climbing a wall below it: the library''s climb onto a ledge (from a climbing pose, as the hang''s), or else its 1 m climb, or the mannequin''s rise; played through once over the climb.'
+    motions:
+    - motion: Climb Ledge
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: ClimbProgress
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Vault
+    note: The library's safety vault (a hand on the top, the legs swung over beside it), or else the mannequin's rise, played through once over the vault.
+    motions:
+    - motion: Vault
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: VaultProgress
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Push
+    note: Pushing at the speed the push's strides are made for, and pulling the same played backward; standing still holding the object, held still.
+    motions:
+    - motion: Push
+      note: 
+      speed:
+        kind: 1
+        constant: 0
+        clip: Push
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 1
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 1
+        fallback: 1
+        minimum: 0.05
+      speedParameter: GrabSpeed
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  transitions:
+  - from: Any State
+    to: Jump
+    note: Any jump, from the ground or in the air, starts the jump over.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.06
+    durationIsShare: 0
+    canTransitionToSelf: 1
+    conditions:
+    - mode: 0
+      parameter: Jump
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Jump
+    to: Airborne
+    note: 
+    hasExitTime: 1
+    exitTime:
+      kind: 3
+      constant: 0
+      clip: Jump Start
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0.6
+      lerpTo: 1
+      hasFallback: 1
+      fallback: 0
+      minimum: 0
+    duration: 0.2
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Locomotion
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states:
+      - Jump
+      missingStates: []
+  - from: Airborne
+    to: Land
+    note: 'Landing as soon as it''s on the ground and no longer rising (at the start of a jump it''s still on the ground, rising). Not by exit time: the Animator only checks one of those as it passes the exit time, so a jump landing after that stayed in its jump, sinking through the floor.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.06
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 3
+      parameter: VerticalSpeed
+      note: 
+      threshold: 0.5
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Jump
+    to: Land
+    note: 'Landing as soon as it''s on the ground and no longer rising (at the start of a jump it''s still on the ground, rising). Not by exit time: the Animator only checks one of those as it passes the exit time, so a jump landing after that stayed in its jump, sinking through the floor.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.06
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 3
+      parameter: VerticalSpeed
+      note: 
+      threshold: 0.5
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Land
+    to: Locomotion
+    note: The libraries' landing plays this far (normalized) before handing back, or until the character moves faster than the next transition's speed.
+    hasExitTime: 1
+    exitTime:
+      kind: 0
+      constant: 0.45
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.2
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Land
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 2
+      parameter: Speed
+      note: 
+      threshold: 0.5
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Land
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Locomotion
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates:
+      - Jump
+  - from: Airborne
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.08
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates:
+      - Jump
+  - from: Any State
+    to: Dash
+    note: Entered from anywhere almost instantly so it feels immediate, and left for whichever of Locomotion / Airborne matches the character once the dash ends.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.04
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Dashing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Dash
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Dashing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Dash
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Dashing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Crouch
+    note: 'Crouching only on the ground, and not while doing anything else: the character can be crouched while doing something else (dashing, climbing onto a low ledge, or falling), which shows instead, or two Any State transitions would keep swapping the states.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Dashing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Sliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Rolling
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: WallSliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: WallClimbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: OnLadder
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: ClimbEntering
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Hanging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Climbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Vaulting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grabbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: RopeSwinging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Ziplining
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Diving
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Crouch
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Crouch
+    to: Airborne
+    note: A crouched character falling (walked off an edge crouched) shows the air too.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Slide
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Sliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Slide
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Sliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Slide
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Sliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Roll
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.05
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Rolling
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 3
+      parameter: RollProgress
+      note: Not back into the roll from walking on out of the end of one (see its own transitions), while it's still rolling.
+      threshold: 0.5
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Roll
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Rolling
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Roll
+    to: Locomotion
+    note: 'Moving on out of a roll, blend into walking or running over its end, rather than after it: from this far through the roll (Roll Progress), over this long (s), so it''s done as the roll ends and the roll flows into the stride.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 2
+      parameter: RollProgress
+      note: 
+      threshold: 0.75
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 2
+      parameter: Speed
+      note: 
+      threshold: 0.5
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Roll
+    to: Crouch
+    note: 'A roll from a crouch ends crouched: blend into the crouch over its end in the same way, rather than standing up out of it and crouching again.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 2
+      parameter: RollProgress
+      note: 
+      threshold: 0.75
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Roll
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Rolling
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Wall Run
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Run
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Run
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Wall Slide
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: WallSliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Slide
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallSliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Slide
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallSliding
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Wall Climb
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: WallClimbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: ClimbEntering
+      note: Still climbing while stepping on or off, so the climb waits for them. Once stepped on, it takes over at once (Any State transitions come first), rather than the step's own way back to the ground.
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states:
+        - Climb Enter
+        missingStates: []
+    - mode: 1
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states:
+        - Climb Enter
+        missingStates: []
+    - mode: 1
+      parameter: OnLadder
+      note: A ladder has a state of its own.
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Climb
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallClimbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Climb
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallClimbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Ladder
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: OnLadder
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: ClimbEntering
+      note: Still climbing while stepping on or off, so the climb waits for them. Once stepped on, it takes over at once (Any State transitions come first), rather than the step's own way back to the ground.
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states:
+        - Climb Enter
+        missingStates: []
+    - mode: 1
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states:
+        - Climb Enter
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Ladder
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: OnLadder
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Ladder
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: OnLadder
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Hang
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Hanging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Hang
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Hanging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Hang
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Hanging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Climb
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.05
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Climbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Climbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Climbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Vault
+    note: 'Into a vault from a run over long enough that the stride''s feet don''t snap to the vault''s: at 0.05 s, they snapped.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Vaulting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Vault
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Vaulting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Vault
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Vaulting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Push
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grabbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Push
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grabbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Push
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grabbing
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Rope Swing
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: RopeSwinging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Rope Swing
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: RopeSwinging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Rope Swing
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: RopeSwinging
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Zipline
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Ziplining
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Zipline
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Ziplining
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Zipline
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Ziplining
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Swim
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.2
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Diving
+      note: Swimming underwater has a state of its own (Swimming is set then too).
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Swim Underwater
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.2
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Diving
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim Underwater
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Diving
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim Underwater
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Diving
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Climb Enter
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: ClimbEntering
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb Enter
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: ClimbEntering
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb Enter
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: ClimbEntering
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Climb Exit
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.1
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb Exit
+    to: Locomotion
+    note: Back on the ground, standing or crouched (crouching is entered from any state), or in the air.
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Climb Exit
+    to: Airborne
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: ClimbExiting
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []

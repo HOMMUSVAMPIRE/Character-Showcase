@@ -1,0 +1,38 @@
+using UnityEngine;
+
+namespace Character
+{
+    /// <summary>
+    /// Zz Hovering's IK (made by New Ability): it places the limbs while Zz Hovering is under way, easing in as it starts and
+    /// out as it ends. As made, it holds the hands where the animation has them: replace Solve's placement with yours,
+    /// in world space (CharacterIK corrects it for a stretched model). LineGripIK (hands on a rope or cable) and
+    /// LedgeHandIK (hands on a ledge) are examples to copy from; see docs/animation.md, IK for your own model. Every
+    /// humanoid model gets it ([HumanoidIK]) the next time Prepare Character Models runs.
+    /// </summary>
+    [HumanoidIK]
+    [RequireComponent(typeof(CharacterIK))]
+    [DisallowMultipleComponent]
+    public class ZzHoveringIK : AbilityIK
+    {
+        [Tooltip("How strongly the limbs are placed while Zz Hovering is under way. 0 turns it off")]
+        [Range(0f, 1f)] [SerializeField] private float weight = 1f;
+        [Tooltip("Seconds to ease in as Zz Hovering starts, and out as it ends")]
+        [Min(0f)] [SerializeField] private float fadeTime = 0.12f;
+
+        protected override float Weight => weight;
+        protected override float FadeTime => fadeTime;
+
+        protected override void Solve(Animator animator)
+        {
+            if (stateSource == null || !animator.isHuman) { return; }
+            CharacterAnimationState state = stateSource.AnimationState;
+            bool underWay = (state.state & CharacterState.ZzHovering) != 0;
+            FadeTo(underWay ? weight : 0f);
+            if (activeWeight <= 0f) { return; }
+
+            // Your placement goes here: where the limbs go for Zz Hovering. As made, the hands where the animation has them.
+            ik.SetProceduralGoal(IKLimb.RightHand, animator.GetIKPosition(AvatarIKGoal.RightHand), Quaternion.identity, activeWeight, 0f);
+            ik.SetProceduralGoal(IKLimb.LeftHand, animator.GetIKPosition(AvatarIKGoal.LeftHand), Quaternion.identity, activeWeight, 0f);
+        }
+    }
+}

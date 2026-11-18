@@ -17,6 +17,7 @@ namespace Character
     /// The ladder comes from the character's animation state (CharacterAnimationState.ladder), found in the model's
     /// parents; limbs are placed through CharacterIK's procedural goals.
     /// </summary>
+    [HumanoidIK(30)]
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
     public class LadderIK : AbilityIK

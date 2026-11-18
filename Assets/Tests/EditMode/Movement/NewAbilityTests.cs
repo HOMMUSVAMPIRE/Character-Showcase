@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
 
         private static readonly (string label, AbilityScaffold.Answers answers)[] Cases =
         {
-            ("TakesOverOnGrab", new AbilityScaffold.Answers { name = "ZzHovering", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.Grab, after = "Rolling" }),
+            ("TakesOverOnGrab", new AbilityScaffold.Answers { name = "ZzHovering", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.Grab, after = "Rolling", needsIK = true }),
             ("OnTopOfWalkingOnJump", new AbilityScaffold.Answers { name = "ZzBoosting", kind = AbilityScaffold.Kind.OnTopOfWalking, button = AbilityScaffold.StartButton.Jump, after = "Dashing" }),
             ("AtALevelElement", new AbilityScaffold.Answers { name = "ZzFloating", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.None, levelElement = true, after = null, area = AbilityScaffold.Area.Traversal }),
         };
@@ -104,6 +104,8 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void ItsDocs_AreAdded_ToItsAreasPage_AndTheComponentList()
         {
+            // The docs are the showcase's (a project made from the package has none, and New Ability leaves them out).
+            if (NewAbilityWindow.ReadProjectFile(AbilityScaffold.MovementDocPath) == null) { Assert.Ignore("This project has no docs folder to add to."); }
             List<AbilityScaffold.Change> changes = Plan(AnswersFor("OnTopOfWalkingOnJump"));
             Assert.That(Changed(changes, "docs/abilities.md").text, Does.Contain("\n## Zz Boosting\n"));
             Assert.That(Changed(changes, AbilityScaffold.MovementDocPath).text, Does.Contain("Dashing, Zz Boosting and Jumping"));

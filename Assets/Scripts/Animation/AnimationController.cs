@@ -316,6 +316,7 @@ namespace Character
             {
                 deltaTime = deltaTime,
                 state = movementData.state,
+                abilityValues = movementController != null ? movementController.AbilityValues : null,
                 velocity = velocity,
                 localVelocity = Quaternion.Inverse(facing) * velocity,
                 horizontalSpeed = horizontalSpeed,

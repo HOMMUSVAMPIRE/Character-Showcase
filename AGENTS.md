@@ -68,7 +68,10 @@ So nothing that ships may reference what doesn't. Shipped code reaches the pipel
 registers with (`CharacterModelPostprocessor.BeforePreparing`, which `MannequinRegeneration` uses); the mannequin's paths
 are the character side's (`CharacterModelImporter.MannequinModelPath`, `.MannequinPrefabPath`), which
 `MannequinGenerator` reads; and the tuning presets' inspector finds the Character prefab by Set Up Scene's path
-(`SceneGameSetup.CharacterPrefabPath`), not the level checks'.
+(`SceneGameSetup.CharacterPrefabPath`), not the level checks'. What makes the animation ready ships: the Animator
+layouts and their builder (`AnimatorControllerBuilder`), and the clips' preparation (`AnimationPreparation`, Prepare
+Animations), which the generators call after their Blender step. The generators keep only that step, and nothing that
+ships names Blender or the generators (the hygiene check, check 18).
 
 ## How to verify your work
 
@@ -237,8 +240,9 @@ change and say regeneration is still needed.
 
 | Generated | Generator |
 | --- | --- |
-| `Mannequin.fbx` (mesh, rig, clips), `Assets/Animation/Mannequin.controller`, the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender |
-| `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox.controller`, `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
+| `Mannequin.fbx` (mesh, rig, clips), the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender, then Prepare Animations |
+| Every Animator Controller (`Assets/Animation/Mannequin.controller`, `Fox.controller`), and the libraries' clips' floor and swim offsets | `AnimationPreparation` (Prepare Animations), building each from its Animator Layout (`AnimatorControllerBuilder`). The layouts (`Mannequin Layout.asset`, `Fox Layout.asset`) are hand-edited sources |
+| `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
 | Every model prefab's hitboxes (`Hitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Character Models and Generate Fox also run on each model they save, keeping its settings |
 | A scene's Game Setup object (spawner, spawn points, input manager, camera) and its course timers' racer | `SceneGameSetup` (Set Up Scene), which also runs `LevelFixtureSetup`, for a scene whose fixtures aren't set up yet |
@@ -250,7 +254,7 @@ change and say regeneration is still needed.
 | A model source's measured height, and its body (`[name] Body.asset`, unless its Refit On Prepare is off) | `CharacterModelImporter` (Prepare Character Models) |
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
-New Animator parameters or states belong in `MannequinGenerator`; new clips in the Blender scripts. The levels'
+New Animator parameters, states and transitions belong in a layout (`Mannequin Layout.asset`, `Fox Layout.asset`: docs/animation.md, Animator layouts), with the reason in its note; new clips of the mannequin's own in the Blender scripts. The levels'
 materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph`, `Water.shader` and
 `WaterEffect.shader` are hand-edited: nothing regenerates them. So are the default water effects (`Assets/Prefabs/Effects`,
 `Assets/Materials/Effects`), which Create Water Effects (`WaterEffectAssets`) makes only where they're missing.
@@ -274,7 +278,7 @@ characters.
 saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside
 the editor needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. No tuning is fixed: tests that need one
 set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together. The
-swimming clips are floated at Swimming's Swim Depth, for the height of the body the Character prefab has with its model (its model's, when its host's Body Fit takes it): after changing either, run Generate Mannequin.
+swimming clips are floated at Swimming's Swim Depth, for the height of the body the Character prefab has with its model (its model's, when its host's Body Fit takes it): saving a change to either floats them again by itself in the editor (`AnimationPreparation`); outside it, run Prepare Animations (`AnimationPreparation.PrepareFromCommandLine`).
 
 ## Things that aren't obvious
 

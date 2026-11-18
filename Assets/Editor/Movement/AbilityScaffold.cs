@@ -17,7 +17,7 @@ namespace CharacterShowcase.EditorTools
     /// - its CharacterState flag and its two MovementEvents, each the next unused bit (at the enums' New Ability lines);
     /// - its place in BasicMovementMode.DefaultComponents, and in MovementCompositionTests' copy of that order;
     /// - its PlayMode test fixture, on the ability test kit (AbilityFixture);
-    /// - optionally, a level element it starts at (Assets/Scripts/Level);
+    /// - optionally, a level element it starts at (Assets/Scripts/Level), and an IK component of its own (Assets/Scripts/IK);
     /// - a section for it in docs/abilities.md or docs/traversal.md, and its name in docs/movement.md's component list.
     /// The movement mode assets are given it once it's compiled (MovementModeSync.AddToAllModes: turned on for the
     /// default character's mode, off for the others). See docs/adding-an-ability.md.
@@ -42,6 +42,8 @@ namespace CharacterShowcase.EditorTools
             public StartButton button = StartButton.Grab;
             /// <summary>Whether it starts at a level element of its own (made with it).</summary>
             public bool levelElement;
+            /// <summary>Whether it gets an IK component of its own, placing the limbs while it's under way (made with it).</summary>
+            public bool needsIK;
             /// <summary>The default component it goes just after in the order (its class name), or null for first.</summary>
             public string after = nameof(Rolling);
             public Area area = Area.Abilities;
@@ -66,6 +68,7 @@ namespace CharacterShowcase.EditorTools
         public const string CompositionTestPath = "Assets/Tests/EditMode/Movement/MovementCompositionTests.cs";
         public const string FixturesFolder = "Assets/Tests/PlayMode";
         public const string LevelFolder = "Assets/Scripts/Level";
+        public const string IKFolder = "Assets/Scripts/IK";
         public const string MovementDocPath = "docs/movement.md";
         /// <summary>The line in CharacterState.cs and MovementEvents.cs that new members go above.</summary>
         public const string EnumAnchor = "// New Ability (NewAbilityWindow) adds";
@@ -74,7 +77,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>The names derived from the answers: the class's, its state's, its events', its settings' prefix.</summary>
         public readonly struct Names
         {
-            public readonly string type, field, display, state, started, ended, element;
+            public readonly string type, field, display, state, started, ended, element, ik;
 
             public Names(string name)
             {
@@ -85,6 +88,7 @@ namespace CharacterShowcase.EditorTools
                 started = name + "Started";
                 ended = name + "Ended";
                 element = name + "Point";
+                ik = name + "IK";
             }
         }
 
@@ -99,9 +103,9 @@ namespace CharacterShowcase.EditorTools
             if (!Regex.IsMatch(name, "^[A-Z][A-Za-z0-9]*$")) { return "Give it a name: a class name, starting with a capital letter (Gliding, say)."; }
             var names = new Names(name);
             if (answers.button == StartButton.None && !answers.levelElement) { return "Choose what starts it: a button, a level element, or both."; }
-            if (TypeNames.Value.Contains(name) || (answers.levelElement && TypeNames.Value.Contains(names.element)))
+            if (TypeNames.Value.Contains(name) || (answers.levelElement && TypeNames.Value.Contains(names.element)) || (answers.needsIK && TypeNames.Value.Contains(names.ik)))
             {
-                return $"There's already a type called {name}{(answers.levelElement ? $" or {names.element}" : "")}: choose another name.";
+                return $"There's already a type called {name}{(answers.levelElement ? $" or {names.element}" : "")}{(answers.needsIK ? $" or {names.ik}" : "")}: choose another name.";
             }
             if (Enum.GetNames(typeof(CharacterState)).Contains(names.state)) { return $"There's already a state called {names.state}: choose another name."; }
             if (Enum.GetNames(typeof(MovementEvents)).Any(e => e == names.started || e == names.ended)) { return $"There's already a movement event called {names.started} or {names.ended}: choose another name."; }
@@ -158,6 +162,7 @@ namespace CharacterShowcase.EditorTools
         public static string ComponentPath(Names names) => $"{ComponentsFolder}/{names.type}.cs";
         public static string FixturePath(Answers answers, Names names) => $"{FixturesFolder}/{answers.area}/{names.type}Tests.cs";
         public static string ElementPath(Names names) => $"{LevelFolder}/{names.element}.cs";
+        public static string IKPath(Names names) => $"{IKFolder}/{names.ik}.cs";
         public static string AreaDocPath(Answers answers) => answers.area == Area.Abilities ? "docs/abilities.md" : "docs/traversal.md";
 
         /// <summary>
@@ -193,6 +198,10 @@ namespace CharacterShowcase.EditorTools
             if (answers.levelElement)
             {
                 changes.Add(new Change { path = ElementPath(names), isNew = true, text = Render(template("LevelElement"), values, flags), summary = $"The level element it starts at ({names.element})" });
+            }
+            if (answers.needsIK)
+            {
+                changes.Add(new Change { path = IKPath(names), isNew = true, text = Render(template("IK"), values, flags), summary = $"Its IK ({names.ik}), on every humanoid model once Prepare Character Models runs" });
             }
             changes.Add(new Change { path = StatePath, text = AddEnumMembers(read(StatePath), $"{names.display} (see {names.type})", names.state), summary = $"Its state, CharacterState.{names.state}" });
             changes.Add(new Change { path = EventsPath, text = AddEnumMembers(read(EventsPath), $"{names.display} starting and ending (see {names.type})", names.started, names.ended), summary = $"Its events, {names.started} and {names.ended}" });

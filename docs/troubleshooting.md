@@ -53,7 +53,7 @@ Unity couldn't match the model's bones to a person's. Select the model, open the
 The file has no mesh bound to a skeleton. Rig it (Mixamo can), and export it with its skeleton and skin.
 
 **Prepare Character Models does nothing, with "Run Tools > Character Showcase > Generate Mannequin first" in the Console.**
-The Animator Controller and translator every model shares (`CharacterModelImporter.ControllerPath` and `TranslatorPath`) are missing or empty. Check Git LFS fetched the project's files (README.md, How to open this Project), then run Generate Mannequin, which, if Blender isn't found, offers to rebuild them from the Mannequin.fbx in the project (see [Generate Mannequin](animation.md#generate-mannequin)).
+The Animator Controller and translator every model shares (`CharacterModelImporter.ControllerPath` and `TranslatorPath`) are missing or empty. Check Git LFS fetched the project's files (README.md, How to open this Project), then run Tools > Character Showcase > Prepare Animations, which builds the controller from its layout (see [Animator layouts](animation.md#animator-layouts)). The translator is an asset of its own: restore it from version control if it's gone.
 
 **A model isn't in Set Up Scene's list.**
 Set Up Scene lists the models prepared in Assets/Models/CharacterModels. A model that isn't ready is listed under "Not available", with the reason: "not prepared yet" (press Prepare Character Models, then Refresh) or the problem its source has. A model source somewhere else (a creature's) isn't listed: give it to a character prefab and choose that.
@@ -80,8 +80,14 @@ The change was made to Character.prefab, BasicMovementMode.asset or Character Bo
 The scene's Character Spawner has its own Model Source or Movement Mode set, which replace the prefab's. Empty them, or set the scene up again choosing the prefab's own.
 
 ## Generated assets
+**A change to an Animator Controller disappeared.**
+The controllers are built from their Animator Layouts (Mannequin Layout.asset, Fox Layout.asset), which replace what's in them each build: make the change in the layout, then Build Animator Controllers (see [Animator layouts](animation.md#animator-layouts)).
+
+**Build Animator Controllers says a layout can't be built.**
+It says why in the Console: its Controller isn't set, its default state isn't built (a requirement left it out), or a transition names a state the layout hasn't (a renamed state). A state whose motions' clips are all missing is built without a motion, and listed as such. Its report also lists which motion each state got and what it measured, which explains a threshold or speed that looks wrong.
+
 **A change to a generated asset disappeared.**
-The mannequin, its Animator Controller, the model prefabs, the level scenes, the level specs, the climbable paint masks and the movement envelope are all written by editor tools, which overwrite them. Change the generator and run it again (the table in AGENTS.md, Generated assets, says which tool makes which).
+The mannequin, the model prefabs, the level scenes, the level specs, the climbable paint masks and the movement envelope are all written by editor tools, which overwrite them. Change the generator and run it again (the table in AGENTS.md, Generated assets, says which tool makes which).
 
 **A level has no character, camera or spawn points after rebuilding it.**
 A build attaches the level's mechanics (moving platforms, ropes, water, course timers) itself, but makes a new scene, without its game setup. Run Set Up Scene on it again, which also tells the course timers who's racing (see [Spawning the Character](spawning.md)).

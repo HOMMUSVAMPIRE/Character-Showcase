@@ -9,7 +9,7 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 456934232584960403, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: colliderFit
+      propertyPath: bodyFit
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 456934232584960403, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}

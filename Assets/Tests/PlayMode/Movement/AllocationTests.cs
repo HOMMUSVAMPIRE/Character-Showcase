@@ -128,7 +128,7 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator TheFoxsStepsAndFrames_AllocateNothing()
         {
             GameObject prefab = CharacterTestRig.LoadPrefab(FoxPrefabPath);
-            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): generate it with Tools > Character Showcase > Generate Fox."); }
+            if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             BuildCourse();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f), prefab);
             animation = rig.Animation;

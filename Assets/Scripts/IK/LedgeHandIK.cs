@@ -17,6 +17,7 @@ namespace Character
     /// The ledge comes from the character's animation state (CharacterAnimationState.ledgeEdge and ledgeNormal), found
     /// in the model's parents, as FootPlacementIK finds it; hands are placed through CharacterIK's procedural goals.
     /// </summary>
+    [HumanoidIK(10)]
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
     public class LedgeHandIK : AbilityIK

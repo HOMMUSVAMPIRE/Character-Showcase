@@ -80,27 +80,11 @@ namespace CharacterShowcase.EditorTools
             ("HindUpperLeg_R", "HindLowerLeg_R", "HindFoot_R", false),
         };
 
-        // The speeds (m/s, at its authored size) the clips are authored for (fox_animations.SPEEDS): the Speed blend's
-        // thresholds, so each clip plays at the speed its paws keep to the ground.
-        private const float WalkClipSpeed = 1.3f, TrotClipSpeed = 3.5f, GallopClipSpeed = 10f, CrouchWalkClipSpeed = 1f;
-        // The Airborne blend: falling this fast (m/s) shows the fall; rising this fast, the rise.
-        private const float FallingSpeed = -4f, RisingSpeed = 2f;
-        // Seconds the Animator blends between its states over.
-        private const float BlendTime = 0.12f, CrouchBlendTime = 0.15f;
-
-        private const string SpeedParameter = AnimatorParameterTranslator.DefaultSpeedParameter;
-        private const string VerticalSpeedParameter = AnimatorParameterTranslator.DefaultVerticalSpeedParameter;
-        private const string GroundedParameter = AnimatorParameterTranslator.DefaultGroundedParameter;
-        private const string CrouchingParameter = AnimatorParameterTranslator.DefaultCrouchingParameter;
-        private const string SwimmingParameter = AnimatorParameterTranslator.DefaultSwimmingParameter;
-        private const string WallRunningParameter = AnimatorParameterTranslator.DefaultWallRunningParameter;
-        private const string WallSideParameter = AnimatorParameterTranslator.DefaultWallSideParameter;
-        // The speed (m/s) the Swim clip's paddle is authored for (fox_animations.py's SWIM_SPEED; the fox's Swim Speed).
+        // The speed (m/s) the Swim clip's paddle is authored for (fox_animations.py's SWIM_SPEED): the fox's Swim Speed, set
+        // when its movement is first made. Its layout's Swim threshold is the same (Fox Layout.asset: change them together).
         private const float SwimClipSpeed = 2.5f;
         // How fast the character turns (degrees a second), which the translator drives and the standing turn blends by.
         private const string TurnSpeedParameter = "TurnSpeed";
-        // The turn speed (degrees a second, either way) at which the fox, standing, steps round fully (Turn Step).
-        private const float TurnStepTurnSpeed = 90f;
 
         private static readonly string[] Clips = { "Idle", "Walk", "Trot", "Gallop", "Jump Rise", "Jump Fall", "Crouch Idle", "Crouch Walk" };
 
@@ -146,12 +130,19 @@ namespace CharacterShowcase.EditorTools
                 return false;
             }
 
-            AnimatorController controller = BuildController(clips);
+            var layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(LayoutPath);
+            if (layout == null)
+            {
+                Debug.LogError($"[{LogName}] There's no Animator Layout at '{LayoutPath}' to build the fox's controller from.");
+                return false;
+            }
+            AnimatorController controller = AnimatorControllerBuilder.Build(layout);
+            if (controller == null) { return false; }
             GameObject modelPrefab = SaveModelPrefab(controller);
             var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
-            var translatorSettings = new SerializedObject(translator);
-            translatorSettings.FindProperty("turnSpeedParameter").stringValue = TurnSpeedParameter;
-            translatorSettings.ApplyModifiedPropertiesWithoutUndo();
+            // The mannequin's floats, and its turn speed, which stepping round on the spot blends by.
+            translator.FloatParameters = AnimatorParameterTranslator.DefaultFloatParameters()
+                .Append(new AnimatorParameterTranslator.FloatParameter("Turn Speed", TurnSpeedParameter, smoothed: true)).ToArray();
             EditorUtility.SetDirty(translator);
             BodyDefinition body = LoadOrCreateBody();
             DirectCharacterModelSource source = SaveSource(modelPrefab, translator, body);
@@ -196,97 +187,8 @@ namespace CharacterShowcase.EditorTools
                 .Where(c => !c.name.StartsWith("__preview__"))
                 .ToDictionary(c => c.name);
 
-        /// <summary>
-        /// The fox's Animator Controller, built from scratch each time: Locomotion by Speed (the default), Crouch by Speed
-        /// while Crouching, and Airborne by VerticalSpeed while not Grounded.
-        /// </summary>
-        private static AnimatorController BuildController(Dictionary<string, AnimationClip> clips)
-        {
-            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
-            if (controller == null) { controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath); }
-            foreach (Object part in AssetDatabase.LoadAllAssetsAtPath(ControllerPath))
-            {
-                if (part != null && part != controller) { Object.DestroyImmediate(part, true); }
-            }
-            controller.parameters = Array.Empty<AnimatorControllerParameter>();
-            controller.layers = Array.Empty<AnimatorControllerLayer>();
-            controller.AddLayer("Base Layer");
-            controller.AddParameter(SpeedParameter, AnimatorControllerParameterType.Float);
-            controller.AddParameter(VerticalSpeedParameter, AnimatorControllerParameterType.Float);
-            controller.AddParameter(new AnimatorControllerParameter { name = GroundedParameter, type = AnimatorControllerParameterType.Bool, defaultBool = true });
-            controller.AddParameter(CrouchingParameter, AnimatorControllerParameterType.Bool);
-            controller.AddParameter(TurnSpeedParameter, AnimatorControllerParameterType.Float);
-            controller.AddParameter(SwimmingParameter, AnimatorControllerParameterType.Bool);
-            controller.AddParameter(WallRunningParameter, AnimatorControllerParameterType.Bool);
-            controller.AddParameter(WallSideParameter, AnimatorControllerParameterType.Float);
-
-            AnimatorStateMachine machine = controller.layers[0].stateMachine;
-            AnimatorState locomotion = machine.AddState("Locomotion");
-            // Standing: Idle, stepping round (Turn Step) as it turns either way.
-            BlendTree standing = Blend(controller, "Standing", TurnSpeedParameter,
-                (clips["Turn Step"], -TurnStepTurnSpeed), (clips["Idle"], 0f), (clips["Turn Step"], TurnStepTurnSpeed));
-            locomotion.motion = Blend(controller, "Locomotion", SpeedParameter,
-                (standing, 0f), (clips["Walk"], WalkClipSpeed), (clips["Trot"], TrotClipSpeed), (clips["Gallop"], GallopClipSpeed));
-            AnimatorState crouch = machine.AddState("Crouch");
-            crouch.motion = Blend(controller, "Crouch", SpeedParameter, (clips["Crouch Idle"], 0f), (clips["Crouch Walk"], CrouchWalkClipSpeed));
-            AnimatorState airborne = machine.AddState("Airborne");
-            airborne.motion = Blend(controller, "Airborne", VerticalSpeedParameter, (clips["Jump Fall"], FallingSpeed), (clips["Jump Rise"], RisingSpeed));
-            // Swimming: paddling, treading water (Swim Idle) to swimming (Swim) by Speed.
-            AnimatorState swim = machine.AddState("Swim");
-            swim.motion = Blend(controller, "Swim", SpeedParameter, (clips["Swim Idle"], 0f), (clips["Swim"], SwimClipSpeed));
-            // Running along a wall: the gaits, by Speed (the fox's body rolled toward the wall by PawPlacementIK).
-            AnimatorState wallRun = machine.AddState("Wall Run");
-            wallRun.motion = locomotion.motion;
-            machine.defaultState = locomotion;
-
-            // Swimming and wall-running aren't on the ground either: in the air is only when neither.
-            AnimatorStateTransition toSwim = machine.AddAnyStateTransition(swim);
-            toSwim.canTransitionToSelf = false;
-            Configure(toSwim, BlendTime, (AnimatorConditionMode.If, SwimmingParameter));
-            AnimatorStateTransition toWallRun = machine.AddAnyStateTransition(wallRun);
-            toWallRun.canTransitionToSelf = false;
-            Configure(toWallRun, BlendTime, (AnimatorConditionMode.If, WallRunningParameter));
-            AnimatorStateTransition toAir = machine.AddAnyStateTransition(airborne);
-            toAir.canTransitionToSelf = false;
-            Configure(toAir, BlendTime, (AnimatorConditionMode.IfNot, GroundedParameter), (AnimatorConditionMode.IfNot, SwimmingParameter),
-                (AnimatorConditionMode.IfNot, WallRunningParameter));
-            foreach (AnimatorState from in new[] { swim, wallRun })
-            {
-                string flag = from == swim ? SwimmingParameter : WallRunningParameter;
-                Configure(from.AddTransition(locomotion), BlendTime, (AnimatorConditionMode.IfNot, flag), (AnimatorConditionMode.If, GroundedParameter),
-                    (AnimatorConditionMode.IfNot, CrouchingParameter));
-                Configure(from.AddTransition(crouch), BlendTime, (AnimatorConditionMode.IfNot, flag), (AnimatorConditionMode.If, GroundedParameter),
-                    (AnimatorConditionMode.If, CrouchingParameter));
-            }
-            Configure(airborne.AddTransition(locomotion), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.IfNot, CrouchingParameter));
-            Configure(airborne.AddTransition(crouch), BlendTime, (AnimatorConditionMode.If, GroundedParameter), (AnimatorConditionMode.If, CrouchingParameter));
-            Configure(locomotion.AddTransition(crouch), CrouchBlendTime, (AnimatorConditionMode.If, CrouchingParameter));
-            Configure(crouch.AddTransition(locomotion), CrouchBlendTime, (AnimatorConditionMode.IfNot, CrouchingParameter));
-            EditorUtility.SetDirty(controller);
-            return controller;
-        }
-
-        private static void Configure(AnimatorStateTransition transition, float duration, params (AnimatorConditionMode mode, string parameter)[] conditions)
-        {
-            transition.hasExitTime = false;
-            transition.duration = duration;
-            foreach (var (mode, parameter) in conditions) { transition.AddCondition(mode, 0f, parameter); }
-        }
-
-        private static BlendTree Blend(AnimatorController controller, string name, string parameter, params (Motion motion, float threshold)[] children)
-        {
-            var tree = new BlendTree
-            {
-                name = name,
-                blendType = BlendTreeType.Simple1D,
-                blendParameter = parameter,
-                useAutomaticThresholds = false,
-                hideFlags = HideFlags.HideInHierarchy,
-            };
-            foreach (var (motion, threshold) in children) { tree.AddChild(motion, threshold); }
-            AssetDatabase.AddObjectToAsset(tree, controller);
-            return tree;
-        }
+        // The fox's Animator Controller's layout (its states, clips and transitions, edited there): built after its clips.
+        public const string LayoutPath = Folder + "/Fox Layout.asset";
 
         /// <summary>
         /// Gives the model paw placement (PawPlacementIK), its legs found by their bones' names and their paws touching the

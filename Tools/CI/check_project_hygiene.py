@@ -38,6 +38,9 @@ Checks:
          allocation every step.
      Where a component legitimately differs, it's in a named allow-list below (with why), and an entry that's no longer
      needed fails too, so it comes off.
+ 18. Nothing that ships (AGENTS.md, The package line) names the model pipeline: Blender, its runner, the mannequin's and
+     the fox's generators or their menu items, the Blender scripts, or starting a program. Code, comments and messages,
+     as a buyer reads all three; PIPELINE_NAMES_ALLOWED lists what may (notes on FBX files exported from Blender).
 """
 import json
 import os
@@ -833,6 +836,45 @@ def check_ability_conventions():
     check_no_has_flag()
 
 
+# What the package doesn't have, so nothing that ships may name it: the model pipeline (Blender, the mannequin's and the
+# fox's generators and their menu items, the Blender scripts) and starting programs (what running Blender needs).
+PIPELINE_NAMES = re.compile(r"\bBlender\b|\bBlenderRunner\b|\bMannequinGenerator\b|\bFoxGenerator\b|Generate Mannequin|Generate Fox"
+                            r"|Tools/(?:Mannequin|Fox|Blender|Animation)/|System\.Diagnostics\.Process|\bProcess\.Start\b")
+# The folders that don't ship (AGENTS.md, The package line): everything else under these roots does.
+UNSHIPPED_FOLDERS = ("Editor/Pipeline/", "Editor/LevelChecks/", "Editor/Level/", "Tests/EditMode/Levels/")
+# Mentions that ship on purpose: how FBX files exported from Blender are put right (a buyer's model may be one), which
+# require nothing of Blender. Each is (the file, a phrase on its line).
+PIPELINE_NAMES_ALLOWED = (
+    ("Editor/Models/CharacterModelImporter.cs", "Blender's \"Armature\""),
+    ("Editor/Models/CharacterModelImporter.Pose.cs", "Blender's FBX export"),
+    ("Tests/EditMode/Models/PreparedModelTests.cs", "Blender's axis conversion"),
+)
+
+
+def check_no_pipeline_in_package():
+    # The package ships without the model pipeline (AGENTS.md, The package line), so what ships may not name it: not in
+    # code, comments or messages, since a buyer reads all three, and a message sending them to Generate Mannequin would
+    # send them to a menu item they haven't got.
+    used = set()
+    for path in sorted(ASSETS.rglob("*.cs")):
+        relative = path.relative_to(ASSETS).as_posix()
+        if not relative.startswith(("Scripts/", "Editor/", "Tests/")) or relative.startswith(UNSHIPPED_FOLDERS):
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            match = PIPELINE_NAMES.search(line)
+            if not match:
+                continue
+            allowed = next((a for a in PIPELINE_NAMES_ALLOWED if a[0] == relative and a[1] in line), None)
+            if allowed:
+                used.add(allowed)
+                continue
+            problems.append(f"{path.relative_to(ROOT)}:{number}: names the model pipeline ('{match.group(0)}'), which the package "
+                            f"doesn't have: name what ships instead (Prepare Animations, the layouts), or say it's the showcase's")
+    for allowed in PIPELINE_NAMES_ALLOWED:
+        if allowed not in used:
+            problems.append(f"Tools/CI/check_project_hygiene.py: PIPELINE_NAMES_ALLOWED's {allowed} matches nothing now: take it off")
+
+
 def main():
     if not ASSETS.is_dir():
         print(f"No Assets folder at {ASSETS}; run this from the repository.", file=sys.stderr)
@@ -846,6 +888,7 @@ def main():
     check_test_fixtures()
     check_serialized_components()
     check_flag_enums()
+    check_no_pipeline_in_package()
     check_ability_conventions()
     if problems:
         print(f"{len(problems)} problem(s) found:")

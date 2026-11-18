@@ -43,6 +43,11 @@ namespace Character
         /// The bools below are the animation's view of them, worked out for how it should look.
         /// </summary>
         public CharacterState state;
+        /// <summary>
+        /// The values the character's abilities publish for their look (see AbilityValues): an Animator Parameter
+        /// Translator's float parameter can show any of them. Null without a MovementController.
+        /// </summary>
+        public AbilityValues abilityValues;
 
         /// <summary>
         /// Whether the character should be animated as on the ground. Stays true for a moment after leaving the ground

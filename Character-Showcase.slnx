@@ -2,9 +2,9 @@
   <Project Path="CharacterShowcase.Tests.PlayMode.csproj" />
   <Project Path="CharacterShowcase.LevelChecks.Editor.csproj" />
   <Project Path="CharacterShowcase.Level.Editor.csproj" />
+  <Project Path="CharacterShowcase.Editor.csproj" />
   <Project Path="CharacterShowcase.Pipeline.Editor.csproj" />
   <Project Path="CharacterShowcase.Tests.EditMode.csproj" />
-  <Project Path="CharacterShowcase.Editor.csproj" />
   <Project Path="CharacterShowcase.csproj" />
   <Project Path="CameraSystem.csproj" />
   <Project Path="CharacterShowcase.Tests.Shared.csproj" />

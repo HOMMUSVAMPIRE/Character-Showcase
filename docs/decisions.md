@@ -145,3 +145,13 @@ Choices about how the project is built, why they were made, and what was decided
 **Against:**
 - Each component declaring its own states and events, with bits handed out as the mode is built: no limit and no hand-picked bits, but bits that change with the mode's components, which recorded golden paths, replays and anything sent over a network would have to map.
 - Revisit that when `MovementEvents` (two bits an ability) nears its 64.
+
+## Animator Controllers are built from layouts; the animation's own floats stay the animation's (November 2026)
+**Decided:**
+- Each character's Animator Controller is built from an Animator Layout asset (`AnimatorControllerBuilder`), not written by its generator's code: the mannequin's and the fox's controllers moved over with nothing changed (their structures, every parameter the tests step through, and their poses compared before and after). The reasons the generators' code carried as comments are the layouts' notes.
+- The translator's parameters are lists in its inspector, each with a source. A source is the animation state's own value (worked out by the AnimationController for how it should look) or what the movement has (a character's state, or a value an ability publishes, `AbilityValues`).
+
+**Why:** a new ability's look then needs no code (a state in the layout, a translator entry), the controllers can be changed and rebuilt without Blender, and the package has one way to build a controller, for a buyer's characters too.
+
+**Against:** moving every Animator float into values the movement publishes, as first planned. The animation's own floats (a vault's progress paced by Vault Min Duration, a climb's held as it blends out) are presentation, worked out each frame: in the movement, they'd break "movement and animation are separate" and "movement runs on physics steps". So they stay the animation state's, and only what the movement itself has is published.
+

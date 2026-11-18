@@ -74,7 +74,7 @@ namespace CharacterShowcase.EditorTools
         public static bool HasChangedSincePrepared(string modelPath) =>
             LoadPreparedRecords().TryGetValue(modelPath, out PreparedRecord recorded) && recorded.File != RecordFor(modelPath, null).File;
 
-        /// <summary>Records a model as prepared as it is now, for tools that prepare a model themselves (Generate Mannequin).</summary>
+        /// <summary>Records a model as prepared as it is now, for tools that prepare a model themselves (a model generator).</summary>
         public static void MarkPrepared(string modelPath, RuntimeAnimatorController controller)
         {
             Dictionary<string, PreparedRecord> prepared = LoadPreparedRecords();
