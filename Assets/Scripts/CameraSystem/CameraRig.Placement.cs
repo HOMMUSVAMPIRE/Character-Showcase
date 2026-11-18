@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.Profiling;
+using PhysicsQueries;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -91,8 +92,8 @@ namespace CameraSystem
         }
 
         // Reused for every collision sweep, so sweeping doesn't allocate a new array each time.
-        private readonly RaycastHit[] sweepHits = new RaycastHit[32];
-        private readonly Collider[] probeOverlaps = new Collider[32];
+        private readonly RaycastHitBuffer sweepHits = new(32, "CameraRig.sweepHits");
+        private readonly ColliderBuffer probeOverlaps = new(32, "CameraRig.probeOverlaps");
         // The collision probe's radius this frame: the Probe Radius at the target's size, or less where there's no room for
         // it (see ProbeStart).
         private float probeRadius;
@@ -117,7 +118,7 @@ namespace CameraSystem
             float margin = 0.1f * radius;
             for (int pass = 0; pass < ProbeClearingPasses; pass++)
             {
-                int count = Physics.OverlapSphereNonAlloc(origin, radius, probeOverlaps, collision.layers, collision.triggerInteraction);
+                int count = probeOverlaps.OverlapSphere(origin, radius, collision.layers, collision.triggerInteraction);
                 bool pushed = false;
                 for (int i = 0; i < count; i++)
                 {
@@ -140,7 +141,7 @@ namespace CameraSystem
         /// <summary>Whether a probe this big at origin overlaps anything that isn't the target.</summary>
         private bool ProbeOverlaps(Vector3 origin, float radius)
         {
-            int count = Physics.OverlapSphereNonAlloc(origin, radius, probeOverlaps, collision.layers, collision.triggerInteraction);
+            int count = probeOverlaps.OverlapSphere(origin, radius, collision.layers, collision.triggerInteraction);
             for (int i = 0; i < count; i++)
             {
                 if (!IsTargets(probeOverlaps[i].transform)) { return true; }
@@ -163,7 +164,7 @@ namespace CameraSystem
             // from a shoulder against a wall running alongside snapped the camera in to just behind the target's head
             // (as a wall run began, say), however clear the view behind was.
             float margin = 0.1f * probeRadius;
-            int count = Physics.SphereCastNonAlloc(origin, probeRadius, direction, sweepHits, maxDistance, collision.layers, collision.triggerInteraction);
+            int count = sweepHits.SphereCast(origin, probeRadius, direction, maxDistance, collision.layers, collision.triggerInteraction);
             bool found = false;
             for (int i = 0; i < count; i++)
             {

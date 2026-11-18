@@ -53,9 +53,11 @@ flowchart LR
     EditTests --> LevelEditor["CharacterShowcase.Level.Editor<br/>(level builders, specs, Level Editor)"]
     PlayTests["PlayMode tests"] --> Showcase
     PlayTests --> Camera
+    Showcase --> Queries["PhysicsQueries<br/>(growing query buffers)"]
+    Camera --> Queries
 ```
 
-The character's code and the camera's don't reference each other at all, and the level builders reference no project code; only the editor tools and the tests reach across. (Both runtime assemblies and the level builders use Unity's packages: the Input System, URP, TextMeshPro.)
+The character's code and the camera's don't reference each other at all (both use `PhysicsQueries`, which references nothing: the physics query buffers that grow when a query fills them, since Unity's results come in no order and a full buffer can leave out the nearest hit), and the level builders reference no project code; only the editor tools and the tests reach across. (Both runtime assemblies and the level builders use Unity's packages: the Input System, URP, TextMeshPro.)
 
 - **The camera knows nothing about the character.** It follows a plain Transform. The two are connected in the scene, not in code: Set Up Scene wires the spawner's On Camera Target Spawned event to `CameraRig.Follow`, which gets the character, its eye point and its size reference (see [Camera System](camera.md#connecting-it-to-something)).
 - **The levels know nothing about the character or the camera.** The level builders make geometry, lighting and named markers. (Their runtime mechanics, in Assets/Scripts/Level, are in the character's assembly, but know nothing about the character either: the abilities find them, as with `Level.Rope.All`.) Set Up Scene (`SceneGameSetup`, `LevelFixtureSetup`) turns the markers into working mechanics and spawn points from the character's side.

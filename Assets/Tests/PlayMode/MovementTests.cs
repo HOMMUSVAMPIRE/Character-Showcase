@@ -350,7 +350,7 @@ namespace CharacterShowcase.Tests
             // from different starting points and headings, so the character's path crosses the treads differently.
             rig.Floor(0f, 200f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
             const int steps = 40;

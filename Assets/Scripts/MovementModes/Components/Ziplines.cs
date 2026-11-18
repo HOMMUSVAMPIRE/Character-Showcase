@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Level;
 using UnityEngine;
 
@@ -158,18 +159,21 @@ namespace Character
             float margin = ZiplineEndMargin * controller.HeightScale;
 
             Zipline best = null;
-            float bestDistance = reach * reach, bestAlong = 0f;
-            foreach (Zipline line in Zipline.All)
+            float bestSqrDistance = reach * reach, bestAlong = 0f;
+            // Indexed, not foreach: All is an IReadOnlyList, whose enumerator is boxed, an allocation every step in the air.
+            IReadOnlyList<Zipline> lines = Zipline.All;
+            for (int i = 0; i < lines.Count; i++)
             {
+                Zipline line = lines[i];
                 if (line == null || (line == ride.lastLine && ride.regrabCooldown > 0f)) { continue; }
                 float length = line.Length;
                 if (length <= 2f * margin) { continue; }
                 Vector3 direction = line.Direction;
                 Vector3 from = line.Start + direction * margin, to = line.End - direction * margin;
-                float distance = MovementHelpers.ClosestBetweenSegments(from, to, grip, gripNext, out float onCable, out _);
-                if (distance > bestDistance) { continue; }
+                float sqrDistance = MovementHelpers.SqrDistanceBetweenSegments(from, to, grip, gripNext, out float onCable, out _);
+                if (sqrDistance > bestSqrDistance) { continue; }
                 best = line;
-                bestDistance = distance;
+                bestSqrDistance = sqrDistance;
                 bestAlong = margin + onCable * (length - 2f * margin);
             }
             if (best == null) { return false; }

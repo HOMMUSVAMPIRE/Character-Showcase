@@ -1,3 +1,4 @@
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Character
@@ -161,7 +162,7 @@ namespace Character
             // count as grounded up to (r + tolerance) above the floor, cancelling their fall while still in the air.
             float castDist = startLift + GroundedTolerance;
 
-            int count = Physics.SphereCastNonAlloc(start, r, Vector3.down, castHits, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int count = castHits.SphereCast(start, r, Vector3.down, castDist, movementLayerMask, QueryTriggerInteraction.Ignore);
             float best = float.PositiveInfinity;
             bool bestOnEdge = false;
             for (int i = 0; i < count; i++)
@@ -212,7 +213,7 @@ namespace Character
         }
 
         // Reused by IsStepEdge, which runs while castHits is being read.
-        private readonly RaycastHit[] stepHits = new RaycastHit[8];
+        private readonly RaycastHitBuffer stepHits = new(8, "MovementController.stepHits");
 
         /// <summary>
         /// Whether a contact too steep to stand on is the edge of a step the character stands at the top of or is walking
@@ -237,7 +238,7 @@ namespace Character
             for (int ray = 0; ray < StepEdgeRays.Length; ray++)
             {
                 Vector3 origin = feet + StepEdgeRays[ray] * spread + Vector3.up * lift;
-                int count = Physics.RaycastNonAlloc(origin, Vector3.down, stepHits, reach, movementLayerMask, QueryTriggerInteraction.Ignore);
+                int count = stepHits.Raycast(origin, Vector3.down, reach, movementLayerMask, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < count; i++)
                 {
                     RaycastHit below = stepHits[i];

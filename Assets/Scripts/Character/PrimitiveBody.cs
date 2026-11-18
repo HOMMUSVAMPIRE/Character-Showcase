@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Globalization;
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Character
@@ -537,7 +538,7 @@ namespace Character
         /// <summary>Whether a part (shrunk by skin), its feet at feet and turned rotation, overlaps nothing but the character's own.</summary>
         private bool PartFits(BodyShape s, Vector3 feet, Quaternion rotation, float skin)
         {
-            Collider[] overlaps = Owner.OverlapBuffer;
+            ColliderBuffer overlaps = Owner.OverlapBuffer;
             int count = Overlap(s, feet, rotation, skin, overlaps);
             for (int i = 0; i < count; i++)
             {
@@ -561,7 +562,7 @@ namespace Character
             Vector3 dir = direction.normalized;
             float lift = Owner.BodyLift;
             float skin = Owner.SkinWidth;
-            RaycastHit[] castHits = Owner.CastBuffer;
+            RaycastHitBuffer castHits = Owner.CastBuffer;
             float min = float.PositiveInfinity;
             bool found = false;
             for (int part = 0, parts = PartCount; part < parts; part++)
@@ -573,7 +574,7 @@ namespace Character
         }
 
         /// <summary>The nearest of count hits that isn't the character's own (or started overlapping), if nearer than min.</summary>
-        private bool Closest(RaycastHit[] hits, int count, ref float min, ref RaycastHit closest)
+        private bool Closest(RaycastHitBuffer hits, int count, ref float min, ref RaycastHit closest)
         {
             bool found = false;
             for (int i = 0; i < count; i++)
@@ -591,7 +592,7 @@ namespace Character
         {
             float lift = Owner.BodyLift;
             float skin = Owner.SkinWidth;
-            Collider[] overlaps = Owner.OverlapBuffer;
+            ColliderBuffer overlaps = Owner.OverlapBuffer;
             Vector3 offset = Vector3.zero;
             int parts = PartCount;
             for (int pass = 0; pass < MaxDepenetrationPasses; pass++)
@@ -608,7 +609,7 @@ namespace Character
         /// ComputePenetration needs a collider, and one that's turned on: a private one of the part's shape, turned on only
         /// while it's used (only in a step the part overlaps something), so nothing else ever meets it.
         /// </summary>
-        private bool PushOut(BodyShape s, int part, Vector3 feet, Quaternion rotation, float skin, Collider[] overlaps, ref Vector3 offset)
+        private bool PushOut(BodyShape s, int part, Vector3 feet, Quaternion rotation, float skin, ColliderBuffer overlaps, ref Vector3 offset)
         {
             int count = Overlap(s, feet + offset, rotation, skin, overlaps);
             bool pushed = false;
@@ -646,38 +647,38 @@ namespace Character
         }
 
         /// <summary>The colliders the shape (shrunk by skin), its feet at feet and turned rotation, overlaps, into overlaps.</summary>
-        private int Overlap(BodyShape s, Vector3 feet, Quaternion rotation, float skin, Collider[] overlaps)
+        private int Overlap(BodyShape s, Vector3 feet, Quaternion rotation, float skin, ColliderBuffer overlaps)
         {
             int mask = Owner.MovementLayerMask;
             switch (s.kind)
             {
                 case BodyShapeKind.Box:
                     GetQueryBox(s, feet, rotation, skin, out Vector3 boxCenter, out Vector3 halfExtents);
-                    return Physics.OverlapBoxNonAlloc(boxCenter, halfExtents, overlaps, rotation, mask, QueryTriggerInteraction.Ignore);
+                    return overlaps.OverlapBox(boxCenter, halfExtents, rotation, mask, QueryTriggerInteraction.Ignore);
                 case BodyShapeKind.Sphere:
                     GetQuerySphere(s, feet, rotation, skin, out Vector3 sphereCenter, out float sphereRadius);
-                    return Physics.OverlapSphereNonAlloc(sphereCenter, sphereRadius, overlaps, mask, QueryTriggerInteraction.Ignore);
+                    return overlaps.OverlapSphere(sphereCenter, sphereRadius, mask, QueryTriggerInteraction.Ignore);
                 default:
                     GetQueryCapsule(s, feet, rotation, skin, out Vector3 top, out Vector3 bottom, out float radius);
-                    return Physics.OverlapCapsuleNonAlloc(top, bottom, radius, overlaps, mask, QueryTriggerInteraction.Ignore);
+                    return overlaps.OverlapCapsule(top, bottom, radius, mask, QueryTriggerInteraction.Ignore);
             }
         }
 
         /// <summary>The shape (shrunk by skin), its feet at feet and turned rotation, cast along direction, into hits.</summary>
-        private int Cast(BodyShape s, Vector3 feet, Quaternion rotation, float skin, Vector3 direction, float distance, RaycastHit[] hits)
+        private int Cast(BodyShape s, Vector3 feet, Quaternion rotation, float skin, Vector3 direction, float distance, RaycastHitBuffer hits)
         {
             int mask = Owner.MovementLayerMask;
             switch (s.kind)
             {
                 case BodyShapeKind.Box:
                     GetQueryBox(s, feet, rotation, skin, out Vector3 boxCenter, out Vector3 halfExtents);
-                    return Physics.BoxCastNonAlloc(boxCenter, halfExtents, direction, hits, rotation, distance, mask, QueryTriggerInteraction.Ignore);
+                    return hits.BoxCast(boxCenter, halfExtents, direction, rotation, distance, mask, QueryTriggerInteraction.Ignore);
                 case BodyShapeKind.Sphere:
                     GetQuerySphere(s, feet, rotation, skin, out Vector3 sphereCenter, out float sphereRadius);
-                    return Physics.SphereCastNonAlloc(sphereCenter, sphereRadius, direction, hits, distance, mask, QueryTriggerInteraction.Ignore);
+                    return hits.SphereCast(sphereCenter, sphereRadius, direction, distance, mask, QueryTriggerInteraction.Ignore);
                 default:
                     GetQueryCapsule(s, feet, rotation, skin, out Vector3 top, out Vector3 bottom, out float radius);
-                    return Physics.CapsuleCastNonAlloc(top, bottom, radius, direction, hits, distance, mask, QueryTriggerInteraction.Ignore);
+                    return hits.CapsuleCast(top, bottom, radius, direction, distance, mask, QueryTriggerInteraction.Ignore);
             }
         }
 

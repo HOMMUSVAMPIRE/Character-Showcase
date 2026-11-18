@@ -5,7 +5,7 @@ namespace Character
     /// <summary>
     /// A body (see BodyShape), as an asset: a character's (its MovementController's Body Definition), or a model's (its
     /// CharacterModelSource's, in the model's own units, which a character fitting its body to its model takes: see
-    /// CharacterModelHost's Collider Fit). Prepare Character Models fits one to each model it prepares, from the model's
+    /// CharacterModelHost's Body Fit). Prepare Character Models fits one to each model it prepares, from the model's
     /// meshes in their bind pose, unless Refit On Prepare is turned off for one shaped by hand.
     /// </summary>
     [CreateAssetMenu(menuName = "Character Showcase/Body Definition", fileName = "Body", order = 40)]

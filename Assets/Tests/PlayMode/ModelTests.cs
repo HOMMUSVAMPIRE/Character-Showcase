@@ -366,25 +366,25 @@ namespace CharacterShowcase.Tests
 
 
         /// <summary>
-        /// Collider Fit makes the character's body as tall as the model, standing on the character's feet: its width in
+        /// Body Fit makes the character's body as tall as the model, standing on the character's feet: its width in
         /// proportion as authored (Height), or, for a source without a body of its own, as wide as the model's shoulders,
         /// times the margin (Model's Body). The character's size still multiplies it.
         /// </summary>
         [UnityTest]
-        public IEnumerator ColliderFit_MakesTheBodyAsTallAsTheModel_AndAsWideAsAsked(
-            [Values(ColliderFit.Height, ColliderFit.ModelsBody)] ColliderFit fit)
+        public IEnumerator BodyFit_MakesTheBodyAsTallAsTheModel_AndAsWideAsAsked(
+            [Values(BodyFit.Height, BodyFit.ModelsBody)] BodyFit fit)
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
             float radius = rig.BodyNow.radius, height = rig.BodyNow.height;
-            rig.Models.ColliderFitting = fit;
+            rig.Models.BodyFit = fit;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
 
             Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "The body should be as tall as the model.");
             Assert.That(rig.BodyNow.center.y, Is.EqualTo(rig.BodyNow.height / 2f).Within(1e-4f), "It should stand on the character's feet.");
-            if (fit == ColliderFit.Height)
+            if (fit == BodyFit.Height)
             {
                 Assert.That(rig.BodyNow.radius, Is.EqualTo(radius * 1.2f / height).Within(0.005f), "Its width should keep its proportions.");
             }
@@ -394,7 +394,7 @@ namespace CharacterShowcase.Tests
                 if (animator == null || !animator.isHuman) { Assert.Ignore("The character's model isn't a humanoid, so it has no shoulders to fit."); }
                 float shoulders = Vector3.Distance(animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position,
                     animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position);
-                Assert.That(rig.BodyNow.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
+                Assert.That(rig.BodyNow.radius, Is.EqualTo(0.5f * shoulders * rig.Models.BodyWidthMargin).Within(0.01f),
                     "The body should be as wide as the shoulders, times the margin.");
             }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
@@ -408,21 +408,21 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator ColliderFit_WaitsForRoom_BeforeGrowing()
+        public IEnumerator BodyFit_WaitsForRoom_BeforeGrowing()
         {
             // A ceiling 1.5 m up from z = -2 to z = 2: room for a 1.2 m body, not a 1.8 m one.
             rig.Box("Low Ceiling", new Vector3(0f, 2f, 0f), new Vector3(10f, 1f, 4f));
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
-            rig.Models.ColliderFitting = ColliderFit.Height;
+            rig.Models.BodyFit = BodyFit.Height;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter body should fit.");
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.8f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Models.IsFittingCollider, Is.True, "Under the ceiling, it should wait to grow.");
+            Assert.That(rig.Models.IsFittingBody, Is.True, "Under the ceiling, it should wait to grow.");
             Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f), "It shouldn't be pushed through the floor.");
 
@@ -431,7 +431,7 @@ namespace CharacterShowcase.Tests
             void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
             yield return rig.Run(rig.SecondsToWalk(3f + rig.FrontExtent, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
-            Assert.That(rig.Models.IsFittingCollider, Is.False);
+            Assert.That(rig.Models.IsFittingBody, Is.False);
             Assert.That(rig.BodyNow.height, Is.EqualTo(1.8f).Within(0.01f), "Out in the open, it should grow to fit the model.");
         }
 
@@ -446,7 +446,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
-            rig.Models.ColliderFitting = ColliderFit.ModelsBody;
+            rig.Models.BodyFit = BodyFit.ModelsBody;
             DirectCharacterModelSource source = OwnCopy();
             const float modelScale = 1.25f;
             source.Scale = modelScale;
@@ -473,7 +473,7 @@ namespace CharacterShowcase.Tests
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
-            rig.Models.ColliderFitting = ColliderFit.ModelsBody;
+            rig.Models.BodyFit = BodyFit.ModelsBody;
             var failing = Track(ScriptableObject.CreateInstance<FailingSource>());
             failing.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(new Vector3(0.9f, 1.2f, 0.9f))));
             DirectCharacterModelSource fallback = OwnCopy();

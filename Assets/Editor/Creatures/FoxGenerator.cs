@@ -542,7 +542,7 @@ namespace CharacterShowcase.EditorTools
 
                 var host = new SerializedObject(fox.GetComponent<CharacterModelHost>());
                 host.FindProperty("modelSource").objectReferenceValue = source;
-                host.FindProperty("colliderFit").enumValueIndex = (int)ColliderFit.Off;
+                host.FindProperty("bodyFit").enumValueIndex = (int)BodyFit.Off;
                 host.FindProperty("defaultEyeHeight").floatValue = EyesPosition.y;
                 host.ApplyModifiedPropertiesWithoutUndo();
 

@@ -52,7 +52,7 @@ namespace Character
                 // above the ground on its uphill side, and up on a tread the feet had already walked off.)
                 if (ray == 1 && byRay) { break; }
                 Vector3 origin = feet + StepEdgeRays[ray] * spread + Vector3.up * top;
-                int count = Physics.RaycastNonAlloc(origin, Vector3.down, stepHits, top + reachBelow, movementLayerMask, QueryTriggerInteraction.Ignore);
+                int count = stepHits.Raycast(origin, Vector3.down, top + reachBelow, movementLayerMask, QueryTriggerInteraction.Ignore);
                 for (int i = 0; i < count; i++)
                 {
                     RaycastHit hit = stepHits[i];
@@ -70,7 +70,7 @@ namespace Character
 
             float r = GroundCheckRadius;
             Vector3 start = feet + Vector3.up * (top + r);
-            int found = Physics.SphereCastNonAlloc(start, r, Vector3.down, castHits, top + reachBelow, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int found = castHits.SphereCast(start, r, Vector3.down, top + reachBelow, movementLayerMask, QueryTriggerInteraction.Ignore);
             float nearest = float.PositiveInfinity;
             for (int i = 0; i < found; i++)
             {
@@ -151,7 +151,7 @@ namespace Character
         private bool WalkableAt(Vector3 point)
         {
             float above = 2f * SkinWidth;
-            int count = Physics.RaycastNonAlloc(point + Vector3.up * above, Vector3.down, stepHits, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int count = stepHits.Raycast(point + Vector3.up * above, Vector3.down, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
                 RaycastHit below = stepHits[i];

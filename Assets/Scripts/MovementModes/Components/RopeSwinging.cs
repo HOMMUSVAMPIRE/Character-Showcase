@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Level;
 using UnityEngine;
 
@@ -172,16 +173,19 @@ namespace Character
             float reach = ropeGrabReach * controller.HeightScale;
 
             Rope best = null;
-            float bestDistance = reach * reach;
-            foreach (Rope rope in Rope.All)
+            float bestSqrDistance = reach * reach;
+            // Indexed, not foreach: All is an IReadOnlyList, whose enumerator is boxed, an allocation every step in the air.
+            IReadOnlyList<Rope> ropes = Rope.All;
+            for (int i = 0; i < ropes.Count; i++)
             {
+                Rope rope = ropes[i];
                 if (rope == null || rope.IsHeld || (rope == swing.lastRope && swing.regrabCooldown > 0f)) { continue; }
                 float top = Mathf.Min(ropeMinGripDistance, rope.Length);
                 Vector3 from = rope.Anchor + rope.Direction * top;
-                float distance = MovementHelpers.ClosestBetweenSegments(from, rope.Tip, grip, gripNext, out _, out _);
-                if (distance > bestDistance) { continue; }
+                float sqrDistance = MovementHelpers.SqrDistanceBetweenSegments(from, rope.Tip, grip, gripNext, out _, out _);
+                if (sqrDistance > bestSqrDistance) { continue; }
                 best = rope;
-                bestDistance = distance;
+                bestSqrDistance = sqrDistance;
             }
             if (best == null) { return false; }
 

@@ -183,7 +183,7 @@ namespace CharacterShowcase.EditorTools
         /// How far (m) below the surface the Character prefab's feet hang as it swims: its movement mode's Swimming's swim
         /// depth (whether or not it's turned on; Swimming's default without one), a share of its standing height. That's
         /// the height of the body it has with its model, which the movement measures by: the model's own body, when its
-        /// host fits its body to its model (CharacterModelHost's Collider Fit), else its body as authored (its Body
+        /// host fits its body to its model (CharacterModelHost's Body Fit), else its body as authored (its Body
         /// Definition's). Floated for the authored body's height while the character took its model's, a little shorter,
         /// the swimmer was drawn that much too high.
         /// </summary>

@@ -37,13 +37,24 @@ namespace CharacterShowcase.Tests
             }
         }
 
+        /// <summary>
+        /// Whether the rig counts the managed heap allocations the character's steps make (see AllocationCounter), adding
+        /// them to StepAllocations: the step itself (any change of size, and the movement), not the test's inputs for it.
+        /// </summary>
+        public bool MeasuresStepAllocations { get; set; }
+
+        /// <summary>How many allocations the character's steps made while MeasuresStepAllocations was on.</summary>
+        public int StepAllocations { get; set; }
+
         /// <summary>One physics step of the character, as ACCharacterController does it: any change of size first, then movement.</summary>
         private void Step(int step, Inputs inputs)
         {
             runStep = step;
+            if (MeasuresStepAllocations) { AllocationCounter.Start(); }
             Controller.UpdateScale(Time.fixedDeltaTime);
             Movement.ProcessMovementInputs(inputs);
             Movement.MovementCleanup();
+            if (MeasuresStepAllocations) { StepAllocations += AllocationCounter.Stop(); }
         }
 
         private readonly FixedStepper stepper;
@@ -100,7 +111,7 @@ namespace CharacterShowcase.Tests
                 {
                     Step(i, inputsForStep(i));
                     // As the model host's FixedUpdate would, before the physics step.
-                    if (models != null) { models.TryFitColliderNow(); }
+                    if (models != null) { models.TryFitBodyNow(); }
                     Physics.Simulate(Time.fixedDeltaTime);
                     afterStep?.Invoke(i);
                 }

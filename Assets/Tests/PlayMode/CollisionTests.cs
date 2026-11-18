@@ -15,12 +15,43 @@ namespace CharacterShowcase.Tests
     public class CollisionTests : CharacterRigFixture
     {
 
+        /// <summary>
+        /// Standing and walking on a pile of more overlapping boxes than the movement's query buffers hold to start with
+        /// (see PhysicsQueries.QueryBuffer), their tops at different heights, the character stands on the highest: a
+        /// buffer that fills grows and queries again, rather than leaving out the nearest hit (Unity gives them in no
+        /// order) and standing the character on a lower box, inside the higher ones.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OnMoreOverlappingCollidersThanABufferHolds_StandsOnTheHighest()
+        {
+            // More than the largest of the movement's buffers starts with (32), each top a little higher than the last,
+            // made in an order of their own (the highest in the middle), all well under a step high.
+            const int boxes = 40;
+            const float rise = 0.004f;
+            float highest = (boxes - 1) * rise;
+            for (int i = 0; i < boxes; i++)
+            {
+                int level = (i * 17) % boxes;
+                float top = level * rise;
+                rig.Box($"Pile {level}", new Vector3(0f, top - 0.5f, 0f), new Vector3(8f, 1f, 16f));
+            }
+            yield return rig.SpawnSettled(new Vector3(0f, highest + 0.05f, 0f));
+            Assume.That(highest, Is.LessThan(0.5f * rig.StepHeight), "Test setup: the pile should be well under a step high.");
+            Assert.That(rig.Grounded, Is.True, "The character should stand on the pile.");
+            Assert.That(rig.Position.y, Is.EqualTo(highest).Within(0.002f), "Standing, it should be on the highest box, not a lower one.");
+            float lowest = float.PositiveInfinity;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), _ => lowest = Mathf.Min(lowest, rig.Position.y));
+            Assume.That(rig.Position.z, Is.GreaterThan(0.5f), "Test setup: the character should walk.");
+            Assume.That(rig.Position.z, Is.LessThan(7.5f), "Test setup: the character should stay on the pile.");
+            Assert.That(lowest, Is.EqualTo(highest).Within(0.002f), "Walking, it should keep to the highest box.");
+        }
+
         [UnityTest]
         public IEnumerator JumpingIntoLowCeiling_FallsAwayInsteadOfSticking()
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             // Half a step height above the head: the jump clears a step, so it reaches the ceiling.
             float headroom = 0.5f * rig.StepHeight;
@@ -51,7 +82,7 @@ namespace CharacterShowcase.Tests
         {
             // No floor: the character stays airborne, where nothing else slows it down.
             rig.SpawnCharacter(new Vector3(0f, 20f, 0f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             Dashing dash = rig.Component<Dashing>();
             // The wall's face halfway along the dash, so the dash reaches it with speed to spare.

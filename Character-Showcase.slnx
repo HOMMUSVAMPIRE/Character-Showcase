@@ -6,4 +6,5 @@
   <Project Path="CameraSystem.csproj" />
   <Project Path="CharacterShowcase.Tests.Shared.csproj" />
   <Project Path="CharacterShowcase.Tests.EditMode.csproj" />
+  <Project Path="PhysicsQueries.csproj" />
 </Solution>

@@ -73,11 +73,12 @@ namespace Character
         /// <summary>The first (least) of its moves that climbs this high, or null if none does.</summary>
         public Move? MoveUp(float height) => FirstReaching(climbs, height);
 
+        /// <summary>The first of moves (kept in order of reach by Add, so the least) reaching distance, or null.</summary>
         private static Move? FirstReaching(List<Move> moves, float distance)
         {
-            foreach (Move move in moves.OrderBy(m => m.Reach))
+            for (int i = 0; i < moves.Count; i++)
             {
-                if (distance <= move.Reach + 1e-4f) { return move; }
+                if (distance <= moves[i].Reach + 1e-4f) { return moves[i]; }
             }
             return null;
         }

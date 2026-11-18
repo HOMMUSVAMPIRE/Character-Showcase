@@ -37,12 +37,13 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
-| `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`) | `Character`, `Level` | Unity.InputSystem |
-| `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
+| `PhysicsQueries` | `Assets/Scripts/PhysicsQueries` | `PhysicsQueries` | nothing (the growing query buffers, `QueryBuffer`: shared by the character and the camera, so it knows neither) |
+| `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`, `PhysicsQueries/`) | `Character`, `Level` | Unity.InputSystem, PhysicsQueries |
+| `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem, PhysicsQueries **only** |
 | `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
 | `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
-| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared |
-| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared |
+| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared, PhysicsQueries |
+| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared, PhysicsQueries |
 | `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
 
 The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its
@@ -219,7 +220,7 @@ component and its hooks, its state, flag and events, its place in the mode, anim
 saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside
 the editor needs Write Movement Envelope run, or `MovementEnvelopeTests` fails. No tuning is fixed: tests that need one
 set it on the rig. The walk and run speeds suit the locomotion clips (docs/animation.md): retune them together. The
-swimming clips are floated at Swimming's Swim Depth, for the height of the body the Character prefab has with its model (its model's, when its host's Collider Fit takes it): after changing either, run Generate Mannequin.
+swimming clips are floated at Swimming's Swim Depth, for the height of the body the Character prefab has with its model (its model's, when its host's Body Fit takes it): after changing either, run Generate Mannequin.
 
 ## Things that aren't obvious
 
@@ -256,7 +257,9 @@ Match the existing code:
 - XML doc comments (`/// <summary>`) on classes and non-trivial methods.
 - `[Tooltip]` on every serialized field, written for a designer; fields grouped with `[Header]`.
 - Comments explain *why*, especially non-obvious physics or timing decisions, in full sentences.
-- No allocation in per-step code: reuse buffers (see `castHits`, `overlaps`).
+- No allocation in per-step code: reuse buffers (see `castHits`, `overlaps`). A physics query's buffer is a `RaycastHitBuffer` or
+  `ColliderBuffer` (`PhysicsQueries`), never a bare array: Unity's results are unordered, so a full array can leave out the
+  nearest hit; these grow (to `QueryBuffer.MaxSize`) and query again, reporting it in development builds.
 - PascalCase types and methods, camelCase fields, the namespaces in the table above.
 - Big classes are partial, a file per area of responsibility (`MovementController.<Area>.cs`, `Graybox.<Kind>.cs`,
   `MannequinGenerator.<Part>.cs`): add to the file that fits, or start a new one, rather than growing one file.

@@ -61,7 +61,7 @@ namespace Character
         [Header("Body")]
         [Tooltip("The model's own body (see BodyDefinition), in the model's own units (before Scale or Fit To Height, which " +
                  "size it with the model): what a character fitting its body to its model takes (CharacterModelHost's " +
-                 "Collider Fit). Prepare Character Models fits one to the model. Empty: a character fitting its body to the " +
+                 "Body Fit). Prepare Character Models fits one to the model. Empty: a character fitting its body to the " +
                  "model fits one as the model loads")]
         [SerializeField] private BodyDefinition bodyDefinition;
 

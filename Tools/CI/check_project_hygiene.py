@@ -61,14 +61,16 @@ def check_guids():
 # reference Unity's test runner, which every test assembly needs.
 TEST_RUNNER = {"UnityEngine.TestRunner", "UnityEditor.TestRunner"}
 ALLOWED_REFERENCES = {
-    "CharacterShowcase": {"Unity.InputSystem"},
-    "CameraSystem": {"Unity.InputSystem"},
+    "PhysicsQueries": set(),
+    "CharacterShowcase": {"Unity.InputSystem", "PhysicsQueries"},
+    "CameraSystem": {"Unity.InputSystem", "PhysicsQueries"},
     "CharacterShowcase.Editor": {"CharacterShowcase", "CameraSystem"},
     "CharacterShowcase.Level.Editor": {"Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime",
                                        "Unity.TextMeshPro"},
     "CharacterShowcase.Tests.EditMode": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Level.Editor",
-                                         "CharacterShowcase.Tests.Shared"} | TEST_RUNNER,
-    "CharacterShowcase.Tests.PlayMode": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.Tests.Shared"} | TEST_RUNNER,
+                                         "CharacterShowcase.Tests.Shared", "PhysicsQueries"} | TEST_RUNNER,
+    "CharacterShowcase.Tests.PlayMode": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.Tests.Shared",
+                                         "PhysicsQueries"} | TEST_RUNNER,
     "CharacterShowcase.Tests.Shared": {"CharacterShowcase"} | TEST_RUNNER,
 }
 

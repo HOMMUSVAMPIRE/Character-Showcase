@@ -171,14 +171,19 @@ namespace CameraSystem
         public float SizeScale => Mathf.Max(TargetSize.y, 1e-4f);
 
         /// <summary>The target's size (1, 1, 1 without a size reference). See targetSizeReference.</summary>
-        public Vector3 TargetSize
+        public Vector3 TargetSize => sizeReadThisFrame ? sizeThisFrame : ReadTargetSize();
+
+        // The target's size, read once at the start of the frame's update (see LateUpdate) for the rig's parts, which ask
+        // for it a score of times a frame: each read walks the reference's hierarchy (lossyScale). Outside the update, read
+        // when asked.
+        private bool sizeReadThisFrame;
+        private Vector3 sizeThisFrame;
+
+        private Vector3 ReadTargetSize()
         {
-            get
-            {
-                if (targetSizeReference == null) { return Vector3.one; }
-                Vector3 size = targetSizeReference.lossyScale;
-                return new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
-            }
+            if (targetSizeReference == null) { return Vector3.one; }
+            Vector3 size = targetSizeReference.lossyScale;
+            return new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z));
         }
 
         /// <summary>
@@ -393,7 +398,13 @@ namespace CameraSystem
 
         private void LateUpdate()
         {
-            using (UpdateMarker.Auto()) { UpdateCamera(); }
+            using (UpdateMarker.Auto())
+            {
+                sizeThisFrame = ReadTargetSize();
+                sizeReadThisFrame = true;
+                try { UpdateCamera(); }
+                finally { sizeReadThisFrame = false; }
+            }
         }
 
         /// <summary>The camera's whole update for a frame: input, the target's tracking, the view mode, look, follow, collision and lens.</summary>

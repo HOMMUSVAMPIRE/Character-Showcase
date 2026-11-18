@@ -5,7 +5,7 @@ namespace Character
     /// <summary>
     /// Fitting a character's body (see BodyShape) to a model, from its measurements in its bind pose: as Prepare Character
     /// Models fits a model's Body Definition, and as a character fits its body to a model whose source has none, as it
-    /// loads (see CharacterModelHost's Collider Fit). A humanoid gets an upright capsule as tall as it is and as wide as its
+    /// loads (see CharacterModelHost's Body Fit). A humanoid gets an upright capsule as tall as it is and as wide as its
     /// shoulders (times a margin for its arms), lying as thick as it is deep; anything else, a box its size.
     /// </summary>
     public static class BodyFitting

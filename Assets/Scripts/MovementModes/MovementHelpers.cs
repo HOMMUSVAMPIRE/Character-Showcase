@@ -202,10 +202,10 @@ namespace Character
         }
 
         /// <summary>
-        /// The closest points between two line segments (p1 to q1, and p2 to q2): how far along each (0 to 1) they are,
-        /// and the square of the distance between them. (Ericson, Real-Time Collision Detection, 5.1.9.)
+        /// The square of the distance between two line segments (p1 to q1, and p2 to q2), at their closest points: how far
+        /// along each (0 to 1) those are, in s and t. (Ericson, Real-Time Collision Detection, 5.1.9.)
         /// </summary>
-        public static float ClosestBetweenSegments(Vector3 p1, Vector3 q1, Vector3 p2, Vector3 q2, out float s, out float t)
+        public static float SqrDistanceBetweenSegments(Vector3 p1, Vector3 q1, Vector3 p2, Vector3 q2, out float s, out float t)
         {
             Vector3 d1 = q1 - p1, d2 = q2 - p2, r = p1 - p2;
             float a = Vector3.Dot(d1, d1), e = Vector3.Dot(d2, d2), f = Vector3.Dot(d2, r);

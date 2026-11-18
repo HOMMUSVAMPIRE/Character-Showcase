@@ -177,7 +177,7 @@ namespace CharacterShowcase.Tests
             Assert.That(CharacterTestRig.CharacterPrefab().GetComponents<Collider>(), Is.Empty,
                 "The prefab should have no collider of its own: its body is a shape, and its model's hitboxes meet the world.");
             Assert.That(rig.Movement.Body.Collider, Is.Null, "Nor should one be added for its body.");
-            // Its body is the definition's, unless it takes its model's (see CharacterModelHost's Collider Fit).
+            // Its body is the definition's, unless it takes its model's (see CharacterModelHost's Body Fit).
             BodyShape expected = rig.Models.BodyFor(rig.Models.ModelSource, rig.Movement) ?? definition.Shape;
             Assert.That(rig.Movement.AuthoredBody.Equals(expected), Is.True, $"Its body should be {expected}, not {rig.Movement.AuthoredBody}.");
         }

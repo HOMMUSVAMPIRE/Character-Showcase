@@ -1,3 +1,4 @@
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Character
@@ -6,11 +7,11 @@ namespace Character
     /// The ray foot and paw placement (FootPlacementIK, PawPlacementIK) find the ground with: straight down, the closest
     /// hit that's on the given layers, not the character's own (under the ignored root) and no steeper than the slope
     /// limit, moved to where the ground is drawn (see CharacterUtilities.ToDrawnPose). Each component keeps its own
-    /// settings and gives them here; the probe holds only the hit buffer, so it allocates nothing per frame.
+    /// settings and gives them here; the probe holds only the hit buffer, so it allocates nothing per frame (unless a query fills it: see QueryBuffer).
     /// </summary>
     public sealed class GroundProbe
     {
-        private readonly RaycastHit[] hits = new RaycastHit[8];
+        private readonly RaycastHitBuffer hits = new(8, "GroundProbe.hits");
 
         /// <summary>
         /// The colliders a placement ignores when it isn't told which: the character's own, under the nearest parent with
@@ -30,7 +31,7 @@ namespace Character
             out RaycastHit closest)
         {
             closest = default;
-            int count = Physics.RaycastNonAlloc(origin, Vector3.down, hits, distance, layers, QueryTriggerInteraction.Ignore);
+            int count = hits.Raycast(origin, Vector3.down, distance, layers, QueryTriggerInteraction.Ignore);
             float best = float.PositiveInfinity;
             for (int i = 0; i < count; i++)
             {

@@ -85,6 +85,10 @@ namespace Character
                      "as that takes. Going down stairs, the steps behind rise faster than the pitched body lifts a long tail. " +
                      "0: not kept")]
             [Min(0f)] public float groundClearance;
+
+            // The last bone of its chain (see KeepTipClear), and the bone it was found for: found once, not every frame
+            // (a walk down the chain, asking each child whether it's a hitbox), and again if the bone is changed.
+            [System.NonSerialized] internal Transform chainEnd, chainEndOf;
         }
 
         [Tooltip("Overall strength of paw placement. 0 = off (the paws where the animation puts them), 1 = fully placed.")]

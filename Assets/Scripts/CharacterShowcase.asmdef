@@ -2,7 +2,8 @@
     "name": "CharacterShowcase",
     "rootNamespace": "",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "PhysicsQueries"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

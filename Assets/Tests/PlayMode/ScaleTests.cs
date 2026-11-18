@@ -342,7 +342,7 @@ namespace CharacterShowcase.Tests
         {
             // Spawned first, at full size, to lay the course out for it (no physics step passes before the course is in:
             // the rig steps the character itself). With its model, whose body it may take (see CharacterModelHost's
-            // Collider Fit): one loading during the run changed its size midway.
+            // Body Fit): one loading during the run changed its size midway.
             rig.SpawnCharacter(Vector3.zero);
             yield return rig.WaitForModel();
             var course = new Course(rig);

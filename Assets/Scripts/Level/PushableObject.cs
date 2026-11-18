@@ -1,3 +1,4 @@
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Level
@@ -38,7 +39,7 @@ namespace Level
         // When it last moved itself (Time.fixedTime), to know when its Rigidbody has caught up (see FixedUpdate).
         private float lastMoveTime = float.NegativeInfinity;
         private Transform holder;
-        private readonly RaycastHit[] hits = new RaycastHit[16];
+        private readonly RaycastHitBuffer hits = new(16, "PushableObject.hits");
 
         /// <summary>Its push and pull speed, as a share of the character's.</summary>
         public float SpeedMultiplier { get => speedMultiplier; set => speedMultiplier = Mathf.Clamp(value, 0.05f, 1f); }
@@ -85,7 +86,7 @@ namespace Level
         {
             if (distance <= 0f || direction.sqrMagnitude < 1e-8f) { return 0f; }
             GetCastBox(out Vector3 center, out Vector3 halfExtents, out Quaternion rotation);
-            int count = Physics.BoxCastNonAlloc(center, halfExtents, direction.normalized, hits, rotation,
+            int count = hits.BoxCast(center, halfExtents, direction.normalized, rotation,
                 distance + SkinWidth, collisionMask, QueryTriggerInteraction.Ignore);
             float free = distance;
             for (int i = 0; i < count; i++)

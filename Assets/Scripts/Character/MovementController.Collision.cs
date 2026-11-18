@@ -242,7 +242,7 @@ namespace Character
         {
             Vector3 beyond = hit.point + dir * SkinWidth;
             float above = 2f * SkinWidth;
-            int count = Physics.RaycastNonAlloc(beyond + Vector3.up * above, Vector3.down, stepHits, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int count = stepHits.Raycast(beyond + Vector3.up * above, Vector3.down, 2f * above, movementLayerMask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
                 RaycastHit surface = stepHits[i];
@@ -327,7 +327,7 @@ namespace Character
         {
             Vector3 inFront = met.point - dir * (2f * SkinWidth);
             inFront.y = top + SkinWidth;
-            int count = Physics.RaycastNonAlloc(inFront, Vector3.down, stepHits, 2f * StepHeight + 2f * SkinWidth, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int count = stepHits.Raycast(inFront, Vector3.down, 2f * StepHeight + 2f * SkinWidth, movementLayerMask, QueryTriggerInteraction.Ignore);
             float highest = float.NegativeInfinity;
             for (int i = 0; i < count; i++)
             {

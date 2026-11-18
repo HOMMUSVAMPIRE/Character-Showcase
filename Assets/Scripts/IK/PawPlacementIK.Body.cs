@@ -167,7 +167,7 @@ namespace Character
             foreach (CounterPitchBone counter in counterPitchBones)
             {
                 if (counter?.bone == null || counter.groundClearance <= 0f) { continue; }
-                KeepTipClear(counter.bone, counter.groundClearance * scale * activeWeight, right, up, forward);
+                KeepTipClear(counter, counter.groundClearance * scale * activeWeight, right, up, forward);
             }
             return pitch;
         }
@@ -191,10 +191,15 @@ namespace Character
         /// Turns the bone up (about right, at the bone) as far as keeps the end of its chain (past its first child's first
         /// child's ..., its last bone) clearance above the ground under it, keeping how far the end is from it.
         /// </summary>
-        private void KeepTipClear(Transform bone, float clearance, Vector3 right, Vector3 up, Vector3 forward)
+        private void KeepTipClear(CounterPitchBone counter, float clearance, Vector3 right, Vector3 up, Vector3 forward)
         {
-            Transform last = bone;
-            for (Transform next = FirstBone(last); next != null; next = FirstBone(last)) { last = next; }
+            Transform bone = counter.bone;
+            if (counter.chainEndOf != bone || counter.chainEnd == null)
+            {
+                counter.chainEnd = LastBone(bone);
+                counter.chainEndOf = bone;
+            }
+            Transform last = counter.chainEnd;
             if (last == bone) { return; }
             // The chain's end: as far past its last bone as that is past the one before (a bone's origin is where it
             // starts, and the last one's mesh reaches on past it: the tail's tip).
@@ -212,6 +217,14 @@ namespace Character
             // About right, a positive turn raises what's behind the bone; what's ahead of it, the other way.
             float sign = Vector3.Dot(toTip, forward) < 0f ? 1f : -1f;
             bone.rotation = Quaternion.AngleAxis(sign * raised * Mathf.Rad2Deg, right) * bone.rotation;
+        }
+
+        /// <summary>The last bone of the bone's chain: its first child that's a bone, that one's, and so on (itself if none).</summary>
+        private static Transform LastBone(Transform bone)
+        {
+            Transform last = bone;
+            for (Transform next = FirstBone(last); next != null; next = FirstBone(last)) { last = next; }
+            return last;
         }
 
         /// <summary>The bone's first child that's a bone (not its hitbox: see Hitbox), or null.</summary>

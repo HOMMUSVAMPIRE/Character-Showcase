@@ -2,7 +2,8 @@
     "name": "CameraSystem",
     "rootNamespace": "CameraSystem",
     "references": [
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "PhysicsQueries"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

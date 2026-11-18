@@ -6,7 +6,8 @@
         "CharacterShowcase.Tests.Shared",
         "CameraSystem",
         "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner"
+        "UnityEditor.TestRunner",
+        "PhysicsQueries"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

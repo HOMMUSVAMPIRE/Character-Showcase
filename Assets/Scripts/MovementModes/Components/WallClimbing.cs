@@ -1,5 +1,6 @@
 using Level;
 using System;
+using PhysicsQueries;
 using UnityEngine;
 using static Character.MovementHelpers;
 
@@ -76,7 +77,7 @@ namespace Character
 
         // Reused for every climbing probe (several per physics step), so they don't allocate. Movement modes are shared
         // assets and run on the main thread only, one character at a time.
-        private static readonly Collider[] climbOverlaps = new Collider[16];
+        private static readonly ColliderBuffer climbOverlaps = new(16, "WallClimbing.climbOverlaps");
 
         /// <summary>How fast (m/s) the character climbs at full input, at its authored size. 0 turns climbing off.</summary>
         public float WallClimbSpeed { get => wallClimbSpeed; set => wallClimbSpeed = value; }

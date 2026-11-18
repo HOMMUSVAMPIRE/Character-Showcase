@@ -1,4 +1,5 @@
 using Unity.Profiling;
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Character
@@ -165,13 +166,13 @@ namespace Character
         /// <summary>The tallest step the character climbs at its size.</summary>
         private float StepHeight => maxStepHeight * HeightScale;
 
-        private readonly Collider[] overlaps = new Collider[16];
+        private readonly ColliderBuffer overlaps = new(16, "MovementController.overlaps");
         // Reused for every ground check and collision sweep (several per physics step), so they don't allocate
-        private readonly RaycastHit[] castHits = new RaycastHit[32];
+        private readonly RaycastHitBuffer castHits = new(32, "MovementController.castHits");
         /// <summary>The buffer the body's overlap queries fill (reused, so they don't allocate).</summary>
-        internal Collider[] OverlapBuffer => overlaps;
+        internal ColliderBuffer OverlapBuffer => overlaps;
         /// <summary>The buffer the body's sweeps fill (reused: the ground check and sweeps share it, one at a time).</summary>
-        internal RaycastHit[] CastBuffer => castHits;
+        internal RaycastHitBuffer CastBuffer => castHits;
 
         private void Awake()
         {

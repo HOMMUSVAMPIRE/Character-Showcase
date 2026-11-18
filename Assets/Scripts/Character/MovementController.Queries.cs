@@ -1,3 +1,4 @@
+using PhysicsQueries;
 using UnityEngine;
 
 namespace Character
@@ -23,7 +24,7 @@ namespace Character
         {
             hit = default;
             if (direction.sqrMagnitude < 1e-8f || distance <= 0f) { return false; }
-            int count = Physics.RaycastNonAlloc(origin, direction.normalized, castHits, distance, movementLayerMask, QueryTriggerInteraction.Ignore);
+            int count = castHits.Raycast(origin, direction.normalized, distance, movementLayerMask, QueryTriggerInteraction.Ignore);
             float nearest = float.PositiveInfinity;
             for (int i = 0; i < count; i++)
             {
@@ -37,12 +38,12 @@ namespace Character
 
         /// <summary>
         /// Finds the colliders within radius of center, other than the character's own (and what it ignores: see
-        /// IgnoredCollisionRoot), triggers aside, into results. Returns how many there are.
+        /// IgnoredCollisionRoot), triggers aside, into results (which grows if it fills). Returns how many there are.
         /// </summary>
-        public int OverlapSphere(Vector3 center, float radius, Collider[] results)
+        public int OverlapSphere(Vector3 center, float radius, ColliderBuffer results)
         {
-            if (results == null || results.Length == 0 || radius <= 0f) { return 0; }
-            int count = Physics.OverlapSphereNonAlloc(center, radius, results, movementLayerMask, QueryTriggerInteraction.Ignore);
+            if (results == null || radius <= 0f) { return 0; }
+            int count = results.OverlapSphere(center, radius, movementLayerMask, QueryTriggerInteraction.Ignore);
             int kept = 0;
             for (int i = 0; i < count; i++)
             {
