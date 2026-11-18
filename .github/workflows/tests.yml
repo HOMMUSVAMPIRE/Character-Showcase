@@ -31,6 +31,7 @@ concurrency:
 permissions:
   contents: read
   checks: write # lets the test runner publish a check with per-test results
+  pull-requests: read # lets the change filter list a pull request's files
 
 jobs:
   hygiene:
@@ -45,10 +46,40 @@ jobs:
       # The levelspec tool (Tools/LevelSpec) needs only Python 3 too: its specs, formats, checks and schematics.
       - name: Test the level spec tool
         run: python3 -m unittest discover -s Tools/LevelSpec/tests
+      # The Blender scripts (Tools/Mannequin, Tools/Fox, Tools/Animation) only run inside Blender, which CI hasn't got,
+      # but their syntax can be checked without it (compiling them doesn't import bpy).
+      - name: Check every Python script compiles
+        run: find Tools -name '*.py' -print0 | xargs -0 python3 -m py_compile
+
+  # Whether anything the Unity tests read changed: the project (Assets, Packages, ProjectSettings), the two files under
+  # Tools they read (the movement envelope and the level spec schema), or this workflow. A change only to the Python
+  # tools, the CI script or the docs has nothing for the Unity job to test, which takes up to an hour.
+  changes:
+    name: Find what changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      unity: ${{ steps.filter.outputs.unity }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            unity:
+              - 'Assets/**'
+              - 'Packages/**'
+              - 'ProjectSettings/**'
+              - 'Tools/LevelSpec/envelope.json'
+              - 'Tools/LevelSpec/level-spec.schema.json'
+              - '.github/workflows/tests.yml'
 
   unity-tests:
     name: EditMode and PlayMode tests
-    needs: hygiene # no point spending Unity minutes on a project with broken .meta files
+    # No point spending Unity minutes on a project with broken .meta files, or on a change the Unity tests can't see (run
+    # by hand, it always runs).
+    needs: [hygiene, changes]
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.unity == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

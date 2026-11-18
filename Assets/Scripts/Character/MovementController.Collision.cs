@@ -140,7 +140,7 @@ namespace Character
                 float maxDrop = Mathf.Max(GroundedTolerance, maxSlopeDrop) + SkinWidth;
                 if (horizDist > 1e-4f * HeightScale) { maxDrop = Mathf.Max(maxDrop, StepHeight + SkinWidth); }
                 if (Body.Sweep(pos, BodyRotation, Vector3.down, maxDrop + SkinWidth, out var snapHit)
-                    && (Vector3.Angle(snapHit.normal, Vector3.up) <= maxSlopeAngle || IsStepEdge(snapHit, pos)))
+                    && (IsWalkable(snapHit.normal) || IsStepEdge(snapHit, pos)))
                 {
                     // Negative when the ground is closer than the skin width (rolling over a step's edge can close the
                     // gap): then this lifts the character back to it, as nothing else would. Depenetration ignores
@@ -156,7 +156,7 @@ namespace Character
                         // is all walking on the level drops it): down onto a step. Onto a step's edge (too steep to walk
                         // down), rolling over it toward the step below, all of it.
                         float landedSlope = Vector3.Angle(snapHit.normal, Vector3.up);
-                        float downSlope = landedSlope <= maxSlopeAngle ? horizDist * Mathf.Tan(landedSlope * Mathf.Deg2Rad) : 0f;
+                        float downSlope = IsWalkable(snapHit.normal) ? horizDist * Mathf.Tan(landedSlope * Mathf.Deg2Rad) : 0f;
                         if (drop > downSlope + SkinWidth) { data.stepChange -= drop - downSlope; }
                     }
                 }
@@ -191,12 +191,10 @@ namespace Character
             Vector3 traveled = dir * travel;
             Vector3 remaining = horizMove - traveled;
 
-            float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-
             // Walkable slope (ramp): project remaining motion onto the slope and continue up/down it. (Hovering over steps,
             // only one rising into the body's bottom: the lifted body's rounded bottom meeting the top edge of something
             // taller than a step has a contact normal as tilted as a ramp's, and would ride up over it.)
-            if (slopeAngle <= maxSlopeAngle && hit.normal.y > 0.01f && (lift <= 0f || RisesIntoTheBottom(hit, dir, feetPos, lift)))
+            if (IsWalkable(hit.normal) && hit.normal.y > 0.01f && (lift <= 0f || RisesIntoTheBottom(hit, dir, feetPos, lift)))
             {
                 Vector3 slid = Vector3.ProjectOnPlane(remaining, hit.normal);
                 return traveled + slid;
@@ -248,9 +246,9 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit surface = stepHits[i];
-                if (IsOwnCollider(surface.collider.transform) || Vector3.Angle(surface.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                if (IsOwnCollider(surface.collider.transform) || !IsWalkable(surface.normal)) { continue; }
                 // A rounded bottom meets a ramp a little above its lowest point: the steeper the ramp, the higher.
-                float rounding = Body.FootprintRadius * (1f - Mathf.Cos(Vector3.Angle(surface.normal, Vector3.up) * Mathf.Deg2Rad));
+                float rounding = Body.FootprintRadius * (1f - surface.normal.y);
                 if (surface.point.y - feet.y <= lift + rounding + SkinWidth) { return true; }
             }
             return false;
@@ -302,7 +300,7 @@ namespace Character
                 raised += dir * extra;
                 if (!Body.Sweep(raised, BodyRotation, Vector3.down, stepHeight + SkinWidth, out downHit)) { return Vector3.zero; }
             }
-            if (Vector3.Angle(downHit.normal, Vector3.up) > maxSlopeAngle) { return Vector3.zero; }
+            if (!IsWalkable(downHit.normal)) { return Vector3.zero; }
 
             float drop = Mathf.Max(0f, downHit.distance - SkinWidth);
             Vector3 landed = raised - Vector3.up * drop;
@@ -334,7 +332,7 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit below = stepHits[i];
-                if (IsOwnCollider(below.collider.transform) || Vector3.Angle(below.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                if (IsOwnCollider(below.collider.transform) || !IsWalkable(below.normal)) { continue; }
                 if (below.point.y < top - SkinWidth) { highest = Mathf.Max(highest, below.point.y); }
             }
             return float.IsFinite(highest) ? highest : feetHeight;
@@ -355,7 +353,7 @@ namespace Character
             Vector3 traveled = dir * travel;
 
             collisions |= verticalDelta > 0f ? CollisionFlags.Above : CollisionFlags.Below;
-            bool steep = Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle;
+            bool steep = !IsWalkable(hit.normal);
             if (verticalDelta < 0f && !steep)
             {
                 // Walkable ground just stops the fall. (Removing only the part heading into its surface would turn

@@ -59,6 +59,40 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
+        /// The character's model swapped for a new one (its own, loaded again) while standing: the new model's foot
+        /// placement carries on from the old one's (see IModelHandover), faded in as far and the pelvis as low, rather than
+        /// fading back in from nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ASwappedInModel_CarriesOnTheOldOnesFootPlacement()
+        {
+            yield return SpawnWithOwnModel();
+            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), FeedAnimator);
+            var old = rig.Models.Model.GetComponentInChildren<FootPlacementIK>();
+            if (old == null) { Assert.Ignore("The model has no foot placement."); }
+            Assume.That(old.ActiveWeight, Is.GreaterThan(0.9f), "Test setup: foot placement should be faded in.");
+            // The old model's, as it's replaced (it keeps animating until then).
+            float weight = 0f, pelvis = 0f;
+            rig.Models.ModelReplacing += _ => { weight = old.ActiveWeight; pelvis = old.PelvisOffset; };
+
+            // Read as the new model is swapped in, before its first update: what it starts from.
+            FootPlacementIK swapped = null;
+            float swappedWeight = 0f, swappedPelvis = 0f;
+            rig.Models.ModelLoaded += model =>
+            {
+                swapped = model.Root.GetComponentInChildren<FootPlacementIK>();
+                if (swapped == null) { return; }
+                swappedWeight = swapped.ActiveWeight;
+                swappedPelvis = swapped.PelvisOffset;
+            };
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(rig.Models.ModelSource));
+
+            Assert.That(swapped, Is.Not.Null.And.Not.SameAs(old), "Test setup: a new model should have been swapped in.");
+            Assert.That(swappedWeight, Is.EqualTo(weight).Within(1e-4f), "Foot placement should stay faded in, not fade in again.");
+            Assert.That(swappedPelvis, Is.EqualTo(pelvis).Within(1e-4f), "The pelvis should stay as low as it was.");
+        }
+
+        /// <summary>
         /// Records, each frame after the feet are placed (LateUpdate, late in the frame), how high each foot is above a
         /// platform's top as drawn (its Transform, interpolated between physics steps), and the character (its root, as
         /// drawn).

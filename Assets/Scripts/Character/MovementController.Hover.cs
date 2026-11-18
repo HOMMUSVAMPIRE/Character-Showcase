@@ -56,7 +56,7 @@ namespace Character
                 for (int i = 0; i < count; i++)
                 {
                     RaycastHit hit = stepHits[i];
-                    if (IsOwnCollider(hit.collider.transform) || Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle) { continue; }
+                    if (IsOwnCollider(hit.collider.transform) || !IsWalkable(hit.normal)) { continue; }
                     float height = top - hit.distance;
                     if (height > offset)
                     {
@@ -78,7 +78,7 @@ namespace Character
                 if (IsOwnCollider(hit.transform) || hit.distance <= 0f) { continue; }
                 // Beside the feet, no higher than them: only the rays step the feet up.
                 if (hit.point.y > feet.y + SkinWidth) { continue; }
-                if (Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(hit, feet)) { continue; }
+                if (!IsWalkable(hit.normal) && !IsStepEdge(hit, feet)) { continue; }
                 if (hit.distance < nearest)
                 {
                     nearest = hit.distance;
@@ -103,7 +103,7 @@ namespace Character
             if (ProbeGround(position, GroundedTolerance, out _, out RaycastHit hit, out bool byRay))
             {
                 ground = hit.transform;
-                lastGroundedBy = byRay || Vector3.Angle(hit.normal, Vector3.up) <= maxSlopeAngle ? GroundedBy.Probe : GroundedBy.ProbeOnStepEdge;
+                lastGroundedBy = byRay || IsWalkable(hit.normal) ? GroundedBy.Probe : GroundedBy.ProbeOnStepEdge;
                 return true;
             }
             if (BodyRestsOnSomething(position, out ground) && ProbeGround(position, StepHeight + BodyLift, out _, out _, out _))
@@ -142,7 +142,7 @@ namespace Character
             if (IsOwnCollider(rest.transform) || rest.normal.y <= 0.01f) { return false; }
             // Walkable where it touches: a tread, or a step's edge (the top of it there is walkable), not the face of a
             // slope too steep to stand on, which it slides down.
-            if (Vector3.Angle(rest.normal, Vector3.up) > maxSlopeAngle && !WalkableAt(rest.point)) { return false; }
+            if (!IsWalkable(rest.normal) && !WalkableAt(rest.point)) { return false; }
             ground = rest.transform;
             return true;
         }
@@ -155,7 +155,7 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 RaycastHit below = stepHits[i];
-                if (!IsOwnCollider(below.collider.transform) && Vector3.Angle(below.normal, Vector3.up) <= maxSlopeAngle) { return true; }
+                if (!IsOwnCollider(below.collider.transform) && IsWalkable(below.normal)) { return true; }
             }
             return false;
         }
@@ -221,7 +221,7 @@ namespace Character
                 {
                     // Further than walking along what it's on would take it (by more than the skin width): a step.
                     float slope = Vector3.Angle(ground.normal, Vector3.up);
-                    float alongSlope = slope <= maxSlopeAngle ? horizDist * Mathf.Tan(slope * Mathf.Deg2Rad) : 0f;
+                    float alongSlope = IsWalkable(ground.normal) ? horizDist * Mathf.Tan(slope * Mathf.Deg2Rad) : 0f;
                     if (Mathf.Abs(dy) > alongSlope + SkinWidth)
                     {
                         float step = dy - Mathf.Sign(dy) * alongSlope;
@@ -243,7 +243,7 @@ namespace Character
             float remaining = fall + dy;
             if (remaining <= 1e-6f) { return moved; }
             Vector3 slide;
-            if (Vector3.Angle(met.normal, Vector3.up) > maxSlopeAngle)
+            if (!IsWalkable(met.normal))
             {
                 // Too steep to stand on: slides down it, as the standing body does (see ResolveVertical).
                 RemoveInertiaInto(ref inertia, met.normal);

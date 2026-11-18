@@ -20,7 +20,7 @@ namespace Character
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class FootPlacementIK : AbilityIK
+    public class FootPlacementIK : AbilityIK, IModelHandover
     {
         [Tooltip("Overall strength of foot placement. 0 = off, 1 = feet fully placed on the ground.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -137,6 +137,10 @@ namespace Character
             left = other.left;
             right = other.right;
         }
+
+        /// <summary>Carries on from the old model's foot placement, if it has one (see IModelHandover).</summary>
+        void IModelHandover.ContinueFrom(GameObject oldModel) =>
+            ContinueFrom(oldModel != null ? oldModel.GetComponentInChildren<FootPlacementIK>() : null);
 
         protected override void Awake()
         {

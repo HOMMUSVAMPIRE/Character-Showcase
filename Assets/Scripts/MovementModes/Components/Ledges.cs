@@ -259,7 +259,7 @@ namespace Character
 
             // The ledge's top, straight down from there: walkable, within the window.
             if (!controller.Raycast(above + heading * depth, Vector3.down, high - low, out top)) { return false; }
-            if (Vector3.Angle(top.normal, Vector3.up) > controller.MaxSlopeAngle) { return false; }
+            if (!controller.IsWalkable(top.normal)) { return false; }
 
             edge = new Vector3(wall.point.x, top.point.y, wall.point.z);
             return true;

@@ -151,6 +151,52 @@ namespace CharacterShowcase.Tests
             rig.Box("Ramp", tilt * Vector3.down * 0.5f, new Vector3(8f, 1f, 30f), tilt);
         }
 
+        /// <summary>
+        /// The fox's model swapped for a new one (its own, loaded again) mid-stance, on a ramp: the new model's paw placement
+        /// carries on from the old one's (see IModelHandover), faded in as far, the body pitched as far and the paws
+        /// locked as they were, rather than fading back in from nothing.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ASwappedInModel_CarriesOnTheOldOnesPawPlacement()
+        {
+            Ramp(15f);
+            yield return SpawnFox(new Vector3(0f, 0.05f, 0f));
+            PawPlacementIK old = paws;
+            Assume.That(old.ActiveWeight, Is.GreaterThan(0.9f), "Test setup: the fox's paw placement should be faded in.");
+            Assume.That(Mathf.Abs(old.BodyPitch), Is.GreaterThan(5f), "Test setup: the fox should be pitched on the ramp.");
+            // The old model's, as it's replaced.
+            float weight = 0f, pitch = 0f;
+            float[] locks = new float[old.Legs.Length];
+            rig.Models.ModelReplacing += _ =>
+            {
+                weight = old.ActiveWeight;
+                pitch = old.BodyPitch;
+                for (int i = 0; i < locks.Length; i++) { locks[i] = old.LockWeight(i); }
+            };
+
+            // Read as the new model is swapped in, before its first update: what it starts from.
+            PawPlacementIK swapped = null;
+            float swappedWeight = 0f, swappedPitch = 0f;
+            float[] swappedLocks = new float[locks.Length];
+            rig.Models.ModelLoaded += model =>
+            {
+                swapped = model.Root.GetComponentInChildren<PawPlacementIK>();
+                if (swapped == null) { return; }
+                swappedWeight = swapped.ActiveWeight;
+                swappedPitch = swapped.BodyPitch;
+                for (int i = 0; i < swappedLocks.Length; i++) { swappedLocks[i] = swapped.LockWeight(i); }
+            };
+            yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(rig.Models.ModelSource));
+
+            Assert.That(swapped, Is.Not.Null.And.Not.SameAs(old), "Test setup: a new model should have been swapped in.");
+            Assert.That(swappedWeight, Is.EqualTo(weight).Within(1e-4f), "Paw placement should stay faded in, not fade in again.");
+            Assert.That(swappedPitch, Is.EqualTo(pitch).Within(1e-3f), "The body should stay pitched as it was.");
+            for (int i = 0; i < locks.Length; i++)
+            {
+                Assert.That(swappedLocks[i], Is.EqualTo(locks[i]).Within(1e-4f), $"{swapped.Legs[i].foot.name} should stay locked as it was.");
+            }
+        }
+
         [UnityTest]
         public IEnumerator OnARamp_ThePawsStandOnIt_AndTheBodyPitchesWithIt([Values(15f, -15f)] float slope)
         {

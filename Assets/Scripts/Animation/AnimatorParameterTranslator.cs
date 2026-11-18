@@ -237,6 +237,39 @@ namespace Character
         [Tooltip("Animator triggers fired by movement events, such as a landing or jump animation")]
         [SerializeField] private EventTrigger[] eventTriggers = Array.Empty<EventTrigger>();
 
+        /// <summary>Reads a flag of the animation state (by reference: the state is large, and read 20-odd times a frame).</summary>
+        private delegate bool StateFlag(in CharacterAnimationState state);
+
+        /// <summary>
+        /// The bool parameters: each one's name setting (above, under Bool parameters) and the flag of the animation
+        /// state it shows, set as they are each frame. A new one is a row here and its name setting; a float parameter,
+        /// whose value is worked out (scaled, smoothed), is set by hand in Driver.UpdateAnimation.
+        /// </summary>
+        private static readonly (System.Func<AnimatorParameterTranslator, string> name, StateFlag value)[] BoolParameters =
+        {
+            (t => t.groundedParameter, (in CharacterAnimationState s) => s.grounded),
+            (t => t.jumpingParameter, (in CharacterAnimationState s) => s.jumping),
+            (t => t.dashingParameter, (in CharacterAnimationState s) => s.dashing),
+            (t => t.movingParameter, (in CharacterAnimationState s) => s.moving),
+            (t => t.crouchingParameter, (in CharacterAnimationState s) => s.crouching),
+            (t => t.slidingParameter, (in CharacterAnimationState s) => s.sliding),
+            (t => t.rollingParameter, (in CharacterAnimationState s) => s.rolling),
+            (t => t.wallRunningParameter, (in CharacterAnimationState s) => s.wallRunning),
+            (t => t.wallSlidingParameter, (in CharacterAnimationState s) => s.wallSliding),
+            (t => t.wallClimbingParameter, (in CharacterAnimationState s) => s.wallClimbing),
+            (t => t.climbEnteringParameter, (in CharacterAnimationState s) => s.climbEntering),
+            (t => t.onLadderParameter, (in CharacterAnimationState s) => s.onLadder),
+            (t => t.climbExitingParameter, (in CharacterAnimationState s) => s.climbExiting),
+            (t => t.hangingParameter, (in CharacterAnimationState s) => s.hanging),
+            (t => t.climbingParameter, (in CharacterAnimationState s) => s.climbing),
+            (t => t.vaultingParameter, (in CharacterAnimationState s) => s.vaulting),
+            (t => t.grabbingParameter, (in CharacterAnimationState s) => s.grabbing),
+            (t => t.ropeSwingingParameter, (in CharacterAnimationState s) => s.swinging),
+            (t => t.zipliningParameter, (in CharacterAnimationState s) => s.ziplining),
+            (t => t.swimmingParameter, (in CharacterAnimationState s) => s.swimming),
+            (t => t.divingParameter, (in CharacterAnimationState s) => s.diving),
+        };
+
         public override ICharacterAnimationDriver CreateDriver(GameObject model, Animator animator) =>
             animator != null && animator.runtimeAnimatorController != null ? new Driver(this, animator) : null;
 
@@ -244,8 +277,8 @@ namespace Character
         {
             // Parameter hashes, or 0 for parameters to skip
             private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
-            private readonly int grounded, jumping, dashing, moving;
-            private readonly int crouching, sliding, rolling, wallRunning, wallSliding, wallClimbing, onLadder, climbEntering, climbExiting, hanging, climbing, vaulting, grabbing, ropeSwinging, ziplining, swimming, diving;
+            // The bool parameters' hashes, in BoolParameters' order (0 to skip one).
+            private readonly int[] boolHashes = new int[BoolParameters.Length];
             private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
             // The speeds (m/s) the controller's fastest loops are made for (its parameters' defaults), or 0 if it has none.
             private readonly float locomotionTop, crouchTop, climbUpTop, climbDownTop, climbLeftTop, climbRightTop;
@@ -274,10 +307,6 @@ namespace Character
                 forwardSpeed = Find(settings.forwardSpeedParameter, AnimatorControllerParameterType.Float);
                 sidewaysSpeed = Find(settings.sidewaysSpeedParameter, AnimatorControllerParameterType.Float);
                 turnSpeed = Find(settings.turnSpeedParameter, AnimatorControllerParameterType.Float);
-                grounded = Find(settings.groundedParameter, AnimatorControllerParameterType.Bool);
-                jumping = Find(settings.jumpingParameter, AnimatorControllerParameterType.Bool);
-                dashing = Find(settings.dashingParameter, AnimatorControllerParameterType.Bool);
-                moving = Find(settings.movingParameter, AnimatorControllerParameterType.Bool);
                 wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
                 grabSpeed = Find(settings.grabSpeedParameter, AnimatorControllerParameterType.Float);
                 rollProgress = Find(settings.rollProgressParameter, AnimatorControllerParameterType.Float);
@@ -286,23 +315,8 @@ namespace Character
                 climbRight = Find(settings.climbRightParameter, AnimatorControllerParameterType.Float);
                 climbUp = Find(settings.climbUpParameter, AnimatorControllerParameterType.Float);
                 climbStepProgress = Find(settings.climbStepProgressParameter, AnimatorControllerParameterType.Float);
-                crouching = Find(settings.crouchingParameter, AnimatorControllerParameterType.Bool);
-                sliding = Find(settings.slidingParameter, AnimatorControllerParameterType.Bool);
-                rolling = Find(settings.rollingParameter, AnimatorControllerParameterType.Bool);
-                wallRunning = Find(settings.wallRunningParameter, AnimatorControllerParameterType.Bool);
-                wallSliding = Find(settings.wallSlidingParameter, AnimatorControllerParameterType.Bool);
-                wallClimbing = Find(settings.wallClimbingParameter, AnimatorControllerParameterType.Bool);
-                climbEntering = Find(settings.climbEnteringParameter, AnimatorControllerParameterType.Bool);
-                onLadder = Find(settings.onLadderParameter, AnimatorControllerParameterType.Bool);
-                climbExiting = Find(settings.climbExitingParameter, AnimatorControllerParameterType.Bool);
-                hanging = Find(settings.hangingParameter, AnimatorControllerParameterType.Bool);
-                climbing = Find(settings.climbingParameter, AnimatorControllerParameterType.Bool);
-                vaulting = Find(settings.vaultingParameter, AnimatorControllerParameterType.Bool);
-                grabbing = Find(settings.grabbingParameter, AnimatorControllerParameterType.Bool);
-                ropeSwinging = Find(settings.ropeSwingingParameter, AnimatorControllerParameterType.Bool);
-                ziplining = Find(settings.zipliningParameter, AnimatorControllerParameterType.Bool);
-                swimming = Find(settings.swimmingParameter, AnimatorControllerParameterType.Bool);
-                diving = Find(settings.divingParameter, AnimatorControllerParameterType.Bool);
+
+                for (int i = 0; i < boolHashes.Length; i++) { boolHashes[i] = Find(BoolParameters[i].name(settings), AnimatorControllerParameterType.Bool); }
 
                 locomotionPlayback = Find(settings.locomotionPlaybackParameter, AnimatorControllerParameterType.Float);
                 crouchPlayback = Find(settings.crouchPlaybackParameter, AnimatorControllerParameterType.Float);
@@ -345,10 +359,6 @@ namespace Character
                 if (forwardSpeed != 0) { animator.SetFloat(forwardSpeed, state.localVelocity.z / scale.z, speedDampTime, deltaTime); }
                 if (sidewaysSpeed != 0) { animator.SetFloat(sidewaysSpeed, state.localVelocity.x / scale.x, speedDampTime, deltaTime); }
                 if (turnSpeed != 0) { animator.SetFloat(turnSpeed, state.turnSpeed, speedDampTime, deltaTime); }
-                if (grounded != 0) { animator.SetBool(grounded, state.grounded); }
-                if (jumping != 0) { animator.SetBool(jumping, state.jumping); }
-                if (dashing != 0) { animator.SetBool(dashing, state.dashing); }
-                if (moving != 0) { animator.SetBool(moving, state.moving); }
                 if (wallSide != 0 && state.wallRunning && state.wallSide != 0f) { animator.SetFloat(wallSide, state.wallSide); }
                 // As the authored model would push or pull (see speed, above).
                 if (grabSpeed != 0) { animator.SetFloat(grabSpeed, state.grabbing ? state.localVelocity.z / scale.z : 0f, speedDampTime, deltaTime); }
@@ -360,24 +370,11 @@ namespace Character
                 if (climbRight != 0) { animator.SetFloat(climbRight, state.wallClimbing ? state.localVelocity.x / scale.x : 0f, speedDampTime, deltaTime); }
                 if (climbUp != 0) { animator.SetFloat(climbUp, state.wallClimbing ? state.localVelocity.y / scale.y : 0f, speedDampTime, deltaTime); }
                 SetPlayback(state);
-                if (crouching != 0) { animator.SetBool(crouching, state.crouching); }
-                if (sliding != 0) { animator.SetBool(sliding, state.sliding); }
-                if (rolling != 0) { animator.SetBool(rolling, state.rolling); }
-                if (wallRunning != 0) { animator.SetBool(wallRunning, state.wallRunning); }
-                if (wallSliding != 0) { animator.SetBool(wallSliding, state.wallSliding); }
-                if (wallClimbing != 0) { animator.SetBool(wallClimbing, state.wallClimbing); }
-                if (climbEntering != 0) { animator.SetBool(climbEntering, state.climbEntering); }
-                if (onLadder != 0) { animator.SetBool(onLadder, state.onLadder); }
-                if (climbExiting != 0) { animator.SetBool(climbExiting, state.climbExiting); }
                 if (climbStepProgress != 0) { animator.SetFloat(climbStepProgress, state.climbStepProgress); }
-                if (hanging != 0) { animator.SetBool(hanging, state.hanging); }
-                if (climbing != 0) { animator.SetBool(climbing, state.climbing); }
-                if (vaulting != 0) { animator.SetBool(vaulting, state.vaulting); }
-                if (grabbing != 0) { animator.SetBool(grabbing, state.grabbing); }
-                if (ropeSwinging != 0) { animator.SetBool(ropeSwinging, state.swinging); }
-                if (ziplining != 0) { animator.SetBool(ziplining, state.ziplining); }
-                if (swimming != 0) { animator.SetBool(swimming, state.swimming); }
-                if (diving != 0) { animator.SetBool(diving, state.diving); }
+                for (int i = 0; i < boolHashes.Length; i++)
+                {
+                    if (boolHashes[i] != 0) { animator.SetBool(boolHashes[i], BoolParameters[i].value(state)); }
+                }
             }
 
             /// <summary>

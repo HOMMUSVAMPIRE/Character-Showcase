@@ -264,7 +264,7 @@ namespace Character
             // stand on), or else whatever's below, where the character lands after vaulting over.
             Vector3 beyond = edge - wallNormal * (controller.Body.FrontExtent + controller.Body.BackExtent + 2f * skin);
             bool deep = controller.Raycast(beyond + Vector3.up * stepHeight, Vector3.down, 2f * stepHeight, out RaycastHit far)
-                        && Vector3.Angle(far.normal, Vector3.up) <= controller.MaxSlopeAngle;
+                        && controller.IsWalkable(far.normal);
             if (grounded && !deep)
             {
                 // From the ground, only over to somewhere to land, not much below: not over a railing into a drop.

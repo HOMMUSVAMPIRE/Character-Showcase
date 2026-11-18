@@ -274,10 +274,12 @@ namespace Character
             if (CurrentModel != null)
             {
                 ModelReplacing?.Invoke(model);
-                // Feet already planted stay planted, rather than fading back in on the new model.
-                FootPlacementIK oldFeet = model.Root.GetComponentInChildren<FootPlacementIK>();
-                FootPlacementIK newFeet = created.Root.GetComponentInChildren<FootPlacementIK>(true);
-                if (oldFeet != null && newFeet != null) { newFeet.ContinueFrom(oldFeet); }
+                // What carries on from the old model does (see IModelHandover): feet and paws already planted stay
+                // planted, rather than fading back in on the new model.
+                foreach (IModelHandover handover in created.Root.GetComponentsInChildren<IModelHandover>(true))
+                {
+                    handover.ContinueFrom(model.Root);
+                }
             }
             ReleaseModel();
             model = created;

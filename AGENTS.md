@@ -63,7 +63,9 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
    ```
    Without Unity, push a branch or open a pull request: the `Tests` GitHub Actions workflow runs the hygiene check and
    both suites (a new push cancels the run in progress, so batch pushes; Markdown-only and `docs/` changes don't
-   trigger it).
+   trigger it). The Unity suites run only when something they read changed (`Assets/`, `Packages/`, `ProjectSettings/`,
+   the movement envelope or level spec schema, or the workflow): a change to the Python tools alone runs the hygiene
+   job, which also tests the levelspec tool and syntax-checks every Python script.
 3. **A refactor of the movement must leave `GoldenPathTests` passing:** it holds the character's movement, step by step,
    to recorded paths (docs/testing.md, Golden paths). Record them again (`CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1`)
    only when a change is meant to change the movement, and check the recorded paths' diff.

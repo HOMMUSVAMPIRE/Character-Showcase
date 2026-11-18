@@ -5,6 +5,23 @@ namespace Character
     // The ground: being carried by moving ground, and whether the character is grounded (a step's edge counts).
     public partial class MovementController
     {
+        // Max Slope Angle's cosine, worked out again only when the setting changes (walkableAngle is what it was for).
+        [System.NonSerialized] private float walkableAngle = -1f, walkableCos;
+
+        /// <summary>
+        /// Whether ground with this normal (a unit vector: a hit's) is walkable: no steeper than Max Slope Angle. By its
+        /// up component against the angle's cosine, which is the same test as the angle between it and up (no acos).
+        /// </summary>
+        public bool IsWalkable(Vector3 normal)
+        {
+            if (maxSlopeAngle != walkableAngle)
+            {
+                walkableAngle = maxSlopeAngle;
+                walkableCos = Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad);
+            }
+            return normal.y >= walkableCos;
+        }
+
         /// <summary>
         /// Carries the character with the ground they stood on last step (position, and yaw if enabled), then checks
         /// whether they are grounded. If the carried position isn't grounded (e.g. they just jumped), the carry is
@@ -152,7 +169,7 @@ namespace Character
                 RaycastHit hit = castHits[i];
                 if (IsOwnCollider(hit.transform)) { continue; }
                 if (hit.distance <= 0f) { continue; }
-                bool steep = Vector3.Angle(hit.normal, Vector3.up) > maxSlopeAngle;
+                bool steep = !IsWalkable(hit.normal);
                 if (steep && !IsStepEdge(hit, position)) { continue; }
                 if (hit.distance < best)
                 {
@@ -189,7 +206,7 @@ namespace Character
             groundTransform = null;
             if (!Body.Sweep(position, BodyRotation, Vector3.down, SkinWidth + GroundedTolerance, out RaycastHit rest)) { return false; }
             if (IsOwnCollider(rest.transform)) { return false; }
-            if (Vector3.Angle(rest.normal, Vector3.up) > maxSlopeAngle && !IsStepEdge(rest, position)) { return false; }
+            if (!IsWalkable(rest.normal) && !IsStepEdge(rest, position)) { return false; }
             groundTransform = rest.transform;
             return true;
         }
@@ -225,7 +242,7 @@ namespace Character
                 {
                     RaycastHit below = stepHits[i];
                     if (IsOwnCollider(below.collider.transform)) { continue; }
-                    if (Vector3.Angle(below.normal, Vector3.up) <= maxSlopeAngle) { return true; }
+                    if (IsWalkable(below.normal)) { return true; }
                 }
             }
             return false;

@@ -30,7 +30,7 @@ namespace Character
     /// evaluated pose would bend the legs twice.
     /// </summary>
     [DisallowMultipleComponent]
-    public class PawPlacementIK : MonoBehaviour
+    public class PawPlacementIK : MonoBehaviour, IModelHandover
     {
         /// <summary>One leg: the bones a two-bone solve bends, and where its paw touches the ground.</summary>
         [System.Serializable]
@@ -341,9 +341,43 @@ namespace Character
             animator = GetComponentInChildren<Animator>();
             if (ignoreCollidersUnder == null) { ignoreCollidersUnder = GroundProbe.DefaultIgnoredRoot(this); }
             if (legs.Length > MaxLegs) { Debug.LogWarning($"[{nameof(PawPlacementIK)}] Only the first {MaxLegs} legs are placed.", this); }
-            paws = new PawState[Mathf.Min(legs.Length, MaxLegs)];
-            for (int i = 0; i < paws.Length; i++) { paws[i].normal = Vector3.up; }
+            // Kept if it's been carried on from the model this one replaced (ContinueFrom, called before Awake).
+            if (paws.Length != Mathf.Min(legs.Length, MaxLegs))
+            {
+                paws = new PawState[Mathf.Min(legs.Length, MaxLegs)];
+                for (int i = 0; i < paws.Length; i++) { paws[i].normal = Vector3.up; }
+            }
         }
+
+        /// <summary>
+        /// Carries on from another model's paw placement, as it was this frame: how far it was faded in, the body's
+        /// pitch, level and turn, and, if the two have as many legs, each paw's (its ground, offset and lock). For a model
+        /// replacing another on the same character, so paws already planted stay planted rather than fading back in. Call
+        /// before this one's first update.
+        /// </summary>
+        public void ContinueFrom(PawPlacementIK other)
+        {
+            if (other == null || other == this) { return; }
+            activeWeight = Mathf.Min(other.activeWeight, weight);
+            bodyPitch = other.bodyPitch;
+            bodyPitchVelocity = other.bodyPitchVelocity;
+            turnBend = other.turnBend;
+            turnBendVelocity = other.turnBendVelocity;
+            lastYaw = other.lastYaw;
+            hasLastYaw = other.hasLastYaw;
+            wallWeight = other.wallWeight;
+            wallNormal = other.wallNormal;
+            wallPoint = other.wallPoint;
+            bodyLevel = other.bodyLevel;
+            bodyLevelVelocity = other.bodyLevelVelocity;
+            bodyHeight = other.bodyHeight;
+            hasBodyLevel = other.hasBodyLevel;
+            if (other.paws.Length == Mathf.Min(legs.Length, MaxLegs)) { paws = (PawState[])other.paws.Clone(); }
+        }
+
+        /// <summary>Carries on from the old model's paw placement, if it has one (see IModelHandover).</summary>
+        void IModelHandover.ContinueFrom(GameObject oldModel) =>
+            ContinueFrom(oldModel != null ? oldModel.GetComponentInChildren<PawPlacementIK>() : null);
 
         private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
 
