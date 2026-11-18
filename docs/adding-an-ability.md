@@ -3,6 +3,29 @@ The steps for adding a new part to the character's movement: a new `MovementComp
 
 The inspector (its toggle, moving it up and down, removing it, Add Component), tuning presets and letting go when it's turned off mid-use come with being a component: they all work from the class and its fields, with nothing to add.
 
+## The quick way: New Ability
+**Tools > Character Showcase > New Ability…** makes the start of an ability, with everything below that isn't its logic already done, and shows each file it will make or change before it does. Its questions:
+
+- **Name:** its class name (Gliding, say). Its inspector name is this spaced out; its state, events and settings are named after it.
+- **What It Does:** Takes Over (it has the character while under way, as a zipline does) or On Top Of Walking (it adds to the character's own movement, as a dash does).
+- **Started By:** a button the input already has (Jump, Dash, Crouch, Roll or Grab), or None. A button of its own is a step of its own: see AGENTS.md, Input.
+- **At A Level Element:** it starts near a level element of its own, made with it.
+- **Kind:** Abilities or Traversal, which picks its docs page and its tests' folder.
+- **Place In The Order:** the default component it goes just after (see [Movement Components](movement.md#movement-components)).
+
+Make It writes:
+
+- **The component** (section 1): a small ability that works as it is. Taking over, it holds the character where it is for its Duration; on top of walking, it moves the character on the way it faces at its Speed for its Duration. It has its settings, its hooks, its state and that state's place on the MovementController (section 2), its `StateEvents` and `Traits`.
+- **Its flag and events** (section 3), each the next unused bit, added at the New Ability line in `CharacterState.cs` and `MovementEvents.cs`. Keep those lines: New Ability refuses without them.
+- **Its place in the order** (section 4): `BasicMovementMode.DefaultComponents` and the composition test's copy. Once Unity has compiled it, it's added to every movement mode asset, turned on for the default character's and off for the others' (`MovementModeSync`).
+- **Its tests** (section 7), on the ability test kit, which pass as it's made.
+- **Its docs**: a section in abilities.md or traversal.md to write, and its name in movement.md's component list.
+- **With At A Level Element:** a level element in Assets/Scripts/Level (`<Name>Point`) that it starts within reach of (section 6).
+
+Then make it yours: replace what its `TakeOver` or `AfterWalking` does, change its settings, write its docs section and add tests of what it does. Run its tests as you go: `python3 Tools/run_tests.py --changed`. A look of its own (section 5) is still to add. Unity's command line can make one too: `-executeMethod CharacterShowcase.EditorTools.NewAbilityWindow.MakeFromCommandLine -abilityName Gliding -kind TakesOver -button Grab -after Rolling -area Abilities` (and `-levelElement`), then `MovementModeSync.AddToAllModesFromCommandLine` once it's compiled.
+
+The sections below are the full reference: what each part is for, and what to do by hand.
+
 ## 1. The component
 A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementModes/Components/<Ability>.cs`.
 

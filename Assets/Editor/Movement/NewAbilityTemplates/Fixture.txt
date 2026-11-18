@@ -1,0 +1,61 @@
+using System.Collections;
+using Character;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace CharacterShowcase.Tests.{{Area}}
+{
+    /// <summary>
+    /// Tests of {{Display}} (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
+    /// letting go, its events, saved and put back, at another size) come from AbilityFixture: as set up here,
+{{#button}}
+    /// a press of {{ButtonDisplay}} standing on a floor.
+{{/button}}
+{{^button}}
+    /// standing on a floor at a {{Element}}.
+{{/button}}
+    /// Add the tests that are about {{Display}} itself below, reading expected values from its settings
+    /// (rig.MovementSetting&lt;float&gt;("{{name}}Duration")), not from numbers of your own.
+    /// </summary>
+    [Category(TestArea.{{Area}})]
+    public class {{Name}}Tests : AbilityFixture<{{Name}}>
+    {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+{{#levelElement}}
+            rig.Track(new GameObject("{{Element}}")).AddComponent<Level.{{Element}}>();
+            // At the element, it starts at once: not settled first, so the kit sees it start.
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f), settleSeconds: 0f);
+{{/levelElement}}
+{{^levelElement}}
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+{{/levelElement}}
+        }
+
+{{#button}}
+        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.{{ButtonDisplay}}() : CharacterTestRig.Idle();
+{{/button}}
+{{^button}}
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+{{/button}}
+
+        protected override string OffSetting => "{{name}}Duration";
+
+        [UnityTest]
+        public IEnumerator {{Name}}_LastsItsDuration()
+        {
+            yield return SetUpToStart();
+            float duration = rig.MovementSetting<float>("{{name}}Duration") * rig.Movement.DurationScale;
+            int steps = 0;
+            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState(CharacterState.{{StateFlag}})) { steps++; } });
+{{#button}}
+            Assert.That(steps, Is.EqualTo(CharacterTestRig.StepsFor(duration)).Within(1), "{{Display}} should last its duration.");
+{{/button}}
+{{^button}}
+            Assert.That(steps, Is.GreaterThanOrEqualTo(CharacterTestRig.StepsFor(duration) - 1), "{{Display}} should last at least its duration.");
+{{/button}}
+        }
+    }
+}

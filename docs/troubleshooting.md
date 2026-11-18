@@ -11,6 +11,9 @@ Unity drops a saved value whose field it can't find. A renamed field keeps its v
 **Changes made while playing were kept.**
 The character uses the movement asset itself, so changes to it in play mode are changes to the asset. Save a tuning preset first if you want to go back (see [Tuning the Character](tuning.md#tuning-presets)).
 
+**New Ability refuses to make an ability.**
+It says why at the bottom of its window. A name that's taken (a type, a state, an event, a setting or a member of the MovementController) needs another. One that can't find its New Ability line in `CharacterState.cs` or `MovementEvents.cs` needs the line put back, above the enum's closing brace (`// New Ability (NewAbilityWindow) adds …`). A new ability whose tests fail at once has had its component, or a template, changed: as made, they pass.
+
 **A setting of a 64-bit enum type was lost.**
 Unity silently drops enum fields wider than 32 bits. That's why a saved set of `MovementEvents` (a 64-bit flags enum) is stored as a `long`, as `AnimatorParameterTranslator.EventTrigger` does, drawn by `EventTriggerDrawer`.
 

@@ -1,0 +1,81 @@
+using System;
+using UnityEngine;
+
+namespace Character
+{
+    /// <summary>
+    /// Zz Boosting: made by New Ability (Tools > Character Showcase > New Ability…). As made, it's a small working
+    /// ability to build on:
+    /// on top of walking, it moves the character on the way it faces at Zz Boosting Speed, for Zz Boosting Duration.
+    /// A press of Jump starts it (within Zz Boosting Input Buffer of being able to).
+    /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
+    /// </summary>
+    [Serializable]
+    public class ZzBoosting : MovementComponent
+    {
+        [Tooltip("How long (s) Zz Boosting lasts once it starts, at the character's authored size. 0 turns it off")]
+        [Min(0f)] [SerializeField] private float zzBoostingDuration = 0.5f;
+        [Tooltip("How fast (m/s) Zz Boosting moves the character on the way it faces, on top of walking, at its authored size")]
+        [Min(0f)] [SerializeField] private float zzBoostingSpeed = 4f;
+        [Tooltip("If Jump is pressed this many seconds before Zz Boosting can start, it starts as soon as it can")]
+        [Min(0f)] [SerializeField] private float zzBoostingInputBuffer = 0.1f;
+
+        public override bool IsActive(MovementController controller) => controller.zzBoosting.IsActive;
+        /// <summary>The events of ZzBoosting starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.ZzBoosting, MovementEvents.ZzBoostingStarted, MovementEvents.ZzBoostingEnded),
+        };
+
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            controller.zzBoosting.press.Track(inputs.jump);
+            controller.zzBoosting.timeLeft = MovementHelpers.CountDown(controller.zzBoosting.timeLeft, movementData.deltaTime);
+        }
+
+        /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
+        public override void Interrupt(MovementData movementData, MovementController controller) => controller.zzBoosting.timeLeft = 0f;
+
+        /// <summary>Starts if it can, and while it lasts moves the character on the way it faces, on top of walking.</summary>
+        public override void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
+        {
+            ZzBoostingState state = controller.zzBoosting;
+            if (!state.IsActive)
+            {
+                if (!CanStart(inputs, controller)) { return; }
+                state.timeLeft = zzBoostingDuration * controller.DurationScale;
+            }
+            // Your ability's movement goes here. As made: on the way it faces (its physics pose's), at its speed.
+            Vector3 forward = movementData.initialRotation * Vector3.forward;
+            movementData.directMovementVector += forward * (zzBoostingSpeed * controller.SpeedScale * movementData.deltaTime);
+            movementData.state |= CharacterState.ZzBoosting;
+        }
+
+        /// <summary>Whether Zz Boosting can start this step: turned on by a duration, and what starts it.</summary>
+        private bool CanStart(Inputs inputs, MovementController controller)
+        {
+            if (zzBoostingDuration <= 0f) { return false; }
+            return controller.zzBoosting.press.Consume(inputs.jump, zzBoostingInputBuffer);
+        }
+    }
+
+    /// <summary>What each character is doing with Zz Boosting (modes are shared assets, so it lives on the character).</summary>
+    public class ZzBoostingState
+    {
+        /// <summary>Seconds left of Zz Boosting (0 when it isn't under way).</summary>
+        public float timeLeft;
+        /// <summary>Jump's presses, so each press starts it at most once.</summary>
+        public readonly ButtonPress press = new();
+
+        /// <summary>Whether Zz Boosting is under way.</summary>
+        public bool IsActive => timeLeft > 0f;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability.
+    public partial class MovementController
+    {
+        /// <summary>The character's Zz Boosting state (ZzBoosting).</summary>
+        public ZzBoostingState zzBoosting { get; } = new ZzBoostingState();
+    }
+}

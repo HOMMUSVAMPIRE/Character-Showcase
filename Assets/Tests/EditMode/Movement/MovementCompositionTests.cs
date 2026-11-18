@@ -129,32 +129,39 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void MissingDefaultComponents_AreAddedAtTheirDefaultPlaces_LeavingTheRestAsTheyAre()
         {
+            // Read from the code's own order, so a new ability (New Ability adds one to it) doesn't change what's tested:
+            // the first default, a middle one and the last are taken out, and the one above the last moved to the top, as
+            // a mode whose order was changed by hand.
             BasicMovementMode mode = NewMode();
-            mode.Remove<BouncePads>();
-            mode.Remove<Ledges>();
-            mode.Remove<Jumping>();
-            // A mode whose order was changed by hand keeps it: Dashing moved to the top.
-            Dashing dashing = mode.Get<Dashing>();
-            mode.Remove<Dashing>();
-            mode.Insert(0, dashing);
+            List<System.Type> defaults = mode.DefaultComponentTypes().ToList();
+            System.Type first = defaults[0], middle = typeof(Ledges), last = defaults[defaults.Count - 1], moved = defaults[defaults.Count - 2];
+            foreach (System.Type type in new[] { first, middle, last }) { mode.Remove(type); }
+            MovementComponent movedComponent = mode.Get(moved, includeDisabled: true);
+            mode.Remove(moved);
+            mode.Insert(0, movedComponent);
             WallRunning wallRunning = mode.Get<WallRunning>();
             wallRunning.Enabled = false;
+            List<System.Type> before = mode.Components.Select(c => c.GetType()).ToList();
 
-            Assert.That(mode.MissingDefaultComponentTypes(), Is.EqualTo(new[] { typeof(BouncePads), typeof(Ledges), typeof(Jumping) }));
+            var expected = new[] { first, middle, last }.OrderBy(defaults.IndexOf).ToArray();
+            Assert.That(mode.MissingDefaultComponentTypes(), Is.EqualTo(expected));
             List<System.Type> added = mode.AddMissingDefaultComponents(enabled: false);
 
-            Assert.That(added, Is.EqualTo(new[] { typeof(BouncePads), typeof(Ledges), typeof(Jumping) }), "What it added, in the default order.");
+            Assert.That(added, Is.EqualTo(expected), "What it added, in the default order.");
             Assert.That(mode.MissingDefaultComponentTypes(), Is.Empty);
-            Assert.That(mode.Components.Select(c => c.GetType()), Is.EqualTo(new[]
+            List<System.Type> after = mode.Components.Select(c => c.GetType()).ToList();
+            Assert.That(after.Where(t => !added.Contains(t)), Is.EqualTo(before), "The components the mode had keep their order.");
+            foreach (System.Type type in added)
             {
-                // Jumping follows Dashing (its nearest default above), wherever Dashing was moved; Bounce Pads has no
-                // default above it, so it goes before the nearest below (Ziplines); Ledges after Rope Swinging.
-                typeof(Dashing), typeof(Jumping), typeof(BouncePads), typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting),
-                typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
-                typeof(Crouching), typeof(Wading), typeof(FallAndAirHandling), typeof(WalkingAndRunning),
-            }), "Each goes just after the nearest default above it that the mode has; the rest keep their order.");
+                // Each goes just after the default above it (added before it, if it was missing too), wherever that was
+                // moved; one with none above (the first) goes just before the one below it.
+                int at = defaults.IndexOf(type);
+                if (at > 0) { Assert.That(after.IndexOf(type), Is.EqualTo(after.IndexOf(defaults[at - 1]) + 1), $"{type.Name} should follow {defaults[at - 1].Name}."); }
+                else { Assert.That(after.IndexOf(type), Is.EqualTo(after.IndexOf(defaults[1]) - 1), $"{type.Name} should come just before {defaults[1].Name}."); }
+            }
+            Assert.That(after.IndexOf(last), Is.EqualTo(1), $"{last.Name} follows {moved.Name}, moved to the top.");
             Assert.That(added.Select(t => mode.Get(t, includeDisabled: true)), Has.All.Matches<MovementComponent>(c => !c.Enabled && c.Mode == mode));
-            Assert.That(mode.Get<Dashing>(), Is.SameAs(dashing), "Components the mode had are kept as they were.");
+            Assert.That(mode.Get(moved, includeDisabled: true), Is.SameAs(movedComponent), "Components the mode had are kept as they were.");
             Assert.That(wallRunning.Enabled, Is.False);
 
             Assert.That(mode.AddMissingDefaultComponents(enabled: true), Is.Empty, "With none missing, nothing is added.");

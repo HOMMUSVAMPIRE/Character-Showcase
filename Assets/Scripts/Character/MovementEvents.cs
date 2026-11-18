@@ -79,6 +79,7 @@ namespace Character
         // Dived under the water's surface, and stopped swimming underwater (back up at the surface, or out of the water)
         DiveStarted = 1L << 40,
         DiveEnded = 1L << 41,
+        // New Ability (NewAbilityWindow) adds new abilities' events above this line, each the next unused bit.
     }
 
     /// <summary>

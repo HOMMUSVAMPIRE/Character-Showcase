@@ -187,11 +187,17 @@ namespace Character
         public static string DisplayNameOf(Type type)
         {
             if (Attribute.GetCustomAttribute(type, typeof(MovementComponentNameAttribute)) is MovementComponentNameAttribute named) { return named.Name; }
-            var spaced = new System.Text.StringBuilder(type.Name.Length + 4);
-            for (int i = 0; i < type.Name.Length; i++)
+            return SpacedName(type.Name);
+        }
+
+        /// <summary>A class name spaced out at each capital after a small letter, as the inspector names a component (WallRunning: Wall Running).</summary>
+        public static string SpacedName(string className)
+        {
+            var spaced = new System.Text.StringBuilder(className.Length + 4);
+            for (int i = 0; i < className.Length; i++)
             {
-                if (i > 0 && char.IsUpper(type.Name[i]) && !char.IsUpper(type.Name[i - 1])) { spaced.Append(' '); }
-                spaced.Append(type.Name[i]);
+                if (i > 0 && char.IsUpper(className[i]) && !char.IsUpper(className[i - 1])) { spaced.Append(' '); }
+                spaced.Append(className[i]);
             }
             return spaced.ToString();
         }

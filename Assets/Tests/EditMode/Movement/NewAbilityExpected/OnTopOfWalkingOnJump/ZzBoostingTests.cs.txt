@@ -1,0 +1,39 @@
+using System.Collections;
+using Character;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace CharacterShowcase.Tests.Abilities
+{
+    /// <summary>
+    /// Tests of Zz Boosting (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
+    /// letting go, its events, saved and put back, at another size) come from AbilityFixture: as set up here,
+    /// a press of Jump standing on a floor.
+    /// Add the tests that are about Zz Boosting itself below, reading expected values from its settings
+    /// (rig.MovementSetting&lt;float&gt;("zzBoostingDuration")), not from numbers of your own.
+    /// </summary>
+    [Category(TestArea.Abilities)]
+    public class ZzBoostingTests : AbilityFixture<ZzBoosting>
+    {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+        }
+
+        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
+
+        protected override string OffSetting => "zzBoostingDuration";
+
+        [UnityTest]
+        public IEnumerator ZzBoosting_LastsItsDuration()
+        {
+            yield return SetUpToStart();
+            float duration = rig.MovementSetting<float>("zzBoostingDuration") * rig.Movement.DurationScale;
+            int steps = 0;
+            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState(CharacterState.ZzBoosting)) { steps++; } });
+            Assert.That(steps, Is.EqualTo(CharacterTestRig.StepsFor(duration)).Within(1), "Zz Boosting should last its duration.");
+        }
+    }
+}

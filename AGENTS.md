@@ -77,8 +77,13 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
    the camera, the level elements or the level builders using character code, fields the tests read by name that no longer exist (or are
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
    (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
-   no longer exists (renamed without `[MovedFrom]`), and two `CharacterState` or `MovementEvents` members sharing a bit
-   (or one that isn't a single bit).
+   no longer exists (renamed without `[MovedFrom]`), two `CharacterState` or `MovementEvents` members sharing a bit
+   (or one that isn't a single bit), and `HasFlag` on either (it boxes, every step). And it holds every movement component
+   to docs/adding-an-ability.md: a `[Tooltip]` on each setting, settings of kinds presets copy (numbers, bools, enums,
+   curves), `Traits` and `StateEvents` on a takeover, its states set, a PlayMode fixture naming it (on the ability test
+   kit, `AbilityFixture<T>`, unless the script's `NOT_YET_ON_THE_KIT` lists it), its inspector name in movement.md's
+   component list and abilities.md or traversal.md, and its place in `DefaultComponents`; each failure names the fix
+   and the guide's section, and the script's allow-lists say where a component legitimately differs.
 2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run
    `python3 Tools/run_tests.py --all` (or `--changed`, `--area`, `--filter`: see step 5). It finds the project's Unity
    (from `ProjectVersion.txt`, the Hub's folders, `UNITY_PATH` or `--unity`), refuses while the editor has the project
@@ -252,8 +257,11 @@ materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shaderg
 
 ## Recipes
 
-**A new movement ability:** follow [docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the
-component and its hooks, its state, flag and events, its place in the mode, animation, level fixtures, tests and docs).
+**A new movement ability:** start it with New Ability (`NewAbilityWindow`, or `MakeFromCommandLine`), which makes a
+working ability with its state, flag, events, place in the order and the modes, kit tests and docs stubs, then follow
+[docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the component and its hooks, its state, flag
+and events, its place in the mode, animation, level fixtures, tests and docs). Keep the New Ability lines in
+`CharacterState.cs` and `MovementEvents.cs`.
 
 **A new character or model:** follow [docs/adding-a-character.md](docs/adding-a-character.md) (a new look for the
 humanoid, a character of its own as a prefab variant, or a creature); its failures are in docs/troubleshooting.md's New

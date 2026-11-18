@@ -1,0 +1,41 @@
+using System.Collections;
+using Character;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace CharacterShowcase.Tests.Traversal
+{
+    /// <summary>
+    /// Tests of Zz Floating (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
+    /// letting go, its events, saved and put back, at another size) come from AbilityFixture: as set up here,
+    /// standing on a floor at a ZzFloatingPoint.
+    /// Add the tests that are about Zz Floating itself below, reading expected values from its settings
+    /// (rig.MovementSetting&lt;float&gt;("zzFloatingDuration")), not from numbers of your own.
+    /// </summary>
+    [Category(TestArea.Traversal)]
+    public class ZzFloatingTests : AbilityFixture<ZzFloating>
+    {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            rig.Track(new GameObject("ZzFloatingPoint")).AddComponent<Level.ZzFloatingPoint>();
+            // At the element, it starts at once: not settled first, so the kit sees it start.
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f), settleSeconds: 0f);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+
+        protected override string OffSetting => "zzFloatingDuration";
+
+        [UnityTest]
+        public IEnumerator ZzFloating_LastsItsDuration()
+        {
+            yield return SetUpToStart();
+            float duration = rig.MovementSetting<float>("zzFloatingDuration") * rig.Movement.DurationScale;
+            int steps = 0;
+            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState(CharacterState.ZzFloating)) { steps++; } });
+            Assert.That(steps, Is.GreaterThanOrEqualTo(CharacterTestRig.StepsFor(duration) - 1), "Zz Floating should last at least its duration.");
+        }
+    }
+}

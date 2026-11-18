@@ -173,6 +173,13 @@ namespace Character
             return component != null && components.Remove(component);
         }
 
+        /// <summary>Removes the mode's component of the given type, returning whether it had one (as Remove&lt;T&gt;).</summary>
+        public bool Remove(Type type)
+        {
+            MovementComponent component = Get(type, includeDisabled: true);
+            return component != null && components.Remove(component);
+        }
+
         /// <summary>The character's gravity (m/s²), at its size.</summary>
         public abstract float GravityAcceleration(MovementController controller);
 

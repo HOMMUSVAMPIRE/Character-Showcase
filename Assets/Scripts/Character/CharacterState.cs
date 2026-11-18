@@ -46,5 +46,6 @@ namespace Character
         Wading = 1048576,
         // Swimming under the surface (Swimming is set too: see Swimming)
         Diving = 2097152,
+        // New Ability (NewAbilityWindow) adds new abilities' states above this line, each the next unused bit.
     }
 }

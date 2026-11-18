@@ -314,6 +314,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 | --- | --- | --- | --- |
 | MovementCompositionTests | Movement | Movement | movement modes made of components, as assets |
 | MovementDataTests | Movement | Movement | `MovementData.Reset` |
+| NewAbilityTests | Movement | Movement | what New Ability makes |
 | MovementTuningPresetTests | Movement | Movement | tuning presets |
 | QueryBufferTests | Movement | Movement | the physics query buffers growing |
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
@@ -331,6 +332,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 ### Movement (the Movement category; see [Movement](movement.md))
 - **MovementCompositionTests**: movement modes made of components, as assets: a new BasicMovementMode starting with its default components, one of each, in order; a component's inspector name being its own (`[MovementComponentName]`) or its class name spaced out; the movement mode asset having no missing or doubled components; each ability's state declared once, by the component that sets it, with its events (on the asset and on a new mode's defaults); a mode's JSON holding its components' settings (which the capabilities rely on to know when to measure again); and components added, removed and found.
 - **MovementDataTests**: `MovementData.Reset`, which lets a character reuse its movement data step after step without allocating, putting every field (backing fields too) back as a new one's, so no step's value carries into the next.
+- **NewAbilityTests**: what New Ability (`AbilityScaffold`) makes, worked out against the project's own files without writing any. For each kind of answer, the files it makes are as recorded (NewAbilityExpected: record them again with `CHARACTER_SHOWCASE_RECORD_SCAFFOLDS=1` after changing a template, and check the diff). Its state and events take the next unused bits at the enums' New Ability lines; it goes just after the component chosen, in the mode's order and the composition test's; its docs are added; answers it can't make are refused, saying why; and a template's blocks are kept or left out by the answers.
 - **MovementTuningPresetTests**: a preset saved from a mode gives the same tuning back, curves and on/off switches included; one of a few settings changes only those; a preset never changes a mode's components or their order, and reports what it couldn't set; and a component's settings are the fields Unity saves, of kinds a preset can copy.
 - **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
 
