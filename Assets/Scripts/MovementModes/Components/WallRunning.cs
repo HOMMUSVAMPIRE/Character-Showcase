@@ -70,6 +70,8 @@ namespace Character
         /// <summary>The steepest a wall can lean (degrees from vertical) to be run along (and slid down: see WallSliding).</summary>
         public float WallRunMaxWallTilt => wallRunMaxWallTilt;
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
         public override bool IsActive(MovementController controller) => controller.wallRun.IsWallRunning;
         /// <summary>Running along it, the wall holds the character up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;

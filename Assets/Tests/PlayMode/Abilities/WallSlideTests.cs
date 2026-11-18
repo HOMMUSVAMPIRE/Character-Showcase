@@ -13,10 +13,11 @@ namespace CharacterShowcase.Tests.Abilities
     /// speed; jumping kicks off it upward and away, gaining height and giving back air jumps (but not off the same wall twice in a row), only so many times before landing, hops alone not climbing it, air steering coming back only gradually;
     /// no slide while rising fast, close to the ground, or glancing along the wall, but one on hitting a wall whatever the steering; a chimney climbed by kicking between its walls; and steering away (for the release delay, not
     /// just a moment), Crouch, landing or the slide's longest time end it. The character is in mid-air facing a tall wall just in front of it. Expected values
-    /// are read from the movement mode's settings.
+    /// are read from the movement mode's settings. The checks every ability gets (turned off, letting go, its events,
+    /// saved and put back, at another size) come from AbilityFixture: falling in front of the wall, steering into it.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class WallSlideTests : CharacterRigFixture
+    public class WallSlideTests : AbilityFixture<WallSliding>
     {
         // The wall's face (z); it faces -Z, toward the character.
         private float face;
@@ -24,6 +25,18 @@ namespace CharacterShowcase.Tests.Abilities
         private float SlideSpeed => rig.Component<WallSliding>().WallSlideSpeed * rig.Movement.SpeedScale;
         private float MaxDuration => rig.Component<WallSliding>().WallSlideMaxDuration * rig.Movement.DurationScale;
         private bool Sliding => rig.InState(CharacterState.WallSliding);
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 12f * Scale, 0f), settleSeconds: 0f);
+            face = rig.FrontExtent + 0.1f * Scale;
+            rig.Box("Wall", new Vector3(0f, 15f * Scale, face + 0.5f), new Vector3(10f, 30f * Scale, 1f));
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+
+        protected override string OffSetting => "wallSlideMaxDuration";
 
         /// <summary>A floor, the character in mid-air (its model loaded) facing +Z, and a tall wall just in front of it.</summary>
         private IEnumerator SetUpWall(float height = 12f)
@@ -234,16 +247,6 @@ namespace CharacterShowcase.Tests.Abilities
             int slidingSteps = 0;
             yield return rig.Run(MaxDuration + 0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => { if (Sliding) { slidingSteps++; } });
             Assert.That(slidingSteps, Is.EqualTo(CharacterTestRig.StepsFor(MaxDuration)).Within(2), "A slide should last no longer than its longest time.");
-        }
-
-        [UnityTest]
-        public IEnumerator AWallSlideMaxDurationOfZero_TurnsWallSlidingOff()
-        {
-            yield return SetUpWall();
-            rig.SetMovementSetting("wallSlideMaxDuration", 0f);
-            bool slid = false;
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => slid |= Sliding);
-            Assert.That(slid, Is.False);
         }
 
         [UnityTest]

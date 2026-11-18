@@ -36,12 +36,14 @@ namespace Character
         public int MaxAirDashes { get => maxAirDashes; set => maxAirDashes = value; }
 
         public override bool IsActive(MovementController controller) => controller.dash.IsDashing;
+        /// <summary>The events of Dashing starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents = { new(CharacterState.Dashing, MovementEvents.DashStarted, MovementEvents.DashEnded) };
 
         public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (!controller.dash.IsDashing) { return; }
             controller.dash.timeRemaining = 0f;
-            movementData.events |= MovementEvents.DashEnded;
         }
 
         /// <summary>
@@ -91,7 +93,6 @@ namespace Character
                 dash.cooldownRemaining = dashCooldown;
                 dash.press.Use();
                 if (!movementData.initialGrounded) { dash.airDashesUsed++; }
-                movementData.events |= MovementEvents.DashStarted;
             }
 
             if (!dash.IsDashing) { return; }
@@ -108,8 +109,7 @@ namespace Character
             if (jumpPressedDuringDash && hasJump)
             {
                 dash.timeRemaining = 0f;
-                movementData.events |= MovementEvents.DashEnded;
-                Vector3 momentum = dash.direction * (topSpeed * dashJumpSpeedRetention);
+                    Vector3 momentum = dash.direction * (topSpeed * dashJumpSpeedRetention);
                 movementData.initialInertia = new Vector3(momentum.x, 0f, momentum.z);
                 movementData.directMovementVector = Vector3.zero; // Momentum only, so walking doesn't stack on top of it.
                 return;
@@ -124,8 +124,7 @@ namespace Character
             if (!dash.IsDashing)
             {
                 speed = topSpeed * dashEndSpeedRetention;
-                movementData.events |= MovementEvents.DashEnded;
-            }
+                }
 
             movementData.velocityOverride = dash.direction * speed;
             movementData.directMovementVector = Vector3.zero;

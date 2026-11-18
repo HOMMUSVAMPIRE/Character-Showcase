@@ -76,6 +76,8 @@ namespace Character
         /// <summary>How fast (m/s) the character swims at full movement input, at its authored size.</summary>
         public float SwimSpeed { get => swimSpeed; set => swimSpeed = Mathf.Max(0f, value); }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump out of the water.</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.Jumped;
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
         /// <summary>Swimming, the water holds the character up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;

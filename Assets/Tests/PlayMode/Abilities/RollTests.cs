@@ -11,11 +11,21 @@ namespace CharacterShowcase.Tests.Abilities
     /// Tests of rolling: a roll goes in the input direction (or straight ahead) for its duration, low, without steering;
     /// it only happens on the ground, once per press and not again until its cooldown is over; it ends standing, or
     /// crouched where there's no room to stand; and it scales with the character's size. Expected values are read from
-    /// the movement mode's settings.
+    /// the movement mode's settings. The checks every ability gets (turned off, letting go, its events, saved and put
+    /// back, at another size) come from AbilityFixture: a roll from standing on a floor, pressed once.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class RollTests : CharacterRigFixture
+    public class RollTests : AbilityFixture<Rolling>
     {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+        }
+
+        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Roll(Vector3.forward) : CharacterTestRig.Idle();
+
+        protected override string OffSetting => "rollDuration";
 
         private float RollSpeed => rig.Component<Rolling>().RollSpeed * rig.Movement.SpeedScale;
         private float RollDuration => rig.Component<Rolling>().RollDuration * rig.Movement.DurationScale;

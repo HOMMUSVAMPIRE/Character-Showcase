@@ -35,6 +35,8 @@ namespace Character
         /// <summary>How far (m) from the character's hands a rope can be to catch hold of it, at its authored size. 0 turns rope swinging off.</summary>
         public float RopeGrabReach { get => ropeGrabReach; set => ropeGrabReach = value; }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the rope.</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.Jumped;
         public override bool IsActive(MovementController controller) => controller.ropeSwing.IsSwinging;
         /// <summary>Swinging, the character holds on to the rope, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;

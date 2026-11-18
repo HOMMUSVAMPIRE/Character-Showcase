@@ -10,10 +10,25 @@ namespace CharacterShowcase.Tests.Abilities
     /// Tests of sliding: pressing Crouch while sprinting slides on the sprint's momentum, low enough to pass under things
     /// the character can't stand under, slowing down until it ends in a crouch; walking and crouching doesn't slide,
     /// jumping out of a slide keeps its speed, and a wall stops it. Expected values are read from the movement mode.
+    /// The checks every ability gets (turned off, letting go, its events, saved and put back, at another size) come from
+    /// AbilityFixture, on sliding (Crouching's second state: crouching itself is a stance, with no setting whose 0 turns it
+    /// off, and its tests are CrouchTests'): sprinting on a floor, then pressing Crouch.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class SlideTests : CharacterRigFixture
+    public class SlideTests : AbilityFixture<Crouching>
     {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, -20f));
+            yield return SprintUpToSpeed();
+        }
+
+        protected override Inputs InputsFor(int step) => SprintCrouching(step);
+
+        protected override string OffSetting => "slideMaxDuration";
+
+        protected override CharacterState AbilityState => CharacterState.Sliding;
 
         private float SlideStartSpeed => rig.Component<Crouching>().SlideStartSpeed * rig.Movement.SpeedScale;
         private float SlideMaxDuration => rig.Component<Crouching>().SlideMaxDuration;
@@ -24,9 +39,16 @@ namespace CharacterShowcase.Tests.Abilities
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 0.05f, -20f));
+            yield return SprintUpToSpeed();
+        }
+
+        /// <summary>Gets the character, standing on a floor, sprinting forward, skipping the test if it can't slide from a sprint.</summary>
+        private IEnumerator SprintUpToSpeed()
+        {
             float minStart = rig.MovementSetting<float>("slideMinStartSpeed") * rig.Movement.SpeedScale;
             if (!(rig.RunSpeed >= minStart)) { Assert.Ignore($"The character's sprint ({rig.RunSpeed:0.0} m/s) is too slow to slide ({minStart:0.0} m/s)."); }
-            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward));
+            // Its speeds and their changes scale with its size (the kit's size checks), so the time to reach them does too.
+            yield return rig.Run(0.4f * rig.Movement.DurationScale, step => CharacterTestRig.Sprint(Vector3.forward));
         }
 
         /// <summary>Sprint forward with Crouch pressed on the first step (and held for the given number of steps).</summary>

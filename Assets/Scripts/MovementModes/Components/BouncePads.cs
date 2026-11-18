@@ -26,10 +26,16 @@ namespace Character
         /// <summary>What every bounce pad's launch height is multiplied by for this character. 0 turns bounce pads off.</summary>
         public float BounceHeightMultiplier { get => bounceHeightMultiplier; set => bounceHeightMultiplier = value; }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a launch off a bounce pad.</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.Bounced;
+
         public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.bounce.cooldownRemaining = MovementHelpers.CountDown(controller.bounce.cooldownRemaining, movementData.deltaTime);
         }
+
+        /// <summary>A launch holds the character neither up nor on: it has it for the one step it launches it.</summary>
+        public override AbilityTraits Traits => AbilityTraits.None;
 
         /// <summary>
         /// Launches the character off a bounce pad it's standing on: along the pad's up, fast enough that its feet rise

@@ -10,7 +10,8 @@ Tests of the package's own content (the mannequin and other prepared models, the
 Every character test runs on the test rig, `CharacterTestRig` (Assets/Tests/PlayMode). It spawns the character with real physics and drives it with scripted inputs, through its ACCharacterController (`StepMovement`, as the game steps it).
 
 - **`CharacterRigFixture`** is what a character fixture derives from: each test gets a new rig (`rig`), disposed after it. It also gives the fixture `[TestTiming]` (see [How long each test takes](#how-long-each-test-takes)). `AnimationTestsBase` derives from it for the tests that need the model's animation.
-- **`AbilityFixture<T>`** derives from it for a fixture of tests on one ability (T, its movement component): the fixture gets the checks every ability should pass as its own tests, named `Kit_…` (it starts from its inputs, raising its start event; turned off by its toggle and by its 0 setting it doesn't start; turned off while under way it lets go at once; its events come in pairs; saved partway and put back it steps on exactly as it did; at half and twice its size it still starts). It supplies how to set the ability up (`SetUpToStart`, spawning with the kit's `SpawnCharacter`), its inputs (`InputsFor`) and the setting whose 0 turns it off (`OffSetting`). See [Adding a Movement Ability](adding-an-ability.md#7-tests-and-docs). `DashTests` and `ZiplineTests` derive from it.
+- **`AbilityFixture<T>`** derives from it for a fixture of tests on one ability (T, its movement component): the fixture gets the checks every ability should pass as its own tests, named `Kit_…` (it starts from its inputs, raising its start event; turned off by its toggle and by its 0 setting it doesn't start; turned off while under way it lets go at once; its events come in pairs; saved partway and put back it steps on exactly as it did; at half and twice its size it still starts). It supplies how to set the ability up (`SetUpToStart`, spawning with the kit's `SpawnCharacter`), its inputs (`InputsFor`) and the setting whose 0 turns it off (`OffSetting`). See [Adding a Movement Ability](adding-an-ability.md#7-tests-and-docs). `DashTests` and `ZiplineTests` are examples, and every ability's fixture derives from it but those of a moment's.
+- **`MomentFixture<T>`** is the kit for an ability that happens in a moment (a jump, a bounce: its component's `OneOffEvents`), which supplies its event too (`MomentEvent`). Its `Kit_…` checks: it happens from its inputs; turned off by its toggle and by its 0 setting it doesn't; it doesn't happen again straight away from the same inputs; saved before it and put back it steps on exactly as it did; at half and twice its size it still happens. `JumpHeightTests` and `BouncePadTests` derive from it. What the two kits share is `AbilityKitBase<T>`.
 - **Settings.** Each test's character moves with its own copy of its movement mode asset, so a test can change settings without changing the asset, and the asset can be retuned freely: the tests read the values they expect from the copy. `rig.SetMovementSetting("fieldName", value)` changes one, for that test only, and `rig.MovementSetting<T>("fieldName")` reads one (a field of the mode or of any of its components, by name). A setting the mode doesn't have ignores the test (it tests a behaviour that mode may not have); one asked for as the wrong type fails it, so a test can't quietly stop testing anything. The sizes, speeds and tolerances a test tries are in the test itself.
 - **Looking.** The rig creates no camera: the movement never reads one, and the scripted inputs carry their own look (`rig.Look`), which their move input is relative to. A test that needs a camera (the camera rig, the underwater view) makes its own.
 - **Running.** `rig.RunUntil` runs the character until something's true (or a timeout passes), so a test waits as long as the movement takes, however it's tuned; `rig.RunWithSource` runs it driven by an input source (an AI's, say), as its ACCharacterController steps it in the game.
@@ -32,7 +33,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | MovementComponentTests | Movement | Movement | components turned off or removed |
 | CharacterTestRigTests | Movement | Movement | the test rig itself |
 | MovementCapabilitiesTests | Movement | Movement | the measured capabilities matching what the character does |
-| JumpHeightTests | Movement | Movement | tapped, held and released jump heights |
+| JumpHeightTests | Movement | Movement | tapped, held and released jump heights (and the moment kit's checks) |
 | GroundMomentumTests | Movement | Movement | momentum on landing and hopping |
 | DashTests | Movement | Movement | the dash (and the ability kit's checks) |
 | MovingGroundTests | Movement | Movement | riding moving and teleporting ground |
@@ -49,22 +50,22 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | DeterminismTests | InputAndDeterminism | Movement | moving the same, bit for bit |
 | InputRecordingTests | InputAndDeterminism | Movement | a recorded run replayed exactly |
 | CrouchTests | Abilities | Abilities | crouching |
-| SlideTests | Abilities | Abilities | sliding |
-| RollTests | Abilities | Abilities | rolling |
-| WallRunTests | Abilities | Abilities | wall running |
-| WallSlideTests | Abilities | Abilities | wall sliding and wall jumps |
-| LedgeTests | Abilities | Abilities | hanging from and climbing ledges |
-| VaultTests | Abilities | Abilities | vaulting |
+| SlideTests | Abilities | Abilities | sliding (and the ability kit's checks) |
+| RollTests | Abilities | Abilities | rolling (and the ability kit's checks) |
+| WallRunTests | Abilities | Abilities | wall running (and the ability kit's checks) |
+| WallSlideTests | Abilities | Abilities | wall sliding and wall jumps (and the ability kit's checks) |
+| LedgeTests | Abilities | Abilities | hanging from and climbing ledges (and the ability kit's checks) |
+| VaultTests | Abilities | Abilities | vaulting (and the ability kit's checks) |
 | LadderTests | Traversal | Traversal | ladders |
-| WallClimbTests | Traversal | Traversal | climbing walls, painted ones too |
-| PushPullTests | Traversal | Traversal | pushing and pulling |
-| RopeSwingTests | Traversal | Traversal | swinging on ropes |
+| WallClimbTests | Traversal | Traversal | climbing walls, painted ones too (and the ability kit's checks) |
+| PushPullTests | Traversal | Traversal | pushing and pulling (and the ability kit's checks) |
+| RopeSwingTests | Traversal | Traversal | swinging on ropes (and the ability kit's checks) |
 | ZiplineTests | Traversal | Traversal | riding ziplines (and the ability kit's checks) |
-| SwimTests | Traversal | Traversal | swimming at the surface, getting out |
+| SwimTests | Traversal | Traversal | swimming at the surface, getting out (and the ability kit's checks) |
 | DiveTests | Traversal | Traversal | diving and swimming underwater |
 | WaterEffectsTests | Traversal | Traversal | splashes and ripples |
-| WadeTests | Traversal | Traversal | wading |
-| BouncePadTests | Traversal | Traversal | bounce pads |
+| WadeTests | Traversal | Traversal | wading (and the ability kit's checks) |
+| BouncePadTests | Traversal | Traversal | bounce pads (and the moment kit's checks) |
 | AnimationTests | Animations | Animation | soles on the floor, planted feet, IK on stretched models |
 | SampleContentAnimationTests | Animations | Animation, SampleContent | every prepared model's feet and lean |
 | AnimationEventTests | Animations | Animation | movement events passed on by the AnimationController |
@@ -116,7 +117,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
 - **MovementComponentTests**: a movement mode's components (`ComposedMovementMode`): one turned off, or removed, left out of the movement as if it weren't there, and one turned off while it has the character (a zipline ride) letting go of it; with Jumping or Dashing turned off the character not jumping or dashing, with Walking & Running off not walking but still jumping, and with Fall & Air Handling off not falling.
 - **CharacterTestRigTests**: the test rig itself, which every character test relies on: a test's change to a component's settings going to the rig's own copy of the movement mode, not the asset; and a setting asked for as the wrong type failing the test, where one the mode doesn't have is ignored (so a test can't quietly stop testing anything).
 - **MovementCapabilitiesTests**: the character's capabilities matching what it does (a jump and a sprint jump carrying it as far as they say, its step, stand and jump heights), following its settings (a higher jump crossing further and reaching a ledge that much higher) and its size (twice the size jumping and sliding twice as far), leaving out what's turned off, adding double jumps with air jumps, and a measurement shared by the same tuning (asked again, or tuned back as it was) but made again for any change, even a tiny change of size.
-- **JumpHeightTests**: a tap rising the min jump height, Jump held rising the max, holding longer rising higher between them, letting go past the min height stopping the rise at once, and the heights following the settings.
+- **JumpHeightTests**: a tap rising the min jump height, Jump held rising the max, holding longer rising higher between them, letting go past the min height stopping the rise at once, and the heights following the settings; and the moment kit's checks (`MomentFixture`), from a press of Jump on a floor.
 - **GroundMomentumTests**: landing from a jump not adding walking on top of the air speed; hopping again and again (walking or sprinting) never building up speed; landing faster than walking carrying the momentum and easing down to walking, never below it; jumping while walking or sprinting keeping its speed in the air, without air steering stacking on it.
 - **DashTests**: a dash lasting exactly its duration, distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, air dash limits, and jump and dash cancelling each other; and the ability kit's checks (`AbilityFixture`), from a dash pressed once on a floor.
 - **MovingGroundTests**: a platform enabled late being where an early one is at the same tick (both going by the level's clock; the test steps on until they're under way, as where they are depends on how far into the suite it runs); riding sliding, rising and spinning platforms (one parented under a static object, as a level's are, too), not being dragged along by ground that teleports further in a step than the character is carried, staying where a short teleport puts it while standing, and keeping a platform's momentum when jumping off.
@@ -169,12 +170,13 @@ Then look at what changed in the recorded paths (git diff) before committing the
 
 ### Abilities (the Abilities category; see [Movement Abilities](abilities.md))
 - **CrouchTests**: lowering the body to the crouch height (in proportion at a larger size too) and moving at the crouch speed; standing again on a second press; staying crouched under a low ceiling and standing by itself once out from under it; hold to crouch; one crouch per held press; jumping from a crouch (and not under a low ceiling); its events.
-- **SlideTests**: crouching while sprinting slides, starting at least at the slide start speed, only slowing, low, ending crouched within its longest time; crouching while walking just crouches; sliding under a bar too low to stand under; jumping out keeping its speed; stopping at a wall; a second press standing up; sliding turned off (Sliding Enabled off, or no longest time) crouching instead; and sliding turned off during a slide ending it crouched.
+- **SlideTests**: crouching while sprinting slides, starting at least at the slide start speed, only slowing, low, ending crouched within its longest time; crouching while walking just crouches; sliding under a bar too low to stand under; jumping out keeping its speed; stopping at a wall; a second press standing up; sliding turned off (Sliding Enabled off, or no longest time) crouching instead; and sliding turned off during a slide ending it crouched; and the ability kit's checks (`AbilityFixture`, on sliding, its 0 setting the slide's longest time), from crouching while sprinting on a floor.
 - **RollTests**:
   - rolling in the input direction for its duration, low, fast, facing it and standing afterwards; straight ahead without input and not steerable;
   - one roll per press, a buffered press waiting out the cooldown; not in the air; ending crouched under a low ceiling;
   - going farther in proportion at a larger size; handing straight over to walking without a burst of speed;
-  - on landing from a high fall it rolls on impact the way it's moving, but not standing still, from a lower fall, from an ordinary jump, after a dash or an air jump just before landing (which start the fall again), or with a jump pressed for the landing (which jumps).
+  - on landing from a high fall it rolls on impact the way it's moving, but not standing still, from a lower fall, from an ordinary jump, after a dash or an air jump just before landing (which start the fall again), or with a jump pressed for the landing (which jumps);
+  - and the ability kit's checks (`AbilityFixture`), from a roll pressed once on a floor.
 - **WallRunTests**:
   - running along a wall in mid-air, falling much slower than falling freely, staying against it and facing along it;
   - ending after its longest time, past the end of the wall, and not starting again on the same wall;
@@ -182,35 +184,39 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - no run without steering mostly along the wall, heading into the wall, or close to the ground;
   - steering away for a moment not dropping off it, but for the release delay letting go;
   - giving back air dashes and jumps, so a character that air dashed into one can dash again after dropping off it;
-  - ending once the feet drop below the wall's bottom edge, and not starting beside a wall that doesn't reach down to them.
+  - ending once the feet drop below the wall's bottom edge, and not starting beside a wall that doesn't reach down to them;
+  - and the ability kit's checks (`AbilityFixture`), from a launch along the wall.
 - **WallSlideTests**:
   - sliding slowly down a wall fallen into head-on, against it and facing it; a fast fall braked to the slide speed;
   - jumping off upward and away, gaining height and giving back jumps, but not off the same wall twice in a row; only so many jumps in a row off one wall before landing;
   - hops alone not climbing a wall, but a narrow chimney climbed by kicking between its walls;
   - air steering coming back only gradually after a jump; air dashes given back by a kick off a wall, but not off the same wall again;
   - not while rising fast, close to the ground, or glancing along the wall, but on hitting a wall moving into it whatever the steering;
-  - letting go by steering away (for the release delay, not a moment) or with Crouch; ending on landing and after its longest time.
-- **LedgeTests**: grabbing a ledge falling in front of it and hanging still below it, which gives back air dashes and jumps; climbing up onto it, or crouched with only room to crouch; letting go with Crouch or steering away; not grabbing ledges out of reach, or while rising fast; hanging from a moving ledge; climbing from a ledge onto stairs rising from it; letting go when the ledge's object is deactivated; jumping up to a ledge, grabbing and climbing it with its events raised once each.
+  - letting go by steering away (for the release delay, not a moment) or with Crouch; ending on landing and after its longest time;
+  - and the ability kit's checks (`AbilityFixture`), from falling in front of the wall steering into it.
+- **LedgeTests**: grabbing a ledge falling in front of it and hanging still below it, which gives back air dashes and jumps; climbing up onto it, or crouched with only room to crouch; letting go with Crouch or steering away; not grabbing ledges out of reach, or while rising fast; hanging from a moving ledge; climbing from a ledge onto stairs rising from it; letting go when the ledge's object is deactivated; jumping up to a ledge, grabbing and climbing it with its events raised once each; and the ability kit's checks (`AbilityFixture`, on hanging, its 0 setting the climb duration), from falling in front of a ledge steering into it.
 - **VaultTests**:
   - heading into the top of a low wall in mid-air vaults over it (giving back air dashes and jumps), rising over the rise time and leaving at its share of the speed, without sliding down it or hanging from it;
   - a low platform stepped up onto, keeping the speed, rather than vaulted; a higher block vaulted onto; at the vault's slowest speed with no speed of its own;
   - walking or sprinting into a low wall on the ground vaults it, but not with vaulting from the ground off, glancing along it, or a railing at the edge of a drop;
   - stairs sprinted up or jumped onto climbed, not vaulted; not without room over the top;
-  - with vaulting off, a low wall not slid down, its top grabbed once in reach.
+  - with vaulting off, a low wall not slid down, its top grabbed once in reach;
+  - and the ability kit's checks (`AbilityFixture`, its 0 setting the rise duration), from falling in front of a low wall steering into it.
 
 ### Traversal (the Traversal category; see [Climbing and Traversal](traversal.md))
 - **LadderTests**: walking into one climbing straight up its middle facing it; sideways input doing nothing; not taken hold of from behind; one standing on its own climbed to its top and no further, and one up to a platform climbed off onto it; jumping off kicking away.
 - **WallClimbTests**:
   - taking hold of a climbable wall giving back air dashes and jumps;
   - from the ground, stepping up onto it first, holding still for the enter time, then climbing, and stepping off the bottom holding still for the exit time, but neither taking hold in mid-air nor letting go higher up;
-  - walking into a climbable wall taking hold of it and climbing up it at the climbing speed, against it and facing it, with its events; an unclimbable wall, or climbing turned off, not being climbed;
+  - walking into a climbable wall taking hold of it and climbing up it at the climbing speed, against it and facing it, with its events; an unclimbable wall not being climbed;
   - taking hold heading in at a glancing angle, and on falling into one rather than sliding down it; holding still without input; climbing sideways at the climbing speed;
   - stopping at the sides and top of a climbable panel on a plain wall; going round an outside corner onto the next face and into an inside corner onto the other wall;
   - climbing over a walkable top onto it, as soon as the hands reach it;
   - jumping off upward and away; letting go with Crouch and taking hold again only after the regrab delay; stepping off at the bottom by pressing down; moving along with a climbable surface that moves;
-  - painted walls: climbing a painted patch only within the paint, and not taking hold of a wall's unpainted part; a box painted on one face not climbed round its corner until the face round it is painted too (paint being for the face painted, and erased as painted: ClimbablePaintTests).
-- **PushPullTests**: pushing and pulling at the push speed with the character keeping hold, slower for heavier objects, push-only objects staying put, stopping at walls without going into the object, letting go, objects falling off edges, objects just being obstacles without Interact, and not jumping while holding one.
-- **RopeSwingTests**: reaching one in mid-air catching hold and swinging on it about its anchor, the hands staying the grip distance from it, carried on past it and back; no input never swinging higher, pumping with the stick swinging higher, and never past the largest swing angle; a wall stopping the swing; jumping off keeping the swing's speed and jumping up, the rope swinging on by itself; Crouch letting go, the same rope not caught again before the regrab delay.
+  - painted walls: climbing a painted patch only within the paint, and not taking hold of a wall's unpainted part; a box painted on one face not climbed round its corner until the face round it is painted too (paint being for the face painted, and erased as painted: ClimbablePaintTests);
+  - and the ability kit's checks (`AbilityFixture`, its 0 setting the climbing speed), from walking into a climbable wall.
+- **PushPullTests**: pushing and pulling at the push speed with the character keeping hold, slower for heavier objects, push-only objects staying put, stopping at walls without going into the object, letting go, objects falling off edges, objects just being obstacles without Interact, and not jumping while holding one; and the ability kit's checks (`AbilityFixture`; it has no 0 setting, so that check is skipped), from holding grab into a box.
+- **RopeSwingTests**: reaching one in mid-air catching hold and swinging on it about its anchor, the hands staying the grip distance from it, carried on past it and back; no input never swinging higher, pumping with the stick swinging higher, and never past the largest swing angle; a wall stopping the swing; jumping off keeping the swing's speed and jumping up, the rope swinging on by itself; Crouch letting go, the same rope not caught again before the regrab delay; and the ability kit's checks (`AbilityFixture`, its 0 setting the grab reach), from a leap at a rope.
 - **ZiplineTests**: catching a cable in mid-air and riding it downhill to its end, letting go there at the ride's speed, with its events; hanging the hang height straight below it, facing the way it rides; speeding up downhill to no more than the zipline's top speed; a level cable carrying the rider at the slowest ride speed; jumping off up on top of the ride's speed; Crouch letting go; and the ability kit's checks (`AbilityFixture`, its 0 setting the grab reach), from falling onto a downhill cable.
 - **SwimTests**:
   - falling into deep water plunging below the swim depth (not to the floor) and floating back up to it without bobbing past, with its events and no landing;
@@ -219,7 +225,8 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - swimming into a ladder up a low side or a tall one climbing out onto it;
   - swimming into a low side vaulting onto it (or climbing, with a swim vault height of 0), a low divider vaulted over back into the water, a taller side within reach climbed out onto, but one out of reach keeping the swimmer in;
   - walking down a slope into deep water, or plunging to the bottom, floating up to the swim depth; swimming into shallows up a slope and walking out;
-  - and Swimming turned off, or a swim depth of 0, sinking to the bottom.
+  - Swimming turned off sinking to the bottom;
+  - and the ability kit's checks (`AbilityFixture`, on swimming, its 0 setting the swim depth), from a drop into a deep pool.
 - **DiveTests**:
   - Crouch at the surface diving under it, the body lying flat along the way it swims, resting on its feet, the model drawn lowered to it;
   - underwater swimming the way its input looks (the frame's look, which the player's camera gives), looking down and looking up, at the swim speed; holding Crouch sinking and Jump rising whichever way the camera looks;
@@ -229,8 +236,8 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - swimming into a ladder underwater (from along the floor too) taking hold of it and climbing it without letting go;
   - and swimming underwater up a beach surfacing once the feet are shallower than the swimming depth, finding its feet in the shallows.
 - **WaterEffectsTests**: falling in splashing once on the surface, as strong as it fell fast, playing the splash prefab; jumping out splashing; swimming along rippling every ripple spacing it goes, and treading water every idle ripple interval; nothing on dry land; a prefab with its own effect (IWaterEffect) played with where and how strong; no more of an effect playing than the most at once, the oldest reused; and without prefabs the events still raised.
-- **WadeTests**: walking through shallow water slowed by how deep it is (at depths part way from the wade start depth to the swim depth), sprinting slowed too, ankle-deep water not slowing it, walking in and out raising the wading events, walking or sprinting into a low wall vaulting it, and Wading turned off not slowing it.
-- **BouncePadTests**: coming down on one launching the feet its launch height above it, once; Jump held bouncing higher by the jump boost; running across one carrying the run on; a tilted pad launching along its up; the bounce being the jump, leaving the air jumps.
+- **WadeTests**: walking through shallow water slowed by how deep it is (at depths part way from the wade start depth to the swim depth), sprinting slowed too, ankle-deep water not slowing it, walking in and out raising the wading events, walking or sprinting into a low wall vaulting it, and Wading turned off not slowing it; and the ability kit's checks (`AbilityFixture`; it has no 0 setting, so that check is skipped), from walking in water halfway from the wade start depth to the swim depth.
+- **BouncePadTests**: coming down on one launching the feet its launch height above it, once; Jump held bouncing higher by the jump boost; running across one carrying the run on; a tilted pad launching along its up; the bounce being the jump, leaving the air jumps; and the moment kit's checks (`MomentFixture`), from falling onto a pad.
 
 ### Animations (the Animation category; see [Character Model and Animations](animation.md), and for the fox, [Creatures](creatures.md))
 - **AnimationTests**:
@@ -330,7 +337,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 | MovementEnvelopeTests | Levels (own assembly) | Movement | envelope.json up to date |
 
 ### Movement (the Movement category; see [Movement](movement.md))
-- **MovementCompositionTests**: movement modes made of components, as assets: a new BasicMovementMode starting with its default components, one of each, in order; a component's inspector name being its own (`[MovementComponentName]`) or its class name spaced out; the movement mode asset having no missing or doubled components; each ability's state declared once, by the component that sets it, with its events (on the asset and on a new mode's defaults); a mode's JSON holding its components' settings (which the capabilities rely on to know when to measure again); and components added, removed and found.
+- **MovementCompositionTests**: movement modes made of components, as assets: a new BasicMovementMode starting with its default components, one of each, in order; a component's inspector name being its own (`[MovementComponentName]`) or its class name spaced out; the movement mode asset having no missing or doubled components; each ability's state declared once, by the component that sets it, with its events (on the asset and on a new mode's defaults); every movement event declared by what raises it, as a state's or a moment's (`OneOffEvents`) and never both; a mode's JSON holding its components' settings (which the capabilities rely on to know when to measure again); and components added, removed and found.
 - **MovementDataTests**: `MovementData.Reset`, which lets a character reuse its movement data step after step without allocating, putting every field (backing fields too) back as a new one's, so no step's value carries into the next.
 - **NewAbilityTests**: what New Ability (`AbilityScaffold`) makes, worked out against the project's own files without writing any. For each kind of answer, the files it makes are as recorded (NewAbilityExpected: record them again with `CHARACTER_SHOWCASE_RECORD_SCAFFOLDS=1` after changing a template, and check the diff). Its state and events take the next unused bits at the enums' New Ability lines; it goes just after the component chosen, in the mode's order and the composition test's; its docs are added; answers it can't make are refused, saying why; and a template's blocks are kept or left out by the answers.
 - **MovementTuningPresetTests**: a preset saved from a mode gives the same tuning back, curves and on/off switches included; one of a few settings changes only those; a preset never changes a mode's components or their order, and reports what it couldn't set; and a component's settings are the fields Unity saves, of kinds a preset can copy.

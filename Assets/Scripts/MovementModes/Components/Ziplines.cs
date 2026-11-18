@@ -36,6 +36,8 @@ namespace Character
         /// <summary>How far (m) from the character's hands a cable can be to catch hold of it, at its authored size. 0 turns ziplines off.</summary>
         public float ZiplineGrabReach { get => ziplineGrabReach; set => ziplineGrabReach = value; }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the cable.</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.Jumped;
         public override bool IsActive(MovementController controller) => controller.zipline.IsRiding;
         /// <summary>Riding, the character holds on to the cable, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;

@@ -13,9 +13,12 @@ namespace CharacterShowcase.Tests.Abilities
     /// below it; Jump climbs up onto it (crouched, if there's only room to crouch on top), and Crouch or steering away
     /// lets go; ledges out of reach, or passed while rising fast, aren't grabbed; a moving ledge carries the character
     /// hanging from it; and a jump up to a ledge grabs it. Expected values are read from the movement mode's settings.
+    /// The checks every ability gets (turned off, letting go, its events, saved and put back, at another size) come from
+    /// AbilityFixture, on hanging (LedgeHanging, its first state): falling in front of a ledge a standing height above the
+    /// feet, steering into it.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class LedgeTests : CharacterRigFixture
+    public class LedgeTests : AbilityFixture<Ledges>
     {
         // The ledge's top (y) and its wall's face (z), which faces -Z, toward the character.
         private float top, face;
@@ -24,6 +27,17 @@ namespace CharacterShowcase.Tests.Abilities
         private float ClimbDuration => rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale;
         private bool Hanging => rig.InState(CharacterState.LedgeHanging);
         private bool Climbing => rig.InState(CharacterState.LedgeClimbing);
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 3f * Scale, 0f), settleSeconds: 0f);
+            BuildLedge(1f);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+
+        protected override string OffSetting => "ledgeClimbDuration";
 
         /// <summary>
         /// A floor, the character in mid-air facing +Z (its model loaded), and in front of it a block whose top is
@@ -45,7 +59,7 @@ namespace CharacterShowcase.Tests.Abilities
         private void BuildLedge(float ledgeAbove)
         {
             top = rig.Position.y + ledgeAbove * rig.StandingHeight;
-            face = rig.Position.z + rig.FrontExtent + 0.15f;
+            face = rig.Position.z + rig.FrontExtent + 0.15f * Scale;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
         }
 
@@ -231,16 +245,6 @@ namespace CharacterShowcase.Tests.Abilities
             GameObject.Find("Ledge Block").SetActive(false);
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
             Assert.That(Hanging, Is.False, "With its ledge gone, the character shouldn't keep hanging in mid-air.");
-        }
-
-        [UnityTest]
-        public IEnumerator ALedgeClimbDurationOfZero_TurnsLedgeGrabbingOff()
-        {
-            yield return SetUpLedge();
-            rig.SetMovementSetting("ledgeClimbDuration", 0f);
-            bool hung = false;
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => hung |= Hanging);
-            Assert.That(hung, Is.False);
         }
 
         [UnityTest]

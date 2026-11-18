@@ -34,6 +34,9 @@ namespace Character
         /// <summary>How long (s) a press of Jump counts for, after it's made.</summary>
         public float JumpInputBuffer => jumpInputBuffer;
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump from the ground (or in its coyote time), and one in the air.</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.Jumped | MovementEvents.AirJumped;
+
         /// <summary>
         /// Jumps once the character has walked and dashed: not while dashing (including the dash's last step, where its
         /// velocity override would make the jump use up a jump without any effect), nor while crouched with no room to

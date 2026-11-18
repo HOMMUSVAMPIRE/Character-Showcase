@@ -14,12 +14,13 @@ namespace CharacterShowcase.Tests.Traversal
     /// surface, onto an edge a little above the water; it climbs a ladder out of the water; swimming into something low
     /// sticking out of the water it vaults over or onto it (a pool's side, a divider), and climbs out onto a taller side
     /// within reach of its hands (not one out of reach); walking down into deep water, or plunging to the bottom, it floats
-    /// up to swim; swimming into shallows it finds its feet and walks out; and it doesn't swim with Swimming turned off, or
-    /// a swim depth of 0.
-    /// The test camera looks down +Z. Expected values are read from the movement mode's settings.
+    /// up to swim; swimming into shallows it finds its feet and walks out; and with Swimming turned off it falls to the
+    /// bottom. The test camera looks down +Z. Expected values are read from the movement mode's settings. The checks every
+    /// ability gets (turned off, letting go, its events, saved and put back, at another size) come from AbilityFixture, on
+    /// swimming (its first state; diving is DiveTests'): dropped into a deep pool sized to the character.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class SwimTests : CharacterRigFixture
+    public class SwimTests : AbilityFixture<Swimming>
     {
         // The pool: its surface at 0, its floor this far down, wide enough to swim a long way in.
         private const float PoolDepth = 5f, PoolSize = 60f;
@@ -31,6 +32,21 @@ namespace CharacterShowcase.Tests.Traversal
         private float JumpHeight => rig.MovementSetting<float>("swimJumpHeight") * rig.Movement.HeightScale;
         /// <summary>How far (m) below the surface the character's feet are.</summary>
         private float FeetUnder => water.SurfaceHeight - rig.Position.y;
+
+        protected override IEnumerator SetUpToStart()
+        {
+            float depth = PoolDepth * Scale, size = PoolSize * Scale;
+            rig.Floor(-depth);
+            water = rig.Water(Vector3.zero, new Vector3(size, depth, size));
+            yield return SpawnCharacter(Vector3.up * Scale, settleSeconds: 0f);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+
+        protected override string OffSetting => "swimDepth";
+
+        // Dropped from above the water, it falls in and on down to its swimming depth first.
+        protected override float SecondsToStart => 1.5f;
 
         /// <summary>A deep pool (its floor, and water over it), and the character spawned on it, in mid-air above the water.</summary>
         private IEnumerator SetUpPool(float dropFrom = 1f)
@@ -308,26 +324,6 @@ namespace CharacterShowcase.Tests.Traversal
             yield return rig.RunUntilLanded(_ => swam |= rig.Swimming);
             Assert.That(swam, Is.False, "With Swimming turned off, the character shouldn't swim.");
             Assert.That(rig.Position.y, Is.EqualTo(-PoolDepth).Within(0.05f), "It should have fallen to the pool's floor.");
-        }
-
-        [UnityTest]
-        public IEnumerator TurningSwimmingOffWhileSwimming_LetsTheCharacterSink()
-        {
-            yield return SwimmingInThePool();
-            rig.Component<Swimming>().Enabled = false;
-            yield return rig.Run(1, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Movement.swim.IsSwimming, Is.False, "Turned off, Swimming should let go of the character.");
-            Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.SwimEnded));
-        }
-
-        [UnityTest]
-        public IEnumerator ASwimDepthOfZero_TurnsSwimmingOff()
-        {
-            yield return SetUpPool();
-            rig.SetMovementSetting("swimDepth", 0f);
-            bool swam = false;
-            yield return rig.RunUntilLanded(_ => swam |= rig.Swimming);
-            Assert.That(swam, Is.False);
         }
     }
 }

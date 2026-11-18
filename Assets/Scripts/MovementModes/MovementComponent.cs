@@ -129,6 +129,14 @@ namespace Character
         public virtual StateEvent[] StateEvents => System.Array.Empty<StateEvent>();
 
         /// <summary>
+        /// The movement events of a moment this component raises itself (a jump, a bounce, a jump off a wall): those with
+        /// no state that starts and ends, so not in its StateEvents. Several components may raise the same one (Jumped,
+        /// from the ground and off a rope). Declared so what raises what is known: the hygiene check holds a component to
+        /// raising only what it declares, and the moment kit (MomentFixture) tests one.
+        /// </summary>
+        public virtual MovementEvents OneOffEvents => MovementEvents.None;
+
+        /// <summary>
         /// The names of the values this component publishes for its look (AbilityValues, set during its step), so an
         /// Animator Parameter Translator's inspector can offer them (Shows > Ability Value). Empty for none.
         /// </summary>

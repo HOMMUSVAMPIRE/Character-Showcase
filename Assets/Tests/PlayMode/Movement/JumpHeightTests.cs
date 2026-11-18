@@ -10,11 +10,24 @@ namespace CharacterShowcase.Tests.Movement
     /// Tests of jump heights: a tap of Jump rises the min jump height, Jump held to the top of the jump rises the max jump
     /// height, holding longer rises higher in between, letting go past the min height stops the rise at once, the heights
     /// follow the settings (so retuning them retunes the jump), and a max height of 0 turns jumping off. Heights are read
-    /// from the movement mode's settings.
+    /// from the movement mode's settings. The checks every ability of a moment gets (it happens, turned off it doesn't,
+    /// once per press, saved before it and put back, at another size) come from MomentFixture: a press of Jump standing
+    /// on a floor.
     /// </summary>
     [Category(TestArea.Movement)]
-    public class JumpHeightTests : CharacterRigFixture
+    public class JumpHeightTests : MomentFixture<Jumping>
     {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+        }
+
+        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
+
+        protected override string OffSetting => "maxJumpHeight";
+
+        protected override MovementEvents MomentEvent => MovementEvents.Jumped;
 
         private float MinHeight => rig.MovementSetting<float>("minJumpHeight") * rig.Movement.HeightScale;
         private float MaxHeight => rig.MovementSetting<float>("maxJumpHeight") * rig.Movement.HeightScale;

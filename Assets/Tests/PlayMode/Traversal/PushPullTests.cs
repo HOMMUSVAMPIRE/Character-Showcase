@@ -12,10 +12,12 @@ namespace CharacterShowcase.Tests.Traversal
     /// and away pulls it, at the push and pull speed times the object's own multiplier; an object that can't be pulled
     /// stays put; objects stop at walls and the character with them; pushed off an edge, an object falls and the
     /// character lets go; and without holding grab, an object is just an obstacle. Expected values are read from the
-    /// movement mode's settings.
+    /// movement mode's settings. The checks every ability gets (turned off, letting go, its events, saved and put back,
+    /// at another size) come from AbilityFixture: standing in front of a box, holding grab and steering into it. It has
+    /// no setting whose 0 turns it off, so that check is skipped.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class PushPullTests : CharacterRigFixture
+    public class PushPullTests : AbilityFixture<PushingAndPulling>
     {
         private PushableObject box;
         private const float BoxSize = 1.5f;
@@ -25,13 +27,33 @@ namespace CharacterShowcase.Tests.Traversal
         /// <summary>The box's side facing the character (its -Z side).</summary>
         private float BoxNearSide => box.Position.z - BoxSize / 2f;
 
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            // As big as the character is (a giant doesn't take hold of a box below its knees: the grab is measured against it).
+            yield return PlaceBox(0f, 1f, true, BoxSize * Scale);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Grab(Vector3.forward);
+
+        // Neither of its settings turns it off at 0: a Grab Reach of 0 still takes hold of an object the character is
+        // touching (the reach is the body's sweep, a skin further), and a Push Pull Speed of 0 holds the object still.
+        protected override string OffSetting => null;
+
         /// <summary>The character on a floor (at floorTop), facing +Z, with a box just in front of it.</summary>
         private IEnumerator SetUpBox(float speedMultiplier = 1f, bool canBePulled = true, float floorTop = 0f, float floorWidth = 100f)
         {
             rig.Floor(floorTop, floorWidth);
             yield return rig.SpawnSettled(new Vector3(0f, floorTop + 0.05f, 0f));
-            float near = rig.Position.z + rig.FrontExtent + 0.1f;
-            box = rig.PushableBox(new Vector3(0f, floorTop + BoxSize / 2f, near + BoxSize / 2f), Vector3.one * BoxSize, speedMultiplier, canBePulled);
+            yield return PlaceBox(floorTop, speedMultiplier, canBePulled);
+        }
+
+        /// <summary>A box just in front of the character (on a floor at floorTop), its gap sized to the character; then a moment's standing.</summary>
+        private IEnumerator PlaceBox(float floorTop, float speedMultiplier, bool canBePulled, float size = BoxSize)
+        {
+            float near = rig.Position.z + rig.FrontExtent + 0.1f * Scale;
+            box = rig.PushableBox(new Vector3(0f, floorTop + size / 2f, near + size / 2f), Vector3.one * size, speedMultiplier, canBePulled);
             yield return rig.Run(0.1f, _ => CharacterTestRig.Idle());
         }
 

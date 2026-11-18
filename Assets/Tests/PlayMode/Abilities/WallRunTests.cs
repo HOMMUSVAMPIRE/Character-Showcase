@@ -15,15 +15,31 @@ namespace CharacterShowcase.Tests.Abilities
     /// no wall run starts without steering mostly along the wall, heading into the wall, close to the ground, or beside a wall that doesn't
     /// reach down to the feet. The
     /// character is launched in mid-air beside a long wall on its right. Expected values are read from the movement mode.
+    /// The checks every ability gets (turned off, letting go, its events, saved and put back, at another size) come from
+    /// AbilityFixture: launched along the wall, as here, steering along it.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class WallRunTests : CharacterRigFixture
+    public class WallRunTests : AbilityFixture<WallRunning>
     {
         private float wallFace;
 
         private float WallRunSpeed => rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
         private float WallRunMaxDuration => rig.Component<WallRunning>().WallRunMaxDuration * rig.Movement.DurationScale;
         private bool WallRunning => rig.InState(CharacterState.WallRunning);
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 12f * Scale, -25f), settleSeconds: 0f);
+            wallFace = rig.SideExtent + 0.1f * Scale;
+            rig.Box("Wall", new Vector3(wallFace + 0.5f, 20f * Scale, 4f), new Vector3(1f, 40f * Scale, 60f));
+            // Launched along the wall on the kit's first step (as LaunchAlongWall, without its own step), so the start is the kit's.
+            rig.Movement.OverrideVelocity(Vector3.forward * WallRunSpeed);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+
+        protected override string OffSetting => "wallRunMaxDuration";
 
         /// <summary>
         /// A floor, and a wall along +Z on the character's right (its face a little beside the character), wallLength
@@ -173,17 +189,6 @@ namespace CharacterShowcase.Tests.Abilities
             Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(wallEnd), "Test setup: the character should be past the wall.");
             Assert.That(WallRunning, Is.False, "Past the end of the wall, the wall run should end.");
             Assert.That(rig.Movement.lastFrameMovementData.finalVelocity.z, Is.GreaterThan(0.8f * WallRunSpeed), "The character should keep its momentum.");
-        }
-
-        [UnityTest]
-        public IEnumerator AWallRunMaxDurationOfZero_TurnsWallRunningOff()
-        {
-            yield return SetUpWall();
-            rig.SetMovementSetting("wallRunMaxDuration", 0f);
-            yield return LaunchAlongWall();
-            bool ran = false;
-            yield return rig.Run(0.4f, _ => CharacterTestRig.Move(Vector3.forward), _ => ran |= WallRunning);
-            Assert.That(ran, Is.False);
         }
 
         [UnityTest]

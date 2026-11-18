@@ -36,6 +36,8 @@ namespace Character
         public float RollDuration { get => rollDuration; set => rollDuration = value; }
 
         public override bool IsActive(MovementController controller) => controller.roll.IsRolling;
+        /// <summary>A roll is on the ground: the character is neither held up nor holding on.</summary>
+        public override AbilityTraits Traits => AbilityTraits.None;
         /// <summary>The events of Rolling starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

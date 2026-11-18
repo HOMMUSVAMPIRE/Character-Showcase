@@ -82,6 +82,8 @@ namespace Character
         /// <summary>How fast (m/s) the character climbs at full input, at its authored size. 0 turns climbing off.</summary>
         public float WallClimbSpeed { get => wallClimbSpeed; set => wallClimbSpeed = value; }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
         public override bool IsActive(MovementController controller) => controller.wallClimb.IsClimbing;
         /// <summary>Climbing, the character holds on to the surface, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;

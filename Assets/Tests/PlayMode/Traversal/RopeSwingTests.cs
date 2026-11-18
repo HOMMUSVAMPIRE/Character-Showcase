@@ -13,16 +13,32 @@ namespace CharacterShowcase.Tests.Traversal
     /// pendulum about its anchor, its hands staying where they caught hold, carried on by its speed; with no input the
     /// swing never rises higher, pumping it with movement input swings it higher, and never past the largest swing angle;
     /// a wall stops the swing; Jump lets go with the swing's speed and a jump up, leaving the rope swinging by itself;
-    /// Crouch lets go, and the same rope isn't caught again straight away; and a grab reach of 0 turns ropes off. The test
-    /// camera looks down +Z. Expected values are read from the movement mode's settings.
+    /// and Crouch lets go, and the same rope isn't caught again straight away. The test camera looks down +Z. Expected
+    /// values are read from the movement mode's settings. The checks every ability gets (turned off, letting go, its
+    /// events, saved and put back, at another size) come from AbilityFixture: leaping at a hanging rope in mid-air.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class RopeSwingTests : CharacterRigFixture
+    public class RopeSwingTests : AbilityFixture<RopeSwinging>
     {
         private Rope rope;
 
         private static readonly Vector3 Anchor = new Vector3(0f, 10f, 0f);
         private const float RopeLength = 8f;
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            rope = rig.Rope(Anchor, RopeLength);
+            // Its grip height depends on its size, known once it's spawned. Behind the rope, its hands 6 m up (on the rope
+            // at any size), leaping at it (the leap's speed applied on the kit's first step, so the catch is the kit's).
+            yield return SpawnCharacter(Vector3.zero, settleSeconds: 0f);
+            rig.Teleport(new Vector3(0f, 6f - GripHeight, -1.5f * Scale));
+            rig.Movement.OverrideVelocity(new Vector3(0f, 0f, 6f * rig.Movement.SpeedScale));
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+
+        protected override string OffSetting => "ropeGrabReach";
 
         private bool Swinging => rig.InState(CharacterState.RopeSwinging);
         private float GripHeight => rig.MovementSetting<float>("ropeGripHeight") * rig.StandingHeight;
@@ -146,20 +162,6 @@ namespace CharacterShowcase.Tests.Traversal
             float delay = rig.MovementSetting<float>("ropeRegrabDelay");
             yield return rig.Run(delay * 0.8f, _ => CharacterTestRig.Idle(), _ => caughtAgain |= Swinging);
             Assert.That(caughtAgain, Is.False, "Crouch should let go, and the rope shouldn't be caught again until the regrab delay is over.");
-        }
-
-        [UnityTest]
-        public IEnumerator AGrabReachOfZero_TurnsRopesOff()
-        {
-            rig.Floor();
-            rope = rig.Rope(Anchor, RopeLength);
-            yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
-            rig.Teleport(new Vector3(0f, 6f - GripHeight, -1.5f));
-            rig.SetMovementSetting("ropeGrabReach", 0f);
-            bool swung = false;
-            yield return rig.Launch(new Vector3(0f, 0f, 6f), CharacterTestRig.Idle());
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), _ => swung |= Swinging);
-            Assert.That(swung, Is.False);
         }
     }
 }

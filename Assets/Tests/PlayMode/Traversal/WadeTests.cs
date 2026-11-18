@@ -12,10 +12,13 @@ namespace CharacterShowcase.Tests.Traversal
     /// from full speed at the wade start depth to the wade speed multiplier at the swim depth; water shallower than the
     /// start depth doesn't slow it; walking in and out raises the wading events; walking or sprinting into a low wall vaults
     /// it (on dry land, only sprinting does); and Wading turned off doesn't slow it.
-    /// The test camera looks down +Z. Expected values are read from the movement mode's settings.
+    /// The test camera looks down +Z. Expected values are read from the movement mode's settings. The checks every ability
+    /// gets (turned off, letting go, its events, saved and put back, at another size) come from AbilityFixture: set down
+    /// on a floor in water half as deep as the character would swim in, walking. It has no setting whose 0 turns it off,
+    /// so that check is skipped.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class WadeTests : CharacterRigFixture
+    public class WadeTests : AbilityFixture<Wading>
     {
         private float StartDepth => rig.MovementSetting<float>("wadeStartDepth") * rig.StandingHeight;
         private float Multiplier => rig.MovementSetting<float>("wadeSpeedMultiplier");
@@ -24,16 +27,37 @@ namespace CharacterShowcase.Tests.Traversal
         private float ExpectedShare(float under) =>
             Mathf.Lerp(1f, Multiplier, Mathf.Clamp01((under - StartDepth) / (rig.SwimDepth - StartDepth)));
 
+        /// <summary>
+        /// As StandInWater, without standing there first: wading starts on the kit's first steps (standing in the water
+        /// already wades, which would leave the kit's check no start to see).
+        /// </summary>
+        protected override IEnumerator SetUpToStart()
+        {
+            yield return SpawnCharacter(Vector3.up * 5f * Scale, settleSeconds: 0f);
+            PlaceInWater(Mathf.Lerp(StartDepth, rig.SwimDepth, 0.5f));
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+
+        // Neither of its settings turns it off: a Wade Start Depth of 0 wades in any water, and a Wade Speed Multiplier
+        // (at least 0.05) of 1 still wades, only without slowing.
+        protected override string OffSetting => null;
+
         /// <summary>The character standing on a floor with water this far over its feet (worked out from its size, so spawned first).</summary>
         private IEnumerator StandInWater(System.Func<float> depthOverFeet)
         {
             yield return rig.SpawnSettled(Vector3.up * 5f, settleSeconds: 0f);
-            float under = depthOverFeet();
+            PlaceInWater(depthOverFeet());
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            Assume.That(rig.Grounded && !rig.Swimming, Is.True, "Test setup: the character should be standing in the water.");
+        }
+
+        /// <summary>A floor with water under deep over it, and the character set down on the floor.</summary>
+        private void PlaceInWater(float under)
+        {
             rig.Floor(-under);
             rig.Water(Vector3.zero, new Vector3(100f, under + 1f, 100f));
             rig.Teleport(new Vector3(0f, -under + 0.02f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            Assume.That(rig.Grounded && !rig.Swimming, Is.True, "Test setup: the character should be standing in the water.");
         }
 
         private IEnumerator MeanSpeed(System.Func<int, Inputs> inputs, System.Action<float> result)

@@ -67,6 +67,8 @@ The state is saved and put back with the character's (`MovementController.SaveSt
 - `MovementEvents` for it starting and ending (a 64-bit flags enum: take the next unused bits).
 - The hygiene check fails if two members of either share a bit (two abilities written at once, say), or one isn't a single bit.
 - The component's `StateEvents`: a static array of `StateEvent(flag, started, ended)`, from which the mode raises the events as the flag comes and goes (`ComposedMovementMode.DetectStateEvents`). A component with several states (Crouching's crouch and slide) lists each.
+- An event of a moment, with no state that starts and ends (a jump, a bounce, a jump off a wall), goes in the component's `OneOffEvents` (flags of `MovementEvents`), and the component raises it itself (`movementData.events |= …`, or through `MovementHelpers.JumpOff`). Several components may raise the same one (Jumped is raised jumping from the ground, and off a rope). The hygiene check fails on a component raising an event it doesn't declare, and `MovementCompositionTests` on an event declared as both kinds, or by nothing.
+- A state's end is raised on the first step without its state, as its start is on the first with it, so an ability's end event comes the step after its last.
 
 ## 4. Putting it in the mode
 - Add it to `BasicMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.
@@ -112,6 +114,14 @@ The level builders know nothing about the character: see [Test Levels](levels.md
   - at half and twice its size, it still starts.
 
   The fixture supplies three things: `SetUpToStart` (the world it needs, and the character spawned with the kit's `SpawnCharacter`, so it's at the size a check asks for), `InputsFor(step)` (the inputs that start it and keep it going) and `OffSetting` (the name of the setting whose 0 turns it off). `AbilityState`, `SecondsToStart`, `StepsBeforeSaving` and `StepsCompared` can be overridden. `DashTests` and `ZiplineTests` are examples. Then add the tests that are about the ability itself.
+- **The moment kit.** An ability that happens in a moment rather than being under way for a while (a jump, a bounce: `OneOffEvents`, no state) derives from `MomentFixture<T>` instead, and supplies its event too (`MomentEvent`). Its `Kit_…` checks:
+  - it happens from its inputs (and its component declares the event);
+  - turned off by its toggle, and by its 0 setting, it doesn't happen;
+  - once it's happened, the same inputs don't make it happen again straight away (`RepeatSeconds`);
+  - saved before it and put back, the character steps on exactly as it did, the moment included;
+  - at half and twice its size, it still happens.
+
+  `JumpHeightTests` and `BouncePadTests` are examples. What the two kits share is `AbilityKitBase<T>`.
 - **Docs.**
   - Add a section for it in [abilities.md](abilities.md) or [traversal.md](traversal.md), and add it to the component list in [movement.md](movement.md#movement-components).
   - Name each setting by its inspector name and the component it's on, never by its value.

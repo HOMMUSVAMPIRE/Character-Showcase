@@ -170,6 +170,30 @@ namespace CharacterShowcase.Tests.EditMode.Movement
             Assert.That(mode.Get<Swimming>(), Is.Not.Null, "Added turned on when asked.");
         }
 
+        /// <summary>
+        /// Every movement event is declared by what raises it: a state's start or end (StateEvents), a moment's
+        /// (OneOffEvents), or the MovementController's own (landing, leaving the ground, hitting a ceiling or a wall).
+        /// None is both a state's and a moment's, so the conventions check and the kits know which kind each is.
+        /// </summary>
+        [Test]
+        public void EveryMovementEvent_IsDeclared_AsAStatesOrAMoments()
+        {
+            const MovementEvents ControllersOwn = MovementEvents.Landed | MovementEvents.LeftGround | MovementEvents.HitCeiling | MovementEvents.HitWall;
+            MovementEvents states = MovementEvents.None, moments = MovementEvents.None;
+            foreach (MovementComponent component in NewMode().Components)
+            {
+                foreach (StateEvent pair in component.StateEvents) { states |= pair.started | pair.ended; }
+                moments |= component.OneOffEvents;
+            }
+            Assert.That(states & moments, Is.EqualTo(MovementEvents.None), "An event is declared both as a state's and as a moment's.");
+            foreach (MovementEvents movementEvent in System.Enum.GetValues(typeof(MovementEvents)))
+            {
+                if (movementEvent == MovementEvents.None || (ControllersOwn & movementEvent) != 0) { continue; }
+                Assert.That(((states | moments) & movementEvent) != 0, Is.True,
+                    $"{movementEvent} is declared by no component: add it to what raises it (its StateEvents, or its OneOffEvents).");
+            }
+        }
+
         [Test]
         public void AModesJson_HoldsItsComponentsSettings()
         {

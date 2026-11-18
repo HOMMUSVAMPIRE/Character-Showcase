@@ -59,6 +59,8 @@ namespace Character
 
         /// <summary>A slide has the character while it lasts (crouching is a stance, not an ability: others start from it, or refuse to).</summary>
         public override bool IsActive(MovementController controller) => controller.slide.IsSliding;
+        /// <summary>A slide is on the ground: the character is neither held up nor holding on.</summary>
+        public override AbilityTraits Traits => AbilityTraits.None;
         /// <summary>The events of Crouching and Sliding starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

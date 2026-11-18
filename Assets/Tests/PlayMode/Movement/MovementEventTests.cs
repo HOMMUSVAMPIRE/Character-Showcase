@@ -91,7 +91,8 @@ namespace CharacterShowcase.Tests.Movement
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(1));
             Assert.That(rig.Count(MovementEvents.DashEnded), Is.EqualTo(1));
             Assert.That(rig.StepOf(MovementEvents.DashStarted), Is.Zero);
-            Assert.That(rig.StepOf(MovementEvents.DashEnded), Is.EqualTo(dashSteps - 1).Within(1));
+            // On the first step it isn't dashing, as every ability's end is raised (its state's going: see StateEvents).
+            Assert.That(rig.StepOf(MovementEvents.DashEnded), Is.EqualTo(dashSteps));
         }
 
         [UnityTest]

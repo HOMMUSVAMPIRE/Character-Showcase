@@ -14,7 +14,8 @@ namespace CharacterShowcase.Tests
     /// - it starts from its inputs, raising its start event (the fixture's own set-up, checked);
     /// - turned off by its toggle, it doesn't start;
     /// - turned off by its 0 setting (OffSetting), it doesn't start;
-    /// - turned off while it's under way, it lets go, raising its end event, and nothing has the character any more;
+    /// - turned off while it's under way, it lets go, raising its end event (another ability may take the character then,
+    ///   as a wall slide does a ledge's as it falls);
     /// - its states' start and end events come in pairs;
     /// - saved partway through and put back, the character steps on exactly as it did (with the level's moving parts);
     /// - at another size, it still starts.
@@ -23,23 +24,8 @@ namespace CharacterShowcase.Tests
     /// off (OffSetting); then adds the tests that are about the ability itself. It still needs its area's
     /// [Category(TestArea.…)] of its own: the hygiene check fails without it. [TestTiming] comes with CharacterRigFixture.
     /// </summary>
-    public abstract class AbilityFixture<T> : CharacterRigFixture where T : MovementComponent
+    public abstract class AbilityFixture<T> : AbilityKitBase<T> where T : MovementComponent
     {
-        /// <summary>
-        /// Builds the world the ability needs and spawns the character (with SpawnCharacter) where the inputs (InputsFor)
-        /// start it within SecondsToStart. Called once a check has set the size it wants.
-        /// </summary>
-        protected abstract IEnumerator SetUpToStart();
-
-        /// <summary>The inputs for each step (counted from the end of SetUpToStart) that start the ability and keep it going.</summary>
-        protected abstract Inputs InputsFor(int step);
-
-        /// <summary>
-        /// The ability's setting a value of 0 turns it off (a duration, a reach: the convention for every ability), as
-        /// rig.SetMovementSetting names it; null for an ability without one (its check is then ignored, saying so).
-        /// </summary>
-        protected abstract string OffSetting { get; }
-
         /// <summary>
         /// The state the ability is under way in: by default, the first state its component declares (its StateEvents).
         /// </summary>
@@ -51,33 +37,8 @@ namespace CharacterShowcase.Tests
         /// </summary>
         protected virtual StateEvent AbilityEvents => EventsOf(AbilityState);
 
-        /// <summary>How long, at most, the inputs take to start the ability once it's set up.</summary>
-        protected virtual float SecondsToStart => 1f;
-
         /// <summary>How many steps into the ability the save-and-put-back check saves the character.</summary>
         protected virtual int StepsBeforeSaving => 3;
-
-        /// <summary>How many steps the save-and-put-back check compares, from where it saved.</summary>
-        protected virtual int StepsCompared => 30;
-
-        /// <summary>The size (a uniform scale) the character is spawned at: 1 unless a check asks for another.</summary>
-        protected float Scale { get; private set; } = 1f;
-
-        /// <summary>The steps run with InputsFor since the set-up (so a script carries on where it was, put back or not).</summary>
-        protected int StepsRun { get; private set; }
-
-        /// <summary>
-        /// For SetUpToStart: spawns the character at position, at the check's size (Scale), then lets it stand for
-        /// settleSeconds (none: it stays where it's put, in mid-air say, until the check runs it).
-        /// </summary>
-        protected IEnumerator SpawnCharacter(Vector3 position, float settleSeconds = 0.3f)
-        {
-            yield return rig.SpawnSettled(position, settleSeconds: 0f);
-            if (!Mathf.Approximately(Scale, 1f)) { Assert.That(rig.Controller.SetScale(Vector3.one * Scale, immediately: true), Is.True, "Test setup: the character should resize."); }
-            if (settleSeconds > 0f) { yield return rig.Run(settleSeconds, _ => CharacterTestRig.Idle()); }
-        }
-
-        private T Component => rig.Component<T>();
 
         private StateEvent FirstStateEvent
         {
@@ -100,23 +61,6 @@ namespace CharacterShowcase.Tests
         }
 
         private bool UnderWay => rig.InState(AbilityState);
-
-        /// <summary>Sets up (at the given size), then clears the events so a check counts only its own.</summary>
-        private IEnumerator SetUp(float scale = 1f)
-        {
-            Scale = scale;
-            StepsRun = 0;
-            yield return SetUpToStart();
-            rig.ClearEvents();
-        }
-
-        /// <summary>Runs the fixture's inputs for the given steps, carrying on its script.</summary>
-        private IEnumerator RunInputs(int steps, System.Action<int> afterStep = null)
-        {
-            int from = StepsRun;
-            StepsRun += steps;
-            yield return rig.Run(steps, step => InputsFor(from + step), afterStep);
-        }
 
         /// <summary>Runs the fixture's inputs until the ability is under way, or for SecondsToStart.</summary>
         private IEnumerator RunUntilUnderWay()
@@ -166,9 +110,6 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.EventsRaised, Has.No.Member(AbilityEvents.started));
         }
 
-        /// <summary>Sets OffSetting to 0 (a float setting: a fixture whose setting is of another type overrides this).</summary>
-        protected virtual void TurnOffBySetting() => rig.SetMovementSetting(OffSetting, 0f);
-
         [UnityTest]
         public IEnumerator Kit_TurnedOffWhileUnderWay_ItLetsGo()
         {
@@ -182,7 +123,8 @@ namespace CharacterShowcase.Tests
             Assert.That(Component.IsActive(rig.Movement), Is.False, $"Turned off, {typeof(T).Name} should let go of the character at once.");
             Assert.That(UnderWay, Is.False, $"Turned off, the character shouldn't be {AbilityState} any more.");
             Assert.That(rig.EventsRaised, Does.Contain(AbilityEvents.ended), "Letting go should raise its end event.");
-            Assert.That(rig.ComposedMode.AbilityInProgress(rig.Movement), Is.False, "Nothing should have the character any more.");
+            // Another ability may take the character as it lets go (a ledge's wall slid down, as the character falls against
+            // it), as it would in play: what matters is that this one let go.
         }
 
         [UnityTest]
@@ -221,7 +163,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Movement.RestoreState(saved), Is.True, "The saved state should be put back.");
             world.Restore();
             rig.LevelTick = levelTick;
-            StepsRun = savedAt;
+            RewindTo(savedAt);
             var again = new List<(Vector3, Quaternion, Vector3)>();
             yield return RunInputs(StepsCompared, _ => again.Add(Pose()));
 
@@ -231,7 +173,6 @@ namespace CharacterShowcase.Tests
             }
         }
 
-        private (Vector3, Quaternion, Vector3) Pose() => (rig.Position, rig.Body.rotation, rig.Velocity);
 
         [UnityTest]
         public IEnumerator Kit_AtAnotherSize_ItStillStarts([Values(0.5f, 2f)] float scale)

@@ -12,12 +12,27 @@ namespace CharacterShowcase.Tests.Traversal
     /// Tests of bounce pads: coming down on one launches the character as high as the pad is set to (higher with Jump
     /// held), running across one carries the run on through the launch, a tilted pad launches along its up, the launch
     /// is the character's jump (its air jumps are left), and a height multiplier of 0 turns pads off. The test camera
-    /// looks down +Z. Expected values are read from the movement mode's settings and the pads'.
+    /// looks down +Z. Expected values are read from the movement mode's settings and the pads'. The checks every ability of
+    /// a moment gets (it happens, turned off it doesn't, once per landing, saved before it and put back, at another size)
+    /// come from MomentFixture: falling onto a pad.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class BouncePadTests : CharacterRigFixture
+    public class BouncePadTests : MomentFixture<BouncePads>
     {
         private const float PadTop = 0.3f;
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            rig.BouncePad(Vector3.up * PadTop, new Vector3(3f, PadTop, 3f), 3f);
+            yield return SpawnCharacter(Vector3.up * (PadTop + 0.3f * Scale), settleSeconds: 0f);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+
+        protected override string OffSetting => "bounceHeightMultiplier";
+
+        protected override MovementEvents MomentEvent => MovementEvents.Bounced;
         private float Multiplier => rig.MovementSetting<float>("bounceHeightMultiplier");
 
         /// <summary>A floor, a pad on it, and the character standing still in the air just above the pad.</summary>

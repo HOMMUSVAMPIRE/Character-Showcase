@@ -10,7 +10,7 @@ namespace CharacterShowcase.Tests.Traversal
 {
     /// <summary>
     /// Tests of climbing climbable surfaces: walking, glancing or falling into one takes hold of it (but not an
-    /// unclimbable one, nor with climbing turned off); input climbs up and sideways at the climbing speed, facing the
+    /// unclimbable one); input climbs up and sideways at the climbing speed, facing the
     /// surface and without gravity, holding still without input; the climbable area holds the character in (a climbable
     /// panel on a plain wall, sideways and up); it goes round an outside corner and into an inside one onto the next
     /// climbable face; it climbs over a walkable top onto it, and moves with a surface that moves; Jump kicks off, up and
@@ -19,10 +19,11 @@ namespace CharacterShowcase.Tests.Traversal
     /// wall is taken hold of and climbed, the character staying within the paint; a box painted on one face isn't
     /// climbed round its corner, but is once the face round it is painted too (that paint is for the face painted, erased
     /// as painted, is checked in EditMode's ClimbablePaintTests). Expected values are read from the movement mode's
-    /// settings.
+    /// settings. The checks every ability gets (turned off, letting go, its events, saved and put back, at another size)
+    /// come from AbilityFixture: standing in front of a tall climbable wall, walking into it.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class WallClimbTests : CharacterRigFixture
+    public class WallClimbTests : AbilityFixture<WallClimbing>
     {
         // The face (z) of the surface in front of the character, which faces -Z toward it.
         private float face;
@@ -34,6 +35,19 @@ namespace CharacterShowcase.Tests.Traversal
         private static Inputs Up => CharacterTestRig.Move(Vector3.forward);
         private static Inputs Down => CharacterTestRig.Move(Vector3.back);
         private static Inputs Right => CharacterTestRig.Move(Vector3.right);
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            face = rig.FrontExtent + 0.3f * Scale;
+            float height = 10f * Scale;
+            rig.ClimbableBox("Wall", new Vector3(0f, height / 2f, face + 0.5f), new Vector3(10f, height, 1f));
+        }
+
+        protected override Inputs InputsFor(int step) => Up;
+
+        protected override string OffSetting => "wallClimbSpeed";
 
         /// <summary>A floor, the character standing on it facing +Z, and the face of something a little in front of it.</summary>
         private IEnumerator SetUpStanding()
@@ -96,16 +110,6 @@ namespace CharacterShowcase.Tests.Traversal
             yield return rig.Run(1.5f, _ => Up, _ => climbed |= Climbing);
             Assert.That(climbed, Is.False, "A wall that isn't climbable shouldn't be climbed.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.05f), "The character should stay on the ground.");
-        }
-
-        [UnityTest]
-        public IEnumerator WithClimbingTurnedOff_AClimbableWall_IsNotClimbed()
-        {
-            yield return SetUpWall();
-            rig.SetMovementSetting("wallClimbSpeed", 0f);
-            bool climbed = false;
-            yield return rig.Run(1f, _ => Up, _ => climbed |= Climbing);
-            Assert.That(climbed, Is.False, "A climbing speed of 0 should turn climbing off.");
         }
 
         [UnityTest]

@@ -59,6 +59,8 @@ namespace Character
         /// <summary>The longest a slide down a wall lasts, in seconds. 0 turns wall sliding off.</summary>
         public float WallSlideMaxDuration { get => wallSlideMaxDuration; set => wallSlideMaxDuration = value; }
 
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
         public override bool IsActive(MovementController controller) => controller.wallSlide.IsWallSliding;
         /// <summary>Sliding down it, the wall holds the character up (it slides, rather than falls).</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;

@@ -28,9 +28,10 @@ Checks:
          MovementTuningPresetTests requires, and MovementSettings.Copy can).
      12. A component that overrides TakeOver overrides Traits and StateEvents.
      13. Every CharacterState in its StateEvents is set somewhere in the movement code (`state |= CharacterState.X`),
-         and every state of its own it sets is in its StateEvents.
-     14. A PlayMode fixture names it (rig.Component<X>(), AbilityFixture<X> or typeof(X)), and an ability's fixture
-         derives from the ability test kit, AbilityFixture<X> (NOT_YET_ON_THE_KIT lists those that don't yet).
+         and every state of its own it sets is in its StateEvents (unless it's an ability of a moment, declaring
+         OneOffEvents); and every event it raises by hand (`events |=`, JumpOff, JumpOffWall) is in its OneOffEvents.
+     14. A PlayMode fixture names it (rig.Component<X>(), AbilityFixture<X>, MomentFixture<X> or typeof(X)), and an
+         ability's fixture derives from a test kit: AbilityFixture<X>, or MomentFixture<X> for one of a moment.
      15. docs/movement.md's component list, and abilities.md or traversal.md, name it by its inspector name (as
          MovementComponent.DisplayNameOf gives it).
      16. It's in BasicMovementMode.DefaultComponents.
@@ -360,31 +361,12 @@ def see(section):
 
 # Components that take the character over (TakeOver) without declaring Traits: AbilityTraits.None, the default, is what
 # they do with it. Declaring it (`public override AbilityTraits Traits => AbilityTraits.None;`) would say so outright.
-TAKEOVER_WITH_DEFAULT_TRAITS = {
-    "BouncePads": "it has the character for the one step it launches it, holding it neither up nor on",
-    "Rolling": "a roll is on the ground: the character neither held up nor holding on",
-    "Crouching": "a slide is on the ground: the character neither held up nor holding on",
-}
-# Components that take the character over without StateEvents, as they have no state of their own to start and end.
-TAKEOVER_WITHOUT_STATE = {
-    "BouncePads": "a launch is one step, after which the character is simply in the air (Jumping's state, if anything)",
-}
-# Components that set a state flag of their own but raise its events themselves, not through StateEvents (a fixture on
-# the kit then overrides AbilityEvents, as DashTests does). Moving them to StateEvents is task 68's other option, with the
-# golden paths' events checked unchanged.
-RAISES_ITS_OWN_EVENTS = {
-    "Dashing": "raises DashStarted and DashEnded itself, as a dash starts and ends (Dashing.AfterWalking)",
-    "Jumping": "raises Jumped and its kind (air jump, wall jump) itself, as a jump has no end to raise",
-}
+TAKEOVER_WITH_DEFAULT_TRAITS = {}  # Every takeover declares its Traits now (task 79): a new one may not leave them out.
 # The states the movement as a whole sets, not one ability: any component may set them without listing them.
 SHARED_STATES = {"Idle", "Moving", "Grounded", "Running", "Dead"}
 # Components no PlayMode fixture names (rig.Component<X>(), AbilityFixture<X> or typeof(X)) yet, though one tests them by
 # their settings' names. Each comes off as its fixture moves to the kit (AbilityFixture<X> names it).
-NOT_NAMED_BY_A_FIXTURE = {
-    "BouncePads": "BouncePadTests reaches it by its settings' names only",
-    "RopeSwinging": "RopeSwingTests reaches it by its settings' names only",
-    "WallClimbing": "WallClimbTests reaches it by its settings' names only (and the rig, through rig.Component<WallClimbing>())",
-}
+NOT_NAMED_BY_A_FIXTURE = {}  # Every component's fixture names it now (task 79): a new one's must.
 # Components documented in movement.md's own sections, as the character's basic movement, rather than in abilities.md or
 # traversal.md: movement.md must mention them outside its component list too.
 DOCUMENTED_IN_MOVEMENT_MD = {
@@ -402,21 +384,7 @@ NOT_AN_ABILITY = {
 # Components whose PlayMode fixture doesn't derive from the ability test kit (AbilityFixture<X>) yet. Every new ability
 # starts on the kit (the check fails without it); each of these comes off the list as its fixture moves to the kit (the
 # check fails if one has and is still listed). See docs/adding-an-ability.md, The ability test kit.
-NOT_YET_ON_THE_KIT = {
-    "BouncePads",          # BouncePadTests
-    "RopeSwinging",        # RopeSwingTests
-    "Ledges",              # LedgeTests
-    "Vaulting",            # VaultTests
-    "PushingAndPulling",   # PushPullTests
-    "WallClimbing",        # WallClimbTests
-    "Swimming",            # SwimTests, DiveTests
-    "WallRunning",         # WallRunTests
-    "WallSliding",         # WallSlideTests
-    "Rolling",             # RollTests
-    "Crouching",           # CrouchTests, SlideTests
-    "Wading",              # WadeTests
-    "Jumping",             # JumpHeightTests, MovementTests
-}
+NOT_YET_ON_THE_KIT = set()  # Every ability's fixture is on a kit now (tasks 79 and 80): a new one's must be.
 
 # The kinds of setting a tuning preset can copy (MovementSettings.Copy; MovementTuningPresetTests fails on any other):
 # a primitive (C#'s IsPrimitive: the numbers, bool and char), an enum, or an AnimationCurve (copied key by key).
@@ -638,13 +606,13 @@ def check_component_takeovers(components):
             problems.append(f"{where(path)}: {cls} overrides TakeOver but not Traits: add `public override AbilityTraits "
                             f"Traits => ...;` (HoldsUp if the character isn't falling while it has it, HoldsOn if it "
                             f"holds on to something, None if neither): {see(THE_COMPONENT)}")
-        if not overrides(code, start, end, r"StateEvent\s*\[\s*\]", "StateEvents") and cls not in TAKEOVER_WITHOUT_STATE:
+        # One of a moment (a bounce: OneOffEvents) has no state to start and end.
+        if not overrides(code, start, end, r"StateEvent\s*\[\s*\]", "StateEvents") and not overrides(code, start, end, r"MovementEvents", "OneOffEvents"):
             problems.append(f"{where(path)}: {cls} overrides TakeOver but not StateEvents: add `public override "
                             f"StateEvent[] StateEvents => stateEvents;` and a static array of StateEvent(its "
                             f"CharacterState, its started event, its ended event): {see(ITS_STATE_FLAG)}")
-    for listed, why in (("TAKEOVER_WITH_DEFAULT_TRAITS", TAKEOVER_WITH_DEFAULT_TRAITS), ("TAKEOVER_WITHOUT_STATE", TAKEOVER_WITHOUT_STATE)):
-        member = r"AbilityTraits" if listed == "TAKEOVER_WITH_DEFAULT_TRAITS" else r"StateEvent\s*\[\s*\]"
-        name = "Traits" if listed == "TAKEOVER_WITH_DEFAULT_TRAITS" else "StateEvents"
+    for listed, why in (("TAKEOVER_WITH_DEFAULT_TRAITS", TAKEOVER_WITH_DEFAULT_TRAITS),):
+        member, name = r"AbilityTraits", "Traits"
         for cls in why:
             if cls not in components:
                 problems.append(f"{Path(__file__).relative_to(ROOT)}: {listed} lists {cls}, which isn't a movement component: take it off the list")
@@ -663,7 +631,7 @@ def check_component_states(components):
     # Each state in a component's StateEvents is set somewhere (else its events are never raised): in its own file, or
     # in the movement code (Crouching's is set by BasicMovementMode, which holds the posture). And each state a component
     # sets that's its own (not one the movement as a whole sets: SHARED_STATES) is in its StateEvents, so the mode raises
-    # its events, unless it raises them itself (RAISES_ITS_OWN_EVENTS).
+    # its events, unless its events are of a moment (OneOffEvents: Jumping's state is a jump's rise, its events the jump).
     movement_code = sorted((ASSETS / "Scripts" / "MovementModes").rglob("*.cs")) + \
         sorted((ASSETS / "Scripts" / "Character").glob("MovementController*.cs"))
     set_anywhere = set()
@@ -682,14 +650,27 @@ def check_component_states(components):
         for rhs in re.findall(STATE_SET, body):
             own.update(re.findall(r"\bCharacterState\.(\w+)", rhs))
         missing = own - listed - SHARED_STATES
-        if missing and cls not in RAISES_ITS_OWN_EVENTS:
+        moments = overrides(code, start, end, r"MovementEvents", "OneOffEvents")
+        if missing and not moments:
             for state in sorted(missing):
                 problems.append(f"{where(path)}: {cls} sets CharacterState.{state} but its StateEvents doesn't list it, "
                                 f"so the mode raises no events as it starts and ends: add StateEvent(CharacterState.{state}, "
                                 f"its started event, its ended event) to {cls}'s StateEvents: {see(ITS_STATE_FLAG)}")
-        elif not missing and cls in RAISES_ITS_OWN_EVENTS:
-            problems.append(f"{where(path)}: {cls} lists every state it sets in StateEvents now: take it off "
-                            f"RAISES_ITS_OWN_EVENTS in {Path(__file__).relative_to(ROOT)}")
+        # The events it raises by hand are its moments, and it declares them (OneOffEvents): `events |= MovementEvents.X`,
+        # a jump off something (MovementHelpers.JumpOff(..., MovementEvents.X)), or off a wall (JumpOffWall: WallJumped).
+        raised = set()
+        for rhs in re.findall(r"\bevents\s*\|=([^;]*)", body):
+            raised.update(re.findall(r"\bMovementEvents\.(\w+)", rhs))
+        for call in re.findall(r"\bJumpOff\s*\(([^;]*)", body):
+            raised.update(re.findall(r"\bMovementEvents\.(\w+)", call))
+        if re.search(r"\bJumpOffWall\s*\(", body):
+            raised.add("WallJumped")
+        declared = re.search(r"\boverride\s+MovementEvents\s+OneOffEvents\s*=>([^;]*);", body)
+        declared_events = set(re.findall(r"\bMovementEvents\.(\w+)", declared.group(1))) if declared else set()
+        for event in sorted(raised - declared_events):
+            problems.append(f"{where(path)}: {cls} raises MovementEvents.{event} itself but doesn't declare it: add it to "
+                            f"`public override MovementEvents OneOffEvents => ...;` (or, for a state's start or end, raise it "
+                            f"through StateEvents instead): {see(ITS_STATE_FLAG)}")
 
 
 def playmode_fixtures():
@@ -709,7 +690,7 @@ def check_component_tests(components):
     this = Path(__file__).relative_to(ROOT)
     for cls, (path, *_) in components.items():
         qualified = rf"(?:[\w.]+\.)?{cls}"  # Character.Ziplines, or Ziplines
-        named = rf"\bComponent\s*<\s*{qualified}\s*>\s*\(|\bAbilityFixture\s*<\s*{qualified}\s*>|\btypeof\s*\(\s*{qualified}\s*\)"
+        named = rf"\bComponent\s*<\s*{qualified}\s*>\s*\(|\b(?:Ability|Moment)Fixture\s*<\s*{qualified}\s*>|\btypeof\s*\(\s*{qualified}\s*\)"
         is_named = any(re.search(named, code) for code in fixtures.values())
         if not is_named and cls not in NOT_NAMED_BY_A_FIXTURE:
             problems.append(f"{where(path)}: no PlayMode test fixture names {cls}: give it a fixture deriving "
@@ -717,12 +698,12 @@ def check_component_tests(components):
                             f"<Area>: {see(TESTS_AND_DOCS)}")
         elif is_named and cls in NOT_NAMED_BY_A_FIXTURE:
             problems.append(f"{where(path)}: a PlayMode fixture names {cls} now: take it off NOT_NAMED_BY_A_FIXTURE in {this}")
-        on_kit = [p for p, code in fixtures.items() if re.search(rf"\bclass\s+\w+\s*:\s*AbilityFixture\s*<\s*{qualified}\s*>", code)]
+        on_kit = [p for p, code in fixtures.items() if re.search(rf"\bclass\s+\w+\s*:\s*(?:Ability|Moment)Fixture\s*<\s*{qualified}\s*>", code)]
         if cls in NOT_AN_ABILITY:
             continue
         if not on_kit and cls not in NOT_YET_ON_THE_KIT:
             problems.append(f"{where(path)}: {cls} has no PlayMode fixture on the ability test kit: derive its fixture "
-                            f"from AbilityFixture<{cls}> (SetUpToStart, InputsFor, OffSetting), as DashTests and "
+                            f"from AbilityFixture<{cls}> (SetUpToStart, InputsFor, OffSetting), or MomentFixture<{cls}> for an ability of a moment, as DashTests and "
                             f"ZiplineTests do: {see(TESTS_AND_DOCS)}")
         elif on_kit and cls in NOT_YET_ON_THE_KIT:
             problems.append(f"{where(on_kit[0])}: {cls}'s fixture is on the ability test kit now: take it off "

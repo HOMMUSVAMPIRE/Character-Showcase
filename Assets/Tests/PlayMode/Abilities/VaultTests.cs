@@ -14,10 +14,11 @@ namespace CharacterShowcase.Tests.Abilities
     /// it, a railing at the edge of a drop, or anything with vaulting from the ground off doesn't; stairs are climbed, not vaulted, run up or jumped onto;
     /// without room over the top it doesn't vault; and with vaulting off, a low wall isn't slid down either, its top
     /// grabbed once the character has fallen far enough to reach it. Expected values are read from the movement mode's
-    /// settings.
+    /// settings. The checks every ability gets (turned off, letting go, its events, saved and put back, at another size)
+    /// come from AbilityFixture, on vaulting (its first state): falling in front of a low wall, steering into it.
     /// </summary>
     [Category(TestArea.Abilities)]
-    public class VaultTests : CharacterRigFixture
+    public class VaultTests : AbilityFixture<Vaulting>
     {
         // The wall's top (y), its face (z), which faces -Z, toward the character, and its far side (z).
         private float top, face, back;
@@ -33,6 +34,21 @@ namespace CharacterShowcase.Tests.Abilities
         private float LowWallShare => Mathf.Lerp(rig.StepHeight / rig.StandingHeight, LedgeShare, 0.5f);
 
         /// <summary>
+        /// As SteeringIntoALowWallWithoutSpeed_VaultsAtTheVaultsSlowestSpeed: in mid-air in front of a low wall, its
+        /// distance and thickness sized to the character.
+        /// </summary>
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 3f * Scale, 0f), settleSeconds: 0f);
+            BuildLowWall(null, 0.4f * Scale, 0.25f * Scale);
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+
+        protected override string OffSetting => "vaultRiseDuration";
+
+        /// <summary>
         /// A floor, the character in mid-air (or standing on the floor) facing +Z (its model loaded), and in front of it
         /// a wall whose top is topAbove() standing heights above the character's feet (by default, halfway between the step
         /// height and the lowest ledge it could grab), its face distance ahead of the character, and thickness deep.
@@ -42,6 +58,15 @@ namespace CharacterShowcase.Tests.Abilities
             rig.Floor();
             if (onTheGround) { yield return rig.SpawnSettled(Vector3.zero); }
             else { yield return rig.SpawnSettled(new Vector3(0f, 3f, 0f), settleSeconds: 0f); }
+            BuildLowWall(topAbove, thickness, distance);
+        }
+
+        /// <summary>
+        /// The wall in front of the character, its top topAbove() standing heights above its feet (by default, halfway
+        /// between the step height and the lowest ledge it could grab), its face distance ahead of it, and thickness deep.
+        /// </summary>
+        private void BuildLowWall(System.Func<float> topAbove, float thickness, float distance)
+        {
             top = rig.Position.y + (topAbove != null ? topAbove() : LowWallShare) * rig.StandingHeight;
             face = rig.Position.z + rig.FrontExtent + distance;
             back = face + thickness;

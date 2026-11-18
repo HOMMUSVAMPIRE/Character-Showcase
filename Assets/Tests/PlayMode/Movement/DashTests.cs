@@ -26,10 +26,6 @@ namespace CharacterShowcase.Tests.Movement
 
         protected override string OffSetting => "dashDuration";
 
-        // Dashing raises its own events (it declares no StateEvents).
-        protected override CharacterState AbilityState => CharacterState.Dashing;
-        protected override StateEvent AbilityEvents => new(CharacterState.Dashing, MovementEvents.DashStarted, MovementEvents.DashEnded);
-
         private float DashSpeed => rig.Component<Dashing>().DashSpeed;
         private float DashDuration => rig.Component<Dashing>().DashDuration;
         private float DashCooldown => rig.MovementSetting<float>("dashCooldown");
