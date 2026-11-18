@@ -136,3 +136,12 @@ Choices about how the project is built, why they were made, and what was decided
 **Why:** the character is meant to ship as a package without the showcase's level builders or its Blender tooling. With them in assemblies of their own, and the level elements (which traversal needs) apart from the builders, the line between what ships and what doesn't is the assemblies' (AGENTS.md, The package line), and the hygiene check holds it.
 
 **Against:** the level elements staying in the character's assembly, with only Set Up Scene turning a level's markers into them. The builders, which couldn't reference the character's code, then named the markers by constants of their own that had to match Set Up Scene's: a names contract duplicated across two assemblies, held by a test, and a level that didn't work until Set Up Scene had been run on it.
+
+## Ability states and events stay global flag enums, 64 bits wide (November 2026)
+**Decided:** `CharacterState` is 64 bits wide (`long`), as `MovementEvents` already was. Each ability still takes bits of both by hand, and the hygiene check fails if two members share a bit or one isn't a single bit. No field of either is serialized by Unity (which drops enum fields wider than 32 bits): `MovementData`'s are `[NonSerialized]`, and a saved set of events is a `long`.
+
+**Why:** with 22 of its 32 bits taken, `CharacterState` would have run out about ten abilities on. One flags value per step stays cheap to copy, compare and keep in `MovementStateSummary` (which stays unmanaged), and every reader (animation, effects, AIs, tests) keeps testing bits as before.
+
+**Against:**
+- Each component declaring its own states and events, with bits handed out as the mode is built: no limit and no hand-picked bits, but bits that change with the mode's components, which recorded golden paths, replays and anything sent over a network would have to map.
+- Revisit that when `MovementEvents` (two bits an ability) nears its 64.

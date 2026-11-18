@@ -456,7 +456,7 @@ namespace CharacterShowcase.Tests.Movement
             Vector3 p = rig.Position, v = data.finalVelocity;
             float yaw = rig.Body.rotation.eulerAngles.y;
             return string.Join(",", step.ToString(CultureInfo.InvariantCulture), F(p.x), F(p.y), F(p.z), F(yaw), F(v.x), F(v.y), F(v.z),
-                ((int)data.state).ToString(CultureInfo.InvariantCulture), ((long)data.events).ToString(CultureInfo.InvariantCulture),
+                ((long)data.state).ToString(CultureInfo.InvariantCulture), ((long)data.events).ToString(CultureInfo.InvariantCulture),
                 F(rig.CurrentHeight / rig.StandingHeight));
         }
 
@@ -494,7 +494,7 @@ namespace CharacterShowcase.Tests.Movement
             for (int i = 1; i <= 3; i++) { if (Mathf.Abs(N(e, i) - N(a, i)) > PositionTolerance) { return "the position"; } }
             if (Mathf.Abs(Mathf.DeltaAngle(N(e, 4), N(a, 4))) > YawTolerance) { return "the facing"; }
             for (int i = 5; i <= 7; i++) { if (Mathf.Abs(N(e, i) - N(a, i)) > VelocityTolerance) { return "the velocity"; } }
-            if (e[8] != a[8]) { return $"the state ({(CharacterState)int.Parse(e[8])} recorded, {(CharacterState)int.Parse(a[8])} now)"; }
+            if (e[8] != a[8]) { return $"the state ({(CharacterState)long.Parse(e[8])} recorded, {(CharacterState)long.Parse(a[8])} now)"; }
             if (e[9] != a[9]) { return $"the events ({(MovementEvents)long.Parse(e[9])} recorded, {(MovementEvents)long.Parse(a[9])} now)"; }
             if (Mathf.Abs(N(e, 10) - N(a, 10)) > HeightTolerance) { return "the collider's height"; }
             return null;

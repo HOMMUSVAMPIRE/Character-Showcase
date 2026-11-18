@@ -17,6 +17,8 @@ Checks:
   7. Every test fixture has [TestTiming] and a test area ([Category(TestArea.…)]), itself or through a base class.
   8. Every movement component a movement asset names ([SerializeReference]: "type: {class: X, ns: Y, asm: Z}")
      still exists by that name, or names it in a [MovedFrom]: renamed without one, it drops out of the asset.
+  9. Every member of the flag enums abilities take bits of (CharacterState, MovementEvents) is a single bit of its own,
+     within the enum's width: no two share one.
 """
 import json
 import os
@@ -239,6 +241,62 @@ def check_serialized_components():
                                 f"give its new name [MovedFrom(... sourceClassName: \"{cls}\")], or the asset loses it")
 
 
+FLAG_ENUMS = {  # The flag enums each ability takes bits of (see docs/adding-an-ability.md), and where they're declared.
+    "CharacterState": ASSETS / "Scripts" / "Character" / "CharacterState.cs",
+    "MovementEvents": ASSETS / "Scripts" / "Character" / "MovementEvents.cs",
+}
+
+
+def check_flag_enums():
+    # An ability takes the next unused bit of CharacterState for its state and two of MovementEvents for its start and
+    # end, by hand. Two abilities written at once could take the same bit, and C# accepts that: both flags would then be
+    # one, and each ability would seem to start when the other does. So every member is a single bit (None and Idle
+    # apart), no two share one, and each fits the enum's width. A member made of others (A | B) is an alias, and allowed.
+    for name, path in FLAG_ENUMS.items():
+        where = path.relative_to(ROOT)
+        text = path.read_text(encoding="utf-8")
+        match = re.search(rf"\benum\s+{name}\s*(?::\s*(\w+))?\s*\{{(.*?)\}}", text, re.S)
+        if not match:
+            problems.append(f"{where}: enum {name} not found (update FLAG_ENUMS in this script if it moved)")
+            continue
+        bits = 64 if match.group(1) in ("long", "ulong") else 32
+        body = re.sub(r"//[^\n]*|/\*.*?\*/", "", match.group(2), flags=re.S)
+        owner = {}  # bit -> member
+        for member in (m.strip() for m in body.split(",")):
+            if not member:
+                continue
+            parts = [p.strip() for p in member.split("=", 1)]
+            if len(parts) != 2:
+                problems.append(f"{where}: {name}.{parts[0]} has no value of its own: give it its bit (the next unused one)")
+                continue
+            member_name, expression = parts
+            if re.fullmatch(r"[\w\s|]+", expression) and re.search(r"[A-Za-z_]", expression.replace("L", "")):
+                continue  # An alias of other members.
+            shift = re.fullmatch(r"1[uUlL]*\s*<<\s*(\d+)", expression)
+            literal = re.fullmatch(r"(0[xX][0-9a-fA-F]+|\d+)[uUlL]*", expression)
+            if shift:
+                value = 1 << int(shift.group(1))
+            elif literal:
+                value = int(literal.group(1), 0)
+            else:
+                problems.append(f"{where}: {name}.{member_name}'s value ({expression}) isn't a number or 1L << n: "
+                                f"this check can't read it")
+                continue
+            if value == 0:
+                continue  # None, Idle.
+            if value & (value - 1):
+                problems.append(f"{where}: {name}.{member_name} ({expression}) isn't a single bit: each member is one bit "
+                                f"of its own (a member made of others is written as A | B)")
+                continue
+            bit = value.bit_length() - 1
+            if bit >= bits:
+                problems.append(f"{where}: {name}.{member_name} is bit {bit}, past the enum's {bits} bits")
+            if bit in owner:
+                problems.append(f"{where}: {name}.{member_name} and {name}.{owner[bit]} are both bit {bit}: "
+                                f"give one the next unused bit")
+            owner.setdefault(bit, member_name)
+
+
 def main():
     if not ASSETS.is_dir():
         print(f"No Assets folder at {ASSETS}; run this from the repository.", file=sys.stderr)
@@ -251,6 +309,7 @@ def main():
     check_unique_movement_settings()
     check_test_fixtures()
     check_serialized_components()
+    check_flag_enums()
     if problems:
         print(f"{len(problems)} problem(s) found:")
         for problem in problems:

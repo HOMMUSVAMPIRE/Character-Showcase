@@ -40,6 +40,42 @@ Unity can't open a project that's open in the editor, so a batch-mode run quits 
 - *The camera, a level element or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character). A level element knows nothing of the character (the character finds it), and a level builder makes geometry, lighting, fixtures and markers and attaches the level elements; Set Up Scene connects the character side (see [Adding Level Content](adding-level-content.md)).
 - *A movement asset names a class that no longer exists:* a movement component was renamed or moved. Give the class `[UnityEngine.Scripting.APIUpdating.MovedFrom(... sourceClassName: "OldName")]`, or the asset shows it as a missing component, its settings lost.
 
+## New characters
+What can go wrong adding a model or a character (see [Adding a Character](adding-a-character.md)). Prepare Character Models reports each model in the Console (a line from `[CharacterModelImporter]`, a warning if any model failed), or in a window when it's run from the menu: "not prepared" and the reason, or "ready", with notes.
+
+**A model is skipped: "Unity couldn't map its skeleton to a Humanoid."**
+Unity couldn't match the model's bones to a person's. Select the model, open the Rig tab in the Inspector and press Configure: the bones it couldn't match are shown in red. Assign them, press Done, then run Tools > Character Showcase > Prepare Character Models again. A creature that isn't a humanoid can't be prepared at all: move it out of Assets/Models/CharacterModels (see [A creature that isn't a humanoid](adding-a-character.md#a-creature-that-isnt-a-humanoid)). While it's there, `PreparedModelTests` fails, since every model file in the folder must have a prepared source.
+
+**A model is skipped: "It has no skinned mesh, so it isn't rigged."**
+The file has no mesh bound to a skeleton. Rig it (Mixamo can), and export it with its skeleton and skin.
+
+**Prepare Character Models does nothing, with "Run Tools > Character Showcase > Generate Mannequin first" in the Console.**
+The Animator Controller and translator every model shares (`CharacterModelImporter.ControllerPath` and `TranslatorPath`) are missing or empty. Check Git LFS fetched the project's files (README.md, How to open this Project), then run Generate Mannequin, which, if Blender isn't found, offers to rebuild them from the Mannequin.fbx in the project (see [Generate Mannequin](animation.md#generate-mannequin)).
+
+**A model isn't in Set Up Scene's list.**
+Set Up Scene lists the models prepared in Assets/Models/CharacterModels. A model that isn't ready is listed under "Not available", with the reason: "not prepared yet" (press Prepare Character Models, then Refresh) or the problem its source has. A model source somewhere else (a creature's) isn't listed: give it to a character prefab and choose that.
+
+**A character prefab isn't in Set Up Scene's Choose list.**
+Only prefabs with an ACCharacterController on their top object are listed. Make the character a prefab variant of Character.prefab (see [A new character of your own](adding-a-character.md#a-new-character-of-your-own)), then press Refresh.
+
+**A model is far too big or far too small.**
+Its file's units were probably lost in export. When a model's source is first made, a model outside the height range `MinHeight` to `MaxHeight` (in CharacterModelImporter.cs) has its source's Scale set to bring it to `TypicalHeight`, with a warning in the Console; a source made before keeps its Scale. Set the source's Scale, or its Height to Fit To Height with the Fit Height you want, or export the model again at the right size (in Blender, apply its scale). With the CharacterModelHost's Body Fit at Model's Body, the body is sized with the model.
+
+**A model faces backwards or sideways.**
+Prepare Character Models measures the way the model faces as it stands, and turns it to the nearest quarter turn to face forward (its source's Facing Correction, with a note saying so). A model still turned (a note saying it "stands turned" so many degrees) needs its source's Rotation Offset set to face it forward, or exporting again facing +Z.
+
+**A model's feet are in the floor or above it.**
+Prepare Character Models measures where its soles are as it stands (its source's Ground Offset). If it couldn't, it says so in a note ("Couldn't measure how high its feet stand"), and the Ground Offset is left as it was. Run Prepare Character Models again after fixing the model; a model that's re-prepared is measured again. A source made by hand has Measure Ground On Load ticked, and measures its model as it loads. To raise or lower a model by hand, use its source's Position Offset, which preparing keeps (it measures Ground Offset again). If the body's at fault rather than the model, see [The body and the ground](#the-body-and-the-ground).
+
+**The body is too big or too small for the model** (the character stops short of walls, or its model goes into them, or it won't fit through gaps it should).
+With the CharacterModelHost's Body Fit Off, the body is the MovementController's Body Definition as it is, whatever the model, and the Console warns when a model is taller than it, or shorter than the host's Minimum Height Fraction of it ("Set its source's Height to Fit To Height, or change its Scale"). Set Body Fit to Model's Body (the body Prepare Character Models fitted, `[name] Body.asset`) or Height (the body as authored, scaled to the model), or shape the Body Definition to the model. Prepare Character Models refits `[name] Body.asset` each time it prepares the model, unless its Refit On Prepare is off.
+
+**Changing my character changed the default one too.**
+The change was made to Character.prefab, BasicMovementMode.asset or Character Body.asset, which the default character (and the tests) use, rather than to your prefab variant and its own copies. Change it back there, and make the change on yours.
+
+**A scene doesn't use the prefab's model or movement.**
+The scene's Character Spawner has its own Model Source or Movement Mode set, which replace the prefab's. Empty them, or set the scene up again choosing the prefab's own.
+
 ## Generated assets
 **A change to a generated asset disappeared.**
 The mannequin, its Animator Controller, the model prefabs, the level scenes, the level specs, the climbable paint masks and the movement envelope are all written by editor tools, which overwrite them. Change the generator and run it again (the table in AGENTS.md, Generated assets, says which tool makes which).

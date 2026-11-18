@@ -103,6 +103,66 @@ namespace Character
             foreach (MovementComponent component in DefaultComponents()) { yield return component.GetType(); }
         }
 
+        /// <summary>The default components (DefaultComponents) the mode doesn't have, in their order.</summary>
+        public List<Type> MissingDefaultComponentTypes()
+        {
+            var missing = new List<Type>();
+            foreach (Type type in DefaultComponentTypes())
+            {
+                if (Get(type, includeDisabled: true) == null) { missing.Add(type); }
+            }
+            return missing;
+        }
+
+        /// <summary>
+        /// Adds each default component (DefaultComponents) the mode doesn't have, at its defaults, turned on or off as
+        /// given, at its default place: just after the nearest component above it in the default order that the mode has
+        /// (or, with none, just before the nearest below it), so the rest of the list keeps the order it was given.
+        /// Returns the types it added, in their order. A component added to the code's list (a new ability) reaches an
+        /// asset made before it this way: a tuning preset only sets values, so it can't add one (see MovementTuningPreset).
+        /// </summary>
+        public List<Type> AddMissingDefaultComponents(bool enabled)
+        {
+            var added = new List<Type>();
+            List<MovementComponent> defaults = new(DefaultComponents());
+            for (int i = 0; i < defaults.Count; i++)
+            {
+                MovementComponent component = defaults[i];
+                if (Get(component.GetType(), includeDisabled: true) != null) { continue; }
+                component.Enabled = enabled;
+                Insert(DefaultPlaceFor(defaults, i), component);
+                added.Add(component.GetType());
+            }
+            return added;
+        }
+
+        // Where the default component at index of defaults goes in this mode's list: after the nearest default above it
+        // that the mode has, else before the nearest below it, else at the end.
+        private int DefaultPlaceFor(List<MovementComponent> defaults, int index)
+        {
+            for (int above = index - 1; above >= 0; above--)
+            {
+                int at = IndexOf(defaults[above].GetType());
+                if (at >= 0) { return at + 1; }
+            }
+            for (int below = index + 1; below < defaults.Count; below++)
+            {
+                int at = IndexOf(defaults[below].GetType());
+                if (at >= 0) { return at; }
+            }
+            return components.Count;
+        }
+
+        // The index of the mode's component of the given type, or -1.
+        private int IndexOf(Type type)
+        {
+            for (int i = 0; i < components.Count; i++)
+            {
+                if (components[i] != null && components[i].GetType() == type) { return i; }
+            }
+            return -1;
+        }
+
         /// <summary>
         /// Removes the mode's component of type T, returning whether it had one. Remove a component only while it doesn't
         /// have a character (or turn it off instead, which ends what it's doing: see AdvanceComponentTimers).

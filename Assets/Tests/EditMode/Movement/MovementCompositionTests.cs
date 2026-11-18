@@ -45,7 +45,10 @@ namespace CharacterShowcase.Tests.EditMode.Movement
                     typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
                     typeof(Crouching), typeof(Wading), typeof(FallAndAirHandling), typeof(WalkingAndRunning), typeof(Dashing), typeof(Jumping),
                 }),
-                "Most committed first: a bounce pad launches whatever the character is doing; what it hangs from holds it " +
+                "A new BasicMovementMode's components differ from this list. If you added a component to " +
+                "BasicMovementMode.DefaultComponents, add its type here too, at the same place: the order is a deliberate " +
+                "choice, checked here (see docs/adding-an-ability.md, Putting it in the mode). The order: " +
+                "most committed first: a bounce pad launches whatever the character is doing; what it hangs from holds it " +
                 "over everything below; a wall's top is grabbed out of a slide down it; a climbable wall is climbed rather " +
                 "than run along or slid down; a roll or a slide on the ground; crouching, which only changes how it walks; the ground's friction before the walking that makes up the " +
                 "difference to the momentum it leaves; then a dash and the jump that cancels it.");
@@ -99,6 +102,65 @@ namespace CharacterShowcase.Tests.EditMode.Movement
                 }
                 Assert.That(declaredBy, Is.Not.Empty, "Test setup: the abilities should declare their states' events.");
             }
+        }
+
+        /// <summary>
+        /// Every movement mode asset in the project (the character's, the fox's) has every one of its code's default
+        /// components, turned on or off: a component added to the code's list but not to an asset would be missing from
+        /// it silently, and no tuning preset could give it back.
+        /// </summary>
+        [Test]
+        public void EveryMovementModeAsset_HasEveryDefaultComponent()
+        {
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(ComposedMovementMode));
+            Assert.That(guids, Is.Not.Empty, "Test setup: the project should have movement mode assets.");
+            foreach (string guid in guids)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var mode = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(path);
+                List<System.Type> missing = mode.MissingDefaultComponentTypes();
+                Assert.That(missing, Is.Empty,
+                    $"{path} doesn't have {string.Join(", ", missing.Select(MovementComponent.DisplayNameOf))}. Select it and " +
+                    "press Add Missing Components in its inspector (turned off for a character they don't suit yet), or run " +
+                    "-executeMethod CharacterShowcase.EditorTools.MovementModeSync.AddToAllModesFromCommandLine.");
+            }
+        }
+
+        [Test]
+        public void MissingDefaultComponents_AreAddedAtTheirDefaultPlaces_LeavingTheRestAsTheyAre()
+        {
+            BasicMovementMode mode = NewMode();
+            mode.Remove<BouncePads>();
+            mode.Remove<Ledges>();
+            mode.Remove<Jumping>();
+            // A mode whose order was changed by hand keeps it: Dashing moved to the top.
+            Dashing dashing = mode.Get<Dashing>();
+            mode.Remove<Dashing>();
+            mode.Insert(0, dashing);
+            WallRunning wallRunning = mode.Get<WallRunning>();
+            wallRunning.Enabled = false;
+
+            Assert.That(mode.MissingDefaultComponentTypes(), Is.EqualTo(new[] { typeof(BouncePads), typeof(Ledges), typeof(Jumping) }));
+            List<System.Type> added = mode.AddMissingDefaultComponents(enabled: false);
+
+            Assert.That(added, Is.EqualTo(new[] { typeof(BouncePads), typeof(Ledges), typeof(Jumping) }), "What it added, in the default order.");
+            Assert.That(mode.MissingDefaultComponentTypes(), Is.Empty);
+            Assert.That(mode.Components.Select(c => c.GetType()), Is.EqualTo(new[]
+            {
+                // Jumping follows Dashing (its nearest default above), wherever Dashing was moved; Bounce Pads has no
+                // default above it, so it goes before the nearest below (Ziplines); Ledges after Rope Swinging.
+                typeof(Dashing), typeof(Jumping), typeof(BouncePads), typeof(Ziplines), typeof(RopeSwinging), typeof(Ledges), typeof(Vaulting),
+                typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
+                typeof(Crouching), typeof(Wading), typeof(FallAndAirHandling), typeof(WalkingAndRunning),
+            }), "Each goes just after the nearest default above it that the mode has; the rest keep their order.");
+            Assert.That(added.Select(t => mode.Get(t, includeDisabled: true)), Has.All.Matches<MovementComponent>(c => !c.Enabled && c.Mode == mode));
+            Assert.That(mode.Get<Dashing>(), Is.SameAs(dashing), "Components the mode had are kept as they were.");
+            Assert.That(wallRunning.Enabled, Is.False);
+
+            Assert.That(mode.AddMissingDefaultComponents(enabled: true), Is.Empty, "With none missing, nothing is added.");
+            mode.Remove<Swimming>();
+            mode.AddMissingDefaultComponents(enabled: true);
+            Assert.That(mode.Get<Swimming>(), Is.Not.Null, "Added turned on when asked.");
         }
 
         [Test]

@@ -143,7 +143,7 @@ namespace Character
         {
             RollState roll = controller.roll;
             float y = movementData.initialPosition.y;
-            bool landed = movementData.initialGrounded && !movementData.previousState.HasFlag(CharacterState.Grounded);
+            bool landed = movementData.initialGrounded && ((movementData.previousState & CharacterState.Grounded) == 0);
             roll.landingFall = landed && roll.hasFallTop ? Mathf.Max(0f, roll.fallTop - y) : 0f;
             // Whatever holds the character up (see AbilityTraits.HoldsUp): a ride down a sloped zipline, say, isn't a fall.
             bool held = movementData.initialGrounded || Mode.AbilityInProgressWith(AbilityTraits.HoldsUp, controller);

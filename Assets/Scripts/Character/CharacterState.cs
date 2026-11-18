@@ -1,10 +1,14 @@
 namespace Character
 {
     /// <summary>
-    /// An enum which stores animation-relevant stateful information about a character
+    /// What the character is doing during a physics step, as flags: one for each ability's state, which its component
+    /// sets and its StateEvents turn into movement events (see MovementComponent.StateEvents). 64 bits wide, so there's
+    /// room for abilities to come; each member is one bit of its own (the hygiene check makes sure), and a new one takes
+    /// the next unused bit. Unity doesn't save fields of enums wider than 32 bits (it drops them silently), so a field of
+    /// this type is never serialized (MovementData's are [NonSerialized]: they're only the step's).
     /// </summary>
     [System.Flags]
-    public enum CharacterState
+    public enum CharacterState : long
     {
         Idle = 0,
         Moving = 1,

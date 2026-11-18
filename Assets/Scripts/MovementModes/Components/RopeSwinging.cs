@@ -138,7 +138,7 @@ namespace Character
         public override void AfterMovementResolved(MovementData movementData, MovementController controller)
         {
             RopeSwingState swing = controller.ropeSwing;
-            if (!swing.IsSwinging || swing.rope == null || !movementData.state.HasFlag(CharacterState.RopeSwinging)) { return; }
+            if (!swing.IsSwinging || swing.rope == null || ((movementData.state & CharacterState.RopeSwinging) == 0)) { return; }
             Vector3 feet = movementData.initialPosition + movementData.finalMovementVector;
             Vector3 reached = feet + Vector3.up * (ropeGripHeight * controller.Body.StandingHeight) - swing.rope.Anchor;
             if (reached.sqrMagnitude < 1e-8f) { return; }

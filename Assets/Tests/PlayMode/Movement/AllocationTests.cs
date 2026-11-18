@@ -96,7 +96,7 @@ namespace CharacterShowcase.Tests.Movement
             TestContext.WriteLine($"{who}, running the course again (doing: {seen}): allocations: the movement {rig.StepAllocations}, " +
                                   $"UpdateAnimator {animationAllocations}, the Animator's update (and its IK) {animatorAllocations}, " +
                                   $"paw placement {pawAllocations}.");
-            Assume.That(seen.HasFlag(CharacterState.Moving) && seen.HasFlag(CharacterState.Jumping), Is.True,
+            Assume.That((seen & CharacterState.Moving) != 0 && ((seen & CharacterState.Jumping) != 0), Is.True,
                 $"Test setup: {who} should walk and jump (it did: {seen}).");
             Assert.That(rig.StepAllocations, Is.Zero, $"{who}'s movement steps shouldn't allocate.");
             Assert.That(animationAllocations, Is.Zero, $"Feeding {who}'s animation (AnimationController.UpdateAnimator) shouldn't allocate.");
@@ -121,7 +121,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return rig.WaitForModel();
             TakeOverAnimator();
             yield return RunTwiceAndAssertNoAllocation("The character");
-            Assert.That(seen.HasFlag(CharacterState.WallClimbing), Is.True, $"Test setup: the character should climb the wall (it did: {seen}).");
+            Assert.That((seen & CharacterState.WallClimbing) != 0, Is.True, $"Test setup: the character should climb the wall (it did: {seen}).");
         }
 
         [UnityTest]

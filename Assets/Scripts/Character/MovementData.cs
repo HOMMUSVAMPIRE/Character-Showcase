@@ -37,8 +37,11 @@ namespace Character
         /// </summary>
         public float timeSinceGrounded = 0f;
 
-        /// <summary>The state of the character at the end of the previous physics step (Idle on the first).</summary>
-        public CharacterState previousState;
+        /// <summary>
+        /// The state of the character at the end of the previous physics step (Idle on the first). Not saved (Unity
+        /// can't save an enum this wide, and it's only the step's).
+        /// </summary>
+        [System.NonSerialized] public CharacterState previousState;
 
         // Data on the character's transform, velocity, and state at the start of the frame
         private Vector3 _initialPosition;
@@ -84,8 +87,11 @@ namespace Character
         /// <summary>The rotation the character ends the step at.</summary>
         public Quaternion targetRotation { get { return _targetRotation; } set { _targetRotation = value; dirty = true; } }
 
-        /// <summary>The state of the character during this step, built up by the movement mode.</summary>
-        public CharacterState state;
+        /// <summary>
+        /// The state of the character during this step, built up by the movement mode. Not saved (Unity can't save an
+        /// enum this wide, and it's only the step's).
+        /// </summary>
+        [System.NonSerialized] public CharacterState state;
 
         // Whether the final state of the character's transform at the end of the frame needs re-computation
         private bool dirty = true;

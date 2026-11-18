@@ -41,7 +41,7 @@ namespace Character
         /// </summary>
         public override void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
         {
-            if (movementData.state.HasFlag(CharacterState.Dashing) || controller.crouch.IsCrouched) { return; }
+            if ((movementData.state & CharacterState.Dashing) != 0 || controller.crouch.IsCrouched) { return; }
             Jump(movementData, inputs, controller);
         }
 
@@ -60,7 +60,7 @@ namespace Character
             // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
             // jumps available to us. Not if we left the ground by jumping, though: a quick tap jump would otherwise land
             // back inside the coyote window and get its jump refunded.
-            if (!movementData.previousState.HasFlag(CharacterState.Jumping) && (movementData.timeSinceGrounded <= coyoteTime)
+            if ((movementData.previousState & CharacterState.Jumping) == 0 && (movementData.timeSinceGrounded <= coyoteTime)
                 && (movementData.initialGrounded || !controller.HasJumpedSinceGrounded))
             {
                 MovementHelpers.GiveBackJumps(controller);
@@ -87,7 +87,7 @@ namespace Character
             }
 
             // Still rising from a jump (not stopped by a ceiling): it carries on, under gravity (applied already).
-            bool rising = movementData.previousState.HasFlag(CharacterState.Jumping) && inertia.y > 0f
+            bool rising = ((movementData.previousState & CharacterState.Jumping) != 0) && inertia.y > 0f
                           && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
             if (!rising) { return; }
             movementData.state |= CharacterState.Jumping;

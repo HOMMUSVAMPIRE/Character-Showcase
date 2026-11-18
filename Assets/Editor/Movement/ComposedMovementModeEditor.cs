@@ -11,7 +11,8 @@ namespace CharacterShowcase.EditorTools
     /// The inspector of a movement mode made of components (ComposedMovementMode): its own settings, then its components
     /// in order, each folded under its name with a toggle that turns it on and off, buttons that move it up and down the
     /// list (higher takes over the character first) and one that removes it, and a menu that adds any component the mode
-    /// doesn't have yet; and a button that saves its tuning as a preset (see MovementTuningPresetEditor).
+    /// doesn't have yet; a warning, with buttons that add them, if it lacks any of its code's default components (see
+    /// MovementModeSync); and a button that saves its tuning as a preset (see MovementTuningPresetEditor).
     /// </summary>
     [CustomEditor(typeof(ComposedMovementMode), true)]
     public class ComposedMovementModeEditor : Editor
@@ -35,6 +36,7 @@ namespace CharacterShowcase.EditorTools
             }
             DrawAddMenu(list);
             serializedObject.ApplyModifiedProperties();
+            DrawMissingComponents((ComposedMovementMode)target);
 
             EditorGUILayout.Space();
             if (GUILayout.Button("Save Tuning as Preset…")) { MovementTuningPresetEditor.SaveAsPreset((ComposedMovementMode)target); }
@@ -87,6 +89,31 @@ namespace CharacterShowcase.EditorTools
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// If the mode lacks any of its code's default components (a new ability, added to the code after the asset was
+        /// made), says which, with buttons that add them at their default places, turned on or off (MovementModeSync).
+        /// </summary>
+        private void DrawMissingComponents(ComposedMovementMode mode)
+        {
+            List<Type> missing = mode.MissingDefaultComponentTypes();
+            if (missing.Count == 0) { return; }
+            EditorGUILayout.Space();
+            EditorGUILayout.HelpBox(
+                $"This mode doesn't have {(missing.Count == 1 ? "a default component" : missing.Count + " default components")}: " +
+                string.Join(", ", missing.Select(MovementComponent.DisplayNameOf)) + ". A tuning preset can't add a " +
+                "component, so add them here: each goes at its default place in the list. Turn them off for a character " +
+                "whose body or animations don't suit them yet.", MessageType.Warning);
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                bool on = GUILayout.Button("Add Missing Components, Turned On");
+                bool off = GUILayout.Button("Add Them Turned Off");
+                if (!on && !off) { return; }
+                MovementModeSync.AddMissing(mode, enabled: on);
+                serializedObject.Update();
+                GUIUtility.ExitGUI();
+            }
         }
 
         /// <summary>A button with a menu of the components the mode doesn't have yet, which adds the one picked at the end.</summary>

@@ -55,7 +55,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
                 did |= rig.Movement.lastFrameMovementData.state;
             });
             rig.Recording = null;
-            Assume.That(did.HasFlag(CharacterState.Jumping) && did.HasFlag(CharacterState.Dashing) && did.HasFlag(CharacterState.Crouching), Is.True,
+            Assume.That((did & CharacterState.Jumping) != 0 && ((did & CharacterState.Dashing) != 0) && ((did & CharacterState.Crouching) != 0), Is.True,
                 $"Test setup: the run should jump, dash and crouch (it did: {did}).");
             Assert.That(recording.Count, Is.EqualTo(Steps), "Every step's frame should be recorded.");
 

@@ -40,15 +40,16 @@ Movement modes are shared assets, so what each character is doing lives on its `
 The state is saved and put back with the character's (`MovementController.SaveState`, `MovementStateSnapshot`) and written to bytes (`StateSerializer`) by itself, as long as it's plain values and plain objects: a reference to a level object is written as its `Level.StableId`, and one to an asset or a setting isn't written (the reader keeps its own).
 
 ## 3. Its state flag and events
-- A `CharacterState` flag for it (a 32-bit flags enum: take the next unused bit).
+- A `CharacterState` flag for it (a 64-bit flags enum: take the next unused bit, written `1L << n`).
 - `MovementEvents` for it starting and ending (a 64-bit flags enum: take the next unused bits).
+- The hygiene check fails if two members of either share a bit (two abilities written at once, say), or one isn't a single bit.
 - The component's `StateEvents`: a static array of `StateEvent(flag, started, ended)`, from which the mode raises the events as the flag comes and goes (`ComposedMovementMode.DetectStateEvents`). A component with several states (Crouching's crouch and slide) lists each.
 
 ## 4. Putting it in the mode
 - Add it to `BasicMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.
-- Update the expected list in `MovementCompositionTests.ANewBasicMovementMode_StartsWithItsComponents_InOrder`.
-- Add it to `Assets/ScriptableObjects/BasicMovementMode.asset` with Add Component in its inspector, and move it to its place. In this project, saving also writes the level checks' movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed (see [Tuning the Character](tuning.md#what-changes-when-you-save)).
-- Add it to the fox's mode too, `Assets/ScriptableObjects/Fox Movement.asset` (a BasicMovementMode of its own, hand-tuned), at the same place, turned off unless the fox's body and animations suit it (as several of its components are): a mode left without it can't be given it by a tuning preset.
+- Update the expected list in `MovementCompositionTests.ANewBasicMovementMode_StartsWithItsComponents_InOrder`: the order is a deliberate choice, so the test holds it.
+- Add it to every movement mode asset. Select `Assets/ScriptableObjects/BasicMovementMode.asset`: its inspector warns that it lacks the new component, and **Add Missing Components, Turned On** adds it at its place in the list (just after the nearest component above it in `DefaultComponents` that the mode has), with Undo. Do the same on the fox's mode, `Assets/ScriptableObjects/Fox Movement.asset` (a BasicMovementMode of its own, hand-tuned), with **Add Them Turned Off** unless the fox's body and animations suit it (as several of its components are off). Outside the editor, `-executeMethod CharacterShowcase.EditorTools.MovementModeSync.AddToAllModesFromCommandLine` does both: turned on for the Character prefab's mode, off for every other. A mode left without it can't be given it by a tuning preset, so `MovementCompositionTests.EveryMovementModeAsset_HasEveryDefaultComponent` fails until every mode has it.
+- In this project, saving the character's mode also writes the level checks' movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed (see [Tuning the Character](tuning.md#what-changes-when-you-save)).
 
 ## 5. Animation, if it has a look of its own
 1. Fields for it in `CharacterAnimationState`, filled by `AnimationController.BuildState`.

@@ -525,7 +525,7 @@ namespace Character
         public override void AfterMovementResolved(MovementData movementData, MovementController controller)
         {
             WallClimbState climb = controller.wallClimb;
-            if (!climb.IsClimbing || climb.surface == null || !movementData.state.HasFlag(CharacterState.WallClimbing))
+            if (!climb.IsClimbing || climb.surface == null || ((movementData.state & CharacterState.WallClimbing) == 0))
             {
                 climb.hasLocalFeet = false;
                 return;

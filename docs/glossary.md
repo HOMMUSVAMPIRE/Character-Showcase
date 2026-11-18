@@ -1,5 +1,5 @@
 # Glossary
-Terms this project uses with a meaning of its own, and where each is explained. Entries marked *(showcase levels)* are about the level builders and their tools, which a package of the character leaves out.
+Terms this project uses with a meaning of its own, and where each is explained. Entries marked *(showcase levels)* are about the level builders and their tools, which a package of the character leaves out. Unity's own terms (prefab, inspector, Play mode, ...) are in [Unity Basics](unity-basics.md).
 
 **Ability.** A part of the character's movement that takes it over while it lasts (a wall run, a ledge hang, a zipline ride) or acts on top of walking (a dash, a jump). Each is a movement component. See [Movement Abilities](abilities.md) and [Climbing and Traversal](traversal.md).
 
@@ -88,3 +88,5 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 **Test rig.** The PlayMode tests' harness (`CharacterTestRig`), which spawns the real character, steps its movement with scripted inputs, and gives it its own copy of the movement mode to change. See [Automated Tests](testing.md).
 
 **Tuning preset.** A saved set of movement settings, some or all, to apply to a movement mode again (`MovementTuningPreset`). See [Tuning the Character](tuning.md#tuning-presets).
+
+**Unity terms.** Prefab, prefab variant, ScriptableObject, inspector, Play mode, assembly, `.meta` file and the rest of Unity's own vocabulary, each tied to this project's objects, are in [Unity Basics](unity-basics.md).

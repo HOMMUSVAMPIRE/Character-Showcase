@@ -7,6 +7,13 @@ This project is still a work in progress. I will be adding to it in my free time
 
 Once the project meets my standards for completion, I may release it as a Unity Asset Store package for others to use in their games.
 
+## Start here
+- **Play it:** open the project and a level, and press Play ([How to open this Project](#how-to-open-this-project)).
+- **Add a character:** a new look for the humanoid, a character of your own, or a creature ([Adding a Character](docs/adding-a-character.md)).
+- **Add an ability:** a new move for the character ([Adding a Movement Ability](docs/adding-an-ability.md)).
+
+New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the docs use.
+
 ## How to open this Project
 1. Install Git LFS (https://git-lfs.com), then clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository). The scenes, models and animation clips are stored with Git LFS: cloned without it, they're placeholder text files
 2. Download UnityHub from https://unity.com/download
@@ -67,11 +74,13 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Creatures](docs/creatures.md): the fox, a character on four legs, and generating it
 - [Automated tests](docs/testing.md)
 - [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
+- [Adding a character](docs/adding-a-character.md): a new look for the humanoid, a character of your own, or a creature; the place to start
 - [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs
 - [Adding level content](docs/adding-level-content.md): a new level mechanic, a new piece, changing a builder
 - [Troubleshooting](docs/troubleshooting.md)
 - [Design decisions](docs/decisions.md): why it's built the way it is
 - [Glossary](docs/glossary.md)
+- [Unity basics](docs/unity-basics.md): the Unity terms the docs use, for newcomers to Unity
 
 Every tunable value is a setting in the inspector: the movement assets in Assets/ScriptableObjects for the movement and its abilities (BasicMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/GrayboxSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 

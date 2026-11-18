@@ -98,7 +98,7 @@ namespace Character
         public override void AfterMovementResolved(MovementData movementData, MovementController controller)
         {
             GrabState grab = controller.grab;
-            if (!grab.IsGrabbing || !movementData.state.HasFlag(CharacterState.Grabbing)) { return; }
+            if (!grab.IsGrabbing || ((movementData.state & CharacterState.Grabbing) == 0)) { return; }
             Vector3 toward = -grab.faceNormal;
             float along = Vector3.Dot(movementData.finalMovementVector - grab.holdCorrection, toward);
             if (Mathf.Abs(along) > 1e-6f) { grab.target.Move(toward * along); }

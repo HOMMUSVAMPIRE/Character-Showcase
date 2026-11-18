@@ -403,8 +403,8 @@ namespace Character
         /// </summary>
         private void DetectEvents(MovementData data)
         {
-            bool wasGrounded = data.previousState.HasFlag(CharacterState.Grounded);
-            bool isGrounded = data.state.HasFlag(CharacterState.Grounded);
+            bool wasGrounded = (data.previousState & CharacterState.Grounded) != 0;
+            bool isGrounded = (data.state & CharacterState.Grounded) != 0;
             if (!wasGrounded && isGrounded) { data.events |= MovementEvents.Landed; }
             if (wasGrounded && !isGrounded) { data.events |= MovementEvents.LeftGround; }
 

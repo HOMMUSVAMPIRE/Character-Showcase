@@ -251,8 +251,8 @@ namespace Character
         {
             Vector3 velocity = movementData.finalVelocity;
             Quaternion facing = Quaternion.Euler(0f, movementData.finalRotation.eulerAngles.y, 0f);
-            bool touchingGround = movementData.state.HasFlag(CharacterState.Grounded);
-            bool jumping = movementData.state.HasFlag(CharacterState.Jumping);
+            bool touchingGround = (movementData.state & CharacterState.Grounded) != 0;
+            bool jumping = (movementData.state & CharacterState.Jumping) != 0;
 
             airTime = touchingGround ? 0f : airTime + deltaTime;
             float turnSpeed = AnimationState.turnSpeed;
@@ -266,29 +266,29 @@ namespace Character
             float horizontalSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             float speedScale = movementController != null ? movementController.SpeedScale : 1f;
             Vector3 ledgeEdge = Vector3.zero, ledgeNormal = Vector3.zero;
-            bool onLedge = movementData.state.HasFlag(CharacterState.LedgeHanging) || movementData.state.HasFlag(CharacterState.LedgeClimbing);
+            bool onLedge = ((movementData.state & CharacterState.LedgeHanging) != 0) || ((movementData.state & CharacterState.LedgeClimbing) != 0);
             if (onLedge && movementController != null) { movementController.ledge.TryGetEdge(out ledgeEdge, out ledgeNormal); }
-            else if ((movementData.state.HasFlag(CharacterState.Vaulting) || movementData.state.HasFlag(CharacterState.SteppingUp))
+            else if (((movementData.state & CharacterState.Vaulting) != 0 || ((movementData.state & CharacterState.SteppingUp) != 0))
                      && movementController != null)
             {
                 movementController.vault.TryGetEdge(out ledgeEdge, out ledgeNormal);
             }
             // A vault out of the water (a swimmer pulling itself up onto a pool's edge, or over a divider) is shown as a
             // climb up onto a ledge, its hands on the edge, not as a vault: from the water there's nothing to run at it from.
-            bool vaultingOutOfWater = movementData.state.HasFlag(CharacterState.Vaulting) && movementController != null
+            bool vaultingOutOfWater = ((movementData.state & CharacterState.Vaulting) != 0) && movementController != null
                                       && movementController.vault.outOfWater;
             // How far through a climb or a vault: once it's over, as far as it got (all the way), not back to 0, while the
             // Animator blends out of it. At 0 the climb's clip went back to its start for the blend (the body hanging
             // below the ledge), and the hips jumped back and forth as the character stepped off the top.
-            bool ledgeClimbing = movementController != null && movementData.state.HasFlag(CharacterState.LedgeClimbing);
+            bool ledgeClimbing = movementController != null && ((movementData.state & CharacterState.LedgeClimbing) != 0);
             if (ledgeClimbing) { heldClimbProgress = movementController.ledge.ClimbProgress; }
             else if (vaultingOutOfWater) { heldClimbProgress = Mathf.Lerp(climbOutOfWaterStart, 1f, movementController.vault.Progress); }
             float climbProgress = heldClimbProgress;
-            bool vaultingNow = movementController != null && movementData.state.HasFlag(CharacterState.Vaulting) && !vaultingOutOfWater;
+            bool vaultingNow = movementController != null && ((movementData.state & CharacterState.Vaulting) != 0) && !vaultingOutOfWater;
             bool showingVault = ShowVault(vaultingNow, vaultingNow ? movementController.vault.Progress : 1f, movementData.state, deltaTime);
             float vaultProgress = heldVaultProgress;
-            bool wallSliding = movementData.state.HasFlag(CharacterState.WallSliding) && movementController != null;
-            bool wallClimbing = movementData.state.HasFlag(CharacterState.WallClimbing) && movementController != null;
+            bool wallSliding = ((movementData.state & CharacterState.WallSliding) != 0) && movementController != null;
+            bool wallClimbing = ((movementData.state & CharacterState.WallClimbing) != 0) && movementController != null;
             Vector3 wallPoint = Vector3.zero, wallNormal = Vector3.zero;
             if (wallSliding)
             {
@@ -301,13 +301,13 @@ namespace Character
                 Vector3 climbed = movementController.wallClimb.normal;
                 wallNormal = new Vector3(climbed.x, 0f, climbed.z).normalized;
             }
-            else if (movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null)
+            else if ((movementData.state & CharacterState.WallRunning) != 0 && movementController != null)
             {
                 wallPoint = movementController.wallRun.wallPoint;
                 wallNormal = movementController.wallRun.wallNormal;
             }
-            bool swinging = movementData.state.HasFlag(CharacterState.RopeSwinging) && movementController != null;
-            bool ziplining = movementData.state.HasFlag(CharacterState.Ziplining) && movementController != null;
+            bool swinging = ((movementData.state & CharacterState.RopeSwinging) != 0) && movementController != null;
+            bool ziplining = ((movementData.state & CharacterState.Ziplining) != 0) && movementController != null;
             Vector3 gripPoint = Vector3.zero, gripDirection = Vector3.zero;
             if (swinging) { movementController.ropeSwing.TryGetGrip(out gripPoint, out gripDirection); }
             // The cable straight above the character as it's drawn (its transform's interpolated pose).
@@ -331,25 +331,25 @@ namespace Character
                 timeInAir = airTime,
                 moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
-                dashing = movementData.state.HasFlag(CharacterState.Dashing),
+                dashing = ((movementData.state & CharacterState.Dashing) != 0),
                 // A roll from a crouch ends crouched: shown as crouching through it, so it blends into the crouch.
-                crouching = movementData.state.HasFlag(CharacterState.Crouching)
-                            || (movementData.state.HasFlag(CharacterState.Rolling) && movementController != null && movementController.crouch.IsCrouched),
-                sliding = movementData.state.HasFlag(CharacterState.Sliding),
-                rolling = movementData.state.HasFlag(CharacterState.Rolling),
-                wallRunning = movementData.state.HasFlag(CharacterState.WallRunning),
-                wallSide = movementData.state.HasFlag(CharacterState.WallRunning) && movementController != null ? movementController.wallRun.side : 0f,
+                crouching = ((movementData.state & CharacterState.Crouching) != 0)
+                            || ((movementData.state & CharacterState.Rolling) != 0 && movementController != null && movementController.crouch.IsCrouched),
+                sliding = ((movementData.state & CharacterState.Sliding) != 0),
+                rolling = ((movementData.state & CharacterState.Rolling) != 0),
+                wallRunning = ((movementData.state & CharacterState.WallRunning) != 0),
+                wallSide = ((movementData.state & CharacterState.WallRunning) != 0) && movementController != null ? movementController.wallRun.side : 0f,
                 rollProgress = movementController != null ? movementController.roll.Progress : 0f,
                 climbProgress = climbProgress,
-                hanging = movementData.state.HasFlag(CharacterState.LedgeHanging),
-                climbing = movementData.state.HasFlag(CharacterState.LedgeClimbing) || vaultingOutOfWater,
+                hanging = ((movementData.state & CharacterState.LedgeHanging) != 0),
+                climbing = ((movementData.state & CharacterState.LedgeClimbing) != 0) || vaultingOutOfWater,
                 vaulting = showingVault,
                 vaultBodyProgress = vaultingNow ? movementController.vault.Progress : 1f,
                 vaultProgress = vaultProgress,
-                steppingUp = movementData.state.HasFlag(CharacterState.SteppingUp),
+                steppingUp = ((movementData.state & CharacterState.SteppingUp) != 0),
                 // Only a step up's, whose feet foot placement tucks onto the top: a stair's leaves the feet to it as ever.
                 stepUpLag = lagIsStepUp ? stepUpLag : 0f,
-                grabbing = movementData.state.HasFlag(CharacterState.Grabbing),
+                grabbing = ((movementData.state & CharacterState.Grabbing) != 0),
                 ledgeEdge = ledgeEdge,
                 ledgeNormal = ledgeNormal,
                 wallSliding = wallSliding,
@@ -364,8 +364,8 @@ namespace Character
                 wallNormal = wallNormal,
                 swinging = swinging,
                 ziplining = ziplining,
-                swimming = movementData.state.HasFlag(CharacterState.Swimming),
-                diving = movementData.state.HasFlag(CharacterState.Diving),
+                swimming = ((movementData.state & CharacterState.Swimming) != 0),
+                diving = ((movementData.state & CharacterState.Diving) != 0),
                 gripPoint = gripPoint,
                 gripDirection = gripDirection,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
@@ -555,7 +555,7 @@ namespace Character
             float rootHeight = transform.position.y;
             float scale = modelParent.lossyScale.y > 0f ? modelParent.lossyScale.y : 1f;
             bool steppingUp = movementController != null && movementController.lastFrameMovementData != null
-                              && movementController.lastFrameMovementData.state.HasFlag(CharacterState.SteppingUp);
+                              && ((movementController.lastFrameMovementData.state & CharacterState.SteppingUp) != 0);
             // Collision stepped the character up onto a stair, or down onto one, at once (see MovementData.stepChange).
             bool stepped = movementController != null && movementController.lastFrameMovementData != null
                            && movementController.lastFrameMovementData.stepChange != 0f;

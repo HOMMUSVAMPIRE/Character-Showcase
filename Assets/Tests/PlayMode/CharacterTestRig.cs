@@ -45,7 +45,7 @@ namespace CharacterShowcase.Tests
         /// <summary>The character's physics position (its feet), not the interpolated render position.</summary>
         public Vector3 Position => Body.position;
         public bool Grounded => Movement.lastFrameMovementData != null
-                                && Movement.lastFrameMovementData.state.HasFlag(CharacterState.Grounded);
+                                && ((Movement.lastFrameMovementData.state & CharacterState.Grounded) != 0);
 
         public CharacterTestRig()
         {
@@ -286,11 +286,11 @@ namespace CharacterShowcase.Tests
         }
 
         public bool Dashing => Movement.lastFrameMovementData != null
-                               && Movement.lastFrameMovementData.state.HasFlag(CharacterState.Dashing);
+                               && ((Movement.lastFrameMovementData.state & CharacterState.Dashing) != 0);
 
         /// <summary>Whether the character was in the given state (crouching, sliding, wall-running...) in the last step.</summary>
         public bool InState(CharacterState state) => Movement.lastFrameMovementData != null
-                                                     && Movement.lastFrameMovementData.state.HasFlag(state);
+                                                     && (Movement.lastFrameMovementData.state & state) != 0;
 
         /// <summary>The character's horizontal speed in the last step, in m/s.</summary>
         public float HorizontalSpeed

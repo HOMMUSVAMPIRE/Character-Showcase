@@ -76,8 +76,9 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
    missing or orphaned `.meta` files, duplicate GUIDs, an assembly referencing what the table above doesn't allow it,
    the camera, the level elements or the level builders using character code, fields the tests read by name that no longer exist (or are
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
-   (`[Category(TestArea.…)]`), on it or on a class it derives from, and a movement asset naming a component class that
-   no longer exists (renamed without `[MovedFrom]`).
+   (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
+   no longer exists (renamed without `[MovedFrom]`), and two `CharacterState` or `MovementEvents` members sharing a bit
+   (or one that isn't a single bit).
 2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run:
    ```
    <Unity> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
@@ -247,6 +248,10 @@ materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shaderg
 
 **A new movement ability:** follow [docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the
 component and its hooks, its state, flag and events, its place in the mode, animation, level fixtures, tests and docs).
+
+**A new character or model:** follow [docs/adding-a-character.md](docs/adding-a-character.md) (a new look for the
+humanoid, a character of its own as a prefab variant, or a creature); its failures are in docs/troubleshooting.md's New
+characters.
 
 **A new level mechanic, a new level piece, or a change to a builder:** follow
 [docs/adding-level-content.md](docs/adding-level-content.md).
