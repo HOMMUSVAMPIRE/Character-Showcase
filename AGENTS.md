@@ -261,7 +261,12 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
   - Where two candidates are equally good (two hits as near, two ropes), choose by `StableOrder`, never by the order
     results came in or instance IDs.
   - A character's state can be saved and put back between steps (`MovementController.SaveState`, `RestoreState`;
-    `Summarize` gives the compact, unmanaged part).
+    `Summarize` gives the compact, unmanaged part), the level's ropes and pushables with it (`WorldStateSnapshot`).
+  - It can also be written to bytes and read into a character of the same prefab in a level built the same way
+    (`StateSerializer`: the level's objects named by `Level.StableId`, the character's own by their paths from it,
+    assets kept). A new field on a character's state is carried by both without changes, if it's a plain value or
+    object; a reference to an asset or setting is left as the reader's.
+  - PhysX's Enhanced Determinism is on (`ProjectSettings/DynamicsManager.asset`).
   - The level's mechanics that move a character go by `Level.LevelClock` (a tick), not their own time since they were
     enabled.
 - **Abilities query the world through the `MovementController`** (`SweepBody`, `Raycast`, `OverlapSphere`,

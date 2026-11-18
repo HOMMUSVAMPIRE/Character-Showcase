@@ -9,12 +9,12 @@ namespace Character
     /// same world, are exactly the ones that followed it before. For rolling a character back to a past step and stepping
     /// it forward again (a networked game's correction from the server: restore its state for a tick, replay the inputs
     /// since). In this process only: it holds the character's own objects, and the scene objects it was on or holding by
-    /// reference. What crosses a network is its Summary.
+    /// reference. What crosses a network is StateSerializer's (WriteCharacter), or for drawing and correcting, its Summary.
     /// </summary>
     public sealed class MovementStateSnapshot
     {
         internal MovementController owner;
-        internal ObjectGraphSnapshot movement, controller;
+        internal ObjectGraphSnapshot movement, controller, source;
         internal Vector3 position;
         internal Quaternion rotation;
 
@@ -52,7 +52,8 @@ namespace Character
         /// <summary>
         /// Saves the character's movement state as it is now (between steps): the controller and everything of its own
         /// it reaches (its body, each ability's state, its input state, its last steps' data), its ACCharacterController's
-        /// (a change of size under way), and its Rigidbody's pose. Allocates: for a rollback, not every step.
+        /// (a change of size under way), its input source's if that's on it (an AI's progress), and its Rigidbody's pose.
+        /// The level's ropes and pushables are saved apart (WorldStateSnapshot). Allocates: for a rollback, not every step.
         /// </summary>
         public MovementStateSnapshot SaveState()
         {
@@ -62,6 +63,9 @@ namespace Character
                 owner = this,
                 movement = ObjectGraphSnapshot.Capture(this, typeof(MonoBehaviour)),
                 controller = character != null ? ObjectGraphSnapshot.Capture(character, typeof(MonoBehaviour)) : null,
+                // An input source on the character (an AI's): where it's got to is part of what it does next.
+                source = character != null && character.InputSource is CharacterInputSource own && own != null && own.transform.IsChildOf(transform)
+                    ? ObjectGraphSnapshot.Capture(own, typeof(MonoBehaviour)) : null,
                 position = PhysicsPosition,
                 rotation = rb != null ? rb.rotation : transform.rotation,
                 StepTick = StepTick,
@@ -78,6 +82,7 @@ namespace Character
             if (snapshot == null || snapshot.owner != this) { return false; }
             snapshot.movement.Restore();
             snapshot.controller?.Restore();
+            snapshot.source?.Restore();
             if (rb != null)
             {
                 rb.position = snapshot.position;

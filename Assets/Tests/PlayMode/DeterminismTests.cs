@@ -14,7 +14,8 @@ namespace CharacterShowcase.Tests
     /// bit for bit (pose and velocity), whatever else differs. A long session times things exactly as a fresh one (the
     /// character's tick clock); the same scene built in another order runs the same (stable choices between equally near
     /// floors, walls and ropes); a character saved mid-ability and put back (MovementController.SaveState, RestoreState),
-    /// the level's clock with it, steps on exactly as it did; and a run whose world needs Unity's physics steps (a moving
+    /// the level's clock with it, steps on exactly as it did, and so does a new character its state's written to bytes and
+    /// read into (StateSerializer); and a run whose world needs Unity's physics steps (a moving
     /// platform) is the same at another frame rate. What prediction in a networked game relies on: each difference
     /// would be a misprediction.
     /// </summary>
@@ -157,7 +158,7 @@ namespace CharacterShowcase.Tests
 
         // ---- Saved and put back ----
 
-        public enum Ability { Jumping, WallClimbing, Ziplining, OnAMovingPlatform, ChangingSize }
+        public enum Ability { Jumping, WallClimbing, Ziplining, OnAMovingPlatform, ChangingSize, RopeSwinging, Pushing }
 
         private IEnumerator SetUp(Ability ability)
         {
@@ -178,6 +179,17 @@ namespace CharacterShowcase.Tests
                     rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(2f, 1f, 0f), 3f, new Vector3(0f, 20f, 0f));
                     yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
                     break;
+                case Ability.RopeSwinging:
+                    rig.Floor();
+                    rig.Rope(new Vector3(0f, 4.5f, 2f), 3f);
+                    yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+                    break;
+                case Ability.Pushing:
+                    rig.Floor();
+                    yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+                    // As tall as PushPullTests' (too tall to vault), just ahead.
+                    rig.PushableBox(new Vector3(0f, 0.75f, rig.Position.z + rig.FrontExtent + 0.1f + 0.75f), Vector3.one * 1.5f, 1f, true);
+                    break;
                 default:
                     rig.Floor();
                     yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
@@ -195,6 +207,10 @@ namespace CharacterShowcase.Tests
                 case Ability.WallClimbing: return CharacterTestRig.Move(Vector3.forward);
                 case Ability.Ziplining: return CharacterTestRig.Idle();
                 case Ability.OnAMovingPlatform: return CharacterTestRig.Move(step < 20 ? Vector3.right * 0.3f : Vector3.zero);
+                // Into the rope, then hanging on and swinging: it swings by itself, so its own state matters.
+                case Ability.RopeSwinging: return step >= 10 && step < 22 ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(step < 10 ? Vector3.forward : Vector3.zero);
+                // Taking hold of the box and pushing it, then pulling it back.
+                case Ability.Pushing: return CharacterTestRig.Grab(step < 50 ? Vector3.forward : Vector3.back);
                 default:
                     if (step == 3) { rig.Controller.SetScale(new Vector3(1.4f, 1.4f, 1.4f)); }
                     return CharacterTestRig.Move(Vector3.forward * 0.5f);
@@ -206,13 +222,16 @@ namespace CharacterShowcase.Tests
             Ability.Jumping => CharacterState.Jumping,
             Ability.WallClimbing => CharacterState.WallClimbing,
             Ability.Ziplining => CharacterState.Ziplining,
+            Ability.RopeSwinging => CharacterState.RopeSwinging,
+            Ability.Pushing => CharacterState.Grabbing,
             _ => null,
         };
 
         /// <summary>
-        /// A character saved partway through (mid-jump, mid-climb, riding a zipline, on a moving platform, changing size)
-        /// and put back, the level's clock with it, then given the same frames again, steps on exactly as it did from
-        /// there: the snapshot holds everything a step reads or changes. The save is between steps, at a few ticks.
+        /// A character saved partway through (mid-jump, mid-climb, riding a zipline, on a moving platform, changing size,
+        /// swinging on a rope, pushing a box) and put back, the level with it (its ropes' and pushables' own state:
+        /// WorldStateSnapshot; its clock), then given the same frames again, steps on exactly as it did from there: the
+        /// snapshots hold everything a step reads or changes. The save is between steps, at a few ticks.
         /// </summary>
         [UnityTest]
         public IEnumerator SavedMidAbility_AndPutBack_StepsOnExactlyAsItDid([Values] Ability ability, [Values(12, 37)] int savedAt)
@@ -222,18 +241,52 @@ namespace CharacterShowcase.Tests
             var before = new List<Pose>();
             yield return Record(at, step => AbilityScript(ability, step), before);
             MovementStateSnapshot saved = rig.Movement.SaveState();
+            WorldStateSnapshot world = WorldStateSnapshot.Save();
             long levelTick = rig.LevelTick;
             Assert.That(saved.Summary.position, Is.EqualTo(rig.Position), "The summary should hold the character's pose.");
 
             var first = new List<Pose>();
             yield return Record(40, step => AbilityScript(ability, at + step), first, Doing(ability));
             Assert.That(rig.Movement.RestoreState(saved), Is.True);
+            world.Restore();
             rig.LevelTick = levelTick;
             Assert.That(rig.Movement.StepTick, Is.EqualTo(saved.StepTick), "Put back, its clock should be where it was.");
             var again = new List<Pose>();
             yield return Record(40, step => AbilityScript(ability, at + step), again);
             string differs = FirstDifference(first, again);
             Assert.That(differs, Is.Null, $"Put back and stepped on, the character should move exactly as it did: {differs}.");
+        }
+
+        // ---- Written to bytes, and read into a new character ----
+
+        /// <summary>
+        /// A character's state and the level's, written to bytes partway through an ability (StateSerializer), read into a
+        /// new character in the same level built again (the level's objects found by StableId, the character's own by
+        /// their paths from it), with the level's clock set as it was, steps on exactly as the first did from there, bit
+        /// for bit: what a networked game sends a client (or a player joining) to put a character where the server has it.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WrittenToBytes_AndReadIntoANewCharacter_StepsOnExactlyAsTheFirst([Values] Ability ability)
+        {
+            const int at = 24;
+            yield return SetUp(ability);
+            yield return Record(at, step => AbilityScript(ability, step), new List<Pose>());
+            byte[] character = StateSerializer.WriteCharacter(rig.Movement);
+            byte[] world = StateSerializer.WriteWorld();
+            long levelTick = rig.LevelTick;
+            var first = new List<Pose>();
+            yield return Record(40, step => AbilityScript(ability, at + step), first, Doing(ability));
+
+            yield return ReplaceRig();
+            yield return SetUp(ability);
+            StateSerializer.ReadCharacter(rig.Movement, character);
+            StateSerializer.ReadWorld(world);
+            rig.LevelTick = levelTick;
+            var again = new List<Pose>();
+            yield return Record(40, step => AbilityScript(ability, at + step), again);
+            string differs = FirstDifference(first, again);
+            TestContext.WriteLine($"The character's state was {character.Length} bytes, the level's {world.Length}.");
+            Assert.That(differs, Is.Null, $"Read into a new character, the state should step on exactly as it did: {differs}.");
         }
 
         // ---- At another frame rate ----
