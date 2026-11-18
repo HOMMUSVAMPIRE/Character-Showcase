@@ -47,7 +47,7 @@ Movement modes are shared assets, so what each character is doing lives on its `
 
 ## 5. Animation, if it has a look of its own
 1. Fields for it in `CharacterAnimationState`, filled by `AnimationController.BuildState`.
-2. A parameter on `AnimatorParameterTranslator`: its default name and its name setting (a serialized field, under Bool parameters), and a row in `BoolParameters` pairing that setting with the state's flag, which looks it up and sets it each frame. A float parameter, whose value is worked out (scaled or smoothed), also gets a hash field, a `Find` and its own line in `Driver.UpdateAnimation`.
+2. A parameter on `AnimatorParameterTranslator`: its default name and its name setting (a serialized field, under Bool or Float parameters), and a row pairing that setting with what it shows, which looks it up and sets it each frame: in `BoolParameters` for a bool (the state's flag), in `FloatParameters` for a float (its value from the state, as the authored model would move, and whether it's smoothed). Only a float set some of the time (Wall Side) or worked out from others (the playback parameters) is set by hand, in `Driver.UpdateAnimation`.
 3. In `MannequinGenerator`: the parameter, the crouch state's exclusions, and a state in `MannequinGenerator.AbilityStates.cs`.
 4. A clip in `Tools/Mannequin/mannequin_animations.py`, if it needs one.
 5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one: a subclass of `AbilityIK`, which hooks it into CharacterIK and eases it in and out, so it only places the limbs (`Solve`).

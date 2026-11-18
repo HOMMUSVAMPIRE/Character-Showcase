@@ -240,10 +240,44 @@ namespace Character
         /// <summary>Reads a flag of the animation state (by reference: the state is large, and read 20-odd times a frame).</summary>
         private delegate bool StateFlag(in CharacterAnimationState state);
 
+        /// <summary>Works out a float parameter's value from the animation state (by reference, as StateFlag).</summary>
+        private delegate float StateValue(in CharacterAnimationState state);
+
+        /// <summary>
+        /// The float parameters set each frame: each one's name setting (above, under Float parameters), its value from the
+        /// animation state, and whether it's smoothed (over Speed Damp Time). A new one is a row here and its name setting.
+        /// Speeds are given as the authored model would move: a scaled model's strides are scaled too, so playing its
+        /// clips for its speed divided by its stride scale keeps its planted feet in place at any size. Set by hand in
+        /// Driver.UpdateAnimation instead: Wall Side (set only during a wall run) and the playback parameters (worked out
+        /// from these as the Animator shows them).
+        /// </summary>
+        private static readonly (System.Func<AnimatorParameterTranslator, string> name, StateValue value, bool smoothed)[] FloatParameters =
+        {
+            (t => t.speedParameter, (in CharacterAnimationState s) => s.horizontalSpeed / s.StrideScale, true),
+            // Jump speeds scale with the character's speeds (see MovementController.SpeedScale), so this keeps the rising
+            // and falling poses at the same points of a jump at any size.
+            (t => t.verticalSpeedParameter, (in CharacterAnimationState s) => s.verticalSpeed / (s.speedScale > 0f ? s.speedScale : 1f), false),
+            (t => t.forwardSpeedParameter, (in CharacterAnimationState s) => s.localVelocity.z / ModelScale(s).z, true),
+            (t => t.sidewaysSpeedParameter, (in CharacterAnimationState s) => s.localVelocity.x / ModelScale(s).x, true),
+            (t => t.turnSpeedParameter, (in CharacterAnimationState s) => s.turnSpeed, true),
+            // As the authored model would push or pull.
+            (t => t.grabSpeedParameter, (in CharacterAnimationState s) => s.grabbing ? s.localVelocity.z / ModelScale(s).z : 0f, true),
+            (t => t.rollProgressParameter, (in CharacterAnimationState s) => s.rollProgress, false),
+            (t => t.climbProgressParameter, (in CharacterAnimationState s) => s.climbProgress, false),
+            (t => t.vaultProgressParameter, (in CharacterAnimationState s) => s.vaultProgress, false),
+            // Climbing, the character faces the surface, so its velocity relative to its facing is the climb: x to the
+            // right, y up. As the authored model would climb, so its hands keep their holds.
+            (t => t.climbRightParameter, (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.x / ModelScale(s).x : 0f, true),
+            (t => t.climbUpParameter, (in CharacterAnimationState s) => s.wallClimbing ? s.localVelocity.y / ModelScale(s).y : 0f, true),
+            (t => t.climbStepProgressParameter, (in CharacterAnimationState s) => s.climbStepProgress, false),
+        };
+
+        /// <summary>The model's scale in the animation state (unscaled if it gives none).</summary>
+        private static Vector3 ModelScale(in CharacterAnimationState state) => state.scale == Vector3.zero ? Vector3.one : state.scale;
+
         /// <summary>
         /// The bool parameters: each one's name setting (above, under Bool parameters) and the flag of the animation
-        /// state it shows, set as they are each frame. A new one is a row here and its name setting; a float parameter,
-        /// whose value is worked out (scaled, smoothed), is set by hand in Driver.UpdateAnimation.
+        /// state it shows, set as they are each frame. A new one is a row here and its name setting.
         /// </summary>
         private static readonly (System.Func<AnimatorParameterTranslator, string> name, StateFlag value)[] BoolParameters =
         {
@@ -276,7 +310,10 @@ namespace Character
         private sealed class Driver : ICharacterAnimationDriver
         {
             // Parameter hashes, or 0 for parameters to skip
-            private readonly int speed, verticalSpeed, forwardSpeed, sidewaysSpeed, turnSpeed, wallSide, grabSpeed, rollProgress, climbProgress, vaultProgress, climbRight, climbUp, climbStepProgress;
+            // The float parameters' hashes, in FloatParameters' order (0 to skip one).
+            private readonly int[] floatHashes = new int[FloatParameters.Length];
+            // Those the playback parameters read back (also in floatHashes), and Wall Side, set by hand; 0 to skip one.
+            private readonly int speed, climbRight, climbUp, wallSide;
             // The bool parameters' hashes, in BoolParameters' order (0 to skip one).
             private readonly int[] boolHashes = new int[BoolParameters.Length];
             private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
@@ -302,19 +339,11 @@ namespace Character
                     return 0;
                 }
 
+                for (int i = 0; i < floatHashes.Length; i++) { floatHashes[i] = Find(FloatParameters[i].name(settings), AnimatorControllerParameterType.Float); }
                 speed = Find(settings.speedParameter, AnimatorControllerParameterType.Float);
-                verticalSpeed = Find(settings.verticalSpeedParameter, AnimatorControllerParameterType.Float);
-                forwardSpeed = Find(settings.forwardSpeedParameter, AnimatorControllerParameterType.Float);
-                sidewaysSpeed = Find(settings.sidewaysSpeedParameter, AnimatorControllerParameterType.Float);
-                turnSpeed = Find(settings.turnSpeedParameter, AnimatorControllerParameterType.Float);
-                wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
-                grabSpeed = Find(settings.grabSpeedParameter, AnimatorControllerParameterType.Float);
-                rollProgress = Find(settings.rollProgressParameter, AnimatorControllerParameterType.Float);
-                climbProgress = Find(settings.climbProgressParameter, AnimatorControllerParameterType.Float);
-                vaultProgress = Find(settings.vaultProgressParameter, AnimatorControllerParameterType.Float);
                 climbRight = Find(settings.climbRightParameter, AnimatorControllerParameterType.Float);
                 climbUp = Find(settings.climbUpParameter, AnimatorControllerParameterType.Float);
-                climbStepProgress = Find(settings.climbStepProgressParameter, AnimatorControllerParameterType.Float);
+                wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
 
                 for (int i = 0; i < boolHashes.Length; i++) { boolHashes[i] = Find(BoolParameters[i].name(settings), AnimatorControllerParameterType.Bool); }
 
@@ -348,29 +377,17 @@ namespace Character
 
             public void UpdateAnimation(in CharacterAnimationState state, float deltaTime)
             {
-                // Speeds are given as the authored model would move: a scaled model's strides are scaled too, so playing
-                // the clips for its speed divided by its stride scale keeps its planted feet in place at any size.
-                Vector3 scale = state.scale == Vector3.zero ? Vector3.one : state.scale;
-                if (speed != 0) { animator.SetFloat(speed, state.horizontalSpeed / state.StrideScale, speedDampTime, deltaTime); }
-                // Jump speeds scale with the character's speeds (see MovementController.SpeedScale), so this keeps the
-                // rising and falling poses at the same points of a jump at any size.
-                float speedScale = state.speedScale > 0f ? state.speedScale : 1f;
-                if (verticalSpeed != 0) { animator.SetFloat(verticalSpeed, state.verticalSpeed / speedScale); }
-                if (forwardSpeed != 0) { animator.SetFloat(forwardSpeed, state.localVelocity.z / scale.z, speedDampTime, deltaTime); }
-                if (sidewaysSpeed != 0) { animator.SetFloat(sidewaysSpeed, state.localVelocity.x / scale.x, speedDampTime, deltaTime); }
-                if (turnSpeed != 0) { animator.SetFloat(turnSpeed, state.turnSpeed, speedDampTime, deltaTime); }
+                for (int i = 0; i < floatHashes.Length; i++)
+                {
+                    if (floatHashes[i] == 0) { continue; }
+                    float value = FloatParameters[i].value(state);
+                    if (FloatParameters[i].smoothed) { animator.SetFloat(floatHashes[i], value, speedDampTime, deltaTime); }
+                    else { animator.SetFloat(floatHashes[i], value); }
+                }
+                // Only during a wall run, and kept after it ends, so an animation leaving the wall doesn't swing through the middle.
                 if (wallSide != 0 && state.wallRunning && state.wallSide != 0f) { animator.SetFloat(wallSide, state.wallSide); }
-                // As the authored model would push or pull (see speed, above).
-                if (grabSpeed != 0) { animator.SetFloat(grabSpeed, state.grabbing ? state.localVelocity.z / scale.z : 0f, speedDampTime, deltaTime); }
-                if (rollProgress != 0) { animator.SetFloat(rollProgress, state.rollProgress); }
-                if (climbProgress != 0) { animator.SetFloat(climbProgress, state.climbProgress); }
-                if (vaultProgress != 0) { animator.SetFloat(vaultProgress, state.vaultProgress); }
-                // Climbing, the character faces the surface, so its velocity relative to its facing is the climb: x to the
-                // right, y up. As the authored model would climb (see speed, above), so its hands keep their holds.
-                if (climbRight != 0) { animator.SetFloat(climbRight, state.wallClimbing ? state.localVelocity.x / scale.x : 0f, speedDampTime, deltaTime); }
-                if (climbUp != 0) { animator.SetFloat(climbUp, state.wallClimbing ? state.localVelocity.y / scale.y : 0f, speedDampTime, deltaTime); }
+                // After the speeds they're worked out from (as the Animator shows them, smoothed).
                 SetPlayback(state);
-                if (climbStepProgress != 0) { animator.SetFloat(climbStepProgress, state.climbStepProgress); }
                 for (int i = 0; i < boolHashes.Length; i++)
                 {
                     if (boolHashes[i] != 0) { animator.SetBool(boolHashes[i], BoolParameters[i].value(state)); }
