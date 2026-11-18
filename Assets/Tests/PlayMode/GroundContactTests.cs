@@ -130,7 +130,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn(character);
             yield return Record($"{(sprint ? "Sprinting" : "Walking")}_{character}", 3f,
-                step => sprint ? CharacterTestRig.Sprint(Vector3.forward, step + 1) : CharacterTestRig.Move(Vector3.forward), AssertLevel);
+                step => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward), AssertLevel);
         }
 
         [UnityTest]
@@ -151,7 +151,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator CrouchWalking_OnLevelGround_HoldsItsHeight([ValueSource(nameof(Characters))] string character)
         {
             yield return Spawn(character);
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             Assume.That(rig.InState(CharacterState.Crouching), "The character should be crouched.");
             yield return Record($"CrouchWalking_{character}", 2f, _ => CharacterTestRig.Move(Vector3.forward), AssertLevel);

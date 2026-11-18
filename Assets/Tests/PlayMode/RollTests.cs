@@ -28,7 +28,7 @@ namespace CharacterShowcase.Tests
         {
             int count = 0;
             Vector3 during = inputDuringRoll ?? direction;
-            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(0, direction) : CharacterTestRig.Move(during),
+            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(direction) : CharacterTestRig.Move(during),
                 _ => { if (Rolling) { count++; } });
             rollingSteps(count);
         }
@@ -41,7 +41,7 @@ namespace CharacterShowcase.Tests
             Vector3 start = rig.Position;
             float lowest = float.PositiveInfinity;
             int steps = 0;
-            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(), _ =>
+            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(Vector3.right) : CharacterTestRig.Idle(), _ =>
             {
                 if (Rolling) { steps++; lowest = Mathf.Min(lowest, rig.CurrentHeight); }
             });
@@ -63,11 +63,11 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             rig.Component<Crouching>().Enabled = false;
             float standing = rig.StandingHeight, lowest = float.PositiveInfinity;
-            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(),
+            yield return rig.Run(RollSteps + 2, step => step == 0 ? CharacterTestRig.Roll(Vector3.right) : CharacterTestRig.Idle(),
                 _ => { if (Rolling) { lowest = Mathf.Min(lowest, rig.CurrentHeight); } });
             Assert.That(lowest, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "The character's posture is the mode's: a roll should still be low.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "After the roll it should stand up again.");
-            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step));
+            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch());
             Assert.That(rig.Movement.crouch.IsCrouched, Is.False, "With Crouching turned off, Crouch shouldn't crouch.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f));
         }
@@ -93,7 +93,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             int rollStarts = 0;
             bool was = false;
-            yield return rig.Run(RollDuration * 4f, step => CharacterTestRig.Roll(step), _ =>
+            yield return rig.Run(RollDuration * 4f, step => CharacterTestRig.Roll(), _ =>
             {
                 if (Rolling && !was) { rollStarts++; }
                 was = Rolling;
@@ -109,7 +109,7 @@ namespace CharacterShowcase.Tests
             if (pressAt <= RollSteps) { Assert.Ignore("The roll's cooldown is too short to press during it."); }
             int secondRollAt = -1;
             yield return rig.Run(cooldownEnds + RollSteps, step =>
-                    step == 0 ? CharacterTestRig.Roll(0) : step >= pressAt ? CharacterTestRig.Roll(step - pressAt) : CharacterTestRig.Idle(),
+                    step == 0 ? CharacterTestRig.Roll() : step >= pressAt ? CharacterTestRig.Roll() : CharacterTestRig.Idle(),
                 step => { if (step >= pressAt && secondRollAt < 0 && Rolling) { secondRollAt = step; } });
             Assert.That(secondRollAt, Is.GreaterThan(0), "A press just before the cooldown ends should be buffered.");
             Assert.That(secondRollAt, Is.EqualTo(cooldownEnds).Within(1), "The buffered roll should start as the cooldown ends, not during it.");
@@ -122,7 +122,7 @@ namespace CharacterShowcase.Tests
             float endSpeed = RollSpeed * rig.MovementSetting<AnimationCurve>("rollSpeedCurve").Evaluate(1f);
             float fastest = 0f, slowest = float.PositiveInfinity;
             bool rolled = false;
-            yield return rig.Run(RollSteps + CharacterTestRig.StepsFor(0.6f), step => step == 0 ? CharacterTestRig.Roll(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
+            yield return rig.Run(RollSteps + CharacterTestRig.StepsFor(0.6f), step => step == 0 ? CharacterTestRig.Roll(Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
             {
                 if (Rolling) { rolled = true; return; }
                 if (!rolled) { return; }
@@ -140,7 +140,7 @@ namespace CharacterShowcase.Tests
         {
             rig.SpawnCharacter(new Vector3(0f, 20f, 0f));
             bool rolled = false;
-            yield return rig.Run(0.4f, step => CharacterTestRig.Roll(step, Vector3.forward), _ => rolled |= Rolling);
+            yield return rig.Run(0.4f, step => CharacterTestRig.Roll(Vector3.forward), _ => rolled |= Rolling);
             Assert.That(rolled, Is.False, "A roll only happens on the ground.");
         }
 
@@ -271,7 +271,7 @@ namespace CharacterShowcase.Tests
             int held = -1;
             yield return rig.Run(2f, _ =>
             {
-                if (held >= 0 || rig.Position.y < 0.3f) { held++; return CharacterTestRig.Jump(held, Vector3.right); }
+                if (held >= 0 || rig.Position.y < 0.3f) { held++; return CharacterTestRig.Jump(Vector3.right); }
                 return CharacterTestRig.Move(Vector3.right);
             }, _ => rolled |= Rolling);
             Assert.That(events.Contains(MovementEvents.Jumped), Is.True, "Test setup: the character should have jumped on landing.");
@@ -283,7 +283,7 @@ namespace CharacterShowcase.Tests
         {
             yield return rig.StandOnFloor();
             bool rolled = false;
-            yield return rig.Run(2f, step => CharacterTestRig.Jump(step, Vector3.right), _ => rolled |= Rolling);
+            yield return rig.Run(2f, step => CharacterTestRig.Jump(Vector3.right), _ => rolled |= Rolling);
             Assert.That(rolled, Is.False, "Landing from an ordinary jump on flat ground shouldn't roll.");
         }
 
@@ -324,7 +324,7 @@ namespace CharacterShowcase.Tests
             {
                 // An air dash along +X once the feet are a third of the landing roll's fall above the floor.
                 if (dashStep < 0 && rig.Position.y < LandingRollMinFall / 3f) { dashStep = step; }
-                return dashStep == step ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Move(Vector3.right);
+                return dashStep == step ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Move(Vector3.right);
             }, _ => { rolled |= Rolling; dashed |= rig.Dashing; });
             Assert.That(dashed, Is.True, "Test setup: the character should have dashed.");
             Assert.That(rolled, Is.False, "A dash just before landing should start the fall again from it, too low to roll.");
@@ -345,7 +345,7 @@ namespace CharacterShowcase.Tests
             {
                 // A tap of an air jump half a metre above the floor.
                 if (jumpStep < 0 && rig.Position.y < 0.5f && !rig.Grounded) { jumpStep = step; }
-                return jumpStep == step ? CharacterTestRig.Jump(0, Vector3.right) : CharacterTestRig.Move(Vector3.right);
+                return jumpStep == step ? CharacterTestRig.Jump(Vector3.right) : CharacterTestRig.Move(Vector3.right);
             }, _ => rolled |= Rolling);
             Assert.That(events.Contains(MovementEvents.AirJumped), Is.True, "Test setup: the character should have air jumped.");
             Assert.That(rolled, Is.False, "A jump just before landing should start the fall again from its top, too low to roll.");

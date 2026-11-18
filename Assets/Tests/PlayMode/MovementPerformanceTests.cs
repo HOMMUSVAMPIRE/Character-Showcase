@@ -91,12 +91,11 @@ namespace CharacterShowcase.Tests
             float angle = (step * 2f + i * 37f) % 360f;
             Vector3 direction = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
             int jumpAt = (step + i * 7) % 45, dashAt = (step + i * 11) % 120;
-            if (jumpAt < 8) { Inputs jump = CharacterTestRig.Jump(jumpAt, direction); jump.sprint = Held(); return jump; }
-            if (dashAt == 0) { return CharacterTestRig.Dash(0, direction); }
-            return CharacterTestRig.Sprint(direction, step);
+            if (jumpAt < 8) { Inputs jump = CharacterTestRig.Jump(direction); jump.sprint = CharacterTestRig.Held(); return jump; }
+            if (dashAt == 0) { return CharacterTestRig.Dash(direction); }
+            return CharacterTestRig.Sprint(direction);
         }
 
-        private static InputButton Held() => new() { value = true, holdDuration = 1f };
 
         [UnityTest]
         public IEnumerator ManyCharactersMoving_StepWithinBudget()
@@ -113,7 +112,7 @@ namespace CharacterShowcase.Tests
                 stopwatch.Restart();
                 for (int i = 0; i < characters.Count; i++)
                 {
-                    characters[i].ProcessMovementInputs(InputsFor(i, step));
+                    characters[i].ProcessMovementInputs(CharacterInputFrame.Holding(InputsFor(i, step), characters[i].Tick));
                     characters[i].MovementCleanup();
                 }
                 stopwatch.Stop();

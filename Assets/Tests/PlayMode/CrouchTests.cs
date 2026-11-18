@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests
 
         /// <summary>Presses Crouch for one step, then lets go, with the given movement input throughout.</summary>
         private IEnumerator PressCrouch(Vector3 direction = default) =>
-            rig.Run(3, step => step == 0 ? CharacterTestRig.Crouch(0, direction) : CharacterTestRig.Move(direction));
+            rig.Run(3, step => step == 0 ? CharacterTestRig.Crouch(direction) : CharacterTestRig.Move(direction));
 
 
         [UnityTest]
@@ -57,12 +57,12 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.1f, _ => CharacterTestRig.Idle(), Visuals);
             Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-3f), "Standing, the eye point is at the eye height.");
 
-            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Visuals);
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), Visuals);
             Assume.That(Crouched, Is.True, "Test setup: the character should be crouched.");
             Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight * rig.CrouchHeight).Within(0.01f),
                 "Crouched, the eye point should be lowered with the body.");
 
-            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Visuals);
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), Visuals);
             Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-3f), "Standing again, it's back up.");
         }
 
@@ -130,9 +130,9 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             rig.SetMovementSetting("holdToCrouch", true);
 
-            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step));
+            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch());
             Assert.That(Crouched, Is.True, "Holding Crouch should crouch.");
-            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch(step + 15));
+            yield return rig.Run(0.3f, step => CharacterTestRig.Crouch());
             Assert.That(Crouched, Is.True, "Still holding Crouch should stay crouched.");
             yield return rig.Run(2, _ => CharacterTestRig.Idle());
             Assert.That(Crouched, Is.False, "Letting go of Crouch should stand up.");
@@ -144,7 +144,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             int crouchStarts = 0;
             bool was = false;
-            yield return rig.Run(1f, step => CharacterTestRig.Crouch(step), _ =>
+            yield return rig.Run(1f, step => CharacterTestRig.Crouch(), _ =>
             {
                 if (Crouched && !was) { crouchStarts++; }
                 was = Crouched;
@@ -159,7 +159,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             yield return PressCrouch();
             float highest = rig.Position.y;
-            yield return rig.Run(0.4f, step => CharacterTestRig.Jump(step), _ => highest = Mathf.Max(highest, rig.Position.y));
+            yield return rig.Run(0.4f, step => CharacterTestRig.Jump(), _ => highest = Mathf.Max(highest, rig.Position.y));
             Assert.That(highest, Is.GreaterThan(0.5f), "Jumping from a crouch should jump.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f), "Jumping from a crouch should stand up.");
 
@@ -172,7 +172,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Low Ceiling", rig.Position + Vector3.up * (underside + 0.5f), new Vector3(4f, 1f, 4f));
             float startY = rig.Position.y;
             highest = startY;
-            yield return rig.Run(0.4f, step => CharacterTestRig.Jump(step), _ => highest = Mathf.Max(highest, rig.Position.y));
+            yield return rig.Run(0.4f, step => CharacterTestRig.Jump(), _ => highest = Mathf.Max(highest, rig.Position.y));
             Assert.That(highest - startY, Is.LessThan(0.01f), "With no room to stand, jumping from a crouch should do nothing.");
             Assert.That(Crouched, Is.True);
         }
@@ -191,8 +191,8 @@ namespace CharacterShowcase.Tests
             int dashingAfterJump = 0;
             yield return rig.Run(dashSteps, step =>
             {
-                Inputs inputs = CharacterTestRig.Dash(step, Vector3.forward);
-                if (step >= 2) { inputs.jump = CharacterTestRig.Held(step - 2); }
+                Inputs inputs = CharacterTestRig.Dash(Vector3.forward);
+                if (step >= 2) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, step => { if (step >= 2 && rig.Dashing) { dashingAfterJump++; } });
             Assert.That(dashingAfterJump, Is.GreaterThan(0), "With no room to stand and jump, a jump press shouldn't cancel the dash.");

@@ -86,8 +86,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator Diving_RaisesHeadSubmerged_AndRisingBack_RaisesHeadSurfaced()
         {
             yield return SwimmingAtTheSurface();
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0), Step);
-            yield return rig.Run(1f, step => CharacterTestRig.Crouch(step + 1), Step);
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch(), Step);
+            yield return rig.Run(1f, step => CharacterTestRig.Crouch(), Step);
             Assert.That(raised.Count, Is.EqualTo(1), "Diving under, the head should go under once.");
             Assert.That(raised[0].submerged, Is.True);
             Assert.That(raised[0].water, Is.SameAs(water));
@@ -95,7 +95,7 @@ namespace CharacterShowcase.Tests
             Assert.That(animation.IsHeadUnderwater, Is.True);
             Assert.That(animation.HeadWater, Is.SameAs(water));
 
-            yield return rig.RunUntil(() => raised.Count > 1, step => CharacterTestRig.Jump(step), Step, timeoutSeconds: 5f);
+            yield return rig.RunUntil(() => raised.Count > 1, step => CharacterTestRig.Jump(), Step, timeoutSeconds: 5f);
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), Step);
             Assert.That(raised.Count, Is.EqualTo(2), "Rising back up, the head should come up once.");
             Assert.That(raised[1].submerged, Is.False);

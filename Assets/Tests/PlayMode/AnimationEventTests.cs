@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests
             var received = new List<(MovementEvents movementEvent, CharacterAnimationState state)>();
             rig.Animation.MovementEventReceived += (movementEvent, state) => received.Add((movementEvent, state));
 
-            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
 
             Assert.That(received.Select(r => r.movementEvent), Is.EqualTo(rig.EventsRaised),
                 "The AnimationController should pass on every movement event, in order.");

@@ -235,19 +235,34 @@ namespace Character
         private static readonly ProfilerMarker CollisionMarker = new("Movement.Collision");
 
         /// <summary>
-        /// One physics step of the character's movement, called by the ACCharacterController in FixedUpdate (so every
-        /// character steps in the same order): the step's starting state (StartStep), what the movement mode makes of the
-        /// inputs (RunMovementMode), then resolving that against the world and moving the Rigidbody (ResolveAndApply).
+        /// One physics step of the character's movement, given the step's input frame, called by the ACCharacterController
+        /// in FixedUpdate (so every character steps in the same order): the step's starting state (StartStep), the input
+        /// worked out from the frame (InputState), what the movement mode makes of it (RunMovementMode), then resolving
+        /// that against the world and moving the Rigidbody (ResolveAndApply).
         /// </summary>
-        public void ProcessMovementInputs(Inputs inputs)
+        public void ProcessMovementInputs(in CharacterInputFrame frame)
         {
             using (StepMarker.Auto())
             {
                 MovementData data = StartStep();
-                RunMovementMode(data, inputs);
+                InputState.Advance(frame, data.deltaTime);
+                RunMovementMode(data, InputState.View);
                 ResolveAndApply(data);
+                Tick++;
             }
         }
+
+        /// <summary>
+        /// The character's input as its movement reads it, worked out each step from the frames it's given (presses and
+        /// hold durations counted in steps). Part of its state.
+        /// </summary>
+        public InputState InputState { get; } = new();
+
+        /// <summary>
+        /// The step the character takes next: how many it has taken. The frame for it is tagged with it
+        /// (CharacterInputFrame.tick), as an input source or a recording sees it.
+        /// </summary>
+        public uint Tick { get; private set; }
 
         /// <summary>
         /// Advances the character's clock and starts the step's movement data from where the last step left the

@@ -18,7 +18,7 @@ namespace CharacterShowcase.Tests
     {
 
         private static Inputs Forward(bool sprint, int step) =>
-            sprint ? CharacterTestRig.Sprint(Vector3.forward, step + 40) : CharacterTestRig.Move(Vector3.forward);
+            sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
 
         private float SpeedFor(bool sprint) => sprint ? rig.RunSpeed : rig.WalkSpeed;
 
@@ -39,7 +39,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1.5f, i =>
             {
                 Inputs inputs = Forward(sprint, i);
-                inputs.jump = CharacterTestRig.Held(i);
+                inputs.jump = CharacterTestRig.Held();
                 inputs.jump.value = i < 3;
                 return inputs;
             }, _ =>
@@ -66,7 +66,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.8f, i =>
             {
                 Inputs inputs = Forward(sprint, i);
-                if (i < 5) { inputs.jump = CharacterTestRig.Held(i); }
+                if (i < 5) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, _ =>
             {
@@ -88,7 +88,7 @@ namespace CharacterShowcase.Tests
             {
                 Inputs inputs = Forward(sprint, i);
                 if (i == pressAt) { held = 0; }
-                inputs.jump = CharacterTestRig.Held(held);
+                inputs.jump = CharacterTestRig.Held();
                 inputs.jump.value = i >= pressAt && held < 12;
                 held++;
                 return inputs;
@@ -116,7 +116,7 @@ namespace CharacterShowcase.Tests
             {
                 if (landed) { return CharacterTestRig.Move(Vector3.forward); }
                 Inputs inputs = Forward(true, i);
-                inputs.jump = CharacterTestRig.Held(i);
+                inputs.jump = CharacterTestRig.Held();
                 inputs.jump.value = i < 30;
                 return inputs;
             }, _ =>

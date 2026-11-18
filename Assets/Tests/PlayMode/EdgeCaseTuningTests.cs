@@ -50,7 +50,7 @@ namespace CharacterShowcase.Tests
             Quaternion facing = rig.Body.rotation;
 
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.right), _ => AssertSane("Walking at zero speed"));
-            yield return rig.Run(0.5f, i => CharacterTestRig.Sprint(Vector3.left, i), _ => AssertSane("Sprinting at zero speed"));
+            yield return rig.Run(0.5f, i => CharacterTestRig.Sprint(Vector3.left), _ => AssertSane("Sprinting at zero speed"));
 
             Vector3 moved = rig.Position - start;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.01f), "A character with no speed shouldn't move.");
@@ -66,9 +66,9 @@ namespace CharacterShowcase.Tests
             rig.SetMovementSetting("runSpeed", walkSpeed * runSpeedOfWalkSpeed);
 
             // Get up to speed, then time a second of sprinting.
-            yield return rig.Run(0.5f, i => CharacterTestRig.Sprint(Vector3.forward, i));
+            yield return rig.Run(0.5f, i => CharacterTestRig.Sprint(Vector3.forward));
             float startZ = rig.Position.z;
-            yield return rig.Run(1f, i => CharacterTestRig.Sprint(Vector3.forward, i + 25));
+            yield return rig.Run(1f, i => CharacterTestRig.Sprint(Vector3.forward));
             float speed = (rig.Position.z - startZ) / (CharacterTestRig.StepsFor(1f) * Time.fixedDeltaTime);
 
             Assert.That(speed, Is.EqualTo(rig.WalkSpeed).Within(0.05f * rig.WalkSpeed),
@@ -86,7 +86,7 @@ namespace CharacterShowcase.Tests
             float highest = 0f;
             for (int press = 0; press < 3; press++)
             {
-                yield return rig.Run(0.3f, i => CharacterTestRig.Jump(i), _ => highest = Mathf.Max(highest, rig.Position.y));
+                yield return rig.Run(0.3f, i => CharacterTestRig.Jump(), _ => highest = Mathf.Max(highest, rig.Position.y));
                 yield return rig.Run(0.1f, _ => CharacterTestRig.Idle());
             }
 
@@ -107,7 +107,7 @@ namespace CharacterShowcase.Tests
             const int presses = maxJumps + 3;
             for (int press = 0; press < presses; press++)
             {
-                yield return rig.Run(0.1f, i => CharacterTestRig.Jump(i));
+                yield return rig.Run(0.1f, i => CharacterTestRig.Jump());
                 yield return rig.Run(0.05f, _ => CharacterTestRig.Idle());
             }
 
@@ -126,7 +126,7 @@ namespace CharacterShowcase.Tests
             rig.SetMovementSetting("gravityStrength", 0f);
 
             float lowestAfterTakeOff = float.PositiveInfinity;
-            yield return rig.Run(0.2f, i => CharacterTestRig.Jump(i), _ => AssertSane("Jumping without gravity"));
+            yield return rig.Run(0.2f, i => CharacterTestRig.Jump(), _ => AssertSane("Jumping without gravity"));
             float atRelease = rig.Position.y;
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), _ =>
             {
@@ -161,7 +161,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "The character should stand on the floor.");
 
             // And jumps and lands again under it.
-            yield return rig.Run(0.2f, i => CharacterTestRig.Jump(i));
+            yield return rig.Run(0.2f, i => CharacterTestRig.Jump());
             yield return rig.RunUntilLanded(_ => lowest = Mathf.Min(lowest, rig.Position.y));
             Assert.That(lowest, Is.GreaterThan(-0.01f), "Landing from a jump, the character went into the floor.");
             Assert.That(rig.Grounded, Is.True);
@@ -195,7 +195,7 @@ namespace CharacterShowcase.Tests
             else
             {
                 rig.SetMovementSetting("dashSpeed", 500f); // 10 m per physics step.
-                yield return rig.Run(0.5f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Idle(), track);
+                yield return rig.Run(0.5f, i => i == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Idle(), track);
             }
 
             Assert.That(furthest, Is.LessThanOrEqualTo(face - radius + 0.01f), $"{how} at speed, the character went into or through the wall.");
@@ -212,7 +212,7 @@ namespace CharacterShowcase.Tests
             Vector3 start = rig.Position;
 
             // No stick input with the press, which would walk the character a step: a dash would go straight ahead anyway.
-            yield return rig.Run(0.3f, i => i == 0 ? CharacterTestRig.Dash(0) : CharacterTestRig.Idle(), _ =>
+            yield return rig.Run(0.3f, i => i == 0 ? CharacterTestRig.Dash() : CharacterTestRig.Idle(), _ =>
             {
                 AssertSane("Dashing for no time");
                 Assert.That(rig.Dashing, Is.False, "A dash that lasts no time shouldn't be dashing.");
@@ -231,7 +231,7 @@ namespace CharacterShowcase.Tests
             float duration = rig.Component<Dashing>().DashDuration;
             Vector3 start = rig.Position;
 
-            yield return rig.Run(duration + 0.1f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle(),
+            yield return rig.Run(duration + 0.1f, i => i == 0 ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Idle(),
                 _ => AssertSane("Dashing at no speed"));
 
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(1));
@@ -254,7 +254,7 @@ namespace CharacterShowcase.Tests
             int giveUp = CharacterTestRig.StepsFor(rig.Component<Dashing>().DashDuration * rig.Movement.DurationScale + 0.5f);
             Vector3 start = rig.Position;
 
-            yield return rig.Run(1, _ => CharacterTestRig.Dash(0, Vector3.right), _ => AssertSane("Dashing on an empty speed curve"));
+            yield return rig.Run(1, _ => CharacterTestRig.Dash(Vector3.right), _ => AssertSane("Dashing on an empty speed curve"));
             Assume.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(1), "Test setup: the dash should start.");
             yield return rig.RunUntil(() => rig.Count(MovementEvents.DashEnded) > 0, _ => CharacterTestRig.Idle(),
                 _ => AssertSane("Dashing on an empty speed curve"), giveUp * Time.fixedDeltaTime);
@@ -273,12 +273,12 @@ namespace CharacterShowcase.Tests
             float duration = rig.Component<Dashing>().DashDuration;
 
             // Held through three dashes' worth of time: one dash.
-            yield return rig.Run(3f * duration, i => CharacterTestRig.Dash(i, Vector3.right));
+            yield return rig.Run(3f * duration, i => CharacterTestRig.Dash(Vector3.right));
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(1), "Holding dash should dash once, even with no cooldown.");
 
             // Let go, and press again: straight away, another.
             yield return rig.Run(1, _ => CharacterTestRig.Idle());
-            yield return rig.Run(1, _ => CharacterTestRig.Dash(0, Vector3.left));
+            yield return rig.Run(1, _ => CharacterTestRig.Dash(Vector3.left));
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(2), "With no cooldown, a new press should dash at once.");
         }
 
@@ -288,14 +288,14 @@ namespace CharacterShowcase.Tests
             yield return Settle();
             rig.SetMovementSetting("maxAirDashes", 0);
 
-            yield return rig.Run(0.15f, i => CharacterTestRig.Jump(i));
+            yield return rig.Run(0.15f, i => CharacterTestRig.Jump());
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should be in the air.");
-            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle());
+            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Idle());
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(0), "A character with no air dashes dashed in the air.");
 
             yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
-            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle());
+            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Idle());
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(1), "It should still dash on the ground.");
         }
 
@@ -306,14 +306,21 @@ namespace CharacterShowcase.Tests
         {
             yield return Settle();
             rig.SetMovementSetting("jumpInputBuffer", 0f);
+            rig.SetMovementSetting("maxJumps", 1);
 
-            // A press already held for a step when it's first seen is outside a buffer of 0.
-            yield return rig.Run(0.2f, i => CharacterTestRig.Jump(i + 1));
-            Assert.That(rig.Count(MovementEvents.Jumped), Is.EqualTo(0), "With no input buffer, a press held from before shouldn't jump.");
+            // A jump, let go, then Jump pressed again in the air (where, with no air jumps, it can't jump) and held down
+            // onto the ground: the press was made steps before it could jump, outside a buffer of 0, so it doesn't jump
+            // on landing. (The character sees a press on the step its frame first holds the button: see InputState.)
+            yield return rig.Run(1, i => CharacterTestRig.Jump());
+            yield return rig.Run(5, _ => CharacterTestRig.Idle());
+            Assume.That(rig.Grounded, Is.False, "Test setup: the character should be in the air.");
+            yield return rig.RunUntilBackOnTheGround(i => CharacterTestRig.Jump());
+            yield return rig.Run(0.2f, i => CharacterTestRig.Jump());
+            Assert.That(rig.Count(MovementEvents.Jumped), Is.EqualTo(1), "With no input buffer, a press held from before landing shouldn't jump.");
 
             yield return rig.Run(1, _ => CharacterTestRig.Idle());
-            yield return rig.Run(0.1f, i => CharacterTestRig.Jump(i));
-            Assert.That(rig.Count(MovementEvents.Jumped), Is.EqualTo(1), "A press on the step it happens should still jump.");
+            yield return rig.Run(0.1f, i => CharacterTestRig.Jump());
+            Assert.That(rig.Count(MovementEvents.Jumped), Is.EqualTo(2), "A press on the step it happens should still jump.");
         }
 
         [UnityTest]
@@ -328,7 +335,7 @@ namespace CharacterShowcase.Tests
 
             // Walk off, and press jump two steps after leaving the ground.
             int airborneSteps = 0;
-            yield return rig.Run(rig.SecondsToWalk(0.8f, 0.5f), i => airborneSteps == 2 ? CharacterTestRig.Jump(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
+            yield return rig.Run(rig.SecondsToWalk(0.8f, 0.5f), i => airborneSteps == 2 ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
                 _ => { if (!rig.Grounded || airborneSteps > 0) { airborneSteps++; } });
 
             Assert.That(airborneSteps, Is.GreaterThan(2), "Test setup: the character should have walked off the ledge.");

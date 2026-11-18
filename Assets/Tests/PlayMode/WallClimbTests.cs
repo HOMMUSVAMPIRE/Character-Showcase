@@ -270,7 +270,7 @@ namespace CharacterShowcase.Tests
             rig.ClearEvents();
             var events = rig.EventsRaised;
             Vector3 launch = Vector3.zero;
-            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
+            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle(), step =>
             {
                 if (step == 0) { launch = rig.Velocity; }
             });
@@ -293,7 +293,7 @@ namespace CharacterShowcase.Tests
             float delay = rig.MovementSetting<float>("wallClimbRegrabDelay");
             float letGoAt = rig.Position.y;
             bool climbedDuringDelay = false;
-            yield return rig.Run(delay - 0.05f, step => step == 0 ? CharacterTestRig.Crouch(0, Vector3.forward) : Up,
+            yield return rig.Run(delay - 0.05f, step => step == 0 ? CharacterTestRig.Crouch(Vector3.forward) : Up,
                 _ => climbedDuringDelay |= Climbing);
             Assert.That(climbedDuringDelay, Is.False, "Crouch should let go, and the wall shouldn't be taken hold of again before the regrab delay.");
             Assert.That(rig.Position.y, Is.LessThan(letGoAt - 0.1f), "Having let go, the character should fall.");
@@ -336,7 +336,7 @@ namespace CharacterShowcase.Tests
             yield return TakeHold();
             yield return rig.Run(1f, _ => Up);
             bool exited = false;
-            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), _ => exited |= rig.Movement.wallClimb.IsExiting);
+            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), _ => exited |= rig.Movement.wallClimb.IsExiting);
             Assert.That(Climbing, Is.False, "Crouch should let go.");
             Assert.That(exited, Is.False, "Letting go in mid-air shouldn't play stepping off.");
         }
@@ -435,7 +435,7 @@ namespace CharacterShowcase.Tests
             if (maxAirDashes < 1) { Assert.Ignore("The character has no air dashes."); }
             // Never on the ground yet, and an air dash at the wall: no jumps or air dashes left.
             int dashesUsed = 0;
-            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : Up,
+            yield return rig.Run(0.6f, step => step == 0 ? CharacterTestRig.Dash(Vector3.forward) : Up,
                 _ => dashesUsed = Mathf.Max(dashesUsed, rig.Movement.dash.airDashesUsed));
             Assert.That(dashesUsed, Is.EqualTo(1), "Test setup: the character should have used an air dash.");
             Assert.That(Climbing, Is.True, "Test setup: the character should have taken hold of the wall.");

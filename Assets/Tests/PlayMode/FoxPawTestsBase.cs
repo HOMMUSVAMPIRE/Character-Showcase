@@ -169,7 +169,7 @@ namespace CharacterShowcase.Tests
             if (boxes == null)
             {
                 boxes = new List<Box>();
-                foreach (BoxCollider box in Object.FindObjectsByType<BoxCollider>(FindObjectsSortMode.None))
+                foreach (BoxCollider box in Object.FindObjectsByType<BoxCollider>())
                 {
                     if (box.transform.IsChildOf(rig.Character.transform)) { continue; }
                     boxes.Add(new Box

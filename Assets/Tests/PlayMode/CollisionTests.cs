@@ -63,7 +63,7 @@ namespace CharacterShowcase.Tests
             int stepsAtCeiling = 0;
             float highest = float.NegativeInfinity;
             int fewestJumps = int.MaxValue;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Jump(step), _ =>
+            yield return rig.Run(0.5f, step => CharacterTestRig.Jump(), _ =>
             {
                 highest = Mathf.Max(highest, rig.Position.y);
                 if (rig.Position.y > headroom - 0.03f) { stepsAtCeiling++; }
@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests
             GameObject wall = rig.Box("Wall", new Vector3(0f, 20f, face + 0.5f), new Vector3(10f, 100f, 1f));
 
             int dashSteps = CharacterTestRig.StepsFor(dash.DashDuration);
-            yield return rig.Run(dashSteps + 3, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Idle());
+            yield return rig.Run(dashSteps + 3, step => step == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Idle());
             Assert.That(rig.Position.z, Is.EqualTo(face - rig.FrontExtent).Within(0.05f), "The dash should end against the wall.");
 
             // Take the wall away: momentum the wall blocked shouldn't still be there to carry the character onward.

@@ -4,7 +4,10 @@ using UnityEngine.InputSystem;
 namespace Character
 {
     /// <summary>
-    /// A singleton class that manages player inputs
+    /// Reads the player's device (through a PlayerInput) each render frame, and gives the character one input frame per
+    /// physics step (FrameFor: see InputLatch), so a tap between two physics steps still counts and a frame that runs two
+    /// steps doesn't press a button twice. The look in each frame is the main camera's. One per scene (a second destroys
+    /// itself): instance.
     /// </summary>
     public class ACInputManager : MonoBehaviour
     {
@@ -15,16 +18,12 @@ namespace Character
         [Tooltip("The PlayerInput the character's actions are read from.")]
         public PlayerInput inputSource = null;
 
-        /// <summary>
-        /// The current movement input data for the player, read anew each frame (Update). The same object (and buttons)
-        /// throughout, updated in place, so reading it allocates nothing: read what you need from it each step.
-        /// </summary>
-        public Inputs inputs { get; private set; }
+        private readonly InputLatch latch = new();
 
         // The actions read, looked up by name once (FindAction searches by string) and again only if the action map
         // changes; null for one the map doesn't have, which reads as never pressed.
         private InputActionMap actionMap;
-        private InputAction move, jump, dash, sprint, crouch, roll, interact;
+        private InputAction move, jump, dash, sprint, crouch, roll, interact, attack;
 
         /// <summary>
         /// Set up the singleton instance
@@ -37,34 +36,34 @@ namespace Character
                 return;
             }
             instance = this;
-            inputs = new()
-            {
-                movementVector = Vector3.zero,
-                jump = new(),
-                dash = new(),
-                sprint = new(),
-                crouch = new(),
-                roll = new(),
-                grab = new(),
-            };
         }
 
         /// <summary>
-        /// Collect inputs from Unity's input system and compile them into a format useable by the movement system
+        /// The input frame for the character's physics step tick (its MovementController.Tick): see InputLatch. The same
+        /// frame for every character asking within one physics step.
         /// </summary>
+        public CharacterInputFrame FrameFor(uint tick) => latch.Take(tick, Time.fixedTime);
+
+        /// <summary>Reads the device for this render frame into the latch.</summary>
         private void Update()
         {
             if (inputSource.currentActionMap != actionMap) { FindActions(inputSource.currentActionMap); }
 
-            Vector2 moveVector2D = move != null ? move.ReadValue<Vector2>() : Vector2.zero;
-            inputs.movementVector = new Vector3(moveVector2D.x, 0, moveVector2D.y);
-            ReadButton(jump, inputs.jump);
-            ReadButton(dash, inputs.dash);
-            ReadButton(sprint, inputs.sprint);
-            ReadButton(crouch, inputs.crouch);
-            ReadButton(roll, inputs.roll);
+            Vector2 moveInput = move != null ? move.ReadValue<Vector2>() : Vector2.zero;
+            InputButtons down = InputButtons.None, pressed = InputButtons.None;
+            ReadButton(jump, InputButtons.Jump, ref down, ref pressed);
+            ReadButton(dash, InputButtons.Dash, ref down, ref pressed);
+            ReadButton(sprint, InputButtons.Sprint, ref down, ref pressed);
+            ReadButton(crouch, InputButtons.Crouch, ref down, ref pressed);
+            ReadButton(roll, InputButtons.Roll, ref down, ref pressed);
             // Grabbing objects to push or pull is the Interact button, held.
-            ReadButton(interact, inputs.grab);
+            ReadButton(interact, InputButtons.Grab, ref down, ref pressed);
+            ReadButton(attack, InputButtons.Attack, ref down, ref pressed);
+
+            Camera view = Camera.main;
+            Vector3 look = view != null ? view.transform.rotation.eulerAngles : Vector3.zero;
+            // Euler pitch is 0 to 360, down positive: as degrees up, -90 to 90.
+            latch.Sample(moveInput, look.y, -Mathf.DeltaAngle(0f, look.x), down, pressed);
         }
 
         private void FindActions(InputActionMap map)
@@ -77,21 +76,18 @@ namespace Character
             crouch = map?.FindAction("Crouch");
             roll = map?.FindAction("Roll");
             interact = map?.FindAction("Interact");
+            attack = map?.FindAction("Attack");
         }
 
         /// <summary>
-        /// Reads a button action into its InputButton, in place, tracking presses, releases and hold duration from its
-        /// state last frame. A missing action reads as never pressed.
+        /// Reads a button action: into down if it's down now, into pressed if it went down this frame (a tap that was
+        /// pressed and let go within one frame included). A missing action reads as never pressed.
         /// </summary>
-        private static void ReadButton(InputAction action, InputButton button)
+        private static void ReadButton(InputAction action, InputButtons button, ref InputButtons down, ref InputButtons pressed)
         {
-            bool wasDown = button.value;
-            float heldFor = button.holdDuration;
-            button.value = action != null && action.ReadValue<float>() > 0.1f;
-            button.justPressed = button.value && !wasDown;
-            button.justReleased = !button.value && wasDown;
-            button.holdDuration = button.value ? (button.justPressed ? 0 : heldFor + Time.deltaTime) : 0;
-            if (button.justReleased) { button.lastHoldDuration = heldFor; }
+            if (action == null) { return; }
+            if (action.ReadValue<float>() > 0.1f) { down |= button; }
+            if (action.WasPressedThisFrame()) { pressed |= button; }
         }
     }
 }

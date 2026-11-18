@@ -14,7 +14,7 @@ Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, an
 
 ```mermaid
 flowchart TD
-    A["ACCharacterController.FixedUpdate"] --> B["MovementController.ProcessMovementInputs<br/>(inputs from ACInputManager)"]
+    A["ACCharacterController.FixedUpdate"] --> B["MovementController.ProcessMovementInputs<br/>(the step's input frame, from ACInputManager)"]
     B --> C["Ground carry and grounded check<br/>(MovementController.Ground.cs)"]
     C --> D["Movement mode: ProcessMovementData"]
     subgraph Mode["BasicMovementMode, its components in list order"]

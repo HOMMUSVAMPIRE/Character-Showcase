@@ -106,11 +106,11 @@ namespace CharacterShowcase.Tests
             BodyShape box = UseBody(ABox);
             float standing = rig.StandingHeight;
             Assert.That(standing, Is.EqualTo(box.size.y).Within(1e-4f));
-            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle());
             Assert.That(rig.Movement.Posture.Kind, Is.EqualTo(BodyPostureKind.Low));
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.CrouchHeight * standing).Within(0.01f), "Crouched, the box should be the crouch height tall.");
             Assert.That(rig.BodyNow.center.y - rig.BodyNow.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Its bottom should stay at the feet.");
-            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle());
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "Pressing Crouch again, it should stand back up.");
         }
 
@@ -155,7 +155,7 @@ namespace CharacterShowcase.Tests
                     float t = step * dt;
                     if (t < 2.5f) { return CharacterTestRig.Move(Vector3.forward); }
                     Vector3 alongTheWall = new Vector3(0.5f, 0f, 1f).normalized;
-                    if (t >= 4f && t < 4.3f) { return CharacterTestRig.Jump(step - CharacterTestRig.StepsFor(4f), alongTheWall); }
+                    if (t >= 4f && t < 4.3f) { return CharacterTestRig.Jump(alongTheWall); }
                     return CharacterTestRig.Move(alongTheWall);
                 }, _ => path.Add(rig.Position));
             }

@@ -24,74 +24,58 @@ namespace CharacterShowcase.Tests
             dash = new InputButton(),
         };
 
-        /// <summary>Movement input in world space with Sprint held (on the given step of the press; 0 = the step it was pressed).</summary>
-        public static Inputs Sprint(Vector3 direction, int heldSteps = 1)
+        // A step's input says only which buttons are down (and the move input): the character works out presses and how
+        // long a button's been held from the steps it's down in (see InputState). So a press is a button down in a step
+        // after one it was up in, and holding it is giving it down step after step.
+
+        /// <summary>Movement input in world space with Sprint held.</summary>
+        public static Inputs Sprint(Vector3 direction)
         {
             Inputs inputs = Move(direction);
-            inputs.sprint = new InputButton
-            {
-                value = true,
-                justPressed = heldSteps == 0,
-                holdDuration = heldSteps * Time.fixedDeltaTime,
-            };
+            inputs.sprint = Held();
             return inputs;
         }
 
-        /// <summary>Jump held for the given step of the press (0 = the step it was pressed).</summary>
-        public static Inputs Jump(int heldSteps, Vector3 direction = default)
+        /// <summary>Jump down this step, with optional movement input.</summary>
+        public static Inputs Jump(Vector3 direction = default)
         {
             Inputs inputs = Move(direction);
-            inputs.jump = new InputButton
-            {
-                value = true,
-                justPressed = heldSteps == 0,
-                holdDuration = heldSteps * Time.fixedDeltaTime,
-            };
+            inputs.jump = Held();
             return inputs;
         }
 
-        /// <summary>Dash held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
-        public static Inputs Dash(int heldSteps, Vector3 direction = default)
+        /// <summary>Dash down this step, with optional movement input.</summary>
+        public static Inputs Dash(Vector3 direction = default)
         {
             Inputs inputs = Move(direction);
-            inputs.dash = new InputButton
-            {
-                value = true,
-                justPressed = heldSteps == 0,
-                holdDuration = heldSteps * Time.fixedDeltaTime,
-            };
+            inputs.dash = Held();
             return inputs;
         }
 
-        /// <summary>A button held for the given step of its press (0 = the step it was pressed).</summary>
-        public static InputButton Held(int heldSteps) => new()
-        {
-            value = true,
-            justPressed = heldSteps == 0,
-            holdDuration = heldSteps * Time.fixedDeltaTime,
-        };
+        /// <summary>A button down this step.</summary>
+        public static InputButton Held() => new() { value = true };
 
-        /// <summary>Crouch held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
-        public static Inputs Crouch(int heldSteps, Vector3 direction = default)
+        /// <summary>Crouch down this step, with optional movement input.</summary>
+        public static Inputs Crouch(Vector3 direction = default)
         {
             Inputs inputs = Move(direction);
-            inputs.crouch = Held(heldSteps);
+            inputs.crouch = Held();
             return inputs;
         }
 
-        /// <summary>Roll held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
-        public static Inputs Roll(int heldSteps, Vector3 direction = default)
+        /// <summary>Roll down this step, with optional movement input.</summary>
+        public static Inputs Roll(Vector3 direction = default)
         {
             Inputs inputs = Move(direction);
-            inputs.roll = Held(heldSteps);
+            inputs.roll = Held();
             return inputs;
         }
 
-        /// <summary>Grab held for the given step of the press (0 = the step it was pressed), with optional movement input.</summary>
-        public static Inputs Grab(int heldSteps, Vector3 direction = default)
+        /// <summary>Grab down this step, with optional movement input.</summary>
+        public static Inputs Grab(Vector3 direction = default)
         {
             Inputs inputs = Move(direction);
-            inputs.grab = Held(heldSteps);
+            inputs.grab = Held();
             return inputs;
         }
     }

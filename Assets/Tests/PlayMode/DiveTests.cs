@@ -43,7 +43,7 @@ namespace CharacterShowcase.Tests
                 _ => CharacterTestRig.Idle(), timeoutSeconds: 5f);
             Assume.That(rig.Swimming, Is.True, "Test setup: the character should be swimming.");
             rig.ClearEvents();
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             Assume.That(Diving, Is.True, "Test setup: Crouch should have dived.");
         }
 
@@ -67,7 +67,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator Underwater_SwimsAlongThePoolFloor_UnderAnArchTooLowToStandUnder()
         {
             yield return DivedInThePool();
-            yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(step + 1), timeoutSeconds: 10f);
+            yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(), timeoutSeconds: 10f);
             Assume.That(rig.Grounded, Is.True, "Test setup: the character should have sunk to the pool's floor.");
             // An arch across the pool ahead, its underside between the lying body's top and the character's standing
             // height above the floor (as the Level Playground's is), from there to above the surface.
@@ -76,7 +76,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Arch", new Vector3(0f, (underside + top) / 2f, at), new Vector3(PoolSize, top - underside, thickness));
             Physics.SyncTransforms();
             yield return rig.RunUntil(() => rig.Position.z - rig.BackExtent > at + thickness / 2f,
-                step => CharacterTestRig.Crouch(step + 1, Vector3.forward), timeoutSeconds: 8f);
+                step => CharacterTestRig.Crouch(Vector3.forward), timeoutSeconds: 8f);
             Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(at + thickness / 2f), "Underwater, the character should swim along the floor under an arch too low to stand under.");
             Assert.That(Diving, Is.True);
         }
@@ -86,7 +86,7 @@ namespace CharacterShowcase.Tests
         {
             yield return DivedInThePool();
             rig.SetMovementSetting("swimBuoyancy", 0f);
-            yield return rig.Run(1f, step => CharacterTestRig.Crouch(step + 1));
+            yield return rig.Run(1f, step => CharacterTestRig.Crouch());
             yield return rig.RunUntil(() => Mathf.Abs(rig.Velocity.y) < 0.01f, _ => CharacterTestRig.Idle(), timeoutSeconds: 5f);
             // A channel along +Z, wider than the lying body is thick, narrower than it is long.
             float thick = 2f * rig.SideExtent, length = rig.FrontExtent + rig.BackExtent;
@@ -114,7 +114,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator Underwater_SwimsTheWayTheCameraLooks([Values(45f, -30f)] float lookDown)
         {
             yield return DivedInThePool();
-            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch(step + 1)); // Well under, so looking up doesn't surface.
+            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch()); // Well under, so looking up doesn't surface.
             LookDown(lookDown);
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward));
             Vector3 looking = Camera.main.transform.forward;
@@ -127,7 +127,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator Underwater_SteeredUpOrDown_PitchesTheBodyAlongTheWayItSwims_UpToTheMaxPitch([Values(30f, 80f, -45f)] float lookDown)
         {
             yield return DivedInThePool();
-            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch(step + 1)); // Well under, so looking up doesn't surface.
+            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch()); // Well under, so looking up doesn't surface.
             LookDown(lookDown);
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward));
             float maxPitch = rig.MovementSetting<float>("swimMaxPitch");
@@ -137,7 +137,7 @@ namespace CharacterShowcase.Tests
                 "Only the body pitches: the character itself stays upright.");
             Assert.That(rig.BodyFits, Is.True);
 
-            yield return rig.Run(0.2f, step => CharacterTestRig.Crouch(step + 1));
+            yield return rig.Run(0.2f, step => CharacterTestRig.Crouch());
             Assert.That(rig.Movement.BodyPitch, Is.EqualTo(0f), "Sinking with Crouch alone isn't steering: the body levels out.");
         }
 
@@ -145,7 +145,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator Underwater_AtThePoolFloor_PitchesDownOnlyAsFarAsItHasRoom()
         {
             yield return DivedInThePool();
-            yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(step + 1), timeoutSeconds: 10f);
+            yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(), timeoutSeconds: 10f);
             Assume.That(rig.Grounded, Is.True, "Test setup: the character should have sunk to the pool's floor.");
             LookDown(45f);
             float lowest = 0f;
@@ -175,8 +175,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator Underwater_SwimmingIntoALadder_TakesHoldOfIt_AndClimbsIt([Values(false, true)] bool alongTheFloor)
         {
             yield return DivedInThePool();
-            if (alongTheFloor) { yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(step + 1), timeoutSeconds: 10f); }
-            else { yield return rig.Run(0.8f, step => CharacterTestRig.Crouch(step + 1)); }
+            if (alongTheFloor) { yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(), timeoutSeconds: 10f); }
+            else { yield return rig.Run(0.8f, step => CharacterTestRig.Crouch()); }
             float face = rig.Position.z + rig.FrontExtent + 0.6f;
             Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, -PoolDepth, face + 0.03f), PoolDepth + 3f);
             rig.Box("Pool Wall", new Vector3(0f, -PoolDepth / 2f, face + 0.03f + ladder.Depth + 0.5f), new Vector3(PoolSize, PoolDepth + 4f, 1f));
@@ -216,7 +216,7 @@ namespace CharacterShowcase.Tests
             float depth = rig.SwimDepth;
             Assume.That(depth, Is.LessThan(surface - shelf), "Test setup: the water should be deep enough to swim in.");
             yield return rig.RunUntil(() => rig.Swimming && Mathf.Abs(rig.Velocity.y) < 0.05f, _ => CharacterTestRig.Idle(), timeoutSeconds: 5f);
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             yield return rig.Run(0.4f, _ => CharacterTestRig.Idle());
             Assume.That(Diving, Is.True, "Test setup: the character should be underwater.");
             LookDown(lookDown);
@@ -237,12 +237,12 @@ namespace CharacterShowcase.Tests
             yield return DivedInThePool();
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             LookDown(-30f); // Looking up: Crouch still sinks.
-            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch(step + 1, Vector3.forward));
+            yield return rig.Run(1.5f, step => CharacterTestRig.Crouch(Vector3.forward));
             Assert.That(rig.Velocity.y, Is.EqualTo(-VerticalSpeed).Within(0.05f), "Holding Crouch underwater should sink, even looking up.");
             Assert.That(rig.Velocity.z, Is.GreaterThan(0.5f * SwimSpeed), "The character should still swim forward meanwhile.");
 
             LookDown(30f); // Looking down: Jump still rises.
-            yield return rig.Run(1f, step => CharacterTestRig.Jump(step + 1, Vector3.forward));
+            yield return rig.Run(1f, step => CharacterTestRig.Jump(Vector3.forward));
             Assert.That(rig.Velocity.y, Is.EqualTo(VerticalSpeed).Within(0.05f), "Holding Jump underwater should rise, even looking down.");
         }
 
@@ -277,7 +277,7 @@ namespace CharacterShowcase.Tests
         {
             yield return DivedInThePool();
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
-            yield return rig.RunUntil(() => !Diving, step => CharacterTestRig.Jump(step), timeoutSeconds: 5f);
+            yield return rig.RunUntil(() => !Diving, step => CharacterTestRig.Jump(), timeoutSeconds: 5f);
             Assume.That(Diving, Is.False, "Test setup: Jump held should have risen to the surface.");
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Swimming, Is.True, "Rising with Jump, the character should arrive at the surface swimming, not jump out.");
@@ -293,7 +293,7 @@ namespace CharacterShowcase.Tests
             yield return rig.RunUntil(() => rig.Swimming, _ => CharacterTestRig.Idle(), timeoutSeconds: 3f);
             rig.SetMovementSetting("swimDiveSpeed", 0f);
             bool dived = false;
-            yield return rig.Run(1f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), _ => dived |= Diving);
+            yield return rig.Run(1f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), _ => dived |= Diving);
             Assert.That(dived, Is.False);
         }
     }

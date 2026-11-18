@@ -26,14 +26,14 @@ namespace CharacterShowcase.Tests
             yield return rig.SpawnSettled(new Vector3(0f, 0.05f, -20f));
             float minStart = rig.MovementSetting<float>("slideMinStartSpeed") * rig.Movement.SpeedScale;
             if (!(rig.RunSpeed >= minStart)) { Assert.Ignore($"The character's sprint ({rig.RunSpeed:0.0} m/s) is too slow to slide ({minStart:0.0} m/s)."); }
-            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward, step));
+            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward));
         }
 
         /// <summary>Sprint forward with Crouch pressed on the first step (and held for the given number of steps).</summary>
         private static Inputs SprintCrouching(int step, int crouchSteps = 1)
         {
-            Inputs inputs = CharacterTestRig.Sprint(Vector3.forward, step + 100);
-            if (step < crouchSteps) { inputs.crouch = CharacterTestRig.Held(step); }
+            Inputs inputs = CharacterTestRig.Sprint(Vector3.forward);
+            if (step < crouchSteps) { inputs.crouch = CharacterTestRig.Held(); }
             return inputs;
         }
 
@@ -72,7 +72,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
             bool slid = false;
-            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
+            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
                 _ => slid |= Sliding);
             Assert.That(slid, Is.False, "Crouching while walking shouldn't slide.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "Crouching while walking should crouch.");
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(jumpAt + 10, step =>
             {
                 Inputs inputs = SprintCrouching(step);
-                if (step >= jumpAt) { inputs.jump = CharacterTestRig.Held(step - jumpAt); }
+                if (step >= jumpAt) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, step =>
             {
@@ -135,7 +135,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(pressAgainAt + 3, step =>
             {
                 Inputs inputs = SprintCrouching(step);
-                if (step == pressAgainAt) { inputs.crouch = CharacterTestRig.Held(0); }
+                if (step == pressAgainAt) { inputs.crouch = CharacterTestRig.Held(); }
                 return inputs;
             });
             Assert.That(Sliding, Is.False, "A second press should end the slide.");
@@ -168,7 +168,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(3, step => SprintCrouching(step));
             Assume.That(Sliding, Is.True, "Test setup: the character should be sliding.");
             rig.Component<Crouching>().SlidingEnabled = false;
-            yield return rig.Run(2, step => CharacterTestRig.Sprint(Vector3.forward, step + 200));
+            yield return rig.Run(2, step => CharacterTestRig.Sprint(Vector3.forward));
             Assert.That(Sliding, Is.False, "Turning sliding off should end the slide.");
             Assert.That(rig.Movement.crouch.IsCrouched, Is.True, "It should end crouched, as a slide does.");
         }

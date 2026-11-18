@@ -78,7 +78,7 @@ namespace CharacterShowcase.Tests
             yield return GrabAndHang();
 
             int climbingSteps = 0;
-            yield return rig.Run(ClimbDuration + 0.5f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(),
+            yield return rig.Run(ClimbDuration + 0.5f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle(),
                 _ => { if (Climbing) { climbingSteps++; } });
 
             Assert.That(climbingSteps, Is.EqualTo(CharacterTestRig.StepsFor(ClimbDuration)).Within(1), "A climb should take its duration.");
@@ -94,7 +94,7 @@ namespace CharacterShowcase.Tests
             yield return SetUpLedge();
             yield return GrabAndHang();
             float hangY = rig.Position.y;
-            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle());
             Assert.That(Hanging, Is.False, "Pressing Crouch should let go of the ledge.");
             Assert.That(rig.Position.y, Is.LessThan(hangY - 0.2f), "Letting go should fall.");
         }
@@ -142,7 +142,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Low Ceiling", new Vector3(0f, top + clearance + 0.5f, face + 2f), new Vector3(10f, 1f, 4f));
             yield return GrabAndHang();
 
-            yield return rig.Run(ClimbDuration + 0.5f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return rig.Run(ClimbDuration + 0.5f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True, "The character should be on top of the ledge.");
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.03f));
             Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(face));
@@ -177,7 +177,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             // How high the character's feet get in a full jump.
             float apex = 0f;
-            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), _ => apex = Mathf.Max(apex, rig.Position.y));
+            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(), _ => apex = Mathf.Max(apex, rig.Position.y));
             yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
 
@@ -189,11 +189,11 @@ namespace CharacterShowcase.Tests
             rig.ClearEvents();
             var events = rig.EventsRaised;
             bool hung = false;
-            yield return rig.Run(1f, step => CharacterTestRig.Jump(step, Vector3.forward), _ => hung |= Hanging);
+            yield return rig.Run(1f, step => CharacterTestRig.Jump(Vector3.forward), _ => hung |= Hanging);
             Assert.That(hung, Is.True, "Jumping at a wall whose top is within reach at the top of the jump should grab it.");
 
             // Let go of Jump (held since the jump), and press it again to climb.
-            yield return rig.Run(ClimbDuration + 0.5f, step => step == 1 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return rig.Run(ClimbDuration + 0.5f, step => step == 1 ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.03f), "The character should have climbed onto the wall.");
             foreach (MovementEvents expected in new[] { MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded })
@@ -215,7 +215,7 @@ namespace CharacterShowcase.Tests
             }
             yield return GrabAndHang();
 
-            yield return rig.Run(ClimbDuration + 0.6f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return rig.Run(ClimbDuration + 0.6f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
             Assert.That(Hanging || Climbing, Is.False, "The character should have climbed up off the ledge.");
             Assert.That(rig.Grounded, Is.True, "The character should stand on the stairs.");
             Assert.That(rig.Position.y, Is.GreaterThanOrEqualTo(top - 0.01f), "The character should be up on the stairs.");

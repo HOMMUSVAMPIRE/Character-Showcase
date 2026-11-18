@@ -3,7 +3,11 @@ using UnityEngine;
 namespace Character
 {
     /// <summary>
-    /// A collection of inputs that are required for movement and character actions
+    /// A character's input as its movement reads it: the move input, and each button's state. The character works it out
+    /// each step from its input frames (InputState.View: see CharacterInputFrame), so presses and hold durations are
+    /// counted in steps. Scripts that drive a character (the tests, the capabilities measurement) also write one a step,
+    /// of which only the move input and which buttons are down count (CharacterInputFrame.Holding): the timings are the
+    /// character's own.
     /// </summary>
     [System.Serializable]
     public class Inputs
@@ -28,17 +32,17 @@ namespace Character
     }
 
     /// <summary>
-    /// Stores data on a button to be used by the input manager
+    /// A button's state as the movement reads it (see Inputs), worked out from the steps it's been down in.
     /// </summary>
     public class InputButton
     {
         /// <summary>Whether the button is down.</summary>
         public bool value;
-        /// <summary>Whether the button went down this frame.</summary>
+        /// <summary>Whether the button went down this step.</summary>
         public bool justPressed;
-        /// <summary>Whether the button came up this frame.</summary>
+        /// <summary>Whether the button came up this step.</summary>
         public bool justReleased;
-        /// <summary>How long the button has been down, in seconds (0 on the frame it's pressed, and while it's up).</summary>
+        /// <summary>How long the button has been down, in seconds: steps times the step's length (0 on the step it's pressed, and while it's up).</summary>
         public float holdDuration;
         /// <summary>
         /// How long, in seconds, the button was held the last time it was released. For how long a press has lasted, as a

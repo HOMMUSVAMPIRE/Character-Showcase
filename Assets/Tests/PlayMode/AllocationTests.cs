@@ -62,8 +62,8 @@ namespace CharacterShowcase.Tests
         {
             yield return rig.Run(3f, step =>
             {
-                if (step >= 20 && step < 28) { return CharacterTestRig.Jump(step - 20, Vector3.forward); }
-                if (step >= 40 && step < 70) { return CharacterTestRig.Sprint(Vector3.forward, step - 39); }
+                if (step >= 20 && step < 28) { return CharacterTestRig.Jump(Vector3.forward); }
+                if (step >= 40 && step < 70) { return CharacterTestRig.Sprint(Vector3.forward); }
                 return CharacterTestRig.Move(Vector3.forward);
             }, AnimateAndMeasure);
             rig.Teleport(new Vector3(0f, 0.05f, 0f));

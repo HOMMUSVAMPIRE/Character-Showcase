@@ -99,7 +99,7 @@ namespace CharacterShowcase.Tests
             yield return SwimmingInThePool();
             rig.ClearEvents();
             float highest = float.NegativeInfinity;
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump());
             Assert.That(rig.Swimming, Is.False, "Jump should jump out of the water.");
             Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps - 1), "Jumping out should use one jump, leaving the air jumps.");
             yield return rig.RunUntil(() => rig.Velocity.y <= 0f, _ => CharacterTestRig.Idle(), _ => highest = Mathf.Max(highest, rig.Position.y), timeoutSeconds: 3f);
@@ -121,7 +121,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Pool Side", new Vector3(0f, (edge - PoolDepth) / 2f, 15f), new Vector3(20f, edge + PoolDepth, 20f));
             Physics.SyncTransforms();
             yield return rig.RunUntil(() => rig.Position.z > 3f, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 4f);
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(Vector3.forward));
             yield return rig.RunUntil(() => rig.Grounded && rig.Position.y > edge - 0.05f, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(rig.Swimming, Is.False);
             Assert.That(rig.Grounded, Is.True, "The character should be standing on the edge.");

@@ -15,14 +15,23 @@ namespace CharacterShowcase.Tests
     public sealed partial class CharacterTestRig
     {
         /// <summary>
-        /// Runs the character for a number of physics steps. inputsForStep is called with the step index;
+        /// Runs the character for a number of physics steps. inputsForStep is called with the step index (only its move
+        /// input and which buttons are down count: the character times presses and holds itself, from the steps);
         /// afterStep is called after each step's movement has been simulated by physics.
         /// </summary>
-        public IEnumerator Run(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep = null)
+        public IEnumerator Run(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
+            RunFrames(steps, Frames(inputsForStep), afterStep);
+
+        /// <summary>Scripted inputs as the frames the character is given (see CharacterInputFrame.Holding), tagged with its tick.</summary>
+        private Func<int, CharacterInputFrame> Frames(Func<int, Inputs> inputsForStep) =>
+            step => CharacterInputFrame.Holding(inputsForStep(step), Movement.Tick);
+
+        /// <summary>Runs the character for a number of physics steps, given each step's input frame (see Run).</summary>
+        public IEnumerator RunFrames(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep = null)
         {
             if (CanStepPhysicsItself)
             {
-                RunDirectly(steps, inputsForStep, afterStep);
+                RunDirectly(steps, framesForStep, afterStep);
                 yield break;
             }
             for (int i = 0; i < steps; i++)
@@ -30,7 +39,7 @@ namespace CharacterShowcase.Tests
                 int step = i;
                 // Stepped in the coming physics step's FixedUpdate, after the level's moving platforms have moved (see
                 // FixedStepper), as ACCharacterController steps it in the game.
-                stepper.Next = () => Step(step, inputsForStep(step));
+                stepper.Next = () => Step(step, framesForStep(step));
                 yield return new WaitForFixedUpdate();
                 // The step's Rigidbody.Move has now been simulated, so Position reflects it.
                 afterStep?.Invoke(i);
@@ -46,13 +55,24 @@ namespace CharacterShowcase.Tests
         /// <summary>How many allocations the character's steps made while MeasuresStepAllocations was on.</summary>
         public int StepAllocations { get; set; }
 
+        /// <summary>The frames the character is given, recorded as it's stepped (if set: see InputRecording).</summary>
+        public InputRecording Recording { get; set; }
+
+        /// <summary>
+        /// Runs the character through a recording's frames, one a step from its oldest, as a replay does (see
+        /// InputRecording): the same frames, so it should move as it did when they were recorded.
+        /// </summary>
+        public IEnumerator Replay(InputRecording recording, Action<int> afterStep = null) =>
+            RunFrames(recording.Count, step => recording[step], afterStep);
+
         /// <summary>One physics step of the character, as ACCharacterController does it: any change of size first, then movement.</summary>
-        private void Step(int step, Inputs inputs)
+        private void Step(int step, in CharacterInputFrame frame)
         {
             runStep = step;
+            Recording?.Add(frame);
             if (MeasuresStepAllocations) { AllocationCounter.Start(); }
             Controller.UpdateScale(Time.fixedDeltaTime);
-            Movement.ProcessMovementInputs(inputs);
+            Movement.ProcessMovementInputs(frame);
             Movement.MovementCleanup();
             if (MeasuresStepAllocations) { StepAllocations += AllocationCounter.Stop(); }
         }
@@ -98,7 +118,7 @@ namespace CharacterShowcase.Tests
         private bool CanStepPhysicsItself => StepsPhysicsItself && !needsUnityPhysicsSteps && Character != null;
 
         /// <summary>Runs the steps at once, stepping the physics itself (see StepsPhysicsItself), in the same order as Run.</summary>
-        private void RunDirectly(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep)
+        private void RunDirectly(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep)
         {
             SimulationMode previous = Physics.simulationMode;
             Physics.simulationMode = SimulationMode.Script;
@@ -109,7 +129,7 @@ namespace CharacterShowcase.Tests
                 CharacterModelHost models = Models;
                 for (int i = 0; i < steps; i++)
                 {
-                    Step(i, inputsForStep(i));
+                    Step(i, framesForStep(i));
                     // As the model host's FixedUpdate would, before the physics step.
                     if (models != null) { models.TryFitBodyNow(); }
                     Physics.Simulate(Time.fixedDeltaTime);
@@ -134,7 +154,7 @@ namespace CharacterShowcase.Tests
                 int i = step;
                 // Stepping the physics itself, the steps run back to back: a yield costs a frame however little it waits
                 // for, and in the editor a frame is long.
-                if (CanStepPhysicsItself) { RunDirectly(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
+                if (CanStepPhysicsItself) { RunDirectly(1, _ => CharacterInputFrame.Holding(inputsForStep(i), Movement.Tick), _ => afterStep?.Invoke(i)); }
                 else { yield return Run(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
             }
         }

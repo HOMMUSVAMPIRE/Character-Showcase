@@ -93,7 +93,7 @@ namespace CharacterShowcase.Tests
             yield return SpawnOverThePool(1f);
             yield return FallInAndSettle();
             splashes.Clear();
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump());
             Assert.That(splashes.Count, Is.EqualTo(1), "Jumping out of the water should splash.");
             Assert.That(splashes[0].position.y, Is.EqualTo(water.SurfaceHeight).Within(0.05f));
         }

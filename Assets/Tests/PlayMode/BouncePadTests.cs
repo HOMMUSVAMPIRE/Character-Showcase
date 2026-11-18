@@ -62,7 +62,7 @@ namespace CharacterShowcase.Tests
             const float height = 4f;
             yield return SetUpPad(height);
             float top = 0f;
-            yield return RunThroughABounce(step => CharacterTestRig.Jump(step + 20), t => top = t);
+            yield return RunThroughABounce(step => CharacterTestRig.Jump(), t => top = t);
             float expected = height * Multiplier * rig.MovementSetting<float>("bounceJumpBoost");
             Assert.That(top - PadTop, Is.EqualTo(expected).Within(0.05f * expected + 0.05f), "Jump held should bounce higher by the jump boost.");
         }

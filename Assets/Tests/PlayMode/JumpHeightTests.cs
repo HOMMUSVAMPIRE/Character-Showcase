@@ -26,7 +26,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1.5f, i =>
             {
                 Inputs inputs = CharacterTestRig.Idle();
-                inputs.jump = CharacterTestRig.Held(i);
+                inputs.jump = CharacterTestRig.Held();
                 inputs.jump.value = i < heldSteps;
                 return inputs;
             }, _ => top = Mathf.Max(top, rig.Position.y));
@@ -69,7 +69,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1.5f, i =>
             {
                 Inputs inputs = CharacterTestRig.Idle();
-                inputs.jump = CharacterTestRig.Held(i);
+                inputs.jump = CharacterTestRig.Held();
                 // Held until the feet have risen past halfway from the min height to the max, then let go.
                 released |= rig.Position.y - start > 0.5f * (MinHeight + MaxHeight);
                 inputs.jump.value = !released;

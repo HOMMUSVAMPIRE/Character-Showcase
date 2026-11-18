@@ -70,16 +70,16 @@ namespace CharacterShowcase.Tests
         private static readonly Vector3 Forward = Vector3.forward, Right = Vector3.right;
         private static Inputs Idle(int _) => CharacterTestRig.Idle();
         private static Func<int, Inputs> Walk(Vector3 direction) => _ => CharacterTestRig.Move(direction);
-        private static Func<int, Inputs> Sprint(Vector3 direction) => step => CharacterTestRig.Sprint(direction, step + 1);
+        private static Func<int, Inputs> Sprint(Vector3 direction) => step => CharacterTestRig.Sprint(direction);
         // A press: the button down for the phase's steps (from its first), with the given movement.
-        private static Func<int, Inputs> Jump(Vector3 direction = default) => step => CharacterTestRig.Jump(step, direction);
-        private static Func<int, Inputs> Crouch(Vector3 direction = default) => step => CharacterTestRig.Crouch(step, direction);
-        private static Func<int, Inputs> Dash(Vector3 direction = default) => step => CharacterTestRig.Dash(step, direction);
-        private static Func<int, Inputs> Roll(Vector3 direction = default) => step => CharacterTestRig.Roll(step, direction);
+        private static Func<int, Inputs> Jump(Vector3 direction = default) => step => CharacterTestRig.Jump(direction);
+        private static Func<int, Inputs> Crouch(Vector3 direction = default) => step => CharacterTestRig.Crouch(direction);
+        private static Func<int, Inputs> Dash(Vector3 direction = default) => step => CharacterTestRig.Dash(direction);
+        private static Func<int, Inputs> Roll(Vector3 direction = default) => step => CharacterTestRig.Roll(direction);
         private static Func<int, Inputs> SprintAndCrouch(Vector3 direction) => step =>
         {
-            Inputs inputs = CharacterTestRig.Crouch(step, direction);
-            inputs.sprint = CharacterTestRig.Held(step + 10);
+            Inputs inputs = CharacterTestRig.Crouch(direction);
+            inputs.sprint = CharacterTestRig.Held();
             return inputs;
         };
         // One physics step, at the project's step (a press lasting a single step).
@@ -287,8 +287,8 @@ namespace CharacterShowcase.Tests
                 phases = new (float, Func<int, Inputs>)[]
                 {
                     (1.5f, Idle), (1f, Walk(Forward)),                     // Fallen in, and swimming.
-                    (OneStep, Crouch()), (0.8f, step => CharacterTestRig.Crouch(step + 1)), // Dived and sunk.
-                    (1f, Walk(Forward)), (1.2f, step => CharacterTestRig.Jump(step)),   // Along, and back up.
+                    (OneStep, Crouch()), (0.8f, step => CharacterTestRig.Crouch()), // Dived and sunk.
+                    (1f, Walk(Forward)), (1.2f, step => CharacterTestRig.Jump()),   // Along, and back up.
                     (5f, Walk(Forward)),                                    // Out over the side.
                 },
                 states = new[] { CharacterState.Swimming, CharacterState.Diving, CharacterState.Vaulting },

@@ -51,7 +51,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator TheFox_TrotsAtItsWalkSpeed_AndGallopsAtItsRunSpeed([Values(false, true)] bool sprint)
         {
             yield return SpawnFox();
-            System.Func<int, Inputs> run = step => sprint ? CharacterTestRig.Sprint(Vector3.forward, step) : CharacterTestRig.Move(Vector3.forward);
+            System.Func<int, Inputs> run = step => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return rig.Run(0.3f, run);
             float speed = 0f;
             yield return rig.MeanSpeed(0.4f, run, s => speed = s);
@@ -66,7 +66,7 @@ namespace CharacterShowcase.Tests
             Assume.That(rig.MaxJumps, Is.EqualTo(1), "Test setup: the fox has one jump.");
             float start = rig.Position.y, highest = start;
             // Held all the way up, then pressed again at the top: there's no second jump.
-            yield return rig.Run(1.4f, step => step < 40 ? CharacterTestRig.Jump(step) : CharacterTestRig.Jump(step - 40), _ => highest = Mathf.Max(highest, rig.Position.y));
+            yield return rig.Run(1.4f, step => step < 40 ? CharacterTestRig.Jump() : CharacterTestRig.Jump(), _ => highest = Mathf.Max(highest, rig.Position.y));
             float jumpHeight = rig.MovementSetting<float>("maxJumpHeight") * rig.Movement.HeightScale;
             Assert.That(highest - start, Is.EqualTo(jumpHeight).Within(0.1f), "Held, the jump should rise the fox's jump height, and only once.");
         }
@@ -79,7 +79,7 @@ namespace CharacterShowcase.Tests
             float underside = Mathf.Lerp(crouched, standing, 0.5f), barZ = 1.5f + rig.FrontExtent;
             rig.Box("Bar", new Vector3(0f, underside + 0.5f, barZ), new Vector3(6f, 1f, 0.3f));
             Physics.SyncTransforms();
-            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle());
             Assume.That(rig.CurrentHeight, Is.EqualTo(crouched).Within(0.02f), "Test setup: the fox should crouch.");
             yield return rig.RunUntil(() => rig.Position.z - rig.BackExtent > barZ + 0.15f, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 8f);
             Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(barZ + 0.15f), "Crouched, the fox should pass under the bar.");
@@ -180,9 +180,9 @@ namespace CharacterShowcase.Tests
             {
                 // Sprinting at the wall, then a metre from it, jumping, steering along it.
                 if (jumpAt < 0 && side * rig.Position.x > wallFace - rig.SideExtent - 1f) { jumpAt = step; }
-                if (jumpAt < 0) { return CharacterTestRig.Sprint(approach, step + 1); }
-                Inputs inputs = CharacterTestRig.Sprint(steerAlong ? along : approach, step + 1);
-                inputs.jump = CharacterTestRig.Held(step - jumpAt);
+                if (jumpAt < 0) { return CharacterTestRig.Sprint(approach); }
+                Inputs inputs = CharacterTestRig.Sprint(steerAlong ? along : approach);
+                inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => { if (rig.Movement.wallRun.IsWallRunning) { ran += Time.fixedDeltaTime; } });
             float longest = rig.Component<WallRunning>().WallRunMaxDuration * rig.Movement.DurationScale;

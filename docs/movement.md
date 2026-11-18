@@ -1,5 +1,5 @@
 # Movement
-How the character moves: walking, jumping, dashing, turning, collision, size and moving ground, and what it can do ([Capabilities](#capabilities)). The abilities built on top of these (crouching, wall running, ledges, climbing, ropes and the rest) are in [abilities.md](abilities.md) and [traversal.md](traversal.md).
+How the character moves: its input, walking, jumping, dashing, turning, collision, size and moving ground, and what it can do ([Capabilities](#capabilities)). The abilities built on top of these (crouching, wall running, ledges, climbing, ropes and the rest) are in [abilities.md](abilities.md) and [traversal.md](traversal.md).
 
 Most of the settings named here are on the BasicMovementMode asset (`Assets/ScriptableObjects/BasicMovementMode.asset`), under the section named; the rest are on the Character prefab's components (`Assets/Prefabs/Character.prefab`).
 
@@ -21,6 +21,13 @@ A tuning preset (a MovementTuningPreset asset: Create > Scriptable Objects > Mov
 In a preset's inspector, each component it covers is listed with a tick beside each setting: ticked settings are set by the preset and the rest left alone (changing a value ticks it; All and None tick or untick a whole component, and Turned On is the component's on/off switch). Add Component's Settings adds another component, unticked. Save From Mode replaces the preset with the Movement Mode's tuning now, and Apply To Mode sets the preset's settings on it, with Undo, and says what changed. The Movement Mode is the Character prefab's unless another is picked.
 
 A preset only sets values and on/off switches: it never adds, removes or reorders a mode's components, and a setting of a component the mode doesn't have is left out (and reported). Presets are made and edited in the editor only. How tuning works as a whole (what changes when you save, what to tune together) is in [Tuning the Character](tuning.md).
+
+## Input
+The character is given one input frame each physics step (`CharacterInputFrame`): the move input, where the player's looking, and which buttons are held. It's nothing more, so frames can be recorded, saved, replayed or sent as they are. From successive frames the character works out what its movement reads (`InputState`): which buttons went down or came up this step, and how long each has been held, counted in steps. So the input buffers, a held jump and the rest behave the same at any frame rate.
+
+The player's device is read every render frame (`ACInputManager`) and latched into one frame per physics step (`InputLatch`). A button counts as held in a step's frame if it's down then, or went down at any time since the last step's frame, so a tap shorter than a step still counts. A render frame that runs two steps doesn't press a button twice.
+
+**Recording input.** Add an `InputRecorder` to a character and play: it keeps the latest Keep Seconds of the frames the character is given. Its context menu's Save Recording writes them to a file in the Input Recordings folder, in the player's data folder (it logs where). A recording (`InputRecording`) holds its frames oldest first, with the step length and the tuning it was recorded with (`MovementController.TuningFingerprint`). Replayed to the same character, in the same world, with the same tuning, it moves exactly as it did (the tests replay one: `CharacterTestRig.Replay`).
 
 ## Walking and Sprinting
 The character moves at its Walk Speed, or slower with partial stick input, and sprints at its Run Speed while Sprint is held: Left Shift (keyboard) or pressing the left stick (gamepad). Both are in the BasicMovementMode asset's Walking & Running component; a Run Speed at or below the Walk Speed turns sprinting off. Turned off, movement input doesn't move the character on the ground (it still steers in the air, toward these speeds).

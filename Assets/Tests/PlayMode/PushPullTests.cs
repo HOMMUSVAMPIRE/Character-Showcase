@@ -38,9 +38,9 @@ namespace CharacterShowcase.Tests
         /// <summary>Holds grab and steers in a direction for the given time (after taking hold), measuring how far the box and the character moved.</summary>
         private IEnumerator HoldAndSteer(Vector3 direction, float seconds, System.Action<float, float> moved)
         {
-            yield return rig.Run(0.2f, step => CharacterTestRig.Grab(step, direction));
+            yield return rig.Run(0.2f, step => CharacterTestRig.Grab(direction));
             float boxStart = box.Position.z, characterStart = rig.Position.z;
-            yield return rig.Run(seconds, step => CharacterTestRig.Grab(step + 10, direction));
+            yield return rig.Run(seconds, step => CharacterTestRig.Grab(direction));
             moved(box.Position.z - boxStart, rig.Position.z - characterStart);
         }
 
@@ -130,7 +130,7 @@ namespace CharacterShowcase.Tests
             Assert.That(box.Position.z + BoxSize / 2f, Is.LessThan(edgeZ), "Test setup: the box should start on the raised floor.");
 
             bool letGo = false;
-            yield return rig.Run((edgeZ + BoxSize) / PushPullSpeed + 1f, step => CharacterTestRig.Grab(step, Vector3.forward),
+            yield return rig.Run((edgeZ + BoxSize) / PushPullSpeed + 1f, step => CharacterTestRig.Grab(Vector3.forward),
                 _ => { if (box.Position.y < BoxSize / 2f - 0.5f && !Grabbing) { letGo = true; } });
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
 
@@ -153,13 +153,13 @@ namespace CharacterShowcase.Tests
         public IEnumerator JumpingWhileHoldingABox_DoesNothing()
         {
             yield return SetUpBox();
-            yield return rig.Run(0.2f, step => CharacterTestRig.Grab(step));
+            yield return rig.Run(0.2f, step => CharacterTestRig.Grab());
             float startY = rig.Position.y;
             float highest = startY;
             yield return rig.Run(0.4f, step =>
             {
-                Inputs inputs = CharacterTestRig.Grab(step + 10);
-                inputs.jump = CharacterTestRig.Held(step);
+                Inputs inputs = CharacterTestRig.Grab();
+                inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => highest = Mathf.Max(highest, rig.Position.y));
             Assert.That(highest - startY, Is.LessThan(0.01f), "The character shouldn't jump while holding a box.");

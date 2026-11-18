@@ -47,6 +47,21 @@ namespace Character
         }
 
         /// <summary>
+        /// A fingerprint of the character's tuning: everything its movement depends on (CapabilitiesKey), hashed (64-bit
+        /// FNV-1a), so a recording of its input can say what it was recorded with (see InputRecording). Allocates (it
+        /// builds the key): ask once, not every step.
+        /// </summary>
+        public ulong TuningFingerprint()
+        {
+            ulong hash = 14695981039346656037UL;
+            foreach (char c in CapabilitiesKey())
+            {
+                hash = (hash ^ c) * 1099511628211UL;
+            }
+            return hash;
+        }
+
+        /// <summary>
         /// Everything the capabilities depend on, to know when they need measuring again, and which measurements another
         /// character can share: the movement mode (its type and settings), and everything MovementSimulation copies from
         /// the character (see CopyForSimulation, and its layer). Numbers are written in full, so a tiny change of size

@@ -87,7 +87,7 @@ namespace CharacterShowcase.Tests
             float jumpedFrom = rig.Position.y, highest = jumpedFrom;
             Vector3 launch = Vector3.zero;
             int jumpsAfter = -1;
-            yield return rig.Run(0.8f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle(), step =>
+            yield return rig.Run(0.8f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle(), step =>
             {
                 if (step == 0) { launch = rig.Velocity; jumpsAfter = rig.Movement.jump.remaining; }
                 highest = Mathf.Max(highest, rig.Position.y);
@@ -116,7 +116,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(6f, step =>
             {
                 Inputs inputs = CharacterTestRig.Move(Vector3.forward);
-                if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(0); }
+                if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             });
             Assert.That(wallJumps, Is.EqualTo(maxJumps), "Only so many jumps off walls should be allowed before landing.");
@@ -171,7 +171,7 @@ namespace CharacterShowcase.Tests
                 if (slidingSteps >= 2)
                 {
                     steer = rig.Movement.wallSlide.wallNormal;
-                    return CharacterTestRig.Jump(0, steer);
+                    return CharacterTestRig.Jump(steer);
                 }
                 return CharacterTestRig.Move(steer);
             }, _ =>
@@ -216,7 +216,7 @@ namespace CharacterShowcase.Tests
 
             yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding again.");
-            yield return rig.Run(2, step => step == 0 ? CharacterTestRig.Crouch(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(2, step => step == 0 ? CharacterTestRig.Crouch(Vector3.forward) : CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.False, "Pressing Crouch should let go of the wall.");
         }
 
@@ -259,7 +259,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(4f, step =>
             {
                 Inputs inputs = CharacterTestRig.Move(Vector3.forward);
-                if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(0); }
+                if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             });
             Assert.That(kickHeights.Count, Is.GreaterThan(0), "Test setup: the character should jump off the wall.");
@@ -276,7 +276,7 @@ namespace CharacterShowcase.Tests
             yield return SlideDown();
             float away = rig.MovementSetting<float>("wallSlideJumpAwaySpeed") * rig.Movement.SpeedScale;
             // Jump, then steer straight back into the wall.
-            yield return rig.Run(0.15f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Move(Vector3.forward));
+            yield return rig.Run(0.15f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Move(Vector3.forward));
             Assert.That(-rig.Velocity.z, Is.GreaterThan(0.8f * away), "Steering back right after jumping off shouldn't undo the push away from the wall.");
             float recovery = rig.MovementSetting<float>("wallJumpSteeringRecovery") * rig.Movement.DurationScale;
             yield return rig.Run(recovery, _ => CharacterTestRig.Move(Vector3.forward));
@@ -296,7 +296,7 @@ namespace CharacterShowcase.Tests
             rig.SetMovementSetting("wallSlideJumpAwaySpeed", 0f);
             yield return SlideDown();
             rig.Movement.dash.airDashesUsed = maxAirDashes; // As if they'd been used.
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(Vector3.forward));
             Assert.That(rig.Movement.jump.remaining, Is.EqualTo(rig.MaxJumps - 1), "The first jump off the wall should give back jumps.");
             Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(0), "The first kick off a wall should give back the character's air dashes.");
 
@@ -305,7 +305,7 @@ namespace CharacterShowcase.Tests
             rig.Movement.dash.airDashesUsed = maxAirDashes;
             yield return rig.Run(1.2f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding down the wall again.");
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0, Vector3.forward));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump(Vector3.forward));
             Assert.That(rig.Movement.jump.remaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");
             Assert.That(rig.Movement.dash.airDashesUsed, Is.EqualTo(maxAirDashes),
                 "A kick off the same wall again shouldn't give back air dashes, as it doesn't give back jumps.");

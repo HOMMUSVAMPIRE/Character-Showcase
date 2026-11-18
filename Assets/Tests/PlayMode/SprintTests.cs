@@ -33,9 +33,9 @@ namespace CharacterShowcase.Tests
         {
             yield return Stand();
 
-            yield return rig.Run(0.3f, step => CharacterTestRig.Sprint(Vector3.forward, step));
+            yield return rig.Run(0.3f, step => CharacterTestRig.Sprint(Vector3.forward));
             float sprinting = 0f;
-            yield return rig.MeanSpeed(0.3f, step => CharacterTestRig.Sprint(Vector3.forward, step + 100), s => sprinting = s);
+            yield return rig.MeanSpeed(0.3f, step => CharacterTestRig.Sprint(Vector3.forward), s => sprinting = s);
             Assert.That(sprinting, Is.EqualTo(rig.RunSpeed).Within(0.05f * rig.RunSpeed), "Holding Sprint should move the character at its run speed.");
 
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
@@ -49,7 +49,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Stand();
             Vector3 start = rig.Position;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Sprint(Vector3.zero, step));
+            yield return rig.Run(0.5f, step => CharacterTestRig.Sprint(Vector3.zero));
             Vector3 moved = rig.Position - start;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.05f), "Holding Sprint alone shouldn't move the character.");
         }

@@ -158,7 +158,7 @@ namespace CharacterShowcase.Tests
             float speed = rig.RunSpeed, biggestChange = 0f, last = -1f;
             bool vaulted = false;
             int after = 0;
-            yield return rig.Run(1.6f, step => CharacterTestRig.Sprint(Vector3.forward, step), _ =>
+            yield return rig.Run(1.6f, step => CharacterTestRig.Sprint(Vector3.forward), _ =>
             {
                 float now = rig.HorizontalSpeed;
                 // Through the vault, and as walking (sprinting) picks up after it.
@@ -225,7 +225,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Obstacle", new Vector3(0f, top / 2f, face + depth / 2f), new Vector3(10f, top, depth));
 
             bool passed = false;
-            yield return rig.RunUntil(() => passed, step => sprinting ? CharacterTestRig.Sprint(Vector3.forward, step) : CharacterTestRig.Move(Vector3.forward),
+            yield return rig.RunUntil(() => passed, step => sprinting ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
                 _ =>
                 {
                     bool beyond = rig.Position.z - rig.BackExtent > back;
@@ -336,7 +336,7 @@ namespace CharacterShowcase.Tests
         private static Inputs JumpSprint()
         {
             Inputs inputs = CharacterTestRig.Sprint(Vector3.forward);
-            inputs.jump = CharacterTestRig.Held(0);
+            inputs.jump = CharacterTestRig.Held();
             return inputs;
         }
 

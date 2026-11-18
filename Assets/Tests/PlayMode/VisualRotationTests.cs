@@ -85,10 +85,10 @@ namespace CharacterShowcase.Tests
             });
 
             // Sprinting, turning around.
-            yield return rig.Run(0.8f, step => CharacterTestRig.Sprint(Vector3.forward, step), Feed);
+            yield return rig.Run(0.8f, step => CharacterTestRig.Sprint(Vector3.forward), Feed);
             float fastestRunning = 0f;
             previous = ModelYaw;
-            yield return rig.Run(0.8f, step => CharacterTestRig.Sprint(Vector3.back, step + 100), step =>
+            yield return rig.Run(0.8f, step => CharacterTestRig.Sprint(Vector3.back), step =>
             {
                 Feed(step);
                 fastestRunning = Mathf.Max(fastestRunning, Mathf.Abs(Mathf.DeltaAngle(previous, ModelYaw)) / Time.fixedDeltaTime);
@@ -109,7 +109,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(seconds, step =>
             {
                 heading += degreesPerSecond * Time.fixedDeltaTime;
-                return CharacterTestRig.Sprint(Quaternion.Euler(0f, heading, 0f) * Vector3.forward, step);
+                return CharacterTestRig.Sprint(Quaternion.Euler(0f, heading, 0f) * Vector3.forward);
             }, step =>
             {
                 Feed(step);
@@ -174,7 +174,7 @@ namespace CharacterShowcase.Tests
             {
                 heading += degreesPerSecond * Time.fixedDeltaTime;
                 Vector3 direction = Quaternion.Euler(0f, heading, 0f) * Vector3.forward;
-                return sprint ? CharacterTestRig.Sprint(direction, step) : CharacterTestRig.Move(direction);
+                return sprint ? CharacterTestRig.Sprint(direction) : CharacterTestRig.Move(direction);
             }, step =>
             {
                 Feed(step);
@@ -192,8 +192,8 @@ namespace CharacterShowcase.Tests
             Assert.That(Mathf.Abs(rig.Animation.Bank) + Mathf.Abs(rig.Animation.Pitch), Is.LessThan(0.1f), "Standing still, the model should be upright.");
 
             float mostForward = 0f, mostBack = 0f;
-            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward, step), step => { Feed(step); mostForward = Mathf.Max(mostForward, rig.Animation.Pitch); });
-            yield return rig.Run(1f, step => CharacterTestRig.Sprint(Vector3.forward, step + 100), Feed);
+            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward), step => { Feed(step); mostForward = Mathf.Max(mostForward, rig.Animation.Pitch); });
+            yield return rig.Run(1f, step => CharacterTestRig.Sprint(Vector3.forward), Feed);
             float steady = rig.Animation.Pitch;
             yield return rig.Run(0.6f, _ => CharacterTestRig.Idle(), step => { Feed(step); mostBack = Mathf.Min(mostBack, rig.Animation.Pitch); });
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), Feed);
@@ -210,7 +210,7 @@ namespace CharacterShowcase.Tests
             yield return Stand();
             float yawAfterFewSteps = 0f, mostLean = 0f;
             int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration);
-            yield return rig.Run(rollSteps - 2, step => step == 0 ? CharacterTestRig.Roll(0, Vector3.right) : CharacterTestRig.Idle(), step =>
+            yield return rig.Run(rollSteps - 2, step => step == 0 ? CharacterTestRig.Roll(Vector3.right) : CharacterTestRig.Idle(), step =>
             {
                 Feed(step);
                 if (step == 5) { yawAfterFewSteps = ModelYaw; }

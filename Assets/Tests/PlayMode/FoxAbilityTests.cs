@@ -59,11 +59,11 @@ namespace CharacterShowcase.Tests
 
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
             Assert.That(InState("Locomotion"), Is.True, "Trotting, the fox should play Locomotion.");
-            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), StepAnimator);
+            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), StepAnimator);
             Assert.That(InState("Crouch"), Is.True, "Crouched, the fox should play Crouch.");
-            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), StepAnimator);
+            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle(), StepAnimator);
             bool airborne = false;
-            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), step => { StepAnimator(step); airborne |= InState("Airborne"); });
+            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(), step => { StepAnimator(step); airborne |= InState("Airborne"); });
             Assert.That(airborne, Is.True, "Jumping, the fox should play Airborne.");
         }
 
@@ -104,7 +104,7 @@ namespace CharacterShowcase.Tests
             float swimSpeed = rig.MovementSetting<float>("swimSpeed") * rig.Movement.SpeedScale;
             Assert.That(speed, Is.EqualTo(swimSpeed).Within(0.1f * swimSpeed), "The fox should swim at its swim speed.");
             // Crouch dives a person; the fox stays at the surface.
-            yield return rig.Run(0.8f, step => CharacterTestRig.Crouch(step), StepAndPlace);
+            yield return rig.Run(0.8f, step => CharacterTestRig.Crouch(), StepAndPlace);
             Assert.That(rig.Movement.swim.IsUnderwater, Is.False, "The fox shouldn't dive.");
             Assert.That(water.SurfaceHeight - rig.Position.y, Is.EqualTo(rig.SwimDepth).Within(0.05f), "It should stay at the surface.");
         }

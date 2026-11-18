@@ -141,11 +141,11 @@ namespace CharacterShowcase.Tests
             rig.Controller.SetScale(Vector3.one, immediately: true);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             float floor = rig.Position.y;
-            yield return rig.Run(3f, i => CharacterTestRig.Jump(i), _ => jumpHeight = Mathf.Max(jumpHeight, rig.Position.y - floor));
+            yield return rig.Run(3f, i => CharacterTestRig.Jump(), _ => jumpHeight = Mathf.Max(jumpHeight, rig.Position.y - floor));
             float bigJumpHeight = 0f;
             rig.Controller.SetScale(new Vector3(4f, 4f, 4f), immediately: true);
             yield return rig.Run(3f, _ => CharacterTestRig.Idle());
-            yield return rig.Run(6f, i => CharacterTestRig.Jump(i), _ => bigJumpHeight = Mathf.Max(bigJumpHeight, rig.Position.y - floor));
+            yield return rig.Run(6f, i => CharacterTestRig.Jump(), _ => bigJumpHeight = Mathf.Max(bigJumpHeight, rig.Position.y - floor));
             Assert.That(jumpHeight, Is.GreaterThan(rig.StepHeight), "Test setup: the character should jump.");
             Assert.That(bigJumpHeight / jumpHeight, Is.EqualTo(4f).Within(0.6f), "Jump height should scale with height.");
         }
@@ -363,8 +363,8 @@ namespace CharacterShowcase.Tests
                 int t = step;
                 if (t < settle) { return CharacterTestRig.Idle(); }
                 if ((t -= settle) < walk) { return CharacterTestRig.Move(Vector3.forward); }
-                if ((t -= walk) < jump) { return t < jumpHold ? CharacterTestRig.Jump(t, Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
-                if ((t -= jump) < dash) { return t == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
+                if ((t -= walk) < jump) { return t < jumpHold ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
+                if ((t -= jump) < dash) { return t == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Move(Vector3.forward); }
                 if ((t -= dash) < approach) { return CharacterTestRig.Move(Vector3.forward); }
                 return CharacterTestRig.Idle();
             }

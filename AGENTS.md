@@ -224,11 +224,19 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
 
 ## Things that aren't obvious
 
-- **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton) → `Inputs` →
-  `MovementController.ProcessMovementInputs`. New buttons are read with `ACInputManager`'s `ReadButton`, the way Dash
-  is: its action looked up once in `FindActions`, its `InputButton` updated in place (the `Inputs` and its buttons are
-  the same objects every frame, so nothing should keep one expecting it not to change). One-off presses go through a `ButtonPress`, since a press can last several physics steps or fall between them.
-  `Attack` is defined but unread. Camera input is separate (`CameraInputReader`).
+- **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton, read each render frame into an
+  `InputLatch`) → one `CharacterInputFrame` per physics step (`FrameFor(tick)`) → `MovementController.ProcessMovementInputs`.
+  The frame is unmanaged and says only what's held, the move input and the look. The character works out presses and
+  hold durations itself, counted in steps (`InputState`), and its components read them as `Inputs` (`InputState.View`),
+  so the same frames give the same movement at any frame rate. Don't read time or the device in the movement. One-off
+  presses go through a `ButtonPress`. A new button is:
+  - a flag in `InputButtons`;
+  - a button on `Inputs` and in `InputState` (its `Buttons` list, and `Advance`);
+  - a line in `CharacterInputFrame.Holding`;
+  - an action read in `ACInputManager` (`FindActions`, then `ReadButton` in `Update`).
+
+  `Attack` is read into the frame but used by nothing. Camera input is separate (`CameraInputReader`). An
+  `InputRecorder` on a character records its frames, which can be saved and replayed (`InputRecording`).
 - **Couplings that block NPCs:** `ACCharacterController` reads `ACInputManager.instance`. Inputs are relative to
   `MovementController.InputCamera`, falling back to `Camera.main`.
 - **Movement times things by `MovementController.StepTime`,** its own clock, never `Time.fixedTime`, so a copy stepped

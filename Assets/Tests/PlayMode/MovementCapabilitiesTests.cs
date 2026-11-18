@@ -29,14 +29,14 @@ namespace CharacterShowcase.Tests
         /// <summary>How far the character's jump carries it, running (or sprinting) up then Jump held, as the capabilities measure it.</summary>
         private IEnumerator JumpAcross(bool sprint, System.Action<float> distance)
         {
-            Inputs Forward(int i) => sprint ? CharacterTestRig.Sprint(Vector3.forward, i + 40) : CharacterTestRig.Move(Vector3.forward);
+            Inputs Forward(int i) => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return rig.Run(0.8f, Forward);
             float start = rig.Position.z;
             bool left = false, landed = false;
             yield return rig.RunUntil(() => landed, step =>
             {
                 Inputs inputs = Forward(step);
-                inputs.jump = CharacterTestRig.Held(step);
+                inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => { if (!rig.Grounded) { left = true; } else if (left) { landed = true; } }, 4f);
             distance(landed ? rig.Position.z - start : float.NaN);

@@ -147,7 +147,7 @@ namespace CharacterShowcase.Tests
             float startX = rig.Position.x;
             int holdSteps = CharacterTestRig.StepsFor(0.15f);
             const float airTime = 0.3f;
-            yield return rig.Run(airTime, step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle());
+            yield return rig.Run(airTime, step => step < holdSteps ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
 
             float travelled = rig.Position.x - startX;
             const float platformSpeed = 5f;

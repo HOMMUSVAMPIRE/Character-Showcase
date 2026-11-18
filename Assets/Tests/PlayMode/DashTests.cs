@@ -33,7 +33,7 @@ namespace CharacterShowcase.Tests
         private IEnumerator DashOnce(Vector3 direction, System.Action<int> dashingSteps)
         {
             int count = 0;
-            yield return rig.Run(DashSteps + 1, step => step == 0 ? CharacterTestRig.Dash(0, direction) : CharacterTestRig.Idle(),
+            yield return rig.Run(DashSteps + 1, step => step == 0 ? CharacterTestRig.Dash(direction) : CharacterTestRig.Idle(),
                 _ => { if (rig.Dashing) { count++; } });
             dashingSteps(count);
         }
@@ -104,7 +104,7 @@ namespace CharacterShowcase.Tests
             float startY = rig.Position.y;
             float lowest = startY;
 
-            yield return rig.Run(DashSteps, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.right) : CharacterTestRig.Idle(),
+            yield return rig.Run(DashSteps, step => step == 0 ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Idle(),
                 _ => lowest = Mathf.Min(lowest, rig.Position.y));
 
             Assert.That(startY - lowest, Is.LessThan(0.01f), "Character should not fall during a dash.");
@@ -119,7 +119,7 @@ namespace CharacterShowcase.Tests
             int dashStarts = 0;
             bool wasDashing = false;
             // Hold well past the cooldown.
-            yield return rig.Run(DashCooldown * 4f, step => CharacterTestRig.Dash(step, Vector3.right), _ =>
+            yield return rig.Run(DashCooldown * 4f, step => CharacterTestRig.Dash(Vector3.right), _ =>
             {
                 if (rig.Dashing && !wasDashing) { dashStarts++; }
                 wasDashing = rig.Dashing;
@@ -138,9 +138,9 @@ namespace CharacterShowcase.Tests
             int earlyPress = DashSteps + 2;
             int earlyStarts = 0;
             yield return rig.Run(cooldownSteps * 2, step =>
-                    step == 0 ? CharacterTestRig.Dash(0) :
+                    step == 0 ? CharacterTestRig.Dash() :
                     step < earlyPress ? CharacterTestRig.Idle() :
-                    CharacterTestRig.Dash(step - earlyPress),
+                    CharacterTestRig.Dash(),
                 step => { if (step >= earlyPress && rig.Dashing) { earlyStarts++; } });
             Assert.That(cooldownSteps - earlyPress, Is.GreaterThan(CharacterTestRig.StepsFor(DashInputBuffer)),
                 "Test setup: the early press must fall outside the input buffer.");
@@ -151,9 +151,9 @@ namespace CharacterShowcase.Tests
             int bufferedPress = cooldownSteps - CharacterTestRig.StepsFor(DashInputBuffer * 0.5f);
             int dashedAt = -1;
             yield return rig.Run(cooldownSteps * 2, step =>
-                    step == 0 ? CharacterTestRig.Dash(0) :
+                    step == 0 ? CharacterTestRig.Dash() :
                     step < bufferedPress ? CharacterTestRig.Idle() :
-                    CharacterTestRig.Dash(step - bufferedPress),
+                    CharacterTestRig.Dash(),
                 step => { if (step >= bufferedPress && dashedAt < 0 && rig.Dashing) { dashedAt = step; } });
             Assert.That(dashedAt, Is.GreaterThanOrEqualTo(0), "A press just before the cooldown ends should be buffered.");
             Assert.That(dashedAt, Is.LessThanOrEqualTo(cooldownSteps + 1), "The buffered dash should start as soon as the cooldown ends.");
@@ -171,7 +171,7 @@ namespace CharacterShowcase.Tests
             int airDashes = 0;
             bool wasDashing = false;
             yield return rig.Run(cooldownSteps * (maxAirDashes + 1), step =>
-                    step % cooldownSteps == 0 ? CharacterTestRig.Dash(0) : CharacterTestRig.Idle(),
+                    step % cooldownSteps == 0 ? CharacterTestRig.Dash() : CharacterTestRig.Idle(),
                 _ =>
                 {
                     Assert.That(rig.Grounded, Is.False, "Test setup: the character should still be in the air.");
@@ -200,9 +200,9 @@ namespace CharacterShowcase.Tests
             bool dashingAfterJump = false;
             float riseSpeed = 0f, horizontalSpeed = 0f;
             yield return rig.Run(jumpAt + 4, step =>
-                    step == 0 ? CharacterTestRig.Dash(0, Vector3.right) :
+                    step == 0 ? CharacterTestRig.Dash(Vector3.right) :
                     step < jumpAt ? CharacterTestRig.Idle() :
-                    CharacterTestRig.Jump(step - jumpAt),
+                    CharacterTestRig.Jump(),
                 step =>
                 {
                     if (step < jumpAt) { return; }
@@ -222,13 +222,13 @@ namespace CharacterShowcase.Tests
         {
             yield return Settle();
             // Jump and keep holding the button, then dash in the air.
-            yield return rig.Run(4, step => CharacterTestRig.Jump(step));
+            yield return rig.Run(4, step => CharacterTestRig.Jump());
 
             int dashingSteps = 0;
             yield return rig.Run(DashSteps + 1, step =>
                 {
-                    Inputs inputs = CharacterTestRig.Jump(4 + step, Vector3.right);
-                    inputs.dash = CharacterTestRig.Dash(step).dash;
+                    Inputs inputs = CharacterTestRig.Jump(Vector3.right);
+                    inputs.dash = CharacterTestRig.Dash().dash;
                     return inputs;
                 },
                 _ => { if (rig.Dashing) { dashingSteps++; } });
@@ -245,8 +245,8 @@ namespace CharacterShowcase.Tests
             float fastestRiseDuringDash = float.NegativeInfinity, fastestRiseAfterDash = float.NegativeInfinity;
             yield return rig.Run(dashAt + DashSteps + 10, step =>
                 {
-                    Inputs inputs = CharacterTestRig.Jump(step);
-                    if (step >= dashAt) { inputs.dash = CharacterTestRig.Dash(step - dashAt).dash; }
+                    Inputs inputs = CharacterTestRig.Jump();
+                    if (step >= dashAt) { inputs.dash = CharacterTestRig.Dash().dash; }
                     return inputs;
                 },
                 step =>

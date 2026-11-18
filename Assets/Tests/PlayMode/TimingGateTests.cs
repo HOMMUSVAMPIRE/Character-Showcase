@@ -59,7 +59,7 @@ namespace CharacterShowcase.Tests
             timer.SetRacer(rig.Character.transform);
 
             // Up to speed well before the start gate, then on through the finish.
-            yield return rig.Run(length / rig.RunSpeed + 2f, step => CharacterTestRig.Sprint(Vector3.forward, step));
+            yield return rig.Run(length / rig.RunSpeed + 2f, step => CharacterTestRig.Sprint(Vector3.forward));
 
             Assert.AreEqual(1, timer.Completed, "Sprinting through the start and finish gates should finish one run.");
             Assert.IsFalse(timer.IsRunning);

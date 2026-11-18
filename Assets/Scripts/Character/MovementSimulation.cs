@@ -145,11 +145,14 @@ namespace Character
             Physics.SyncTransforms();
         }
 
-        /// <summary>One physics step of movement with the given inputs; the character ends where its movement took it.</summary>
+        /// <summary>
+        /// One physics step of movement with the given inputs (the move input and which buttons are down: the character
+        /// times its presses itself); the character ends where its movement took it.
+        /// </summary>
         public void Step(Inputs inputs)
         {
             LastEvents = MovementEvents.None;
-            Controller.ProcessMovementInputs(inputs);
+            Controller.ProcessMovementInputs(CharacterInputFrame.Holding(inputs, Controller.Tick));
             MovementData data = Controller.currentMovementData;
             Vector3 position = data.initialPosition + data.finalMovementVector;
             Quaternion rotation = data.finalRotation;
@@ -176,13 +179,11 @@ namespace Character
 
         // ---- Inputs ----
 
-        /// <summary>A button held for the given step of its press (0: pressed this step), or not held (negative).</summary>
-        public static InputButton Held(int step) => step < 0 ? new InputButton() : new InputButton
-        {
-            value = true,
-            justPressed = step == 0,
-            holdDuration = step * DeltaTime,
-        };
+        /// <summary>
+        /// A button down from the step of its press (step 0) on, or up (a negative step): the character works out the press
+        /// and how long it's held from the steps it's down in (see InputState).
+        /// </summary>
+        public static InputButton Held(int step) => new() { value = step >= 0 };
 
         /// <summary>Movement input along direction (relative to the simulation: +Z forward), sprinting or not.</summary>
         public static Inputs Move(Vector3 direction, bool sprint = false) => new()
@@ -190,7 +191,7 @@ namespace Character
             movementVector = direction,
             jump = new InputButton(),
             dash = new InputButton(),
-            sprint = sprint ? Held(1) : new InputButton(),
+            sprint = Held(sprint ? 0 : -1),
         };
 
         /// <summary>

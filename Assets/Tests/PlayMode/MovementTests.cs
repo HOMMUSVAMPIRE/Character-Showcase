@@ -156,7 +156,7 @@ namespace CharacterShowcase.Tests
             int maxJumps = rig.Component<Jumping>().MaxJumps;
 
             // A one-step tap, released while still inside the coyote window.
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump());
             yield return rig.Run(CharacterTestRig.StepsFor(rig.MovementSetting<float>("coyoteTime")), _ => CharacterTestRig.Idle());
 
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should be in the air.");
@@ -222,13 +222,13 @@ namespace CharacterShowcase.Tests
             for (int i = 0; i < jumps; i++)
             {
                 if (i > 0) { yield return rig.Run(2, _ => CharacterTestRig.Idle()); }
-                yield return rig.Run(0.15f, step => CharacterTestRig.Jump(step));
+                yield return rig.Run(0.15f, step => CharacterTestRig.Jump());
             }
 
             bool pressing = false, landed = false;
             int pressStart = 0;
             float highestAfterLanding = 0f;
-            yield return rig.Run(2.5f, step => pressing ? CharacterTestRig.Jump(step - pressStart) : CharacterTestRig.Idle(), step =>
+            yield return rig.Run(2.5f, step => pressing ? CharacterTestRig.Jump() : CharacterTestRig.Idle(), step =>
             {
                 Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
                 // Press jump while falling, shortly before touching down.
@@ -251,7 +251,7 @@ namespace CharacterShowcase.Tests
             // Holding jump the whole time, pressed while airborne with no jumps available.
             bool landed = false;
             float highestAfterLanding = 0f;
-            yield return rig.Run(2f, step => CharacterTestRig.Jump(step), _ =>
+            yield return rig.Run(2f, step => CharacterTestRig.Jump(), _ =>
             {
                 landed |= rig.Grounded;
                 if (landed) { highestAfterLanding = Mathf.Max(highestAfterLanding, rig.Position.y); }
@@ -297,7 +297,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Step", new Vector3(0f, height / 2f, start + 20f), new Vector3(40f, height, 40f));
             Vector3 heading = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
             float speed = sprint ? rig.RunSpeed : rig.WalkSpeed;
-            yield return rig.Run((start + 1f) / speed + 1f, step => sprint ? CharacterTestRig.Sprint(heading, step + 1) : CharacterTestRig.Move(heading));
+            yield return rig.Run((start + 1f) / speed + 1f, step => sprint ? CharacterTestRig.Sprint(heading) : CharacterTestRig.Move(heading));
 
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.01f));
             Assert.That(rig.Position.z, Is.LessThan(start), "A step taller than the step height should stop the character.");
@@ -332,7 +332,7 @@ namespace CharacterShowcase.Tests
             // Jumping from there, it rises and lands back on the floor the same way.
             float apex = 0f;
             int holdSteps = CharacterTestRig.StepsFor(0.2f);
-            yield return rig.RunUntilBackOnTheGround(step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle(),
+            yield return rig.RunUntilBackOnTheGround(step => step < holdSteps ? CharacterTestRig.Jump() : CharacterTestRig.Idle(),
                 _ => apex = Mathf.Max(apex, rig.Position.y));
 
             Assert.That(apex, Is.GreaterThan(rig.StepHeight), "Jump barely left the ground (not even a step's height).");
@@ -374,7 +374,7 @@ namespace CharacterShowcase.Tests
             float fastest = 0f, slowest = float.PositiveInfinity;
             Vector3 previous = rig.Position;
             yield return rig.Run((1.5f + steps * run) / (speed * heading.z) + 0.5f,
-                step => sprint ? CharacterTestRig.Sprint(heading, step) : CharacterTestRig.Move(heading), _ =>
+                step => sprint ? CharacterTestRig.Sprint(heading) : CharacterTestRig.Move(heading), _ =>
             {
                 Vector3 p = rig.Position, moved = p - previous;
                 previous = p;

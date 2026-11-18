@@ -60,7 +60,7 @@ namespace CharacterShowcase.Tests
             float under = 0f;
             yield return StandInWater(() => under = Mathf.Lerp(StartDepth, rig.SwimDepth, 0.5f));
             float speed = 0f;
-            yield return MeanSpeed(step => CharacterTestRig.Sprint(Vector3.forward, step), s => speed = s);
+            yield return MeanSpeed(step => CharacterTestRig.Sprint(Vector3.forward), s => speed = s);
             Assert.That(speed, Is.EqualTo(rig.RunSpeed * ExpectedShare(under)).Within(0.05f), "Wading should slow a sprint as it slows a walk.");
         }
 
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests
             Physics.SyncTransforms();
             bool vaulted = false;
             yield return rig.RunUntil(() => rig.Position.z > 5f,
-                step => sprint ? CharacterTestRig.Sprint(Vector3.forward, step) : CharacterTestRig.Move(Vector3.forward),
+                step => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward),
                 _ => vaulted |= rig.InState(CharacterState.Vaulting), timeoutSeconds: 6f);
             Assert.That(vaulted, Is.True, "Heading into a low wall while wading, the character should vault it.");
             Assert.That(rig.Position.z, Is.GreaterThan(5f), "The character should be past the wall.");

@@ -123,7 +123,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
             Vector3 swing = rig.Movement.ropeSwing.velocity;
             rig.ClearEvents();
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump());
             Assert.That(Swinging, Is.False, "Jump should let go of the rope.");
             float jumpUp = rig.MovementSetting<float>("ropeJumpUpSpeed") * rig.Movement.SpeedScale;
             Assert.That(rig.Velocity.z, Is.EqualTo(swing.z).Within(0.6f), "Jumping off should keep the swing's speed.");
@@ -141,7 +141,7 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpSwing(speed: 1f, from: 0.3f);
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             bool caughtAgain = false;
             float delay = rig.MovementSetting<float>("ropeRegrabDelay");
             yield return rig.Run(delay * 0.8f, _ => CharacterTestRig.Idle(), _ => caughtAgain |= Swinging);

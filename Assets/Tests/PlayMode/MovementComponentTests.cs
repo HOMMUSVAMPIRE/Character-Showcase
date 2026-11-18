@@ -78,7 +78,7 @@ namespace CharacterShowcase.Tests
             rig.ClearEvents();
             rig.Component<Jumping>().Enabled = false;
             bool leftTheGround = false;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Jump(step), _ => leftTheGround |= !rig.Grounded);
+            yield return rig.Run(0.5f, step => CharacterTestRig.Jump(), _ => leftTheGround |= !rig.Grounded);
             Assert.That(leftTheGround, Is.False, "With Jumping turned off, Jump shouldn't leave the ground.");
             Assert.That(rig.EventsRaised, Has.No.Member(MovementEvents.Jumped));
             Assert.That(rig.MaxJumps, Is.EqualTo(0), "Without Jumping, the character has no jumps.");
@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
             rig.ClearEvents();
             rig.Component<Dashing>().Enabled = false;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Dash(step, Vector3.forward));
+            yield return rig.Run(0.5f, step => CharacterTestRig.Dash(Vector3.forward));
             Assert.That(rig.EventsRaised, Has.No.Member(MovementEvents.DashStarted), "With Dashing turned off, Dash shouldn't dash.");
             Assert.That(rig.Movement.dash.IsDashing, Is.False);
         }
@@ -102,10 +102,10 @@ namespace CharacterShowcase.Tests
             rig.ClearEvents();
             rig.Component<WalkingAndRunning>().Enabled = false;
             Vector3 start = rig.Position;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Sprint(Vector3.forward, step));
+            yield return rig.Run(0.5f, step => CharacterTestRig.Sprint(Vector3.forward));
             Vector3 moved = rig.Position - start;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.05f), "With Walking & Running turned off, movement input shouldn't move the character.");
-            yield return rig.Run(0.3f, step => CharacterTestRig.Jump(step));
+            yield return rig.Run(0.3f, step => CharacterTestRig.Jump());
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.Jumped), "Jumping doesn't need walking.");
         }
 

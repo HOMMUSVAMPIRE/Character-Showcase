@@ -46,11 +46,15 @@ namespace Character
         /// <summary>Raised whenever the character's scale changes, with the new scale.</summary>
         public event Action<Vector3> ScaleChanged;
 
+        // Records the frames the character is given, if it has one (see InputRecorder).
+        private InputRecorder recorder;
+
         private void Awake()
         {
             if (modelHost == null) { modelHost = GetComponent<CharacterModelHost>(); }
             if (movementController == null) { movementController = GetComponent<MovementController>(); }
             body = GetComponent<Rigidbody>();
+            recorder = GetComponent<InputRecorder>();
             if (body != null) { baseMass = body.mass; }
             CheckRootScale();
         }
@@ -192,7 +196,9 @@ namespace Character
             UpdateScale(Time.fixedDeltaTime);
             if (movementController != null)
             {
-                movementController.ProcessMovementInputs(ACInputManager.instance.inputs);
+                CharacterInputFrame frame = ACInputManager.instance.FrameFor(movementController.Tick);
+                if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
+                movementController.ProcessMovementInputs(frame);
 
                 movementController.MovementCleanup();
             }

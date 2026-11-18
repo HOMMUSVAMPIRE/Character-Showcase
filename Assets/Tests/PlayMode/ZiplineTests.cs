@@ -93,7 +93,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             Vector3 ride = rig.Velocity;
             rig.ClearEvents();
-            yield return rig.Run(1, _ => CharacterTestRig.Jump(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Jump());
             Assert.That(rig.Ziplining, Is.False, "Jump should let go of the cable.");
             float jumpUp = rig.MovementSetting<float>("ziplineJumpUpSpeed") * rig.Movement.SpeedScale;
             Assert.That(rig.Velocity.y, Is.EqualTo(ride.y + jumpUp).Within(0.5f), "Jumping off should send the character up on top of the ride's speed.");
@@ -106,7 +106,7 @@ namespace CharacterShowcase.Tests
         {
             yield return SetUpRide(new Vector3(0f, 10f, 0f), new Vector3(0f, 6f, 40f));
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
-            yield return rig.Run(1, _ => CharacterTestRig.Crouch(0));
+            yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Ziplining, Is.False, "Crouch should let go of the cable.");
         }

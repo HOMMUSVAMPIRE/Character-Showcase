@@ -119,7 +119,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.6f, _ => Up);
             rig.ClearEvents();
             var events = rig.EventsRaised;
-            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle());
             Assert.That(Climbing, Is.False);
             Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThan(face - 0.5f), "Jumping off should push the character away from the ladder.");
             Assert.That(events.Contains(MovementEvents.WallJumped), Is.True);
