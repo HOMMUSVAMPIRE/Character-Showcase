@@ -9,7 +9,8 @@ Checks:
   2. No two .meta files share a GUID (copy-pasted .meta files break references silently).
   3. Every assembly references only what AGENTS.md's assembly table allows it (ALLOWED_REFERENCES), and no
      assembly is missing from the table.
-  4. The camera and the level builders use no character code: no `using Character`, `Level` or the like.
+  4. The camera uses no character or level code, and the level elements and the level builders no character code:
+     no `using Character` or the like (the level builders may use the level elements, `Level`).
   5. Every serialized field the tests read or set by name (rig.MovementSetting<T>("name"),
      rig.SetMovementSetting("name", value)) still exists, and is of the type the test asks for it as (<T>).
   6. No two movement settings share a name (the tests find a setting by its name alone).
@@ -62,15 +63,26 @@ def check_guids():
 TEST_RUNNER = {"UnityEngine.TestRunner", "UnityEditor.TestRunner"}
 ALLOWED_REFERENCES = {
     "PhysicsQueries": set(),
-    "CharacterShowcase": {"Unity.InputSystem", "PhysicsQueries"},
+    "CharacterShowcase.LevelElements": {"PhysicsQueries"},
+    "CharacterShowcase.LevelElements.Editor": {"CharacterShowcase.LevelElements"},
+    "CharacterShowcase": {"Unity.InputSystem", "PhysicsQueries", "CharacterShowcase.LevelElements"},
     "CameraSystem": {"Unity.InputSystem", "PhysicsQueries"},
-    "CharacterShowcase.Editor": {"CharacterShowcase", "CameraSystem"},
+    "CharacterShowcase.Editor": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.LevelElements",
+                                 "CharacterShowcase.LevelElements.Editor"},
+    "CharacterShowcase.Pipeline.Editor": {"CharacterShowcase", "CharacterShowcase.Editor"},
+    "CharacterShowcase.LevelChecks.Editor": {"CharacterShowcase", "CharacterShowcase.Editor"},
     "CharacterShowcase.Level.Editor": {"Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime",
-                                       "Unity.TextMeshPro"},
-    "CharacterShowcase.Tests.EditMode": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Level.Editor",
-                                         "CharacterShowcase.Tests.Shared", "PhysicsQueries"} | TEST_RUNNER,
+                                       "Unity.TextMeshPro", "CharacterShowcase.LevelElements",
+                                       "CharacterShowcase.LevelElements.Editor"},
+    "CharacterShowcase.Tests.EditMode": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Tests.Shared",
+                                         "PhysicsQueries", "CharacterShowcase.LevelElements",
+                                         "CharacterShowcase.LevelElements.Editor"} | TEST_RUNNER,
+    "CharacterShowcase.Tests.EditMode.Levels": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Tests.Shared",
+                                                "CharacterShowcase.Level.Editor", "CharacterShowcase.LevelChecks.Editor",
+                                                "CharacterShowcase.LevelElements",
+                                                "CharacterShowcase.LevelElements.Editor"} | TEST_RUNNER,
     "CharacterShowcase.Tests.PlayMode": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.Tests.Shared",
-                                         "PhysicsQueries"} | TEST_RUNNER,
+                                         "PhysicsQueries", "CharacterShowcase.LevelElements"} | TEST_RUNNER,
     "CharacterShowcase.Tests.Shared": {"CharacterShowcase"} | TEST_RUNNER,
 }
 
@@ -99,19 +111,23 @@ def check_assembly_references():
                 problems.append(f"{where}: {name} may not reference {ref} (see AGENTS.md's assembly table)")
 
 
-# Folders whose code must know nothing of the character's: the namespaces they may not use.
+# Folders whose code must know nothing of the character's: the namespaces they may not use. The camera uses nothing of the
+# character's or the level's; the level elements (Assets/Scripts/Level) and the level builders, which equip levels with
+# them, use the level elements (Level) but nothing of the character's or the camera's.
+CHARACTER_AND_LEVEL = r"(Character|Level|CameraSystem|CharacterShowcase\.EditorTools)\s*;|(Character|Level)\."
+CHARACTER_ONLY = r"(Character|CameraSystem|CharacterShowcase\.EditorTools)\s*;|Character\."
 INDEPENDENT_FOLDERS = {
-    ASSETS / "Scripts" / "CameraSystem": "the camera follows a plain Transform",
-    ASSETS / "Editor" / "Level": "the level builders make geometry, lighting and markers only",
+    ASSETS / "Scripts" / "CameraSystem": ("the camera follows a plain Transform", CHARACTER_AND_LEVEL),
+    ASSETS / "Scripts" / "Level": ("the level elements are the level's, used by the character", CHARACTER_ONLY),
+    ASSETS / "Editor" / "Level": ("the level builders make geometry, lighting and the level elements only", CHARACTER_ONLY),
 }
-CHARACTER_NAMESPACES = r"(Character|Level|CameraSystem|CharacterShowcase\.EditorTools)\s*;|(Character|Level)\."
 
 
 def check_independent_folders():
-    for folder, why in INDEPENDENT_FOLDERS.items():
+    for folder, (why, forbidden) in INDEPENDENT_FOLDERS.items():
         for source in folder.rglob("*.cs"):
             text = source.read_text(errors="replace")
-            for match in re.finditer(rf"^\s*using\s+(?:static\s+)?(?:\w+\s*=\s*)?(?:{CHARACTER_NAMESPACES})", text, re.M):
+            for match in re.finditer(rf"^\s*using\s+(?:static\s+)?(?:\w+\s*=\s*)?(?:{forbidden})", text, re.M):
                 used = match.group(0).strip()
                 # A folder's own namespace is its to use (CameraSystem's camera code is in CameraSystem).
                 if folder.name == "CameraSystem" and re.search(r"\bCameraSystem\b", used):

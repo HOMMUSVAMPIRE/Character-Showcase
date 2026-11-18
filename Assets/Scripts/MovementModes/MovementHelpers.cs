@@ -56,7 +56,7 @@ namespace Character
         public static bool HasElapsed(float elapsed, float duration, float deltaTime) =>
             elapsed >= duration - deltaTime * TimerTolerance;
 
-        /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
+        /// <summary>The movement input in world space, relative to the input's look (its yaw): horizontal, and no longer than 1.</summary>
         public static Vector3 InputDirection(MovementData movementData, Inputs inputs)
         {
             Vector3 direction = movementData.lookFlat * inputs.movementVector;

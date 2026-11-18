@@ -1,10 +1,10 @@
 # Test Levels
 The generated graybox levels, their mechanics, and how they are built. Level specs, the format the levels are recorded in, are in [level-specs.md](level-specs.md).
 
-The exact dimensions of every layout are in its builder (Assets/Editor/Level), and for the Meridian Complex also in each area's notes (the *_Blockout_Notes.md files in Assets/Scenes/MeridianComplex), which say how its diagram was read and what was chosen where it was ambiguous. This page describes the layouts in words.
+The exact dimensions of every layout are in its builder (Assets/Editor/Level), or for the [Meridian Basin](#the-meridian-basin), which has none, in the script that writes its spec, and for the Meridian Complex also in each area's notes (the *_Blockout_Notes.md files in Assets/Scenes/MeridianComplex), which say how its diagram was read and what was chosen where it was ambiguous. This page describes the layouts in words.
 
 ## Test Level: The Meridian Complex
-The Meridian Complex is a large graybox level for putting the character through its paces: terraces, stairs, ramps, bridges, towers, tunnels and measured test courses, in connected areas round a central hub. It's built from blockout diagrams (the MeridianComplex-*.png sheets at the repository's root).
+The Meridian Complex is a large graybox level for putting the character through its paces: terraces, stairs, ramps, bridges, towers, tunnels and measured test courses, in connected areas round a central hub. It's built from blockout diagrams (the MeridianComplex-*.png sheets in ReferenceAssets/, which git ignores, so they're only on the machine that has them, not in a clone).
 
 The character isn't placed in the scene: the level marks where it can start (spawn markers on the Concourse plaza), and Set Up Scene makes it spawn at one of them when you press Play (see [Spawning the Character](spawning.md)).
 
@@ -42,7 +42,7 @@ Each flight of stairs is one object: a single mesh of the whole flight (treads w
 Guardrails are graphite posts (spaced by the generation settings' Post Spacing) under an orange top rail, with a mid rail and an orange fascia band along the edge they stand on, one mesh per run. Each run's collider is still one solid box the rail's full height, so nothing slips between the rails. Underground rooms have a graphite skirting along their walls (to see only: it has no collider).
 
 ### Architectural detail and structure
-The pieces carry the style reference's architectural detail and structure:
+The pieces carry the architectural detail and structure of the style reference (MeridianComplexStyleReference.png, in ReferenceAssets/):
 - Long walls have concrete pilasters (spaced by Pilaster Spacing), and every opening a graphite frame with an orange lip (jambs, a header and a sill where the opening has wall above or below it).
 - Platforms without guardrails have a graphite coping round their top edge, so their edges (and the ledges to catch) read from a distance.
 - Free-standing and tower columns are chamfered, with an orange strip up each face.
@@ -67,7 +67,7 @@ Markings and wayfinding finish it:
 The lettering is TextMeshPro; its essential resources are in Assets/TextMesh Pro. Sign panels and their posts have box colliders; markings and lettering are to see only.
 
 ### Polish
-Polish after the concept art and the icons and decals sheet:
+Polish after the concept art and the icons and decals sheet (MeridianComplexConceptArt.png and MeridianComplex_Icons&Decals.png, in ReferenceAssets/ too):
 - orange banners with the Meridian mark ("///") on the Concourse's gate towers, the Ascension Spire's summit tower, the Suspension Yard's tall columns and beside the Fabrication Hall's entrance; orange bands up the summit tower;
 - the Concourse plaza's tree on the dais, orange and white guide rings round it, orange lanes out to the broad stairs, and planters with trees;
 - orange copings on the Kinetic Gardens' platforms;
@@ -113,12 +113,18 @@ The levels share a palette of materials, after the style reference's colours (gr
 - Steel (columns, supports, catwalks, crates);
 - Accent (orange: top rails, nosings, fascias);
 - the glowing Light and Cyan, and White;
-- and Water, made with its own shader instead (see [The water's look](traversal.md#the-waters-look)).
+- Foliage (the trees' and shrubs' leaves), Soil (trunks and planters' soil) and Grass (lawns);
+- and Water, made with its own shader instead (see [The water's look](#the-waters-look)).
 
 The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.Surface`). The materials (Assets/Materials/Level) are made the first time a level's built (from the looks in `GrayboxScene`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
 
 ### Environment
 It's lit as a sunny midday for URP: a high sun with soft shadows, a procedural sky that lights the ambient and reflections, light haze, and a global post-processing volume (ACES tonemapping, light bloom, a little contrast). The sun and haze are the generation settings' Environment section. The PC render pipeline asset (Assets/Settings/PC_RPAsset.asset) has its shadow Max Distance raised well above URP's default, so the terraces' shadows reach across the hub.
+
+## The Meridian Basin
+The Meridian Basin (Assets/Scenes/MeridianBasin) is a variant of the Meridian Complex sunk into a terraced octagonal pit: a park on the floor and terrace rings stepping up from it to the rim (each part of its spec is a level, L0 Central Park to L5 Operations Ring), with interiors set into the terraces, the Ascension Spire standing in the park with bridges out to the terraces, and the Service Lift as the one tunnel, a shortcut. It's compact and vertical: the walls between the terraces are too high to climb, and besides a stair up each, the ways up are platforming (jumps to ledges, double jumps, lifts, and halls and hatches with a way up inside). It's built from the same pieces, materials and lighting as the complex, after a reference sheet in ReferenceAssets/ (MeridianBasinRef.png).
+
+It has no builder. Its spec, Assets/Levels/MeridianBasin.level.json, is written by a Python script, Tools/LevelSpec/examples/meridian_basin.py, which works the layout out (eight faces on each ring, the climbs graded to the movement's limits); the script's notes describe it, and its dimensions are in the script. To change it, edit the script, run it (`python3 Tools/LevelSpec/examples/meridian_basin.py`), check the spec (`levelspec check`), and build the scene from the spec: Build Level from Spec… in Unity, then Set Up Scene, or `levelspec build Assets/Levels/MeridianBasin.level.json --unity` with Unity closed, which does both (see [Level Specs](level-specs.md)). Export Level Specs doesn't touch it, as only levels with builders are exported. The scene is set up to play (its Game Setup: the spawner at its spawn markers, the camera, its moving platforms, crates and timing gates) and is in the build's scenes, after the Level Playground.
 
 ## The Level Playground
 The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with one of each piece the complex is built from, made by the same builders' pieces in the same material and lighting:
@@ -129,14 +135,14 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 - an underground stairwell, passage, lit room and ventilation shaft;
 - one of each of the Calibration Annex's tests (steps either side of the step limit, a ledge, a slope, a low tunnel, a narrow beam beside a wall-run wall);
 - one of each mechanic (a lift, a ladder up to the lift's landing, a slide gate, a timed run and a crate to push; see [Level mechanics](#level-mechanics));
-- in the far west, the mechanics in the air: a tower, up a ladder or a bounce pad, with a zipline from its top south down to the ground, and a rope on a gantry over a gap between two raised platforms, too far for a sprint jump (a sprint jump and a well-timed air dash can just cross it), the near one with a climbable panel up its side;
+- in the far west, the mechanics in the air: a tower, up a ladder or a bounce pad, with a zipline from its top south down to the ground, and a rope on a gantry over a gap between two raised platforms, meant to be crossed on the rope (the levelspec tool's movement checks grade the gap against what the character can do: see [Level Specs](level-specs.md)), the near one with a climbable panel up its side;
 - in the north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to a shallow shelf, and a drop-off to a deep end to dive in, with an arch to swim through along its floor and a ladder up its east wall;
 - and placeholders for mechanics to come.
 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Character Showcase > Level > Build Level Playground, or `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
 ## Level mechanics
-The level builders can't reference the game's code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. Set Up Scene turns each into the real thing (`LevelFixtureSetup`):
+The level builders reference no character code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. `LevelFixtureSetup` (in the level elements' editor assembly, Assets/Scripts/Level/Editor) turns each into the level element it stands for (see [Climbing and Traversal](traversal.md)). Every build runs it before saving the scene, so a built level's mechanics work as it is; Set Up Scene runs it again, leaving what's set up as it is, for a scene built some other way. The names are the level elements' convention, which any scene can use:
 - "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a MovingPlatform with those settings;
 - "Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableObject (Can Be Pulled, Speed Multiplier);
 - "Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder with those settings, which keeps the level's mesh ("Ladder (future): …" markers aren't ladders);
@@ -145,6 +151,29 @@ The level builders can't reference the game's code, so a mechanic is built as a 
 - "Bounce Pad | height=m | keep=f" gets a BouncePad, its "Spring" child squashing on each launch;
 - "Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that keeps the level's surface;
 - "Climbable Panel | speed=f" gets a ClimbableSurface (the whole panel climbable, at that speed multiplier); only the panel is climbable, not the wall it stands on, so a climb stops at its edges;
-- "Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, and each course a CourseTimer under the Game Setup object, told by the spawner who's racing; a gate's display, "Timing Display | course=name", shows its course's time under way, the last and best, and (with a distance) the speed.
+- "Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, and each course a CourseTimer, the scene's own or one made in a Course Timers group at the scene's root (`LevelFixtureSetup.CoursesName`), which Set Up Scene has the spawner tell who's racing; a gate's display, "Timing Display | course=name", shows its course's time under way, the last and best, and (with a distance) the speed.
 
-A CourseTimer times laps through one start-and-finish gate, or runs from a start gate to a finish gate, in game time. A pass too soon after a lap starts (the CourseTimer's Minimum Run Time) is ignored. Only its racer counts once it has one; until then anything passing with a Rigidbody does. The fixtures can also be added and named by hand in any scene that's then set up.
+A CourseTimer times laps through one start-and-finish gate, or runs from a start gate to a finish gate, in game time. A pass too soon after a lap starts (the CourseTimer's Minimum Run Time) is ignored. Only its racer counts once it has one; until then anything passing with a Rigidbody does. The fixtures can also be added and named by hand in any scene that's then set up. Spawn markers, objects named "Spawn Point …" (`LevelFixtureSetup.SpawnMarkerPrefix`), aren't level elements: Set Up Scene makes them the spawner's spawn points (see [Spawning the Character](spawning.md#setting-up-a-scene)).
+
+## Mechanics in the showcase levels
+Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose geometry is named as its fixture (above), and the Level Playground has one of each:
+- **Ladders:** the Ladder piece builds one (orange rails, steel rungs) with its back against a wall, climbed onto the floor level with its top. The Level Playground has one up the side of the lift's landing, and one up its pool's east wall.
+- **Ropes:** the Rope piece hangs one from a small graphite bracket, which hangs from something (a gantry's beam). The Level Playground has one on a gantry over a gap meant to be crossed on the rope.
+- **Ziplines:** the Zipline piece builds a steel cable between two graphite posts. The Level Playground has one from the top of a tower down to the ground.
+- **Bounce pads:** the BouncePad piece builds a steel base with a cyan springy top (its "Spring", which squashes on each launch). The Level Playground has one up onto its zipline tower.
+- **Climbable panels:** the climbable panel piece stands a steel panel with orange holds a little proud of a wall; only the panel is climbable, not the wall, so a climb stops at its edges. The Level Playground has one up the side of the near rope platform.
+- **Water:** the Water piece draws the surface over a footprint (in the Water material, below), and what's under it (a pool's basin) is built as any other floor. The Level Playground's pool has a beach, a shallow shelf, a deep end and an arch to swim under along its floor.
+
+### Climbable paint on the levels' materials
+The levels' concrete shader (NoiseConcrete) shows painted climbable areas (see [Painting climbable areas](traversal.md#painting-climbable-areas)): it has the Climbable Mask texture and a second set of its look's settings for climbable areas (Climbable Tint, Climbable Grain, Climbable Panels and the rest of them; by default an ochre, rougher concrete in finer panels), blended in where the mask is white. The level materials made with it are given ClimbableMask_None as their own mask when they're made, so unpainted objects show none.
+
+The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale; the grass tufts, which nothing's painted on, are left out), and the levels' boxes use Graybox Cube (Assets/Models/Level), Unity's cube with a UV2.
+
+### The water's look
+The levels' water is drawn with its own shader, Assets/Materials/Water.shader (the Level_Water material, made the first time a level's built), whose whole look is built from noise in world space with no textures, as the other surfaces' is:
+- layers of drifting noise make the ripples, which bend the surface's normal (Ripple Size, Ripple Speed, Ripple Strength) and lift and lower it a little (Wave Height);
+- the sky reflects in it, more at a glancing look, and the sun glints off the ripples (Smoothness, Sky Reflection, Sun Glints);
+- how much water is under each point (from the camera's depth texture) tints it from Shallow Colour to Deep Colour, from see-through to nearly opaque (Depth To Deep, Shallow Opacity, Deep Opacity);
+- and foam rims what stands in the water, broken up by noise (Foam Colour, Foam Distance, Foam Breakup).
+
+From under the surface it's a murky ceiling. The depth effects need the render pipeline asset's Depth Texture on (the PC asset has it); without it, the water all looks deep and has no foam. What a camera under the water sees is the UnderwaterView's (see [The view underwater](traversal.md#the-view-underwater)).

@@ -81,8 +81,8 @@ namespace CharacterShowcase.Tests.EditMode.Animations
         public void ClipsThatMoveAbout_StayOnTheSpot_AndFaceForward_OnTheMannequin()
         {
             string[] clips = Clips().Where(path => OnTheSpotFolders.Contains(Path.GetFileName(Path.GetDirectoryName(path)))).ToArray();
-            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(MannequinGenerator.ModelPrefabPath);
-            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {MannequinGenerator.ModelPrefabPath} to play them on."); }
+            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterModelImporter.MannequinPrefabPath);
+            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {CharacterModelImporter.MannequinPrefabPath} to play them on."); }
             CheckEvery(clips, path =>
             {
                 AnimationClip clip = MotionCaptureClipImporter.WholeClip(path);

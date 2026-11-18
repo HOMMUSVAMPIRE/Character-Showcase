@@ -1,12 +1,12 @@
 # Camera System
 
-The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a CameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the CameraRig's settings, grouped by feature). How the camera follows a resized character is in [Character Size](movement.md#character-size).
+The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a CameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the CameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
 
 Features: first person (at a fixed eye height, or following an eye anchor Transform such as a character's eye point) and over-the-shoulder third person (scaled with an optional target size reference, so resized targets are framed alike) with smooth blending between them, zoom (zooming all the way in switches to first person), shoulder swapping (automatic when a wall blocks the current side), aiming, camera collision, follow damping, target interpolation for physics-driven targets, speed-based FOV, head bob, landing dips, trauma-based camera shake, optional auto-recentering, hiding the character up close, and CameraZone volumes that override camera behaviour in an area.
 
 Beside a wall that blocks its shoulder even partly (running along one, say), the camera glides to the other shoulder and keeps its distance, rather than being squeezed in behind the target's head against the wall; it returns once the wall is gone. A target closer to a wall or ceiling than the collision probe (Collision's Probe Radius) is wide, a slim character pressed against one or squeezing through a tight space, doesn't pull the camera in either: the probe starts from just clear of it, and where even that leaves no room (a corridor narrower than the probe), the probe shrinks to fit.
 
-A wall alongside never pulls the camera in: each collision sweep stops a little short of what it hits, so the camera's backward sweep never starts pressed against a wall it's running parallel to (which used to snap the camera in as a wall run began).
+A wall alongside never pulls the camera in: each collision sweep stops a little short of what it hits, so the camera's backward sweep never starts pressed against a wall it's running parallel to.
 
 ## Its settings
 Everything is on the CameraRig component, grouped by feature in its inspector (each setting's tooltip says what it does):
@@ -15,7 +15,7 @@ Everything is on the CameraRig component, grouped by feature in its inspector (e
 | --- | --- |
 | Target, Target Size Reference | What the camera follows, and an optional Transform whose scale frames resized targets alike |
 | Input | Where camera input comes from: a PlayerInput (the scene's first, if none is set) or an Input Action asset, and the action names |
-| Modes | The view mode it starts in, and the blend between first and third person |
+| Modes | The view mode it starts in, which modes are allowed (Allow First Person, Allow Third Person: with neither, third person is), and the blend between first and third person |
 | Look | Mouse and stick sensitivity, the stick's response curve, smoothing |
 | Cursor | Locking the cursor during play, and the keys to release and re-lock it |
 | First Person | Eye height (or an eye anchor Transform), eye offset, near clip, hiding the target's own renderers |
@@ -29,10 +29,18 @@ Everything is on the CameraRig component, grouped by feature in its inspector (e
 | Recenter | Swinging behind the target after a while without look input (not when it'd swing further round than Max Turn Angle) |
 | Debug | Drawing the pivot, shoulder point and collision probe in the Scene view |
 
-Distances and speeds are for a target of normal size, and scale with the Target Size Reference (see [Character Size](movement.md#character-size)).
+Distances and speeds are for a target of normal size, and scale with the Target Size Reference (below).
+
+### At any size
+Given a Target Size Reference (a spawned character hands it its model parent, whose scale is its size: see [Spawning the Character](spawning.md)), the camera frames a resized target as it does one of normal size (how the character is resized is in [Character Size](movement.md#character-size)):
+- First person follows the eye point. Third person's pivot height, shoulder offset and distance, and the head bob, scale with the size reference.
+- Speed effects (the speed-based field of view and head bob strength) judge the target's speed relative to its size, dividing it by its height, so a character at its own top speed gets the same effect at any size.
+- Every other distance and speed the camera uses scales with the target too: follow lag, landing dip and its speed threshold, collision probe and minimum distance, hide distance, shake, teleport distance and the clip planes (near always, far only for a bigger target, so a small one still sees the world).
 
 ## Connecting it to something
 The camera follows a plain Transform: `CameraRig.Follow(target)`, or `Follow(target, eyeAnchor, sizeReference)` to give it an eye point for first person and a size reference too (`SetTarget` changes only the target). Nothing in it knows what it follows, so it works the same on a character, a vehicle or a moving prop.
+
+From code, the rig can also be steered: `SetMode(mode)` and `ToggleMode()` change the view (each returns false for a mode that isn't allowed), `SetLookRotation(yaw, pitch)` points it (the pitch clamped to the mode's limits), `SetDistance(distance, instant)` zooms, `SetShoulder(right)` picks the third-person shoulder, and `Snap()` skips this frame's smoothing, jumping straight to where it should be.
 
 How fast the target moves, when it lands and how it's scaled are worked out by watching the Transform (`CameraTargetTracker`), not by asking the target's code.
 

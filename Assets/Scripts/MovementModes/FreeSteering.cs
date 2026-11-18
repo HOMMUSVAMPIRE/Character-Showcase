@@ -4,8 +4,9 @@ namespace Character
 {
     /// <summary>
     /// Steering free of the ground, in all three dimensions: swimming underwater now (see Swimming), and a way of moving
-    /// through the air later. The movement input points the way the camera looks, pitch and all (looking down and pushing
-    /// forward heads down); holding Jump rises and Crouch sinks, whichever way the camera looks. The character turns
+    /// through the air later. The movement input points the way the input looks (MovementData.look: the player's camera,
+    /// for the player), pitch and all (looking down and pushing forward heads down); holding Jump rises and Crouch sinks,
+    /// whichever way it looks. The character turns
     /// (about the vertical) to face the way it heads across, and its body pitches along the way it heads, up or down, as
     /// far as a component allows (see MovementController.BodyPitch). Like MovementHelpers, nothing here reads settings:
     /// the component using it passes its own speeds and limits.
@@ -16,8 +17,8 @@ namespace Character
         private const float SteeringThreshold = 1e-4f;
 
         /// <summary>
-        /// The way the movement input steers, in the world, no longer than 1: the stick (flat, in the camera's space)
-        /// turned by the whole of the camera's look, so its pitch tips it up or down.
+        /// The way the movement input steers, in the world, no longer than 1: the stick (flat, relative to the look) turned
+        /// by the whole of the look, so its pitch tips it up or down.
         /// </summary>
         public static Vector3 Direction(MovementData movementData, Inputs inputs) =>
             Vector3.ClampMagnitude(movementData.look * inputs.movementVector, 1f);

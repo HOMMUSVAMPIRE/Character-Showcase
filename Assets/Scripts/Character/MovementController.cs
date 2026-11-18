@@ -151,9 +151,15 @@ namespace Character
         /// <summary>The radius of the body used for collision sweeps (the body's, less the skin width).</summary>
         private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, Body.FootprintRadius - SkinWidth);
 
+        /// <summary>
+        /// The share of the body's footprint the ground check's sphere is, without a Ground Check Radius of its own: a
+        /// little inside it, so a wall beside the character isn't ground.
+        /// </summary>
+        public const float GroundCheckFootprintShare = 0.9f;
+
         /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
         private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
-            : Body.FootprintRadius * 0.9f; // 90%: 0.45 m on the 0.5 m capsule.
+            : Body.FootprintRadius * GroundCheckFootprintShare;
 
         /// <summary>The tallest step the character climbs at its size.</summary>
         private float StepHeight => maxStepHeight * HeightScale;

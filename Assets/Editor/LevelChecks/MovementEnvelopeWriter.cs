@@ -23,7 +23,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>Where the envelope is written.</summary>
         public const string EnvelopePath = "Tools/LevelSpec/envelope.json";
         /// <summary>The default character, whose movement the envelope is measured from.</summary>
-        public const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        public const string CharacterPrefabPath = SceneGameSetup.CharacterPrefabPath;
         // The level generation settings (the level editor assembly's GrayboxSettings, read by name: this assembly can't
         // reference it).
         private const string GrayboxSettingsPath = "Assets/Editor/Level/GrayboxSettings.asset";

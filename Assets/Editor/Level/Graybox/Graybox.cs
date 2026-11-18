@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Level.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
@@ -143,10 +144,10 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>
-        /// The name every spawn marker's starts with. Game setup tools look for markers by this name (the level knows
-        /// nothing about what spawns there), so keep it in step with SceneGameSetup.SpawnMarkerPrefix.
+        /// The name every spawn marker's starts with (LevelFixtureSetup's: Set Up Scene makes the markers spawn points; the
+        /// level knows nothing about what spawns there).
         /// </summary>
-        public const string SpawnMarkerPrefix = "Spawn Point";
+        public const string SpawnMarkerPrefix = LevelFixtureSetup.SpawnMarkerPrefix;
 
         /// <summary>
         /// An empty marker where a character can start: its feet at the given height, facing yaw degrees clockwise from

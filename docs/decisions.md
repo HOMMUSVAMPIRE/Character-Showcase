@@ -69,9 +69,70 @@ Choices about how the project is built, why they were made, and what was decided
 **Against:** a fractional lift (part of the step height): steps between the lift and the step height would need the body's own step-up, which hovering otherwise retires. And treating the long fox's body differently: it still rides slopes and stairs on the ground ahead of its paws, which a rounder or pitched body is next to fix.
 
 ## A long body is made of several parts (November 2026)
-**Decided:** a body can have extra parts beside its shape (a Body Definition's Extra Parts), together one body: the fox's is two capsules lying along its back, one above the other, held a step above its paws, and a sphere for its head, in place of the box round all of it.
+**Decided:** a body can have extra parts beside its shape (a Body Definition's Extra Parts), together one body: the fox's is several rounded parts (see Fox Body.asset), held a step above its paws, in place of the box round all of it.
 
 **Why:** a box long enough for the fox reached out with its corners: turning in a corridor, coming at a wall to run along it, and over slopes and stairs, where its flat bottom rested on the ground ahead of its paws. Rounded parts have no corners, and held above its legs, they leave the ground to its paws. A single capsule couldn't do it: round across, as wide as the fox would leave it only as tall as its back, or as tall as its head, far too wide.
 
 **Against:** pitching the body along the ground (as its model is), which would keep a long body off the steps behind it going down a flight too, but turn the character's own queries with every stride; it's still open, if how little it rests on them there matters. And dropping the long-body rules (WallRunning's reach and alongside gap): they're about a body being longer than it's wide, which a rounded one still is, not about corners.
 
+## Input is a frame per step, and the character works out its presses (November 2026)
+**Decided:** a character is given one input frame each physics step (`CharacterInputFrame`): unmanaged, saying only the move input, the look and which buttons are held. The character works out presses and hold durations itself, counted in steps (`InputState`), and its components read them as `Inputs`.
+
+**Why:** the same frames then give the same movement at any frame rate, and a frame can be copied, recorded, compared and sent as it is. A press worked out from the frames can't disagree with them.
+
+**Against:** the input manager's own `Inputs`, updated in place each render frame, with presses and durations timed by it: what the movement saw depended on the frame rate, and there was nothing to record or send.
+
+## The movement never reads a camera (November 2026)
+**Decided:** the move input is relative to the input frame's look (`MovementData.look`), which the player's input manager fills from the main camera, and an AI from its own aim.
+
+**Why:** a character steps the same on a machine with no camera (a server), and an NPC moves by where it looks, not where the player's camera does.
+
+**Against:** the movement reading `Camera.main` (or a camera set on it), which tied every character to the player's view.
+
+## Movement keeps time in ticks (November 2026)
+**Decided:** movement times things by its own clock in whole steps (`MovementController.StepTick`), keeping the tick something happened at and asking `SecondsSince`, rather than adding a float of seconds each step or reading Unity's time.
+
+**Why:** a float added to step by step drifts, and loses its fractions as it grows: in ticks, timing is exact however long a character runs, and a copy stepped faster than real time, or restored and replayed, times things the same.
+
+## Deterministic on one build, corrected across machines (November 2026)
+**Decided:** the same state, input frames and world give bit-identical steps on one build: ties go by where things are (`StableOrder`), the level's moving parts by the level's clock (`Level.LevelClock`), and PhysX's Enhanced Determinism is on. Across machines, a server corrects its clients (from a saved or written state: `SaveState`, `StateSerializer`).
+
+**Why:** a networked game's prediction and rollback need a character restored to a step to step on exactly as it did, and replays and the golden path tests need the same. Floating point isn't reproducible across platforms, so agreement between machines comes from correction, not from the arithmetic.
+
+**Against:** breaking ties by the order Unity gives results in, or by instance IDs, which differ between runs and machines; and mechanics timed by their own time since they were enabled.
+
+## What drives a character is its input source and owner (November 2026)
+**Decided:** a character is driven by an input source (`ICharacterInputSource`: the player's device, a script, a recording, an AI walking a route), else by what its owner (`CharacterOwner`) gives: the local player's reads the device, an AI's stands idle, a remote one isn't stepped.
+
+**Why:** the player's character, an NPC, a replay and another machine's character are then the same character with the same movement, only fed differently; the controller reading the input manager itself was what kept NPCs out.
+
+## Physics query buffers are their own assembly, and grow (November 2026)
+**Decided:** the reused buffers for physics queries (`QueryBuffer`, `RaycastHitBuffer`, `ColliderBuffer`) are in `PhysicsQueries`, an assembly that references nothing, and a buffer that a query fills grows and runs the query again.
+
+**Why:** Unity's results come in no order, so a full buffer may have left out the nearest hit. The character and the camera both need the buffers, and neither may know the other, so they live apart from both.
+
+**Against:** bare arrays sized generously, which still fill and then miss hits without a sign; and queries that allocate, every step.
+
+## The body is fitted from the model's source at Start (November 2026)
+**Decided:** with Body Fit on, `CharacterModelHost` fits the body its source was prepared with in `Start`, before the first step, and keeps it when the model arrives (`LoadModelOnStart` off, it never does).
+
+**Why:** the character moves the same body from its first step, with its model, before it loads, or without one (a server), so its movement doesn't depend on when, or whether, a model loaded.
+
+**Against:** fitting the body only once the model has loaded, which moved a character with one body and then another.
+
+## Moving ground moves first, its pose set at once (November 2026)
+**Decided:** each physics step a moving platform sets its pose directly (where the level's clock has it), before the characters step (`MovingPlatform.MoveOrder`), and draws itself interpolated.
+
+**Why:** a character then rides the platform and queries it where it will be after the step.
+
+**Against:** moving it with `Rigidbody.MovePosition`, which only takes effect at the physics step: the characters read it a step late and rode it a step behind.
+
+## The level elements are their own assembly, and the builders attach them (November 2026)
+**Decided:**
+- The level elements (Assets/Scripts/Level: water, ropes, ladders, platforms and the rest) are an assembly of their own, `CharacterShowcase.LevelElements`, which references only `PhysicsQueries`. The character uses it for traversal, and the level builders use it to equip their levels.
+- Its editor assembly holds the climbable paint tool and `LevelFixtureSetup`, which turns named fixtures into level elements and holds their names. Each level build runs it before saving, so a level comes out of its build with its mechanics working. Set Up Scene keeps the character's jobs (the spawner, the camera, the input manager, who's racing the course timers) and runs it again, finding what's set up, for a scene built some other way.
+- The mannequin and fox generators with their Blender runner (`CharacterShowcase.Pipeline.Editor`), the movement envelope's writer (`CharacterShowcase.LevelChecks.Editor`) and the level builders' tests (`CharacterShowcase.Tests.EditMode.Levels`) are assemblies of their own, as the level builders already were.
+
+**Why:** the character is meant to ship as a package without the showcase's level builders or its Blender tooling. With them in assemblies of their own, and the level elements (which traversal needs) apart from the builders, the line between what ships and what doesn't is the assemblies' (AGENTS.md, The package line), and the hygiene check holds it.
+
+**Against:** the level elements staying in the character's assembly, with only Set Up Scene turning a level's markers into them. The builders, which couldn't reference the character's code, then named the markers by constants of their own that had to match Set Up Scene's: a names contract duplicated across two assemblies, held by a test, and a level that didn't work until Set Up Scene had been run on it.

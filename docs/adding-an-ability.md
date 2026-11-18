@@ -17,17 +17,18 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 - For what isn't a takeover: `BeforeAbilities` (forces, like gravity), `BeforeLocomotion` (changing how the character walks, like crouching), `Locomotion` (how it moves by itself), `AfterWalking` (acting on top of walking, like dashing and jumping) and `FinishStep` (limits, like the fall speed).
 - `Posture`: how it holds the character's body this step (a `BodyPosture`: low at the crouch height, or lying), or null; the first component in list order to hold it has its way.
 - `AfterMovementResolved`: for moving something along with the character, by however far it actually moved.
-- `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities`, and to `MovementEnvelopeWriter` if the levelspec tool's checks should use it.
+- `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities` (the character's [Capabilities](movement.md#capabilities)). The showcase's level checks are a separate, optional export of them (`MovementEnvelopeWriter`, in Assets/Editor/LevelChecks): add it there too if the levelspec tool's checks should use it.
 
 **Working with the rest of the movement.**
 
 - Ask the component's `Mode` for the shared rules: `GravityAcceleration`, `AirAcceleration`, `MoveSpeed`, `IsNewJumpPress`, `ConsumeCrouchPress`, `AbilityInProgress` (or `AbilityInProgressExcept<T>`, for an ability that may take over from a T; `AbilityInProgressWith(traits)`, for one that cares what the ability under way does with the character, not which it is) and `InterruptOthers` (when it takes the character).
 - Read another component's settings with `SettingsOf<T>()` (they apply whether it's turned on or not, or its defaults if it's been removed). Hand the character to another component with `Mode.Get<T>()` (only found turned on). Never reach into another component otherwise.
-- The rules several abilities share are in `MovementHelpers`: using up and giving back jumps (`TryUseJump`, `GiveBackJumps`, `GiveBackAirMoves`), catching hold of a line (`TakeHoldOfALine`), jumping off what the character holds (`JumpOff`, and `JumpOffWall` for a wall, which also starts air steering coming back), and the timers' countdowns (`CountDown`, `HasElapsed`). An ability that moves the character free of the ground, in three dimensions, steers with `FreeSteering` (the way the camera looks, Jump and Crouch to rise and sink, facing across, pitching the body along its heading through `MovementData.targetPitch`), as underwater swimming does.
+- The rules several abilities share are in `MovementHelpers`: using up and giving back jumps (`TryUseJump`, `GiveBackJumps`, `GiveBackAirMoves`), catching hold of a line (`TakeHoldOfALine`), jumping off what the character holds (`JumpOff`, and `JumpOffWall` for a wall, which also starts air steering coming back), and counting down a duration step by step (`CountDown`, `HasElapsed`: a cooldown, how long an ability lasts; for when something happened, keep its tick instead, below). An ability that moves the character free of the ground, in three dimensions, steers with `FreeSteering` (the way the input looks, the player's camera for the player: see [Input](movement.md#input); Jump and Crouch to rise and sink, facing across, pitching the body along its heading through `MovementData.targetPitch`), as underwater swimming does.
 - A button that starts the ability once per press, within an input buffer, uses a `ButtonPress` in its state (`Track` it every step, `Consume` it to start), as Jump, Dash, Crouch and Roll do.
 - Query the world through the `MovementController` (`SweepBody`, `Raycast`, `OverlapSphere`, `ClosestPointOn`, `CanFitAt`, ...), which skip the character's own colliders, and read the physics pose, not the Transform. Hovering over steps (as the characters do), the body is swept with its bottom a step above the feet (`BodyLift`): a sweep down to find a floor reaches that much further, and where the body comes to rest on something, `FeetOnGround` puts the feet on the ground under it (see Ledges' `TryDropOntoLedge`). Moving the character somewhere at once goes through `MovementController.Teleport`. Measure the character by its body's proportions (`controller.Body.StandingHeight`, `FrontExtent`, `BackExtent`, `SideExtent`): heights as shares of its standing height, distances to what it faces by the extent on that side.
-- Time things in ticks: keep `controller.StepTick` when something happens (`MovementController.NeverTick` for never) and ask `controller.SecondsSince(tick)`, never global time, so the capability measurements (which step a copy of the character faster than real time) behave the same, and timing stays exact however long a character runs.
+- Time when something happened in ticks: keep `controller.StepTick` when it happens (`MovementController.NeverTick` for never) and ask `controller.SecondsSince(tick)`, never global time, so the capability measurements (which step a copy of the character faster than real time) behave the same, and timing stays exact however long a character runs.
 - Where the ability chooses between equally good candidates (two hits as near, two ropes), break the tie with `StableOrder`, so it chooses the same on any machine and however the scene was built.
+- A level component the ability depends on that has state of its own (as a rope's swing and a pushable object's position are) is part of what the character's next steps depend on: it needs a place in the level that `Level.StableId` names alike on every machine (and `StableId.Resolve` finds again), and to be among the moving parts saved and written (`WorldStateSnapshot.MovingParts`, which `StateSerializer.WriteWorld` writes). See [Determinism and state](movement.md#determinism-and-state).
 - Multiply speeds by `controller.SpeedScale`, distances by `HeightScale`, accelerations by `AccelerationScale` and durations by `DurationScale`, so it works at any size.
 - No allocation in per-step code: reuse buffers.
 
@@ -35,6 +36,8 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 
 ## 2. Its state
 Movement modes are shared assets, so what each character is doing lives on its `MovementController`. Put a state class at the bottom of the component's file, and below it, still in the component's file, a part of `MovementController` (a partial class) with a property for it: `public partial class MovementController { public FooState foo { get; } = new FooState(); }`. Every ability's state is declared this way, beside its component, so `MovementController.cs` itself isn't touched.
+
+The state is saved and put back with the character's (`MovementController.SaveState`, `MovementStateSnapshot`) and written to bytes (`StateSerializer`) by itself, as long as it's plain values and plain objects: a reference to a level object is written as its `Level.StableId`, and one to an asset or a setting isn't written (the reader keeps its own).
 
 ## 3. Its state flag and events
 - A `CharacterState` flag for it (a 32-bit flags enum: take the next unused bit).
@@ -44,7 +47,8 @@ Movement modes are shared assets, so what each character is doing lives on its `
 ## 4. Putting it in the mode
 - Add it to `BasicMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.
 - Update the expected list in `MovementCompositionTests.ANewBasicMovementMode_StartsWithItsComponents_InOrder`.
-- Add it to `Assets/ScriptableObjects/BasicMovementMode.asset` with Add Component in its inspector, and move it to its place. Saving writes the movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed.
+- Add it to `Assets/ScriptableObjects/BasicMovementMode.asset` with Add Component in its inspector, and move it to its place. In this project, saving also writes the level checks' movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed (see [Tuning the Character](tuning.md#what-changes-when-you-save)).
+- Add it to the fox's mode too, `Assets/ScriptableObjects/Fox Movement.asset` (a BasicMovementMode of its own, hand-tuned), at the same place, turned off unless the fox's body and animations suit it (as several of its components are): a mode left without it can't be given it by a tuning preset.
 
 ## 5. Animation, if it has a look of its own
 1. Fields for it in `CharacterAnimationState`, filled by `AnimationController.BuildState`.
@@ -53,20 +57,24 @@ Movement modes are shared assets, so what each character is doing lives on its `
 4. A clip in `Tools/Mannequin/mannequin_animations.py`, if it needs one.
 5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one: a subclass of `AbilityIK`, which hooks it into CharacterIK and eases it in and out, so it only places the limbs (`Solve`).
 6. Then regenerate the mannequin (Generate Mannequin) and prepare the character models (Prepare Character Models). See [Character Model and Animations](animation.md).
+7. The fox's Animator Controller and translator are FoxGenerator's own, built from scratch: the fox shows the new state only if `FoxGenerator` adds its parameter and state too (and Generate Fox is run). Until then it plays whatever its other parameters show. See [Creatures](creatures.md).
 
 ## 6. Level side, if it uses something in the level
-For an ability used on something in the level (as ropes and ziplines are):
+For an ability used on something in the level (as ropes and ziplines are), in two parts.
 
-1. A runtime component for it in `Assets/Scripts/Level`.
-2. A graybox piece in `Graybox.Mechanics.cs`, naming its geometry "Name | key=value | ...".
-3. A set-up step in `LevelFixtureSetup` (its prefix matching the piece's), with a `LevelFixtureSetupTests` case.
-4. An example in the Level Playground.
-5. An outline in `Tools/LevelSpec/levelspec/geometry.py`.
+**The level element** (ships with the character):
+1. A runtime component for it in `Assets/Scripts/Level` (the level elements' assembly, namespace `Level`), knowing nothing about the character. The rules it keeps (the level's clock, moving before the characters, `StableId`) are in [Adding Level Content](adding-level-content.md#a-new-level-mechanic-a-fixture).
+2. If levels should get it from a named marker, a set-up step in `LevelFixtureSetup` (Assets/Scripts/Level/Editor) for its name's prefix, with a `LevelFixtureSetupTests` case.
+
+**The showcase levels** (the builders: optional, and not part of the character):
+1. A graybox piece in `Graybox.Mechanics.cs`, naming its geometry "Name | key=value | ..." by `LevelFixtureSetup`'s prefix (the build runs the fixture setup, so it works once built).
+2. An example in the Level Playground.
+3. An outline in `Tools/LevelSpec/levelspec/geometry.py`.
 
 The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
 
 ## 7. Tests and docs
-- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `CharacterRigFixture` (which makes and disposes the rig for each test). Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
+- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/Tests/PlayMode/Abilities` or `Traversal`, namespace `CharacterShowcase.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
   - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.

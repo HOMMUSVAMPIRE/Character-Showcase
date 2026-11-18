@@ -30,6 +30,10 @@ namespace CharacterShowcase.EditorTools
     {
         /// <summary>The folder the models are in, a subfolder per model (or per model and its variants).</summary>
         public const string ModelsFolder = "Assets/Models/CharacterModels";
+        /// <summary>The mannequin's model file (made by Generate Mannequin, where the model pipeline is in the project).</summary>
+        public const string MannequinModelPath = ModelsFolder + "/Mannequin/Mannequin.fbx";
+        /// <summary>The mannequin's model prefab, whose IK settings new models start from.</summary>
+        public const string MannequinPrefabPath = ModelsFolder + "/Mannequin/Mannequin Model.prefab";
         /// <summary>
         /// The Animator Controller, shared by every model: Humanoid animation plays on any Humanoid model. Built by
         /// MannequinGenerator.

@@ -11,11 +11,19 @@ namespace CharacterShowcase.EditorTools
     ///   Controller, a clip, or a model source) changes, PrepareChanged prepares whichever are new or changed, so their
     ///   ground offsets are measured again, and reports sources whose models are gone
     /// The mannequin is the exception: its animation clips and the controller built from them come from Generate
-    /// Mannequin, which is run again (from the file as it is) when the mannequin's file changes.
+    /// Mannequin, which the model pipeline runs again (from the file as it is) when the mannequin's file changes, through
+    /// BeforePreparing.
     /// </summary>
     public class CharacterModelPostprocessor : AssetPostprocessor
     {
         private static bool scheduled;
+
+        /// <summary>
+        /// Called before changed models are prepared, once the editor's idle: for what has to happen first. The model
+        /// pipeline (Assets/Editor/Pipeline) regenerates the mannequin here when its file has changed; without the pipeline,
+        /// nothing is.
+        /// </summary>
+        public static event System.Action BeforePreparing;
 
         private static bool InModelsFolder(string path) => path.StartsWith(CharacterModelImporter.ModelsFolder + "/");
 
@@ -62,8 +70,9 @@ namespace CharacterShowcase.EditorTools
             scheduled = false;
             if (CharacterModelImporter.IsBusy) { return; }
 
-            // The mannequin's clips and controller depend on its file, so a changed mannequin is regenerated from it.
-            if (MannequinGenerator.NeedsRebuild()) { MannequinGenerator.Generate(blenderPath: null); }
+            // Whatever has to come first (the model pipeline, where it's in the project, regenerating a changed mannequin's
+            // clips and controller from its file), then the models.
+            BeforePreparing?.Invoke();
             CharacterModelImporter.PrepareChanged();
         }
     }

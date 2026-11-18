@@ -1,22 +1,21 @@
 using System.Collections.Generic;
-using CharacterShowcase.EditorTools;
-using CharacterShowcase.EditorTools.Level;
 using Level;
+using Level.EditorTools;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CharacterShowcase.Tests.EditMode.Levels
+namespace CharacterShowcase.Tests.EditMode.LevelElements
 {
     /// <summary>
     /// Checks of showing painted climbable areas: the concrete shader has a climbable mask, sampled in UV2, and a climbable
     /// twin of each of its look's settings; the materials that show climbable areas share the 1-pixel black mask that
     /// means nothing's painted; painting a face paints it, and only it, in its renderer's mask, given to the renderer's
     /// material (and taken off when the masks are turned off), and a renderer whose material shows no climbable areas
-    /// gets none; paint is for the face painted (not the back of a thin wall), and erased as painted; and the level's
-    /// boxes and prisms have a UV2 giving each face its own space. On a new, unsaved scene.
+    /// gets none; and paint is for the face painted (not the back of a thin wall), and erased as painted. On a new, unsaved
+    /// scene. (That the level builders' pieces have a UV2 to paint in: GrayboxUV2Tests, with the level builders.)
     /// </summary>
     [Category(TestArea.Levels)]
     [TestTiming]
@@ -66,17 +65,6 @@ namespace CharacterShowcase.Tests.EditMode.Levels
                 string twin = "_Climbable" + setting.TrimStart('_');
                 Assert.That(shader.FindPropertyIndex(twin), Is.GreaterThanOrEqualTo(0), $"The shader should have {twin}, the climbable look's {setting}.");
             }
-        }
-
-        [Test]
-        public void TheUnpaintedMasksPath_IsTheSameForTheLevelBuildersAndThePaintTools()
-        {
-            // The level builders' assembly can't reference the paint tools', so each names the path itself; GrayboxScene
-            // is internal to it, so it's read by name.
-            var field = typeof(Graybox).Assembly.GetType("CharacterShowcase.EditorTools.Level.GrayboxScene")?.GetField("NoClimbableMaskPath");
-            Assert.That(field, Is.Not.Null, "GrayboxScene.NoClimbableMaskPath has moved or been renamed: update this test.");
-            Assert.That(field.GetValue(null), Is.EqualTo(ClimbablePaintAssets.NoMaskPath),
-                "The level builders and the paint tools should name the same unpainted mask.");
         }
 
         [Test]
@@ -190,56 +178,6 @@ namespace CharacterShowcase.Tests.EditMode.Levels
             surface.Paint(new Vector3(0f, 0f, -0.5f), Vector3.back, 10f);
             Assert.That(surface.RebuildMasks(), Is.Empty);
             Assert.That(surface.IsPaintedAt(new Vector3(0f, 0f, -0.5f), Vector3.back, atEdge: false), Is.True, "It should still be climbable.");
-        }
-
-        [Test]
-        public void TheLevelsBoxesAndPrisms_HaveAUV2_GivingEachFaceItsOwnSpace()
-        {
-            Graybox.Begin();
-            var parent = new GameObject("Pieces").transform;
-            created.Add(parent.gameObject);
-            GameObject box = Graybox.Box(parent, "Box", Vector3.zero, new Vector3(3f, 2f, 1f));
-            // A footprint with a corner cut at 45 degrees, as prisms' footprints are.
-            Vector2[] shape = { new(0f, 0f), new(4f, 0f), new(4f, 2f), new(2f, 4f), new(0f, 4f) };
-            GameObject prism = Graybox.Prism(parent, "Prism", shape, 0f, 3f);
-            foreach (GameObject piece in new[] { box, prism })
-            {
-                Mesh mesh = piece.GetComponent<MeshFilter>().sharedMesh;
-                Assert.That(mesh.HasVertexAttribute(VertexAttribute.TexCoord1), Is.True, $"{piece.name}'s mesh should have a UV2.");
-                AssertNoOverlap(mesh, piece.name);
-            }
-        }
-
-        /// <summary>Asserts a mesh's UV2 is within 0 to 1 and no two of its triangles cover the same texel (of 256 x 256).</summary>
-        private static void AssertNoOverlap(Mesh mesh, string name)
-        {
-            const int size = 256;
-            var uv2 = new List<Vector2>();
-            mesh.GetUVs(1, uv2);
-            foreach (Vector2 uv in uv2)
-            {
-                Assert.That(uv.x, Is.InRange(0f, 1f), $"{name}'s UV2 should be within 0 to 1.");
-                Assert.That(uv.y, Is.InRange(0f, 1f), $"{name}'s UV2 should be within 0 to 1.");
-            }
-            var owner = new int[size * size];
-            int[] triangles = mesh.triangles;
-            for (int t = 0; t < triangles.Length; t += 3)
-            {
-                Vector2 a = uv2[triangles[t]] * size, b = uv2[triangles[t + 1]] * size, c = uv2[triangles[t + 2]] * size;
-                Vector2 v0 = b - a, v1 = c - a;
-                float d = v0.x * v1.y - v1.x * v0.y;
-                if (Mathf.Abs(d) < 1e-9f) { continue; }
-                for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                {
-                    Vector2 v2 = new Vector2(x + 0.5f, y + 0.5f) - a;
-                    float wb = (v2.x * v1.y - v1.x * v2.y) / d, wc = (v0.x * v2.y - v2.x * v0.y) / d;
-                    // Strictly inside, so texels on the edge two triangles of a face share don't count as both.
-                    if (wb <= 1e-3f || wc <= 1e-3f || wb + wc >= 1f - 1e-3f) { continue; }
-                    Assert.That(owner[y * size + x], Is.EqualTo(0), $"Two of {name}'s triangles share a texel of its UV2.");
-                    owner[y * size + x] = t / 3 + 1;
-                }
-            }
         }
     }
 }

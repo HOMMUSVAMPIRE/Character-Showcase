@@ -3,6 +3,7 @@ using System.Linq;
 using CameraSystem;
 using Character;
 using Level;
+using Level.EditorTools;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEditor.SceneManagement;
@@ -34,9 +35,9 @@ namespace CharacterShowcase.EditorTools
         public const string SetupName = "Game Setup";
         /// <summary>
         /// Objects whose names start with this are spawn markers: places a level marks for a character to start, facing
-        /// their forward. The level builders make them (Graybox.SpawnMarkerPrefix, which this must match).
+        /// their forward. The level builders make them, by the level elements' name for them (LevelFixtureSetup).
         /// </summary>
-        public const string SpawnMarkerPrefix = "Spawn Point";
+        public const string SpawnMarkerPrefix = LevelFixtureSetup.SpawnMarkerPrefix;
         /// <summary>What to set a scene up with.</summary>
         public sealed class Settings
         {
@@ -104,6 +105,14 @@ namespace CharacterShowcase.EditorTools
         public static bool IsSpawnMarkerName(string name) =>
             name == SpawnMarkerPrefix || name.StartsWith(SpawnMarkerPrefix + " ", System.StringComparison.Ordinal);
 
+        private static NpcRoute CopyOf(NpcRoute route) => route == null ? null : new NpcRoute
+        {
+            spawnPoint = route.spawnPoint,
+            waypoints = new List<Vector3>(route.waypoints),
+            sprint = route.sprint,
+            loop = route.loop,
+        };
+
         /// <summary>
         /// The spawn points a setup finds for itself, and where they came from (for showing): the scene's existing
         /// setup's, if it has some; otherwise its spawn markers, and where its placed characters stand if they're being
@@ -155,6 +164,8 @@ namespace CharacterShowcase.EditorTools
             List<SpawnPoint> spawnPoints = settings.spawnPoints?.ToList()
                                            ?? FindSpawnPoints(scene, settings.replacePlacedCharacters, out _);
             if (spawnPoints.Count == 0) { spawnPoints.Add(settings.defaultSpawnPoint); }
+            // The old spawner's NPC routes, kept as its spawn points are (copied: the old spawner goes).
+            List<NpcRoute> npcRoutes = (FindSpawner(scene)?.Npcs ?? new List<NpcRoute>()).Select(CopyOf).ToList();
             List<GameObject> placed = settings.replacePlacedCharacters
                 ? PlacedCharacters(scene).Select(c => c.gameObject).Where(CanRemove).ToList()
                 : new List<GameObject>();
@@ -201,9 +212,16 @@ namespace CharacterShowcase.EditorTools
             spawner.SpawnOnStart = true;
             spawner.SpawnPoints.Clear();
             spawner.SpawnPoints.AddRange(spawnPoints);
+            spawner.Npcs.AddRange(npcRoutes);
             UnityEventTools.AddPersistentListener(spawner.OnCameraTargetSpawned, rig.Follow);
-            // The level's fixtures: moving platforms, pushable crates and timing gates, from the markers the level builds.
-            string fixtures = LevelFixtureSetup.SetUp(scene, setup, spawner, withUndo);
+            // The level's fixtures (moving platforms, ropes, water, timing gates…), from the markers the level builds: a
+            // built level has them already (each build sets them up), so this finds them set up and leaves them, and does
+            // it for a scene built some other way. Then the courses' timers are told who's racing: the spawned character.
+            string fixtures = LevelFixtureSetup.SetUp(scene, withUndo);
+            foreach (CourseTimer timer in scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<CourseTimer>(true)))
+            {
+                UnityEventTools.AddPersistentListener(spawner.OnCharacterSpawned, timer.SetRacer);
+            }
             // With water in the level, the camera's view goes underwater with it (see UnderwaterView).
             bool underwaterView = AddUnderwaterView(scene, rig, withUndo);
             if (withUndo)

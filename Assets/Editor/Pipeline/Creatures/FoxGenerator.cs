@@ -40,7 +40,7 @@ namespace CharacterShowcase.EditorTools
         public const string TranslatorPath = Folder + "/Fox Animator Translator.asset";
         public const string MovementPath = "Assets/ScriptableObjects/Fox Movement.asset";
         public const string PrefabPath = "Assets/Prefabs/Fox.prefab";
-        private const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        private const string CharacterPrefabPath = SceneGameSetup.CharacterPrefabPath;
         private const string HumanoidMovementPath = "Assets/ScriptableObjects/BasicMovementMode.asset";
         private const string GeneratorScript = "Tools/Fox/generate_fox.py";
         private const string BindPoseTake = "!BindPose";

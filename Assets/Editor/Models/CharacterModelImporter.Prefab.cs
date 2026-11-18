@@ -64,7 +64,7 @@ namespace CharacterShowcase.EditorTools
         private static GameObject SaveModelPrefab(GameObject modelAsset, Avatar avatar, AnimatorController controller, string prefabPath)
         {
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(MannequinGenerator.ModelPrefabPath);
+            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(MannequinPrefabPath);
             string ikSettings = SettingsOf<CharacterIK>(existing) ?? SettingsOf<CharacterIK>(mannequin);
             string footPlacementSettings = SettingsOf<FootPlacementIK>(existing) ?? SettingsOf<FootPlacementIK>(mannequin);
             string ledgeHandSettings = SettingsOf<LedgeHandIK>(existing) ?? SettingsOf<LedgeHandIK>(mannequin);

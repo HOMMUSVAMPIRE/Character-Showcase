@@ -7,7 +7,7 @@ namespace Character
     /// <summary>
     /// Swimming (see Level.Water): in water deep enough, the character swims at the surface, its feet hanging the swim
     /// depth below it, the way the movement input points (faster with Sprint held). Falling or jumping in, it plunges and
-    /// floats back up. Crouch dives, to swim underwater (steered by the camera, or up and down with Jump and Crouch held),
+    /// floats back up. Crouch dives, to swim underwater (steered by the input's look, or up and down with Jump and Crouch held),
     /// back to the surface by drifting or swimming up. Jump jumps out; swimming into something low sticking out of the water vaults over or onto it, and
     /// into an edge within reach of its hands climbs out onto it (handed to Vaulting and Ledges); and the character walks
     /// out where the floor comes up to find its feet. Only at the surface: it
@@ -48,7 +48,7 @@ namespace Character
                  "0 turns diving off")]
         [Min(0f)] [SerializeField] private float swimDiveSpeed = 4f;
         [Tooltip("How fast (m/s) holding Jump or Crouch underwater rises or sinks, at its authored size, whichever way the " +
-                 "camera looks (otherwise the character swims the way the camera looks, up or down with it)")]
+                 "input looks (the player's camera, for the player; otherwise the character swims the way it looks, up or down with it)")]
         [Min(0f)] [SerializeField] private float swimVerticalSpeed = 2.5f;
         [Tooltip("How fast (m/s) the character drifts up underwater without any input, at its authored size: reaching its " +
                  "swimming depth, it's back at the surface. 0 stays where it is")]
@@ -169,7 +169,7 @@ namespace Character
             Vector3 input = MovementHelpers.InputDirection(movementData, inputs);
             if (TryClimbOut(movementData, inputs, controller, input, under)) { return true; }
 
-            // Across the water: speeding up toward the input's way and speed (relative to the camera), or slowing to a
+            // Across the water: speeding up toward the input's way and speed (relative to the look), or slowing to a
             // stop, facing the way it swims.
             float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier;
             Vector3 horizontal = Vector3.MoveTowards(new Vector3(velocity.x, 0f, velocity.z), input * topSpeed,
@@ -197,7 +197,7 @@ namespace Character
 
         /// <summary>
         /// Swimming underwater, steered free of the ground (see FreeSteering): the way the movement input points relative
-        /// to the camera, up and down with it as it looks (looking down and pushing forward swims down), at the swim
+        /// to the input's look, up and down with it as it looks (looking down and pushing forward swims down), at the swim
         /// speed; holding Jump rises and Crouch sinks, at the swim vertical speed, whichever way it looks. Without any
         /// input, it drifts up at the swim buoyancy; back up at its swimming depth, rising, it's at the surface again. A
         /// press of Jump only rises: it isn't kept to jump out with once the character's at the surface. Speeds change at

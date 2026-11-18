@@ -4,7 +4,7 @@ using Level;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace Level.EditorTools
 {
     /// <summary>
     /// The assets painting climbable surfaces makes (see PaintedClimbableSurface): the mask textures, saved as assets so

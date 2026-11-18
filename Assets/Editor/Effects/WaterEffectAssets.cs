@@ -23,7 +23,7 @@ namespace CharacterShowcase.EditorTools
         public const string SplashPath = PrefabFolder + "/Water Splash.prefab";
         /// <summary>The default ripple's prefab.</summary>
         public const string RipplePath = PrefabFolder + "/Water Ripple.prefab";
-        private const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
+        private const string CharacterPrefabPath = SceneGameSetup.CharacterPrefabPath;
 
         [MenuItem("Tools/Character Showcase/Create Water Effects")]
         public static void CreateFromMenu() => Create();

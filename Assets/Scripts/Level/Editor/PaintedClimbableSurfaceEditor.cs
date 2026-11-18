@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEditor.EditorTools;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace Level.EditorTools
 {
     /// <summary>
     /// The inspector for a PaintedClimbableSurface: its settings, the Paint button (which switches to the paint tool, see

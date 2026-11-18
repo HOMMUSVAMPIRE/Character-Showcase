@@ -13,7 +13,7 @@ namespace CharacterShowcase.EditorTools
     /// of, folded under the component's name, with a toggle beside each setting for whether the preset sets it (changing
     /// a value includes it); a menu that adds a component's settings; and buttons that save a movement mode's tuning into
     /// the preset and apply the preset to a mode (by default, the Character prefab's), with Undo, saving the mode so the
-    /// movement envelope is written again (see MovementEnvelopeAutoWriter).
+    /// movement envelope is written again where the level checks are in the project (see MovementEnvelopeAutoWriter).
     /// </summary>
     [CustomEditor(typeof(MovementTuningPreset))]
     public class MovementTuningPresetEditor : Editor
@@ -26,7 +26,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>The Character prefab's movement mode, if it's made of components.</summary>
         public static ComposedMovementMode DefaultMode()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MovementEnvelopeWriter.CharacterPrefabPath);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
             return prefab != null && prefab.TryGetComponent(out MovementController movement) ? movement.movementHandler as ComposedMovementMode : null;
         }
 

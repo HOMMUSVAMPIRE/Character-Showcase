@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Level.EditorTools;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -40,7 +41,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// The climbable mask every unpainted surface shares: 1 pixel of black, nothing climbable (see the shader's
         /// Climbable settings, and PaintedClimbableSurface, which gives painted objects masks of their own).
         /// </summary>
-        public const string NoClimbableMaskPath = "Assets/Materials/ClimbableMask_None.png";
+        public const string NoClimbableMaskPath = ClimbablePaintAssets.NoMaskPath;
 
         // ---- The palette (tunable; only used when a material's first made, so they can be edited by hand) ----
 
@@ -237,6 +238,12 @@ namespace CharacterShowcase.EditorTools.Level
                 Graybox.RunDeferred();
             }));
             steps.Add(new BuildStep("Setting up the environment", build => BuildEnvironment(Graybox.Group(build.root, "Environment")), cancellable: false));
+            // The level's mechanics on the fixtures it named (ropes, water, moving platforms…), so it's ready to play.
+            steps.Add(new BuildStep("Setting up the mechanics", build =>
+            {
+                string fixtures = LevelFixtureSetup.SetUp(build.scene, withUndo: false);
+                if (fixtures.Length > 0) { Log($"Set up {fixtures}."); }
+            }, cancellable: false));
             steps.Add(new BuildStep("Saving the scene", build =>
             {
                 EditorSceneManager.SaveScene(build.scene, ScenePath);

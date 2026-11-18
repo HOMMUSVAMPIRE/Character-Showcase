@@ -1,5 +1,6 @@
 using System.Globalization;
 using TMPro;
+using Level.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,36 +9,37 @@ namespace CharacterShowcase.EditorTools.Level
     // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders, ropes,
     // ziplines, bounce pads, water), and low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
     // with its settings after the name ("Moving Platform (Lift) | travel=0,8,0 | period=5"); the scene's game setup
-    // (SceneGameSetup, LevelFixtureSetup) turns it into the real thing. The names' starts must match LevelFixtureSetup's.
+    // (LevelFixtureSetup, in the level elements' editor assembly: each build runs it) turns it into the real thing. The
+    // names' starts are LevelFixtureSetup's.
     // Fixtures that move are never static.
     public static partial class Graybox
     {
         /// <summary>How a moving platform's name starts.</summary>
-        public const string MovingPlatformPrefix = "Moving Platform";
+        public const string MovingPlatformPrefix = LevelFixtureSetup.MovingPlatformPrefix;
         /// <summary>How a pushable crate's name starts.</summary>
-        public const string PushablePrefix = "Pushable Crate";
+        public const string PushablePrefix = LevelFixtureSetup.PushablePrefix;
         /// <summary>How a timing gate's name starts: the gates at a timed course's start and finish.</summary>
-        public const string TimingGatePrefix = "Timing Gate";
+        public const string TimingGatePrefix = LevelFixtureSetup.TimingGatePrefix;
         /// <summary>How a timing gate's sign's name starts: the lettering that shows the course's times.</summary>
-        public const string TimingDisplayPrefix = "Timing Display";
+        public const string TimingDisplayPrefix = LevelFixtureSetup.TimingDisplayPrefix;
         /// <summary>
         /// How a ladder's name starts. A ladder's name starts "Ladder |": "Ladder (future): …" markers aren't ladders.
         /// The same goes for ropes ("Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes), ziplines
         /// and bounce pads.
         /// </summary>
-        public const string LadderPrefix = "Ladder";
+        public const string LadderPrefix = LevelFixtureSetup.LadderPrefix;
         /// <summary>How a rope's name starts (as "Rope |", like a ladder's).</summary>
-        public const string RopePrefix = "Rope";
+        public const string RopePrefix = LevelFixtureSetup.RopePrefix;
         /// <summary>How a zipline's name starts (as "Zipline |", like a ladder's).</summary>
-        public const string ZiplinePrefix = "Zipline";
+        public const string ZiplinePrefix = LevelFixtureSetup.ZiplinePrefix;
         /// <summary>How a bounce pad's name starts (as "Bounce Pad |", like a ladder's).</summary>
-        public const string BouncePadPrefix = "Bounce Pad";
+        public const string BouncePadPrefix = LevelFixtureSetup.BouncePadPrefix;
         /// <summary>How a body of water's name starts (as "Water |", like a ladder's).</summary>
-        public const string WaterPrefix = "Water";
+        public const string WaterPrefix = LevelFixtureSetup.WaterPrefix;
         /// <summary>How a climbable panel's name starts.</summary>
-        public const string ClimbablePrefix = "Climbable Panel";
-        /// <summary>The name of a bounce pad's springy top, the child Set Up Scene squashes as it launches someone.</summary>
-        public const string BouncePadSpringName = "Spring";
+        public const string ClimbablePrefix = LevelFixtureSetup.ClimbablePrefix;
+        /// <summary>The name of a bounce pad's springy top, the child its BouncePad squashes as it launches someone.</summary>
+        public const string BouncePadSpringName = LevelFixtureSetup.BouncePadSpringName;
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
         private static string F(Vector3 v) => $"{F(v.x)},{F(v.y)},{F(v.z)}";

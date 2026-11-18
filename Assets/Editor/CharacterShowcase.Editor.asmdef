@@ -3,7 +3,9 @@
     "rootNamespace": "",
     "references": [
         "CharacterShowcase",
-        "CameraSystem"
+        "CameraSystem",
+        "CharacterShowcase.LevelElements",
+        "CharacterShowcase.LevelElements.Editor"
     ],
     "includePlatforms": [
         "Editor"

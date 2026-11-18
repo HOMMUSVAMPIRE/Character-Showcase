@@ -5,7 +5,7 @@ namespace Character
 {
     /// <summary>
     /// Walking and running: on the ground, with no ability having the character, movement input moves it the way the input
-    /// points (relative to the camera) at the walk speed, or the run speed while Sprint is held (the crouch speed while
+    /// points (relative to the input's look) at the walk speed, or the run speed while Sprint is held (the crouch speed while
     /// crouched: see Crouching), and turns it to face that way. It acts in the mode's Locomotion, after Fall &amp; Air
     /// Handling's ground friction (see MovementComponent.Locomotion). Steering in the air is Fall &amp; Air Handling's,
     /// toward these speeds, as are a roll's steering (see Rolling): turned off, these speeds still shape them.
@@ -55,7 +55,7 @@ namespace Character
             }
             float steeringEffectiveness = controller.movementSpeedMultiplier;
 
-            // With movement input, move the way it points (relative to the camera) at walking speed (or running, while
+            // With movement input, move the way it points (relative to the input's look) at walking speed (or running, while
             // sprinting), facing that way. Walking only makes up the difference between the momentum the character is
             // carrying that way (from a landing, say) and that speed: it moves at whichever is faster, momentum or
             // walking, and the momentum fades with the ground's friction (see FallAndAirHandling, which comes first).

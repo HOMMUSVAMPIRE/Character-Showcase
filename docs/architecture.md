@@ -2,12 +2,19 @@
 How the project fits together: what happens in one physics step, which code may know about which, and where each kind of thing lives. The rules for changing it are in AGENTS.md; this page is the map. Terms used here are in the [Glossary](glossary.md).
 
 ## The parts
-- **The character** (Assets/Scripts/Character): `ACCharacterController` drives it; `MovementController` moves it, resolving collision itself with sweeps of its body (a `CharacterBody`: a shape, not a collider, as one of Unity's primitive colliders is, `PrimitiveBody`, held standing, low or lying; the character has no collider, and what meets it meets its model's hitboxes, `CharacterHitboxes`) rather than the physics solver; `ACInputManager` reads the player's input; `CharacterSpawner` spawns it.
+- **The character** (Assets/Scripts/Character):
+  - `ACCharacterController` drives it, and `CharacterSpawner` spawns it, and NPCs.
+  - `MovementController` moves it, resolving collision itself, with sweeps of its body rather than the physics solver.
+  - Its body is a `CharacterBody`: a shape, not a collider (`PrimitiveBody`, shaped as one of Unity's primitive colliders is), held standing, low or lying.
+  - The character has no collider: what meets it meets its model's hitboxes (`CharacterHitboxes`).
+- **Input** (Assets/Scripts/Character, InputSources/): each physics step the character is given one input frame (`CharacterInputFrame`) by its input source: the player's device for the local player (`ACInputManager`, latching it into one frame a step with `InputLatch`), a script or an NPC's route for others. An `InputRecorder` records the frames, to be replayed (`InputRecording`). See [Input](movement.md#input) and [NPCs and input sources](spawning.md#npcs-and-input-sources).
 - **The movement** (Assets/Scripts/MovementModes): a movement mode (`BasicMovementMode`, a ScriptableObject asset) made of movement components (walking and running, falling and air handling, and each ability), which the `MovementController` runs every physics step. See [Movement](movement.md).
 - **Animation, IK and models** (Assets/Scripts/Animation, IK, Models): `AnimationController` turns what the movement did into an animation state for the model; `CharacterModelHost` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
 - **Effects** (Assets/Scripts/Effects): `WaterEffects` plays splashes and ripples from the movement's events and state, as prefabs anyone can replace (see [Climbing and Traversal](traversal.md#splashes-and-ripples)).
 - **The camera** (Assets/Scripts/CameraSystem): `CameraRig`, which follows any Transform. See [Camera System](camera.md).
-- **The levels** (Assets/Editor/Level, Assets/Scripts/Level): editor builders that generate graybox levels from pieces, recorded as level specs; and the runtime components of their mechanics (moving platforms, ropes, ziplines, bounce pads, water, climbable surfaces). See [Test Levels](levels.md) and [Level Specs](level-specs.md).
+- **The level elements** (Assets/Scripts/Level, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
+- **The level builders** (Assets/Editor/Level): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](levels.md) and [Level Specs](level-specs.md).
+- **The pipeline and the level checks** (Assets/Editor/Pipeline, Assets/Editor/LevelChecks): the mannequin's and the fox's generators, which run Blender, and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
 
 ## One physics step
 Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, animation) runs in `Update`, from the last finished step.
@@ -16,7 +23,8 @@ Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, an
 flowchart TD
     A["ACCharacterController.StepMovement (FixedUpdate)"] --> B["MovementController.ProcessMovementInputs<br/>(the step's input frame, from the character's input source)"]
     B --> C["Ground carry and grounded check<br/>(MovementController.Ground.cs)"]
-    C --> D["Movement mode: ProcessMovementData"]
+    C --> C2["InputState: presses and holds from the frame;<br/>the look from the frame (MovementData.look)"]
+    C2 --> D["Movement mode: ProcessMovementData"]
     subgraph Mode["BasicMovementMode, its components in list order"]
         D --> D1["AdvanceTimers"]
         D1 --> D2["BeforeAbilities (gravity)"]
@@ -32,7 +40,8 @@ flowchart TD
     E --> F["AfterMovementResolved (things moved with the character)"]
     F --> G["CompleteMovement: moves the Rigidbody"]
     G --> H["Events raised (MovementEvents)"]
-    H -. "next Update" .-> I["AnimationController: builds CharacterAnimationState,<br/>passes it and the events to the model's translator"]
+    H --> H2["MovementCleanup: the step's data kept as the last step's"]
+    H2 -. "next Update" .-> I["AnimationController: builds CharacterAnimationState,<br/>passes it and the events to the model's translator"]
 ```
 
 What each part hands on:
@@ -42,25 +51,68 @@ What each part hands on:
 - Animation never reaches into the movement: it reads the last step's `MovementData` and the events, and its translator sets the model's Animator.
 
 ## What may know about what
-Each arrow is a reference that's allowed; anything else isn't.
+Each arrow is a reference between project assemblies that's allowed; anything else isn't (the hygiene check's `ALLOWED_REFERENCES` holds it, with the Unity packages each may use, and AGENTS.md's assembly table says the same: keep the three in step).
 
 ```mermaid
 flowchart LR
-    Editor["CharacterShowcase.Editor<br/>(generators, Set Up Scene, inspectors)"] --> Showcase["CharacterShowcase<br/>(character, movement, animation,<br/>models, level mechanics)"]
-    Editor --> Camera["CameraSystem<br/>(the camera rig)"]
-    EditTests["EditMode tests"] --> Showcase
-    EditTests --> Editor
-    EditTests --> LevelEditor["CharacterShowcase.Level.Editor<br/>(level builders, specs, Level Editor)"]
-    PlayTests["PlayMode tests"] --> Showcase
-    PlayTests --> Camera
-    Showcase --> Queries["PhysicsQueries<br/>(growing query buffers)"]
+    subgraph Ships["Ships with the character"]
+        Showcase["CharacterShowcase<br/>(character, movement, animation,<br/>models, effects)"]
+        Elements["CharacterShowcase.LevelElements<br/>(ropes, water, platforms, ...)"]
+        ElementsEditor["CharacterShowcase.LevelElements.Editor<br/>(LevelFixtureSetup, climbable paint)"]
+        Editor["CharacterShowcase.Editor<br/>(importers, Set Up Scene, inspectors)"]
+        Queries["PhysicsQueries<br/>(growing query buffers)"]
+        Shared["CharacterShowcase.Tests.Shared<br/>(TestTiming, TestArea)"]
+        EditTests["EditMode tests"]
+        PlayTests["PlayMode tests"]
+    end
+    Camera["CameraSystem<br/>(the camera rig; shipping undecided)"]
+    subgraph Showcase_only["The showcase's own (doesn't ship)"]
+        LevelEditor["CharacterShowcase.Level.Editor<br/>(level builders, specs, Level Editor)"]
+        Pipeline["CharacterShowcase.Pipeline.Editor<br/>(mannequin and fox generators, Blender)"]
+        LevelChecks["CharacterShowcase.LevelChecks.Editor<br/>(the movement envelope)"]
+        LevelTests["CharacterShowcase.Tests.EditMode.Levels"]
+    end
+    Showcase --> Queries
+    Showcase --> Elements
+    Elements --> Queries
+    ElementsEditor --> Elements
     Camera --> Queries
+    Editor --> Showcase
+    Editor --> Camera
+    Editor --> Elements
+    Editor --> ElementsEditor
+    Shared --> Showcase
+    EditTests --> Showcase
+    EditTests --> Editor
+    EditTests --> Shared
+    EditTests --> Queries
+    EditTests --> Elements
+    EditTests --> ElementsEditor
+    PlayTests --> Showcase
+    PlayTests --> Camera
+    PlayTests --> Shared
+    PlayTests --> Queries
+    PlayTests --> Elements
+    LevelEditor --> Elements
+    LevelEditor --> ElementsEditor
+    Pipeline --> Showcase
+    Pipeline --> Editor
+    LevelChecks --> Showcase
+    LevelChecks --> Editor
+    LevelTests --> Showcase
+    LevelTests --> Editor
+    LevelTests --> Shared
+    LevelTests --> LevelEditor
+    LevelTests --> LevelChecks
+    LevelTests --> Elements
+    LevelTests --> ElementsEditor
 ```
 
-The character's code and the camera's don't reference each other at all (both use `PhysicsQueries`, which references nothing: the physics query buffers that grow when a query fills them, since Unity's results come in no order and a full buffer can leave out the nearest hit), and the level builders reference no project code; only the editor tools and the tests reach across. (Both runtime assemblies and the level builders use Unity's packages: the Input System, URP, TextMeshPro.)
+The character's code and the camera's don't reference each other at all (both use `PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)
 
-- **The camera knows nothing about the character.** It follows a plain Transform. The two are connected in the scene, not in code: Set Up Scene wires the spawner's On Camera Target Spawned event to `CameraRig.Follow`, which gets the character, its eye point and its size reference (see [Camera System](camera.md#connecting-it-to-something)).
-- **The levels know nothing about the character or the camera.** The level builders make geometry, lighting and named markers. (Their runtime mechanics, in Assets/Scripts/Level, are in the character's assembly, but know nothing about the character either: the abilities find them, as with `Level.Rope.All`.) Set Up Scene (`SceneGameSetup`, `LevelFixtureSetup`) turns the markers into working mechanics and spawn points from the character's side.
+The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#architectural-rules-do-not-break-these), which are the ones to keep (this is a summary of them, kept in step):
+- **The camera knows nothing about the character.** It follows a plain Transform, connected in the scene, not in code: Set Up Scene wires the spawner's On Camera Target Spawned event to `CameraRig.Follow`, which gets the character, its eye point and its size reference (see [Camera System](camera.md#connecting-it-to-something)).
+- **The levels know nothing about the character or the camera.** The level elements are the level's, and the character uses them (the abilities find them, as with `Level.Rope.All`). The builders make geometry, lighting and named fixtures and markers, and each build attaches the level elements to them (`LevelFixtureSetup`, whose names both sides use). Set Up Scene (`SceneGameSetup`) connects the character side: the spawner and its spawn points, the camera, the input manager, and who's racing the course timers.
 - **Movement and animation are separate.** Movement code never touches Animators, models or IK; a model's own needs belong in its animation translator.
 - **Models come from a model source.** `CharacterModelHost` asks a `CharacterModelSource` for a model and gives it back; a new way of getting one is a new source.
 - **The movement components know each other only through their mode**: shared rules (gravity, the jump press, whether an ability is under way), another component's settings (`SettingsOf<T>`), or handing the character over (`Mode.Get<T>`). See [Adding a Movement Ability](adding-an-ability.md).
@@ -69,23 +121,26 @@ The character's code and the camera's don't reference each other at all (both us
 - **Movement modes are shared assets.** Every character using a mode uses the same asset, so nothing about one character is kept on it: what each character is doing (its jumps left, a zipline it's riding) is kept on its `MovementController`, in a state class for each ability.
 - **The body moves; the hitboxes meet the world.** The movement's body is a shape it sweeps itself (`CharacterBody`), not a collider; the character has no collider of its own. What comes at it (a thrown ball, a trigger) meets its model's hitboxes (`CharacterHitboxes`, on the CharacterHitbox layer), which no movement or IK query meets. See [Collision](movement.md#collision) and [Hitboxes](animation.md#hitboxes).
 - **Read the physics pose, not the Transform.** The character's Rigidbody is interpolated (and moving platforms interpolate themselves), so a Transform shows a pose between steps. Movement reads `Rigidbody.position` and `rotation`.
-- **Moving ground moves first.** Each physics step a moving platform sets its new pose at once (where the level's clock, `LevelClock`, has it), before the characters step (`MovingPlatform.MoveOrder`), so a character rides it and queries it where it will be after the step. Moved by `MovePosition`, which only takes effect at the physics step, it was read a step late and ridden a step behind.
-- **Movement has its own clock**, in whole steps (`MovementController.StepTick`; `StepTime` is it in seconds), so a copy of the character can be stepped faster than real time: that's how its capabilities are measured (`MovementSimulation`), by running the real movement code. Timing in ticks, not a float of seconds added to each step, keeps it exact however long a character runs.
-- **Movement is deterministic on one build.** The same state, input frames and world give bit-identical steps: ties between equally good choices go by where things are (`StableOrder`), the level's moving parts go by the level's clock (`Level.LevelClock`), and a character's state can be saved and put back between steps (`MovementController.SaveState`, with the level's ropes and pushables: `WorldStateSnapshot`), or written to bytes and read into a character on another machine in the same level (`StateSerializer`, naming the level's objects by `Level.StableId`). PhysX's Enhanced Determinism is on, so its contacts don't depend on the order a scene was built in either. That's what a networked game's prediction needs. Floating point isn't reproducible across platforms, so across machines a server corrects its clients.
-- **Generated assets are regenerated, not edited.** The mannequin, its Animator Controller, the model prefabs, the level scenes, the level specs and the movement envelope are all made by editor tools (the table in AGENTS.md, Generated assets).
+- **Moving ground moves first.** Each physics step a moving platform sets its new pose at once (where the level's clock, `LevelClock`, has it), before the characters step (`MovingPlatform.MoveOrder`), so a character rides it and queries it where it will be after the step ([why](decisions.md#moving-ground-moves-first-its-pose-set-at-once-november-2026)).
+- **Movement has its own clock**, in whole steps: `MovementController.Tick` counts the steps taken, and is what the input frames are tagged with; `StepTick` is the step under way (inside a step, one more than `Tick`), and is what timing goes by (`SecondsSince`; `StepTime` is it in seconds), exact however long a character runs ([why](decisions.md#movement-keeps-time-in-ticks-november-2026)). A copy of the character can be stepped faster than real time: that's how its capabilities are measured (`MovementSimulation`), by running the real movement code.
+- **Movement is deterministic on one build.** The same state, input frames and world give bit-identical steps: ties between equally good choices go by where things are (`StableOrder`), the level's moving parts go by the level's clock (`Level.LevelClock`), and PhysX's Enhanced Determinism is on. A character's state can be saved and put back between steps (`MovementController.SaveState`, with the level's ropes and pushables: `WorldStateSnapshot`), or written to bytes and read into a character on another machine in the same level (`StateSerializer`, naming the level's objects by `Level.StableId`). Across machines a server corrects its clients ([why](decisions.md#deterministic-on-one-build-corrected-across-machines-november-2026)).
+- **Generated assets are regenerated, not edited.** The mannequin, its Animator Controller, the model prefabs, the level scenes (with their level elements), the level specs and the movement envelope are all made by editor tools (the table in AGENTS.md, Generated assets).
 
 ## Where things live
 | What | Where |
 | --- | --- |
-| The character, its controller, input and spawner | Assets/Scripts/Character (`MovementController` split by area: `.Body`, `.Ground`, `.Collision`, `.Hover`, `.Queries`, `.Capabilities`); the body (`CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`) |
+| The character, its controller, input and spawner | Assets/Scripts/Character (`MovementController` split by area: `.Body`, `.Ground`, `.Collision`, `.Hover`, `.Queries`, `.Capabilities`, `.State`); the body (`CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`); input (`CharacterInputFrame`, `InputState`, `InputLatch`, `InputRecording`, `InputRecorder`) and InputSources/ (the input sources); saved state (`WorldStateSnapshot`, `StateSerializer`, `StableOrder`) |
 | The movement mode and its components | Assets/Scripts/MovementModes, and Components/ (each component with its state class) |
-| The movement asset | Assets/ScriptableObjects/BasicMovementMode.asset |
+| The movement assets and the character's body | Assets/ScriptableObjects: BasicMovementMode.asset (the character's), Fox Movement.asset (the fox's), Character Body.asset (the Character prefab's Body Definition) |
+| The growing physics query buffers | Assets/Scripts/PhysicsQueries (its own assembly) |
 | Animation and its translators; IK; model sources and hitboxes | Assets/Scripts/Animation, IK, Models |
 | The camera rig | Assets/Scripts/CameraSystem |
-| The level mechanics at runtime | Assets/Scripts/Level |
-| Generators, importers, Set Up Scene, inspectors | Assets/Editor |
+| The level elements | Assets/Scripts/Level (its own assembly), and Editor/ (`LevelFixtureSetup` and the fixtures' names, the climbable paint tool) |
+| Importers, Set Up Scene, inspectors | Assets/Editor (Models/, Animation/, Scene/, Effects/, Movement/) |
+| The mannequin's and the fox's generators, and running Blender | Assets/Editor/Pipeline (its own assembly: Mannequin/, Creatures/, Blender/) |
+| The movement envelope's writer | Assets/Editor/LevelChecks (its own assembly) |
 | The level builders, pieces and Level Editor | Assets/Editor/Level |
-| Tests | Assets/Tests/EditMode, PlayMode (see [Automated Tests](testing.md)) |
+| Tests | Assets/Tests/EditMode (its Levels/ an assembly of its own), PlayMode (see [Automated Tests](testing.md)) |
 | The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Blender, Tools/Animation |
 
 Why it's built this way is in [Design Decisions](decisions.md).

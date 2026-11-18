@@ -68,7 +68,7 @@ namespace Character
         /// Starts a vault (or a step up) when the character heads into a wall just ahead whose top is above the step
         /// height but below the lowest ledge it could grab, with room to go over it, and that isn't a step (a staircase
         /// rising ahead, say): in mid-air, not rising fast, steering into it or moving toward it near head-on; or on the
-        /// ground, sprinting into it head-on, with somewhere to land beyond it. Carries it on: a vault spends its rise
+        /// ground, walking or sprinting into it head-on, with somewhere to land beyond it. Carries it on: a vault spends its rise
         /// time closing in on the wall while rising to the top's height, then swings over the edge, speeding up to the
         /// speed it leaves with, until the whole body is past the wall's face, without gravity. A step up lifts the
         /// character onto the top as fast as it takes to reach the wall, keeping its speed.

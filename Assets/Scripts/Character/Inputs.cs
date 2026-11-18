@@ -13,8 +13,8 @@ namespace Character
     public class Inputs
     {
         /// <summary>
-        /// The move input on the ground plane (x right, z forward, each -1 to 1), relative to the input camera:
-        /// MovementController turns it to face the way the camera looks.
+        /// The move input on the ground plane (x right, z forward, each -1 to 1), relative to the input's look (its frame's:
+        /// the player's camera, for the player): the movement turns it by the look's yaw (MovementData.lookFlat).
         /// </summary>
         public Vector3 movementVector;
         /// <summary>Jumps (and does what Jump does in the abilities that use it, such as wall jumps).</summary>

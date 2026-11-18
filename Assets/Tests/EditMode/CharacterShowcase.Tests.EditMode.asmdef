@@ -5,10 +5,11 @@
         "CharacterShowcase",
         "CharacterShowcase.Tests.Shared",
         "CharacterShowcase.Editor",
-        "CharacterShowcase.Level.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "PhysicsQueries"
+        "PhysicsQueries",
+        "CharacterShowcase.LevelElements",
+        "CharacterShowcase.LevelElements.Editor"
     ],
     "includePlatforms": [
         "Editor"

@@ -1,6 +1,8 @@
 # Character Showcase
 This Unity project is intended to showcase my capabilities in the area of creating satisfying character controllers which feel responsive, satisfying, and intuitive. It is also meant to showcase my coding style for possible employers and demonstrate expertise with C# and Unity. Peruse at your own discretion.
 
+The same character can be the player's or an NPC's (NPCs walk routes of waypoints), its input can be recorded and replayed, and its movement is deterministic and ready for networking (its state can be saved, restored and sent; no networking is included).
+
 This project is still a work in progress. I will be adding to it in my free time as I search for new employment.
 
 Once the project meets my standards for completion, I may release it as a Unity Asset Store package for others to use in their games.
@@ -13,21 +15,23 @@ Once the project meets my standards for completion, I may release it as a Unity 
 5. Navigate to Add => Add project from disk
 6. Select the location of the cloned repo from step 1
 7. Open the project
-8. Click "Play" (in Assets/Scenes/LevelPlayground, the graybox level with every mechanic, which opens by default)
+8. Open Assets/Scenes/LevelPlayground/LevelPlayground.unity (the graybox level with every mechanic) and click "Play"
 
-The test levels are in Assets/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)).
+The test levels are in Assets/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/level-specs.md](docs/level-specs.md)).
 
 ## How to see the code in this project
 All of the runtime code is in the Assets/Scripts folder:
-- Character: the character's controller, input, spawner, and the MovementController with the data it works on (MovementData, Inputs, CharacterState, MovementEvents)
+- Character: the character's controller, input (the per-step input frames, and their recording and replay), spawner, and the MovementController with the data it works on (MovementData, Inputs, CharacterState, MovementEvents) and its saved state (snapshots, and writing them to bytes); InputSources/: what drives a character (the player's device, a script, an NPC's route)
 - MovementModes: the movement modes, BasicMovementMode and its movement components (Components/: one file per part of the movement, walking and falling included)
 - Animation: the AnimationController, the animation state it builds, and the translators that drive an Animator from it
 - IK: CharacterIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
 - Models: the character's model host, the sources it gets models from, and the hitboxes on its models' bones
-- Level: the level mechanics (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates)
+- Effects: the water's splashes and ripples, played from the movement's events
+- Level: the level elements, an assembly of their own that the character and the level builders both use (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates); Editor/: turning a level's named fixtures into them, and painting climbable surfaces
 - CameraSystem: the camera rig, which knows nothing about the character
+- PhysicsQueries: the growing physics query buffers the character and the camera share
 
-The editor tools that generate the character, its animations and the levels are in Assets/Editor, and the tests in Assets/Tests.
+The editor tools are in Assets/Editor: the character's (importing models and animations, Set Up Scene, the movement's inspectors), and, each in an assembly of its own that a package of the character would leave out, Pipeline/ (generating the mannequin and the fox in Blender), LevelChecks/ (the movement envelope the levels are checked against) and Level/ (the level builders and the Level Editor). The tests are in Assets/Tests.
 
 If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/Scripts/Character/MovementController.cs and the movement components in Assets/Scripts/MovementModes/Components
 
@@ -59,7 +63,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Character model and animations](docs/animation.md): the mannequin, replacing the model, the animation libraries, IK
 - [Test levels](docs/levels.md): the Meridian Complex, the Level Playground, level mechanics
 - [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
-- [Spawning the character](docs/spawning.md)
+- [Spawning the character](docs/spawning.md): players, NPCs, input sources
 - [Creatures](docs/creatures.md): the fox, a character on four legs, and generating it
 - [Automated tests](docs/testing.md)
 - [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
@@ -69,7 +73,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Design decisions](docs/decisions.md): why it's built the way it is
 - [Glossary](docs/glossary.md)
 
-Every tunable value is a setting in the inspector: the BasicMovementMode asset (Assets/ScriptableObjects) for the movement and its abilities, the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/GrayboxSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
+Every tunable value is a setting in the inspector: the movement assets in Assets/ScriptableObjects for the movement and its abilities (BasicMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/GrayboxSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 
 ## Future Changes:
 ### Medium Priority Changes
@@ -83,4 +87,4 @@ Every tunable value is a setting in the inspector: the BasicMovementMode asset (
 - Coordinate system re-centering to avoid floating point precision related bugs
 - Respawning: putting a character back at a spawn point with its movement reset (its momentum, and any ability it's in the middle of), rather than destroying it and spawning another
 - Gravity in any direction: the movement assumes it's straight down (gravity, the grounded check and the ground's carry all do)
-- Add AI system which uses the same character scripts to pathfind and perform actions
+- Pathfinding for the NPCs, which use the same character scripts (they walk routes of waypoints now)

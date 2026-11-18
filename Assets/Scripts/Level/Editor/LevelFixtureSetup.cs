@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Character;
 using Level;
 using UnityEditor;
 using UnityEditor.Events;
@@ -10,18 +9,20 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
 
-namespace CharacterShowcase.EditorTools
+namespace Level.EditorTools
 {
     /// <summary>
-    /// Turns a level's fixtures into the runtime objects they stand for, as part of a scene's game setup (see
-    /// SceneGameSetup). The level builders can't reference runtime code (the level knows nothing about the game), so
-    /// they build each fixture's geometry and name it, with its settings after its name as "key=value" pairs:
+    /// Turns a level's fixtures into the level elements they stand for (this assembly's mechanics: moving platforms,
+    /// ropes, water and the rest). A level is built as geometry named for what each part is, with its settings after the
+    /// name as "key=value" pairs, and this adds the components. The level builders run it on every level they build,
+    /// and Set Up Scene runs it again (it leaves what's set up as it is), for a scene built some other way:
     /// <list type="bullet">
     /// <item>"Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a
     /// kinematic Rigidbody and a MovingPlatform.</item>
     /// <item>"Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableObject.</item>
     /// <item>"Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, timed
-    /// by a CourseTimer for its course, made under the game setup and told who the racer is by the spawner.</item>
+    /// by a CourseTimer for its course, found or made in the scene's "Course Timers" group (CoursesName). Who's racing is
+    /// the game's to say (Set Up Scene connects the spawner).</item>
     /// <item>"Timing Display | course=name" (a TextMeshPro) shows that course's times.</item>
     /// <item>"Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder that keeps the level's mesh (its
     /// rungs where the level put them). Only names starting "Ladder |": "Ladder (future): …" markers aren't ladders.</item>
@@ -34,7 +35,8 @@ namespace CharacterShowcase.EditorTools
     /// <item>"Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that
     /// keeps the level's surface. Only names starting "Water |".</item>
     /// </list>
-    /// The names' starts must match the level builders' (Graybox), which can't reference these.
+    /// The names' starts are the constants here, which the level builders name their fixtures by. Spawn markers
+    /// (SpawnMarkerPrefix) aren't level elements: Set Up Scene turns them into the spawner's spawn points.
     /// </summary>
     public static class LevelFixtureSetup
     {
@@ -62,8 +64,10 @@ namespace CharacterShowcase.EditorTools
         public const string BouncePadSpringName = "Spring";
         /// <summary>How a climbable panel's name starts (Graybox.ClimbablePrefix).</summary>
         public const string ClimbablePrefix = "Climbable Panel";
-        /// <summary>The group under the game setup that the courses' timers are made in.</summary>
+        /// <summary>The group at the scene's root that the courses' timers are made in.</summary>
         public const string CoursesName = "Course Timers";
+        /// <summary>How a spawn marker's name starts: where a character can spawn (Set Up Scene makes them spawn points).</summary>
+        public const string SpawnMarkerPrefix = "Spawn Point";
 
         /// <summary>Whether name is a fixture's: the prefix alone, or followed by a space ("Moving Platform (Lift) | …").</summary>
         public static bool IsNamed(string name, string prefix) =>
@@ -224,12 +228,13 @@ namespace CharacterShowcase.EditorTools
                 : TimingGateRole.StartAndFinish;
 
         /// <summary>
-        /// Sets up the scene's fixtures (outside its game setup, under which course timers are made), the spawner telling
-        /// the timers who's racing. Returns what it set up, for the log ("" if nothing).
+        /// Sets up the scene's fixtures (what's set up already is left as it is: its components kept, a course's timer
+        /// found again), its courses' timers in its Course Timers group. Returns what it set up, for the log ("" if
+        /// nothing).
         /// </summary>
-        public static string SetUp(Scene scene, Transform setup, CharacterSpawner spawner, bool withUndo)
+        public static string SetUp(Scene scene, bool withUndo)
         {
-            List<Transform> all = scene.GetRootGameObjects().Where(root => root.transform != setup)
+            List<Transform> all = scene.GetRootGameObjects()
                 .SelectMany(root => root.GetComponentsInChildren<Transform>(true)).ToList();
 
             int platforms = 0, pushables = 0;
@@ -244,22 +249,28 @@ namespace CharacterShowcase.EditorTools
             foreach (Transform t in all.Where(t => IsFixture(t.name, BouncePadPrefix))) { SetUpBouncePad(t.gameObject, withUndo); pads++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, WaterPrefix))) { SetUpWater(t.gameObject, withUndo); waters++; }
 
-            // A timer for each course its gates name, under the game setup.
+            // A timer for each course its gates name: the scene's own, if it has one for the course already, or one made in
+            // its Course Timers group.
             var timers = new Dictionary<string, CourseTimer>();
+            foreach (CourseTimer found in all.Select(t => t.GetComponent<CourseTimer>()).Where(c => c != null))
+            {
+                if (!timers.ContainsKey(found.CourseName)) { timers[found.CourseName] = found; }
+            }
             CourseTimer TimerFor(string course)
             {
                 if (timers.TryGetValue(course, out CourseTimer existing)) { return existing; }
-                Transform group = setup.Find(CoursesName);
+                GameObject group = scene.GetRootGameObjects().FirstOrDefault(root => root.name == CoursesName);
                 if (group == null)
                 {
-                    group = new GameObject(CoursesName).transform;
-                    group.SetParent(setup, false);
+                    group = new GameObject(CoursesName);
+                    SceneManager.MoveGameObjectToScene(group, scene);
+                    if (withUndo) { Undo.RegisterCreatedObjectUndo(group, "Set Up Fixtures"); }
                 }
                 var timerObject = new GameObject($"Course Timer ({course})");
-                timerObject.transform.SetParent(group, false);
+                timerObject.transform.SetParent(group.transform, false);
+                if (withUndo) { Undo.RegisterCreatedObjectUndo(timerObject, "Set Up Fixtures"); }
                 var timer = timerObject.AddComponent<CourseTimer>();
                 timer.CourseName = course;
-                if (spawner != null) { UnityEventTools.AddPersistentListener(spawner.OnCharacterSpawned, timer.SetRacer); }
                 return timers[course] = timer;
             }
             int gates = 0;
@@ -287,8 +298,12 @@ namespace CharacterShowcase.EditorTools
                 {
                     var setter = c.GetType().GetProperty("text")?.GetSetMethod();
                     if (setter == null || setter.GetParameters()[0].ParameterType != typeof(string)) { continue; }
-                    var show = (UnityAction<string>)Delegate.CreateDelegate(typeof(UnityAction<string>), c, setter);
-                    UnityEventTools.AddPersistentListener(timer.OnDisplay, show);
+                    // Wired already (the level set up before): left as it is, not wired twice.
+                    if (!ShowsOn(timer.OnDisplay, c, setter.Name))
+                    {
+                        var show = (UnityAction<string>)Delegate.CreateDelegate(typeof(UnityAction<string>), c, setter);
+                        UnityEventTools.AddPersistentListener(timer.OnDisplay, show);
+                    }
                     displays++;
                     break;
                 }
@@ -304,6 +319,16 @@ namespace CharacterShowcase.EditorTools
             if (waters > 0) { parts.Add($"{waters} bod{(waters == 1 ? "y" : "ies")} of water"); }
             if (gates > 0) { parts.Add($"{gates} timing gate{(gates == 1 ? "" : "s")} on {timers.Count} course{(timers.Count == 1 ? "" : "s")} with {displays} display{(displays == 1 ? "" : "s")}"); }
             return string.Join(", ", parts);
+        }
+
+        /// <summary>Whether an event already calls the method on the target, as a persistent listener.</summary>
+        private static bool ShowsOn(UnityEventBase onEvent, UnityEngine.Object target, string method)
+        {
+            for (int i = 0; i < onEvent.GetPersistentEventCount(); i++)
+            {
+                if (onEvent.GetPersistentTarget(i) == target && onEvent.GetPersistentMethodName(i) == method) { return true; }
+            }
+            return false;
         }
 
         private static T Need<T>(GameObject obj, bool withUndo) where T : Component

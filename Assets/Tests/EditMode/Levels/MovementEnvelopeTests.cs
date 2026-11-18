@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using CharacterShowcase.EditorTools;
 using NUnit.Framework;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace CharacterShowcase.Tests.EditMode.Levels
 {
     /// <summary>
     /// Checks that Tools/LevelSpec/envelope.json (the limits the levelspec tool's movement checks hold levels to) is what

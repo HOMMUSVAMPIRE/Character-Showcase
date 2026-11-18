@@ -62,7 +62,7 @@ namespace Character
 
         /// <summary>
         /// Starts a roll when the roll button is pressed on the ground, in the direction of movement input (relative to
-        /// the camera), or straight ahead without input, or by itself on landing from a high enough fall while moving
+        /// the input's look), or straight ahead without input, or by itself on landing from a high enough fall while moving
         /// (see TryLandingRoll), and carries it on: the character rolls along the ground at the
         /// roll's speed, low, facing the roll, and can't steer, jump or dash until it's over. Rolling off an edge ends
         /// the roll, keeping its momentum. Afterwards the character stands, or stays crouched where there isn't room.

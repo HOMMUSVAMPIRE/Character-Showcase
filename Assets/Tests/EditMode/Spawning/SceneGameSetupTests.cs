@@ -131,6 +131,21 @@ namespace CharacterShowcase.Tests.EditMode.Spawning
         }
 
         [Test]
+        public void SetUpAgain_KeepsTheSpawnersNpcRoutes()
+        {
+            Assert.IsTrue(SceneGameSetup.SetUp(scene, Settings(), withUndo: false));
+            var route = new NpcRoute { spawnPoint = 0, waypoints = { new Vector3(3f, 0f, 4f), new Vector3(-2f, 0f, 1f) }, sprint = true, loop = true };
+            SceneGameSetup.FindSpawner(scene).Npcs.Add(route);
+
+            Assert.IsTrue(SceneGameSetup.SetUp(scene, Settings(), withUndo: false));
+
+            NpcRoute kept = SceneGameSetup.FindSpawner(scene).Npcs.Single();
+            Assert.AreNotSame(route, kept, "The new spawner should have its own copy of the route.");
+            CollectionAssert.AreEqual(route.waypoints, kept.waypoints, "Set up again, the spawner should keep its NPCs' routes.");
+            Assert.IsTrue(kept.sprint && kept.loop);
+        }
+
+        [Test]
         public void SetUp_GivesTheCameraAnUnderwaterView_OnlyInALevelWithWater([Values(false, true)] bool water)
         {
             if (water) { Add("Water | size=10,3,10 | label=Pool"); }

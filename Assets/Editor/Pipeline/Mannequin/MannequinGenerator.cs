@@ -30,15 +30,15 @@ namespace CharacterShowcase.EditorTools
     public static partial class MannequinGenerator
     {
         /// <summary>Where the generated mannequin's file (mesh, rig and clips) is saved.</summary>
-        public const string ModelPath = CharacterModelImporter.ModelsFolder + "/Mannequin/Mannequin.fbx";
+        public const string ModelPath = CharacterModelImporter.MannequinModelPath;
         /// <summary>
         /// Where the mannequin's model prefab is saved, as Prepare Character Models saves every model's.
         /// </summary>
-        public const string ModelPrefabPath = CharacterModelImporter.ModelsFolder + "/Mannequin/Mannequin Model.prefab";
+        public const string ModelPrefabPath = CharacterModelImporter.MannequinPrefabPath;
         private const string ControllerPath = CharacterModelImporter.ControllerPath;
         private const string TranslatorPath = CharacterModelImporter.TranslatorPath;
         private const string GeneratorScript = "Tools/Mannequin/generate_mannequin.py";
-        private const string PrefabPath = "Assets/Prefabs/Character.prefab";
+        private const string PrefabPath = SceneGameSetup.CharacterPrefabPath;
         private const string ModelParentName = "ModelParent";
 
         // The controller is built with the parameter names the translator uses by default.

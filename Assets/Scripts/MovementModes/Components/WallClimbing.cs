@@ -126,7 +126,7 @@ namespace Character
         /// Takes hold of a climbable surface when the character touches one heading toward it (steering into it, or moving
         /// into it fast enough, within the start angle of head-on), on the ground or in mid-air, and carries the climb
         /// on: movement input moves the character over the surface (up and down with the stick's up and down, sideways
-        /// with its left and right, as seen from the camera), facing it and without gravity, round outside corners
+        /// with its left and right, as seen along the input's look: the player's view), facing it and without gravity, round outside corners
         /// and into inside ones onto whatever climbable surface it meets, and along with the surface if it moves. The
         /// climbable area holds it: it stops where its grip would leave a climbable surface (its edge, or something
         /// unclimbable round it), and at a top too shallow to climb it climbs over onto it, if it's walkable and there's
@@ -483,8 +483,8 @@ namespace Character
 
         /// <summary>
         /// The movement input as a direction over the surface (x along right, y along up; no longer than 1): the stick as
-        /// seen on the screen, so up on the stick climbs up and right goes right, whichever way the camera looks at the
-        /// surface. With the camera looking along the surface, where the screen's directions don't lie on it, the
+        /// seen along the input's look (the player's screen), so up on the stick climbs up and right goes right, whichever
+        /// way it looks at the surface. With the look along the surface, where the look's directions don't lie on it, the
         /// stick's own directions are used.
         /// </summary>
         private static Vector2 ClimbInput(MovementData movementData, Inputs inputs, Vector3 right, Vector3 up)

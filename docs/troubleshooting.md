@@ -36,16 +36,19 @@ Unity can't open a project that's open in the editor, so a batch-mode run quits 
 - *A field the tests read by name doesn't exist:* a setting was renamed or moved. Update the test, or keep the name.
 - *Two settings share a name:* setting names must be unique across the movement mode and all its components, since tests find them by name alone.
 - *A field the tests read by name is read as another type* (`MovementSetting<int>` for a float setting): ask for it as the type it's declared, or the test fails (the rig won't skip it).
-- *An assembly references what it may not, or isn't in the table:* AGENTS.md's assembly table says what each may reference; the check's `ALLOWED_REFERENCES` holds it. A new assembly or reference goes in both, if it keeps the rules (the camera and the level builders know nothing of the character).
-- *The camera or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character); a level builder makes geometry, lighting and markers only, and game setup connects them (see [Adding Level Content](adding-level-content.md)).
+- *An assembly references what it may not, or isn't in the table:* AGENTS.md's assembly table says what each may reference; the check's `ALLOWED_REFERENCES` holds it. A new assembly or reference goes in both, if it keeps the rules (the camera, the level elements and the level builders know nothing of the character, and nothing that ships references what doesn't: AGENTS.md, The package line).
+- *The camera, a level element or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character). A level element knows nothing of the character (the character finds it), and a level builder makes geometry, lighting, fixtures and markers and attaches the level elements; Set Up Scene connects the character side (see [Adding Level Content](adding-level-content.md)).
 - *A movement asset names a class that no longer exists:* a movement component was renamed or moved. Give the class `[UnityEngine.Scripting.APIUpdating.MovedFrom(... sourceClassName: "OldName")]`, or the asset shows it as a missing component, its settings lost.
 
 ## Generated assets
 **A change to a generated asset disappeared.**
 The mannequin, its Animator Controller, the model prefabs, the level scenes, the level specs, the climbable paint masks and the movement envelope are all written by editor tools, which overwrite them. Change the generator and run it again (the table in AGENTS.md, Generated assets, says which tool makes which).
 
-**A level's mechanics (moving platforms, ropes, spawn points) don't work after rebuilding it.**
-Rebuilding a level removes its game setup. Run Set Up Scene on it again (see [Spawning the Character](spawning.md)).
+**A level has no character, camera or spawn points after rebuilding it.**
+A build attaches the level's mechanics (moving platforms, ropes, water, course timers) itself, but makes a new scene, without its game setup. Run Set Up Scene on it again, which also tells the course timers who's racing (see [Spawning the Character](spawning.md)).
+
+**A fixture doesn't work in a scene that wasn't built by a builder.**
+Its name has to start with one of `LevelFixtureSetup`'s names, with its settings after it ("Rope | length=m"): Set Up Scene runs `LevelFixtureSetup`, which sets up what matches and leaves the rest (see [Adding Level Content](adding-level-content.md)).
 
 **Exporting a level's spec refuses to replace it.**
 The spec has changed since it was exported (in the Level Editor, say). Check that only your changes differ, then export with `-force` (see [Level Specs](level-specs.md)).
@@ -62,6 +65,30 @@ Standing, the next step carries the character with the ground it stood on, back 
 
 **The camera stutters behind the character.**
 The camera's Follow section interpolates a physics-driven target between steps. Check it's turned on, and that the character's Rigidbody is interpolated.
+
+## Input, NPCs and determinism
+**An NPC stands still.**
+A character whose owner is AI is moved only by its input source, and stands idle without one. Give it one (a Waypoint Input Source or a Scripted Input Source, on the character or set as its ACCharacterController's Input Source), or spawn it from the spawner's NPCs list, which gives it its route (see [NPCs and input sources](spawning.md#npcs-and-input-sources)).
+
+**A character doesn't move at all, not even falling.**
+Its owner is Remote and it has no input source: a remote character without one isn't stepped (something else is meant to place it). Give it a source, or set its owner.
+
+**The player's character doesn't respond to input.**
+The local player's character reads the device through the scene's `ACInputManager`, and without one it's given idle frames. Run Set Up Scene, which adds one (see [Spawning the Character](spawning.md)).
+
+**Two runs from the same start move differently.**
+The movement is deterministic on one build, so something has slipped out of it:
+- a tie between equally good choices (two hits as near, two ropes) broken by the order results came in, or by instance IDs, rather than by `StableOrder`;
+- a level mechanic that moves a character timed by its own time since it was enabled, rather than by the level's clock (`Level.LevelClock`);
+- movement code reading `Time` or the device, rather than its own clock (`MovementController.StepTick`, `SecondsSince`) and its input frame.
+
+`DeterminismTests` holds the movement to it (see [Automated Tests](testing.md)).
+
+**A recorded replay drifts from what was recorded.**
+A replay moves exactly as the recording only with the same tuning, in a level built the same way. Compare the recording's `InputRecording.Tuning` with the character's `MovementController.TuningFingerprint()`: they differ when the movement was retuned (or the character resized or given another body) since. A level rebuilt, or changed, since the recording also changes what the frames meet.
+
+**A tap is missed, or counted twice.**
+Something is reading the device outside the `InputLatch`: a render frame may run no physics step, or several, and only the latch turns what it read into one frame per step (a tap shorter than a step kept, a press not repeated in a second step). Read new buttons in `ACInputManager`, into the latch (AGENTS.md, Things that aren't obvious, lists where a new button goes).
 
 ## The body and the ground
 **The character's feet float above slopes or stairs, or the root jumps a tread at a time and settles.**

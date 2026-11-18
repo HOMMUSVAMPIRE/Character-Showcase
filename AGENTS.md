@@ -28,32 +28,53 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
 | `Assets/Scripts/Models` | `CharacterModelHost`, the model sources, and `CharacterHitboxes` (the hitboxes on a model's bones) |
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
-| `Assets/Scripts/Level` | The level mechanics' runtime components |
+| `Assets/Scripts/Level` | The level elements, their own assembly: water (and `UnderwaterView`, the camera's fog under it), climbable and painted climbable surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock and stable IDs; `Editor/` (their editor assembly: the climbable paint tool, and `LevelFixtureSetup`, which turns a level's named fixtures into level elements and holds the names) |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | `Blender/` (`BlenderRunner`: finding Blender and running the generators' scripts), `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, the movement envelope) |
+| `Assets/Editor` | The character's editor tools: `Models/` (CharacterModelImporter, HitboxFitter), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `Creatures/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
-| `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/`, `Spawning/`; what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
+| `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures, and its `Levels/` is an assembly of its own, the level builders' and level checks' fixtures); what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
 | `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
 | `PhysicsQueries` | `Assets/Scripts/PhysicsQueries` | `PhysicsQueries` | nothing (the growing query buffers, `QueryBuffer`: shared by the character and the camera, so it knows neither) |
-| `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`, `PhysicsQueries/`) | `Character`, `Level` | Unity.InputSystem, PhysicsQueries |
+| `CharacterShowcase.LevelElements` | `Assets/Scripts/Level` (except `Editor/`) | `Level` | PhysicsQueries **only** (the level elements: used by the character and the level builders, so they know neither) |
+| `CharacterShowcase.LevelElements.Editor` | `Assets/Scripts/Level/Editor` | `Level.EditorTools` | CharacterShowcase.LevelElements **only** (the climbable paint tool, `LevelFixtureSetup`) |
+| `CharacterShowcase` | `Assets/Scripts` (except `CameraSystem/`, `PhysicsQueries/`, `Level/`) | `Character` | Unity.InputSystem, PhysicsQueries, CharacterShowcase.LevelElements |
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem, PhysicsQueries **only** |
-| `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
-| `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
-| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode`, a fixture in `.EditMode.<Area>` (its folder) | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared, PhysicsQueries |
-| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` (shared), a fixture in `.<Area>` (its folder) | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared, PhysicsQueries |
+| `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`, `Pipeline/`, `LevelChecks/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem, CharacterShowcase.LevelElements, CharacterShowcase.LevelElements.Editor |
+| `CharacterShowcase.Pipeline.Editor` | `Assets/Editor/Pipeline` | `CharacterShowcase.EditorTools` | CharacterShowcase, CharacterShowcase.Editor (the generators and `BlenderRunner`; its internals through `InternalsVisibleTo`, in `Assets/Editor/AssemblyInfo.cs`) |
+| `CharacterShowcase.LevelChecks.Editor` | `Assets/Editor/LevelChecks` | `CharacterShowcase.EditorTools` | CharacterShowcase, CharacterShowcase.Editor (the movement envelope; its internals as the pipeline does) |
+| `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro, CharacterShowcase.LevelElements, CharacterShowcase.LevelElements.Editor **only** |
+| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` (except `Levels/`) | `CharacterShowcase.Tests.EditMode`, a fixture in `.EditMode.<Area>` (its folder) | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Tests.Shared, PhysicsQueries, CharacterShowcase.LevelElements, CharacterShowcase.LevelElements.Editor |
+| `CharacterShowcase.Tests.EditMode.Levels` | `Assets/Tests/EditMode/Levels` | `CharacterShowcase.Tests.EditMode.Levels` | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Tests.Shared, CharacterShowcase.Level.Editor, CharacterShowcase.LevelChecks.Editor, CharacterShowcase.LevelElements, CharacterShowcase.LevelElements.Editor (`LevelEditorTests`, `LevelSpecTests`, `MovementEnvelopeTests`, `GrayboxUV2Tests`) |
+| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` (shared), a fixture in `.<Area>` (its folder) | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared, PhysicsQueries, CharacterShowcase.LevelElements |
 | `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
 
 The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its
-`ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both.
+`ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both, kept in step.
+
+**The package line.** The character is meant to ship as an Asset Store package without the showcase's levels or its
+Blender pipeline, and the assemblies are split along that line:
+- *Ships:* `CharacterShowcase`, `PhysicsQueries`, `CharacterShowcase.LevelElements` and its `.Editor`,
+  `CharacterShowcase.Editor`, and the test assemblies (`Tests.Shared`, `Tests.EditMode`, `Tests.PlayMode`).
+  `CameraSystem` is undecided: it knows nothing of the character, so it can ship or be left out (and the PlayMode
+  tests that reference it, `Cameras/`, with it).
+- *Doesn't ship:* the level builders (`CharacterShowcase.Level.Editor`), the pipeline (`CharacterShowcase.Pipeline.Editor`),
+  the level checks (`CharacterShowcase.LevelChecks.Editor`), their tests (`CharacterShowcase.Tests.EditMode.Levels`), and
+  `Tools/`.
+
+So nothing that ships may reference what doesn't. Shipped code reaches the pipeline only through a hook the pipeline
+registers with (`CharacterModelPostprocessor.BeforePreparing`, which `MannequinRegeneration` uses); the mannequin's paths
+are the character side's (`CharacterModelImporter.MannequinModelPath`, `.MannequinPrefabPath`), which
+`MannequinGenerator` reads; and the tuning presets' inspector finds the Character prefab by Set Up Scene's path
+(`SceneGameSetup.CharacterPrefabPath`), not the level checks'.
 
 ## How to verify your work
 
 1. **Fast check, no Unity needed (before every commit):** `python3 Tools/CI/check_project_hygiene.py`. It catches
    missing or orphaned `.meta` files, duplicate GUIDs, an assembly referencing what the table above doesn't allow it,
-   the camera or the level builders using character code, fields the tests read by name that no longer exist (or are
+   the camera, the level elements or the level builders using character code, fields the tests read by name that no longer exist (or are
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
    (`[Category(TestArea.…)]`), on it or on a class it derives from, and a movement asset naming a component class that
    no longer exists (renamed without `[MovedFrom]`).
@@ -74,8 +95,10 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
    must keep `GroundContactTests` passing: compare its step traces before and after (Logs/StepTraces, docs/testing.md).
 5. **While iterating, run only the fixtures your change can affect** with `-testFilter` (a regex over test names,
    e.g. `"LedgeTests|AbilityAnimationTests"`, or a whole area with `-testCategory`: every fixture is in a `TestArea`, as the docs are), plus those of what depends on it: movement reaches the movement,
-   ability and scale fixtures; animation, IK and models reach `AnimationTests`, `AbilityAnimationTests`, `ModelTests`,
-   `ModelVariantTests` and the EditMode model checks; the camera reaches `CameraRigTests`. Before committing, run both
+   ability and scale fixtures; animation, IK and models reach the `Animation` and `Models` categories; the camera
+   reaches `Camera`. `-testCategory` takes the category names (`TestArea`'s: `Animation`, `Camera`, ...), not the
+   folders' (`Animations/`, `Cameras/`), and the fixtures in `InputAndDeterminism/` are in the `Movement` category.
+   Before committing, run both
    full suites and the hygiene check, and only commit on green.
 6. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
 7. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.
@@ -96,6 +119,8 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
 
 ## Architectural rules (do not break these)
 
+These are the canonical rules; docs/architecture.md summarises them for readers and links here. Keep the two in step.
+
 - **The camera knows nothing about the character.** Nothing in `Assets/Scripts/CameraSystem` may reference the
   `Character`, `Level` or `CharacterShowcase` namespaces or assemblies; it follows a plain Transform. A camera feature
   that needs character information exposes a generic hook (an interface, an event, a settable value) connected from
@@ -103,31 +128,39 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
 - **Models come from a `CharacterModelSource`.** `CharacterModelHost` asks its source for a model (`CreateModelAsync`)
   and gives it back (`ReleaseModel`); it never instantiates or destroys one itself. New ways of getting a model are new
   subclasses.
-- **The level knows nothing about the character or the camera.** The builders in `Assets/Editor/Level` make geometry,
-  lighting and markers only, and their assembly references no project code. Game setup is connected from the
-  character side (`SceneGameSetup`, `LevelFixtureSetup`).
+- **The level knows nothing about the character or the camera.** The level elements (`Assets/Scripts/Level`, the
+  `CharacterShowcase.LevelElements` assembly) are the level's: the character uses them (its abilities find them, as with
+  `Level.Rope.All`), never the reverse. The builders in `Assets/Editor/Level` make geometry, lighting and named fixtures
+  and markers, and each build attaches the level elements to its fixtures (`LevelFixtureSetup.SetUp`, a step of
+  `GrayboxScene`'s build, before saving); their assembly references the level elements and nothing of the character's
+  or the camera's. The fixture and marker names are `LevelFixtureSetup`'s constants, the one source both sides use
+  (`Graybox`'s are aliases of them). The character side is connected by Set Up Scene (`SceneGameSetup`): the spawner, its
+  spawn points, the camera, the input manager, and each course timer's racer (the spawner's On Character Spawned to
+  `CourseTimer.SetRacer`). It runs `LevelFixtureSetup` too, which leaves what's set up as it is, for a scene built some
+  other way.
 - **Movement and animation are separate.** Movement produces `MovementData` and raises `MovementEvents`; animation
   reads `CharacterAnimationState` and receives events through `AnimationController`. Movement code never touches
   Animators, models or IK. Model-specific behaviour belongs in a `CharacterAnimationTranslator`.
 - **Movement modes are ScriptableObjects made of components.** A `ComposedMovementMode` holds a list of
   `MovementComponent`s (`[SerializeReference]`), each an ability with its own settings, run in list order (higher
-  takes over first); a component asks its `Mode` for shared rules (gravity, air acceleration, the jump and crouch
-  presses, `AbilityInProgress` or `AbilityInProgressExcept<T>` for one that may take over from a T,
-  `AbilityInProgressWith(AbilityTraits)` for one that cares what the ability under way does with the character (holds it
-  up, holds on: each ability declares its `Traits`), `InterruptOthers`) rather than reaching into other abilities or
-  listing them. One shaped by another's
-  settings reads them with `SettingsOf<T>()` (the mode's, on or off, else T's defaults); one handing the character to
-  another finds it with `Mode.Get<T>()` (turned-on only). Shared state rules (wall jumps) are in `MovementHelpers`.
-  Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall speed limit, air
-  steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the body's posture and the
-  presses and speeds its components share. A step runs: `AdvanceTimers`, `BeforeAbilities` (gravity), `TakeOver`;
-  then, if nothing took the character, `BeforeLocomotion` (crouching), `Locomotion` (ground friction before walking,
-  which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (held as
-  the first component's `Posture` asks: low, or lying) and `FinishStep` (the fall speed limit). Within each point, list order
-  decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
-  assets, so per-character state lives on the `MovementController`, declared beside its component (the state class and
-  its property, on a part of the partial `MovementController`, in the component's file). Adding an
-  ability: see docs/adding-an-ability.md.
+  takes over first). Every part of the movement is a component (walking is `WalkingAndRunning`; gravity, the fall
+  speed limit, air steering and ground friction are `FallAndAirHandling`); `BasicMovementMode` keeps only the body's
+  posture and the presses and speeds its components share. A component whose class name can't say its inspector name
+  gets `[MovementComponentName]`. Adding an ability: see docs/adding-an-ability.md.
+  - *Components talk through their mode,* never reaching into other abilities or listing them. A component asks its
+    `Mode` for shared rules: gravity, air acceleration, the jump and crouch presses, `AbilityInProgress` (or
+    `AbilityInProgressExcept<T>` for one that may take over from a T, `AbilityInProgressWith(AbilityTraits)` for one
+    that cares what the ability under way does with the character: holds it up, holds on; each ability declares its
+    `Traits`), `InterruptOthers`. One shaped by another's settings reads them with `SettingsOf<T>()` (the mode's, on or
+    off, else T's defaults); one handing the character to another finds it with `Mode.Get<T>()` (turned-on only).
+    Shared state rules (wall jumps) are in `MovementHelpers`.
+  - *A step runs* `AdvanceTimers`, `BeforeAbilities` (gravity), `TakeOver`; then, if nothing took the character,
+    `BeforeLocomotion` (crouching), `Locomotion` (ground friction before walking, which reads the momentum it leaves;
+    air steering) and `AfterWalking` (dashing, then jumping); then posture (held as the first component's `Posture`
+    asks: low, or lying) and `FinishStep` (the fall speed limit). Within each point, list order decides.
+  - *State lives on the character.* Modes are shared assets, so per-character state lives on the `MovementController`,
+    declared beside its component (the state class and its property, on a part of the partial `MovementController`, in
+    the component's file).
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
 - **The character is resized only through `ACCharacterController.SetScale`,** which scales the model parent, never the
@@ -135,7 +168,7 @@ The test assemblies also reference Unity's test runner. The hygiene check holds 
   movement multiplies speeds by `SpeedScale` and distances by `HeightScale`; the animation state carries `scale`. New
   size-dependent values scale the same way.
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
-  Transform holds a lagging render pose. Movement reads `Rigidbody.position` / `rotation` (see `GetGroundPose`).
+  Transform holds a lagging render pose. Movement reads `Rigidbody.position` / `rotation` (see `MovementController.GetPhysicsPose`).
   Moving platforms are kinematic Rigidbodies that move first each physics step (`MovingPlatform.MoveOrder`, before
   the characters' FixedUpdate), their pose set at once (a function of `LevelClock.Tick`) so the characters ride and
   query them where they'll be; they're drawn interpolated by themselves. Anything that steps a character in FixedUpdate must run after them.
@@ -185,8 +218,9 @@ shows it as a missing component. Unity silently drops enum fields wider than 32 
 - The level scenes are generated (see Generated assets) and stored with Git LFS, as are the models and their textures: a
   scene's diff isn't readable, so rebuild a level and look at it rather than reviewing its YAML.
 
-**Generated assets: regenerate, don't edit.** Edit the generator and regenerate. All have `-executeMethod` entry
-points (see docs/animation.md, docs/levels.md, docs/spawning.md). If you can't run Blender or Unity, make the source
+**Generated assets: regenerate, don't edit.** Edit the generator and regenerate. All but the climbable paint masks
+(repainted from their surface's inspector only) have `-executeMethod` entry points (see docs/animation.md,
+docs/levels.md, docs/level-specs.md, docs/spawning.md). If you can't run Blender or Unity, make the source
 change and say regeneration is still needed.
 
 | Generated | Generator |
@@ -195,11 +229,12 @@ change and say regeneration is still needed.
 | `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox.controller`, `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
 | Every model prefab's hitboxes (`Hitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Character Models and Generate Fox also run on each model they save, keeping its settings |
-| A scene's Game Setup object (spawner, input manager, camera), and its fixtures made to work | `SceneGameSetup` (Set Up Scene), which runs `LevelFixtureSetup` |
-| The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data | Their builders in `Assets/Editor/Level` |
+| A scene's Game Setup object (spawner, spawn points, input manager, camera) and its course timers' racer | `SceneGameSetup` (Set Up Scene), which also runs `LevelFixtureSetup`, for a scene whose fixtures aren't set up yet |
+| The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data, and their level elements (attached to the fixtures, their course timers in a "Course Timers" group) | Their builders in `Assets/Editor/Level`, whose build runs `LevelFixtureSetup` before saving |
+| The `MeridianBasin` scene, its `Environment/` assets and baked data, and its level elements (as the builders' are) | Built from its spec, `Assets/Levels/MeridianBasin.level.json` (which `Tools/LevelSpec/examples/meridian_basin.py` writes), by `LevelSpecTools` (Build Level from Spec) |
 | `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |
 | Climbable paint masks (`Assets/ClimbablePaint`) | A `PaintedClimbableSurface`'s Repaint Masks |
-| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor), from the default character's capabilities |
+| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor: `MovementEnvelopeAutoWriter`), in the level checks (`Assets/Editor/LevelChecks`), from the default character's capabilities |
 | A model source's measured height, and its body (`[name] Body.asset`, unless its Refit On Prepare is off) | `CharacterModelImporter` (Prepare Character Models) |
 
 The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
@@ -280,12 +315,14 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
   `PaintedClimbableSurface`, which also paints a mask into the mesh's UV2 that the NoiseConcrete shader blends a
   climbable look by. Ladders are climbed by the same ability, up and down their middle, animated by `LadderIK`.
 - **Spawn points** are spawn markers ("Spawn Point (…)") that `SceneGameSetup` turns into the spawner's spawn
-  points; `SceneGameSetup.SpawnMarkerPrefix` must match `Graybox.SpawnMarkerPrefix`.
+  points. Their name is `LevelFixtureSetup.SpawnMarkerPrefix`, which `SceneGameSetup.SpawnMarkerPrefix` and
+  `Graybox.SpawnMarkerPrefix` both are.
 - **Test rig:** `CharacterTestRig` spawns the real Character prefab with `ACCharacterController` disabled, steps it
   itself through the controller (`StepMovement`) with scripted inputs (its own input source; `rig.RunWithSource` for a
   source of the test's, an AI's say) at a sped-up time scale (same physics step), and moves it with its
-  own copy of the movement mode: change settings with `rig.SetMovementSetting`, never on the asset. Add helpers there
-  rather than repeating setup in tests.
+  own copy of the movement mode: change settings with `rig.SetMovementSetting`, never on the asset. It owns the level's
+  clock while it's in use (`LevelClock.TickSource`) and resets it on `Dispose`; a test without the rig that sets it
+  must set it back to null. Add helpers there rather than repeating setup in tests.
 
 ## Code style
 

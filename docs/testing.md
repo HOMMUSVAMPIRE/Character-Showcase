@@ -6,15 +6,89 @@ Play mode tests run on the package's Character prefab unless a CharacterTestSett
 
 Tests of the package's own content (the mannequin and other prepared models, the motion-capture clips, the shared Animator Controller) are in the SampleContent category, and skipped where that content isn't there. A team using its own models and animations can leave them out: in the Test Runner, or with `-testCategory "!SampleContent"` on the command line.
 
+## The test rig
+Every character test runs on the test rig, `CharacterTestRig` (Assets/Tests/PlayMode). It spawns the character with real physics and drives it with scripted inputs, through its ACCharacterController (`StepMovement`, as the game steps it).
+
+- **`CharacterRigFixture`** is what a character fixture derives from: each test gets a new rig (`rig`), disposed after it. It also gives the fixture `[TestTiming]` (see [How long each test takes](#how-long-each-test-takes)). `AnimationTestsBase` derives from it for the tests that need the model's animation.
+- **Settings.** Each test's character moves with its own copy of its movement mode asset, so a test can change settings without changing the asset, and the asset can be retuned freely: the tests read the values they expect from the copy. `rig.SetMovementSetting("fieldName", value)` changes one, for that test only, and `rig.MovementSetting<T>("fieldName")` reads one (a field of the mode or of any of its components, by name). A setting the mode doesn't have ignores the test (it tests a behaviour that mode may not have); one asked for as the wrong type fails it, so a test can't quietly stop testing anything. The sizes, speeds and tolerances a test tries are in the test itself.
+- **Looking.** The rig creates no camera: the movement never reads one, and the scripted inputs carry their own look (`rig.Look`), which their move input is relative to. A test that needs a camera (the camera rig, the underwater view) makes its own.
+- **Running.** `rig.RunUntil` runs the character until something's true (or a timeout passes), so a test waits as long as the movement takes, however it's tuned; `rig.RunWithSource` runs it driven by an input source (an AI's, say), as its ACCharacterController steps it in the game.
+- **A second character.** `ReplaceRig()` starts again with a new rig, made as the test's first was, for a test comparing two characters one after the other.
+- **The level's clock.** While it's in use the rig drives the level's clock (`LevelClock.TickSource`), so moving platforms and the other mechanics go by its steps.
+
+Add helpers to the rig rather than repeating set-up in tests. What keeps the tests on it quick is in [Writing a fast test](#writing-a-fast-test).
+
 ## Play mode tests
-Play mode tests in Assets/Tests/PlayMode spawn the character with real physics and drive its MovementController with scripted inputs. Each test's character moves with its own copy of its movement mode asset, so a test can change settings without changing the asset, and the asset can be retuned freely: the tests read the values they expect from the copy. The sizes, speeds and tolerances a test tries are in the test itself. Each fixture below is one file, named for it, in a folder for its area (Movement, InputAndDeterminism, Abilities, Traversal, Animations, Models, Levels, Cameras, Spawning), and in a namespace of the same name, so the Test Runner's tree groups them by area under each assembly. (Animations and Cameras are plural so the namespaces don't hide Unity's `Animation` and `Camera` types from the tests.) What the fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`, `StepTrace`) is at the root of each, in `CharacterShowcase.Tests`, which every area's namespace sees without a `using`. A new fixture goes in its area's folder and namespace, and has the area's `[Category(TestArea.…)]` too, for filtering by area.
+Play mode tests in Assets/Tests/PlayMode spawn the character with real physics and drive it with scripted inputs, on the test rig (see [The test rig](#the-test-rig)). Each fixture below is one file, named for it (but SampleContentAnimationTests, in AnimationTests.cs), in a folder for its area (Movement, InputAndDeterminism, Abilities, Traversal, Animations, Models, Levels, Cameras, Spawning), and in a namespace of the same name, so the Test Runner's tree groups them by area under each assembly. (Animations and Cameras are plural so the namespaces don't hide Unity's `Animation` and `Camera` types from the tests.) What the fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`, `StepTrace`) is at the root of each, in `CharacterShowcase.Tests`, which every area's namespace sees without a `using`. A new fixture goes in its area's folder and namespace, and has the area's `[Category(TestArea.…)]` too, for filtering by area. (InputAndDeterminism isn't a `TestArea`: its fixtures are in the Movement category.)
 
 The settings that turn an ability off at 0 are each tested doing so, in the ability's fixture: the slide's longest time, the wall run's and wall slide's longest times, the ledge climb's duration, the max jump height, the rope's and zipline's grab reach, the bounce pads' height multiplier, and the swim depth.
 
-### Golden paths
-**GoldenPathTests** holds the character's movement to exactly what it was: 18 scripted runs over every part of it (walking, sprinting and turning; jumps and an air jump; stairs and a ramp; crouching through a tunnel, a slide and a roll; dashes; a ledge hang and climb; a vault; a wall run and wall jump; a wall climb over the top; a ladder onto a platform; a bounce pad; a zipline ride and jump; a rope swing; swimming, diving and getting out; wading and vaulting in the water; a moving platform; and a small and a large character), each checked step by step against the path recorded for it in Assets/Tests/PlayMode/GoldenPaths: where the character is, its facing, velocity, state, events and body height. Any difference fails, naming the run, the first step that differs and what differs, with this run's path written to Logs/GoldenPaths to compare. Each run is checked as the character is (with no collider); the four that meet things most (stairs and the ramp, the vault, the ledge, the moving platform) are checked again with a collider of its body's added, which the movement must ignore (`FollowsItsRecordedPath_WithACollider`; see [Collision](movement.md#collision)). The golden paths are in the Movement, Abilities and Traversal areas, so running any of them runs them. Each run must also visit the states and raise the events it's there for, so a run that no longer exercises what it should fails too.
+| Fixture | Folder | Category | What it checks |
+| --- | --- | --- | --- |
+| GoldenPathTests | Movement | Movement, Abilities, Traversal | the movement, step by step, against recorded paths |
+| MovementTests | Movement | Movement | settling, falling, steps, coyote time, the jump buffer |
+| SprintTests | Movement | Movement | sprinting and walking again |
+| MovementComponentTests | Movement | Movement | components turned off or removed |
+| CharacterTestRigTests | Movement | Movement | the test rig itself |
+| MovementCapabilitiesTests | Movement | Movement | the measured capabilities matching what the character does |
+| JumpHeightTests | Movement | Movement | tapped, held and released jump heights |
+| GroundMomentumTests | Movement | Movement | momentum on landing and hopping |
+| DashTests | Movement | Movement | the dash |
+| MovingGroundTests | Movement | Movement | riding moving and teleporting ground |
+| BodyShapeTests | Movement | Movement | bodies of other shapes, lying down |
+| FoxTests | Movement | Movement | the fox's movement |
+| GroundContactTests | Movement | Movement | keeping to the ground, with step traces |
+| CollisionTests | Movement | Movement | ceilings, walls, drops, slopes and pushing walls |
+| MovementEventTests | Movement | Movement | the basic moves' events |
+| EdgeCaseTuningTests | Movement | Movement | settings at their extremes |
+| ScaleTests | Movement | Movement | moving the same at any size |
+| AllocationTests | Movement | Movement, Animation, Performance | no allocation per step |
+| MovementPerformanceTests | Movement | Movement, Performance | a crowd's step time |
+| InputSourceTests | InputAndDeterminism | Movement | input sources: none, scripted, a waypoint AI |
+| DeterminismTests | InputAndDeterminism | Movement | moving the same, bit for bit |
+| InputRecordingTests | InputAndDeterminism | Movement | a recorded run replayed exactly |
+| CrouchTests | Abilities | Abilities | crouching |
+| SlideTests | Abilities | Abilities | sliding |
+| RollTests | Abilities | Abilities | rolling |
+| WallRunTests | Abilities | Abilities | wall running |
+| WallSlideTests | Abilities | Abilities | wall sliding and wall jumps |
+| LedgeTests | Abilities | Abilities | hanging from and climbing ledges |
+| VaultTests | Abilities | Abilities | vaulting |
+| LadderTests | Traversal | Traversal | ladders |
+| WallClimbTests | Traversal | Traversal | climbing walls, painted ones too |
+| PushPullTests | Traversal | Traversal | pushing and pulling |
+| RopeSwingTests | Traversal | Traversal | swinging on ropes |
+| ZiplineTests | Traversal | Traversal | riding ziplines |
+| SwimTests | Traversal | Traversal | swimming at the surface, getting out |
+| DiveTests | Traversal | Traversal | diving and swimming underwater |
+| WaterEffectsTests | Traversal | Traversal | splashes and ripples |
+| WadeTests | Traversal | Traversal | wading |
+| BouncePadTests | Traversal | Traversal | bounce pads |
+| AnimationTests | Animations | Animation | soles on the floor, planted feet, IK on stretched models |
+| SampleContentAnimationTests | Animations | Animation, SampleContent | every prepared model's feet and lean |
+| AnimationEventTests | Animations | Animation | movement events passed on by the AnimationController |
+| FootLockTests | Animations | Animation | planted feet staying put |
+| VisualRotationTests | Animations | Animation | the model turning and leaning |
+| AbilityAnimationTests | Animations | Animation, SampleContent | each ability's Animator state and IK |
+| HeadInWaterTests | Animations | Animation | the head-in-water hook |
+| FoxPawPlacementTests | Animations | Animation | the fox's paw placement |
+| FoxTerrainClearanceTests | Animations | Animation | the fox's body out of stairs and ramps |
+| FoxAbilityTests | Animations | Animation | the fox's Animator states, swimming and wall running |
+| ModelTests | Models | Models | model hosting, fitting, the translator |
+| ModelVariantTests | Models | Models | models made facing another way or off their origin |
+| HitboxTests | Models | Models | hitboxes |
+| TimingGateTests | Levels | Levels | a timed run between gates |
+| CourseTimerTests | Levels | Levels | lap gates and the racer |
+| UnderwaterViewTests | Levels | Levels | the camera's underwater view |
+| CameraRigTests | Cameras | Camera | the camera rig |
+| SpawnerTests | Spawning | Spawning | the character spawner |
 
-They're for changes meant to leave the movement as it is: a refactor passes only if every path is unchanged. They don't get in the way of tuning: the runs use their own tuning, recorded with the paths (GoldenPaths/Tuning.json: every movement component's settings, the MovementController's own and its collider's size), not the movement asset's, so retuning the asset leaves them passing.
+### Movement (the Movement category; see [Movement](movement.md))
+
+#### Golden paths
+**GoldenPathTests** holds the character's movement to exactly what it was: a scripted run for each part of it (GoldenPaths/*.csv: walking, sprinting and turning; jumps and an air jump; stairs and a ramp; crouching through a tunnel, a slide and a roll; dashes; a ledge hang and climb; a vault; a wall run and wall jump; a wall climb over the top; a ladder onto a platform; a bounce pad; a zipline ride and jump; a rope swing; swimming, diving and getting out; wading and vaulting in the water; a moving platform; and a small and a large character), each checked step by step against the path recorded for it in Assets/Tests/PlayMode/GoldenPaths: where the character is, its facing, velocity, state, events and body height. Any difference fails, naming the run, the first step that differs and what differs, with this run's path written to Logs/GoldenPaths to compare. Each run is checked as the character is (with no collider); those that meet things most (`ContactHeavy`: stairs and the ramp, the vault, the ledge, the moving platform) are checked again with a collider of its body's added, which the movement must ignore (`FollowsItsRecordedPath_WithACollider`; see [Collision](movement.md#collision)). The golden paths are in the Movement, Abilities and Traversal areas, so running any of them runs them. Each run must also visit the states and raise the events it's there for, so a run that no longer exercises what it should fails too.
+
+They're for changes meant to leave the movement as it is: a refactor passes only if every path is unchanged. They don't get in the way of tuning: the runs use their own tuning, recorded with the paths (GoldenPaths/Tuning.json: every movement component's settings, the MovementController's own and its body's size), not the movement asset's, so retuning the asset leaves them passing.
 
 When a change to the movement code is meant to change the movement, record the paths again, all at once (so they share one tuning), with Unity closed:
 
@@ -22,25 +96,48 @@ When a change to the movement code is meant to change the movement, record the p
 CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1 <Unity> -batchmode -projectPath . -runTests -testPlatform PlayMode -testFilter GoldenPathTests -testResults GoldenPaths.xml
 ```
 
-Then look at what changed in the recorded paths (git diff) before committing them: it should be only what the change meant to change. A run with no recorded path yet is inconclusive rather than failed. The paths are recorded on one machine; physics on another platform (CI's) may differ in the last digits, which the tolerances (a millimetre, a hundredth of a metre per second, a twentieth of a degree) allow for.
+Then look at what changed in the recorded paths (git diff) before committing them: it should be only what the change meant to change. A run with no recorded path yet is inconclusive rather than failed. The paths are recorded on one machine; physics on another platform (CI's) may differ in the last digits, which the tolerances allow for (`GoldenPathTests`' PositionTolerance, VelocityTolerance, YawTolerance and HeightTolerance).
 
-### Moving about
-- **InputSourceTests**: without an input source, the owner deciding (an AI's and the local player's, with no device, standing idle; a remote one not stepped), and nothing throwing; a scripted source playing its timed steps (walking the way its look says, jumping once) and finishing; a waypoint AI sprinting a course to its end, jumping a gap and onto a block taller than a step (both sized from the character's capabilities), and its run replayed from a recording of its frames moving a new character exactly the same.
-- **DeterminismTests**: the movement deterministic on one build, bit for bit: a character three billion steps into its clock moving exactly as one at 0; the same scene built in another order (coplanar floors, a corner of two walls, two ropes) running the same; a character saved mid-ability (jumping, climbing, on a zipline, on a moving platform, changing size, swinging on a rope, pushing a box) and put back, the level's ropes, pushables and clock with it, stepping on exactly as it did; the same state written to bytes and read into a new character in the level built again, stepping on exactly as the first; and a run on a moving platform the same at another frame rate.
-- **InputRecordingTests**: a run's input frames, recorded as it's stepped, saved to a file and read back, replayed on a new character in the same world, moving it exactly as the first, step for step, bit for bit.
-- **MovementTests**: the move input relative to the input's own look, not to the scene's camera; settling on the ground without hovering, sinking or drifting; falling within gravity's limits, including walking off a ledge after standing still; stopping at walls; climbing any step up to the step height, and not taller ones (walking or sprinting, straight at them or at an angle); not counting as on the ground while falling (or jumping) until its feet are near the floor, then resting on it; coyote time easing gravity in after leaving the ground, and jumps not being refunded by it; keeping speed when walking off edges; walking and sprinting down a long flight of steps nearly the step height (shallower than the character is wide) from different starting points and headings, without leaving them, speeding up or slowing at the steps' edges; and the jump input buffer. (Walking up stairs: GroundContactTests and the golden paths.)
+#### The other movement fixtures
+- **MovementTests**:
+  - the move input relative to the input's own look, not to the scene's camera;
+  - settling on the ground without hovering, sinking or drifting;
+  - falling within gravity's limits, including walking off a ledge after standing still;
+  - stopping at walls;
+  - climbing any step up to the step height, and not taller ones (walking or sprinting, straight at them or at an angle);
+  - not counting as on the ground while falling (or jumping) until its feet are near the floor, then resting on it;
+  - coyote time easing gravity in after leaving the ground, and jumps not being refunded by it;
+  - keeping speed when walking off edges;
+  - walking and sprinting down a long flight of steps nearly the step height (shallower than the character is wide) from different starting points and headings, without leaving them, speeding up or slowing at the steps' edges;
+  - and the jump input buffer. (Walking up stairs: GroundContactTests and the golden paths.)
 - **SprintTests**: sprinting at the run speed and walking again once Sprint is let go; Sprint alone not moving the character.
+- **MovementComponentTests**: a movement mode's components (`ComposedMovementMode`): one turned off, or removed, left out of the movement as if it weren't there, and one turned off while it has the character (a zipline ride) letting go of it; with Jumping or Dashing turned off the character not jumping or dashing, with Walking & Running off not walking but still jumping, and with Fall & Air Handling off not falling.
+- **CharacterTestRigTests**: the test rig itself, which every character test relies on: a test's change to a component's settings going to the rig's own copy of the movement mode, not the asset; and a setting asked for as the wrong type failing the test, where one the mode doesn't have is ignored (so a test can't quietly stop testing anything).
 - **MovementCapabilitiesTests**: the character's capabilities matching what it does (a jump and a sprint jump carrying it as far as they say, its step, stand and jump heights), following its settings (a higher jump crossing further and reaching a ledge that much higher) and its size (twice the size jumping and sliding twice as far), leaving out what's turned off, adding double jumps with air jumps, and a measurement shared by the same tuning (asked again, or tuned back as it was) but made again for any change, even a tiny change of size.
 - **JumpHeightTests**: a tap rising the min jump height, Jump held rising the max, holding longer rising higher between them, letting go past the min height stopping the rise at once, and the heights following the settings.
 - **GroundMomentumTests**: landing from a jump not adding walking on top of the air speed; hopping again and again (walking or sprinting) never building up speed; landing faster than walking carrying the momentum and easing down to walking, never below it; jumping while walking or sprinting keeping its speed in the air, without air steering stacking on it.
 - **DashTests**: a dash lasting exactly its duration, distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, air dash limits, and jump and dash cancelling each other.
 - **MovingGroundTests**: a platform enabled late being where an early one is at the same tick (both going by the level's clock); riding sliding, rising and spinning platforms (one parented under a static object, as a level's are, too), not being dragged along by ground that teleports further in a step than the character is carried, staying where a short teleport puts it while standing, and keeping a platform's momentum when jumping off.
-- **BodyShapeTests**: bodies of the other primitive shapes in place of the capsule: a box, a sphere, and a capsule centred ahead of the feet each walking up to a wall and stopping with their front against it, and their proportions (how far each reaches ahead, behind and to the sides, and how tall a sphere stands); a box crouching (lowered from the top, its bottom at the feet) and standing again; the character and the fox moving exactly the same with a collider as without one; the Character prefab having no collider of its own; lying down laying a box or capsule along the facing, resting on the feet, turning with the character, and no thicker than a Lying Thickness; the Character prefab's collider being its Body Definition's body; and a body of another kind replacing the body, once there's room.
-- **FoxTests**: the fox (Fox.prefab: see [Creatures](creatures.md)) standing on its paws in a rounded body of several parts (no box), held above its legs, hovering over steps, with its eye point at its eyes; trotting at its walk speed and galloping at its run speed; jumping once, to its jump height; crouched, passing under a bar too low to stand under; turning only as far as a corridor narrower than it's long lets it; walking up and down a flight of stairs; and, jumping onto a wall at an angle (20°, 40° or 60°, on either side, steering along it; or 50° or 65°, steering on at it), running along it. Skipped if the fox hasn't been generated.
-- **GroundContactTests**: how steadily the character and the fox keep to the ground, each as it is (hovering over steps) and with Hover Over Steps off, standing, walking, sprinting, turning and crouch-walking on level ground, along a wall, at a step's edge, over a hill of ramps and up and down stairs: never leaving the ground, overlapping the world or being pushed out of it, never moving up or down (nor its feet leaving the ground) on level ground, and never bobbing on stairs or ramps; hovering, the character's and the fox's feet also stay on the ground at the step's edge, over the hill and on the stairs (but for as far as a body reaching out over a slope further than its lift clears rests on it: the fox's back end on the steps behind, going down), and both get to the end of the hill and the flights. Each run is recorded step by step (a `StepTrace`: where the character is, how the ground check found it, what collision did that step, which `MovementData.resolution` records, and how far its feet are above the ground under them) and written to Logs/StepTraces/[run]_[character].csv, with a summary of its measurements first, to compare a run before and after a change to collision.
+- **BodyShapeTests**:
+  - bodies of the other primitive shapes in place of the capsule: a box, a sphere, and a capsule centred ahead of the feet each walking up to a wall and stopping with their front against it, and their proportions (how far each reaches ahead, behind and to the sides, and how tall a sphere stands);
+  - a box crouching (lowered from the top, its bottom at the feet) and standing again;
+  - the character and the fox moving exactly the same with a collider as without one; the Character prefab having a Body Definition and no collider of its own;
+  - lying down laying a box or capsule along the facing, resting on the feet, turning with the character, and no thicker than a Lying Thickness;
+  - and a body of another kind replacing the body, once there's room.
+- **FoxTests**: the fox (Fox.prefab: see [Creatures](creatures.md)). Skipped if the fox hasn't been generated.
+  - standing on its paws in a rounded body of several parts (no box), held above its legs, hovering over steps, with its eye point at its eyes;
+  - trotting at its walk speed and galloping at its run speed; jumping once, to its jump height;
+  - crouched, passing under a bar too low to stand under;
+  - turning only as far as a corridor narrower than it's long lets it;
+  - walking up and down a flight of stairs;
+  - and, jumping onto a wall at an angle (shallow to steep, on either side, steering along it; or steeply, steering on at it), running along it.
+- **GroundContactTests**: how steadily the character and the fox keep to the ground, each as it is (hovering over steps) and with Hover Over Steps off.
+  - The runs: standing, walking, sprinting, turning and crouch-walking on level ground, along a wall, at a step's edge, over a hill of ramps and up and down stairs.
+  - In each: never leaving the ground, overlapping the world or being pushed out of it, never moving up or down (nor its feet leaving the ground) on level ground, and never bobbing on stairs or ramps.
+  - Hovering, the character's and the fox's feet also stay on the ground at the step's edge, over the hill and on the stairs (but for as far as a body reaching out over a slope further than its lift clears rests on it: the fox's back end on the steps behind, going down), and both get to the end of the hill and the flights.
+  - Each run is recorded step by step (a `StepTrace`: where the character is, how the ground check found it, what collision did that step, which `MovementData.resolution` records, and how far its feet are above the ground under them) and written to Logs/StepTraces/[run]_[character].csv, with a summary of its measurements first, to compare a run before and after a change to collision.
 - **CollisionTests**: falling away from a ceiling the character jumps into, losing momentum into a wall, sliding off the edge of a drop taller than a step, sliding off slopes too steep for it, stopping where it lands on a walkable ramp (not sliding down it, then or standing idle), standing and walking on the highest of a pile of more overlapping boxes than the movement's query buffers start with (a buffer that fills grows and queries again: see `PhysicsQueries.QueryBuffer`), and being pushed by moving walls.
-- **MovementEventTests**: each event raised once at the right moment.
-- **AnimationEventTests**: the movement's events passed on by the AnimationController, with the animation state.
+- **MovementEventTests**: the events the controller and the basic moves raise, each once at the right moment: Jumped and LeftGround on a jump, then Landed on touching down; AirJumped; LeftGround walking off a ledge, without a jump; DashStarted, then DashEnded when it finishes; DashEnded and Jumped together jumping out of a dash; and HitCeiling and HitWall once each on contact. (Each ability's own events are tested in its fixture; that each ability's state has its events, declared once, is MovementCompositionTests'.)
 - **EdgeCaseTuningTests**: movement at the edges of its settings, each set on the test's own copy of the movement mode:
   - no walking or running speed (standing still without breaking), and a run speed no faster than walking (Sprint walks);
   - no jumps and many (exactly that many);
@@ -48,11 +145,34 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - walking and dashing at extreme speeds into a very thin wall (stopping at it);
   - a dash with no length (no dash), no speed (holding still, then ending), an empty speed curve, or no cooldown (still one dash per press); no air dashes (ground dashes only);
   - no jump input buffer (a press held from before landing doesn't jump, a press on the ground does) and no coyote time (a jump just after walking off is an air jump).
+- **ScaleTests**:
+  - moving like a scaled copy of itself at any size, from tiny to huge, over a course laid out for the character (ramps up and down, a step, a jump, a dash, a low ceiling and a step too tall for it): every physics step puts it in the same place for its size as at full size, on the ground at the same moments, with the same jump airtime and height for its size;
+  - scaling only the model parent and resizing collision and mass to match; size changes taking their time; waiting for room to grow under a low ceiling;
+  - non-uniform scales still moving and colliding; natural speed scaling; the model's measurements and placeholder following; the inspector field;
+  - and refusing negative, zero and non-finite scales, raising tiny ones to the minimum, and reporting a scaled root transform.
+- **AllocationTests** and **MovementPerformanceTests** (also in the Performance category): no allocation in a step, and a crowd's step time. See [Performance](#performance).
 
-### Abilities
+### InputAndDeterminism (the Movement category; see [Input](movement.md#input) and [Determinism and state](movement.md#determinism-and-state))
+- **InputSourceTests**:
+  - without an input source, the owner deciding (an AI's and the local player's, with no device, standing idle; a remote one not stepped), and nothing throwing;
+  - a scripted source playing its timed steps (walking the way its look says, jumping once) and finishing;
+  - a waypoint AI sprinting a course to its end, jumping a gap and onto a block taller than a step (both sized from the character's capabilities), and its run, recorded frame by frame and played back by a scripted source (`ScriptedInputSource.Play`), moving a new character exactly the same.
+- **DeterminismTests**: the movement deterministic on one build, bit for bit:
+  - a character three billion steps into its clock moving exactly as one at 0;
+  - the same scene built in another order (coplanar floors, a corner of two walls, two ropes) running the same;
+  - a character saved mid-ability (jumping, climbing, on a zipline, on a moving platform, changing size, swinging on a rope, pushing a box) and put back, the level's ropes, pushables and clock with it, stepping on exactly as it did;
+  - the same state written to bytes and read into a new character in the level built again, stepping on exactly as the first;
+  - and a run on a moving platform the same at another frame rate.
+- **InputRecordingTests**: a run's input frames, recorded as it's stepped, saved to a file and read back, replayed on a new character in the same world, moving it exactly as the first, step for step, bit for bit.
+
+### Abilities (the Abilities category; see [Movement Abilities](abilities.md))
 - **CrouchTests**: lowering the body to the crouch height (in proportion at a larger size too) and moving at the crouch speed; standing again on a second press; staying crouched under a low ceiling and standing by itself once out from under it; hold to crouch; one crouch per held press; jumping from a crouch (and not under a low ceiling); its events.
-- **SlideTests**: crouching while sprinting slides, starting at least at the slide start speed, only slowing, low, ending crouched within its longest time; crouching while walking just crouches; sliding under a bar too low to stand under; jumping out keeping its speed; stopping at a wall; a second press standing up.
-- **RollTests**: rolling in the input direction for its duration, low, fast, facing it and standing afterwards; straight ahead without input and not steerable; one roll per press, a buffered press waiting out the cooldown; not in the air; ending crouched under a low ceiling; going farther in proportion at a larger size; handing straight over to walking without a burst of speed. On landing from a high fall it rolls on impact the way it's moving, but not standing still, from a lower fall, from an ordinary jump, after a dash or an air jump just before landing (which start the fall again), or with a jump pressed for the landing (which jumps).
+- **SlideTests**: crouching while sprinting slides, starting at least at the slide start speed, only slowing, low, ending crouched within its longest time; crouching while walking just crouches; sliding under a bar too low to stand under; jumping out keeping its speed; stopping at a wall; a second press standing up; sliding turned off (Sliding Enabled off, or no longest time) crouching instead; and sliding turned off during a slide ending it crouched.
+- **RollTests**:
+  - rolling in the input direction for its duration, low, fast, facing it and standing afterwards; straight ahead without input and not steerable;
+  - one roll per press, a buffered press waiting out the cooldown; not in the air; ending crouched under a low ceiling;
+  - going farther in proportion at a larger size; handing straight over to walking without a burst of speed;
+  - on landing from a high fall it rolls on impact the way it's moving, but not standing still, from a lower fall, from an ordinary jump, after a dash or an air jump just before landing (which start the fall again), or with a jump pressed for the landing (which jumps).
 - **WallRunTests**:
   - running along a wall in mid-air, falling much slower than falling freely, staying against it and facing along it;
   - ending after its longest time, past the end of the wall, and not starting again on the same wall;
@@ -76,7 +196,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - stairs sprinted up or jumped onto climbed, not vaulted; not without room over the top;
   - with vaulting off, a low wall not slid down, its top grabbed once in reach.
 
-### Climbing and traversal
+### Traversal (the Traversal category; see [Climbing and Traversal](traversal.md))
 - **LadderTests**: walking into one climbing straight up its middle facing it; sideways input doing nothing; not taken hold of from behind; one standing on its own climbed to its top and no further, and one up to a platform climbed off onto it; jumping off kicking away.
 - **WallClimbTests**:
   - taking hold of a climbable wall giving back air dashes and jumps;
@@ -90,31 +210,34 @@ Then look at what changed in the recorded paths (git diff) before committing the
 - **PushPullTests**: pushing and pulling at the push speed with the character keeping hold, slower for heavier objects, push-only objects staying put, stopping at walls without going into the object, letting go, objects falling off edges, objects just being obstacles without Interact, and not jumping while holding one.
 - **RopeSwingTests**: reaching one in mid-air catching hold and swinging on it about its anchor, the hands staying the grip distance from it, carried on past it and back; no input never swinging higher, pumping with the stick swinging higher, and never past the largest swing angle; a wall stopping the swing; jumping off keeping the swing's speed and jumping up, the rope swinging on by itself; Crouch letting go, the same rope not caught again before the regrab delay.
 - **ZiplineTests**: catching a cable in mid-air and riding it downhill to its end, letting go there at the ride's speed, with its events; hanging the hang height straight below it, facing the way it rides; speeding up downhill to no more than the zipline's top speed; a level cable carrying the rider at the slowest ride speed; jumping off up on top of the ride's speed; Crouch letting go.
-- **SwimTests**: falling into deep water plunging below the swim depth (not to the floor) and floating back up to it without bobbing past, with its events and no landing; swimming the way the input points at the swim speed, faster sprinting, facing that way at the swim depth, and slowing to a stop without input; Jump jumping out, the feet rising the swim jump height above the surface, leaving the air jumps, and falling back in swimming again; jumping out onto an edge a little above the water; swimming into a ladder up a low side or a tall one climbing out onto it; swimming into a low side vaulting onto it (or climbing, with a swim vault height of 0), a low divider vaulted over back into the water, a taller side within reach climbed out onto, but one out of reach keeping the swimmer in; walking down a slope into deep water, or plunging to the bottom, floating up to the swim depth; swimming into shallows up a slope and walking out; and Swimming turned off, or a swim depth of 0, sinking to the bottom.
-- **DiveTests**: Crouch at the surface diving under it, the body lying flat along the way it swims, resting on its feet, the model drawn lowered to it; underwater swimming the way its input looks (the frame's look, which the player's camera gives), looking down and looking up, at the swim speed; holding Crouch sinking and Jump rising whichever way the camera looks; drifting back up to the surface without input, floating at the swim depth with the body standing again, or holding its depth with no buoyancy; swimming along the floor under an arch too low to stand under (as the Level Playground's is); turning in a channel narrower than the lying body is long only as far as it has room; a press of Jump underwater rising to the surface without jumping out; and a dive speed of 0 turning diving off; swimming into a ladder underwater (from along the floor too) taking hold of it and climbing it without letting go; and swimming underwater up a beach surfacing once the feet are shallower than the swimming depth, finding its feet in the shallows.
-- **UnderwaterViewTests**: a camera going under a water's surface changing the scene's fog to the water's and tinting and dimming the sun, raising CameraSubmerged, and coming back up putting the scene's fog and sun back, raising CameraSurfaced; a camera just above the surface (within the margin) counting as under; outside the water's footprint not; and turning the view off underwater putting the scene's fog back.
+- **SwimTests**:
+  - falling into deep water plunging below the swim depth (not to the floor) and floating back up to it without bobbing past, with its events and no landing;
+  - swimming the way the input points at the swim speed, faster sprinting, facing that way at the swim depth, and slowing to a stop without input;
+  - Jump jumping out, the feet rising the swim jump height above the surface, leaving the air jumps, and falling back in swimming again; jumping out onto an edge a little above the water;
+  - swimming into a ladder up a low side or a tall one climbing out onto it;
+  - swimming into a low side vaulting onto it (or climbing, with a swim vault height of 0), a low divider vaulted over back into the water, a taller side within reach climbed out onto, but one out of reach keeping the swimmer in;
+  - walking down a slope into deep water, or plunging to the bottom, floating up to the swim depth; swimming into shallows up a slope and walking out;
+  - and Swimming turned off, or a swim depth of 0, sinking to the bottom.
+- **DiveTests**:
+  - Crouch at the surface diving under it, the body lying flat along the way it swims, resting on its feet, the model drawn lowered to it;
+  - underwater swimming the way its input looks (the frame's look, which the player's camera gives), looking down and looking up, at the swim speed; holding Crouch sinking and Jump rising whichever way the camera looks;
+  - drifting back up to the surface without input, floating at the swim depth with the body standing again, or holding its depth with no buoyancy;
+  - swimming along the floor under an arch too low to stand under (as the Level Playground's is); turning in a channel narrower than the lying body is long only as far as it has room;
+  - a press of Jump underwater rising to the surface without jumping out; and a dive speed of 0 turning diving off;
+  - swimming into a ladder underwater (from along the floor too) taking hold of it and climbing it without letting go;
+  - and swimming underwater up a beach surfacing once the feet are shallower than the swimming depth, finding its feet in the shallows.
 - **WaterEffectsTests**: falling in splashing once on the surface, as strong as it fell fast, playing the splash prefab; jumping out splashing; swimming along rippling every ripple spacing it goes, and treading water every idle ripple interval; nothing on dry land; a prefab with its own effect (IWaterEffect) played with where and how strong; no more of an effect playing than the most at once, the oldest reused; and without prefabs the events still raised.
-- **WadeTests**: walking through shallow water slowed by how deep it is (at a quarter, half and nine-tenths of the way from the wade start depth to the swim depth), sprinting slowed too, ankle-deep water not slowing it, walking in and out raising the wading events, walking or sprinting into a low wall vaulting it, and Wading turned off not slowing it.
+- **WadeTests**: walking through shallow water slowed by how deep it is (at depths part way from the wade start depth to the swim depth), sprinting slowed too, ankle-deep water not slowing it, walking in and out raising the wading events, walking or sprinting into a low wall vaulting it, and Wading turned off not slowing it.
 - **BouncePadTests**: coming down on one launching the feet its launch height above it, once; Jump held bouncing higher by the jump boost; running across one carrying the run on; a tilted pad launching along its up; the bounce being the jump, leaving the air jumps.
-- **TimingGateTests**: sprinting from a start gate to a finish gate timed at the course's length over the run speed (with its speed shown).
-- **CourseTimerTests** (no character): a lap gate starting a lap on the first pass and ending it on the next, but not straight away; only the racer counting.
 
-### Size
-- **ScaleTests**: moving like a scaled copy of itself at any size, from tiny to huge, over a course laid out for the character (ramps up and down, a step, a jump, a dash, a low ceiling and a step too tall for it): every physics step puts it in the same place for its size as at full size, on the ground at the same moments, with the same jump airtime and height for its size. Also scaling only the model parent and resizing collision and mass to match; size changes taking their time; waiting for room to grow under a low ceiling; non-uniform scales still moving and colliding; natural speed scaling; the model's measurements and placeholder following; the inspector field; and refusing negative, zero and non-finite scales, raising tiny ones to the minimum, and reporting a scaled root transform.
-
-### Models and animation
+### Animations (the Animation category; see [Character Model and Animations](animation.md), and for the fox, [Creatures](creatures.md))
 - **AnimationTests**:
   - the character's model standing with its soles on the floor (within a tight tolerance, scaled) at small, full and large sizes and stretched on one axis, with foot placement on, off or fading; an unmeasured source measuring its model on load;
   - its planted feet sliding no more at other sizes, or stretched, than at its own size;
   - IK on stretched models: moving a hand or foot goal moving the hand or foot as far, and a knee hint on its own moving the foot no more than unstretched;
-  - sample content: every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor with its arms hanging down (the character's own model, when it's one of them, checked in AnimationTests' stand-on-the-ground case instead), and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up).
-- **ModelVariantTests**: models made facing another way, or off their origin, facing forward and standing on the spot; a model with an unevenly scaled armature staying in proportion when stretched.
-- **HitboxTests**: the character's and the fox's models bringing their hitboxes (the characters themselves having no collider), on the CharacterHitbox layer, moving with the character's Rigidbody and left out of the movement's layers; the hitboxes covering the model as it's animated, without reaching far beyond it; detecting, a ball dropped on the character reported and passing through; colliding, bouncing off, the character still walking freely; and a timing gate's trigger seeing the fox walk through it (the character's own hitboxes trigger the gates in TimingGateTests).
-- **ModelTests**: a character left without its model (never loaded, as on a server) moving exactly as one with it, step for step, its body the one its model gives from the first step; model hosting (loading at runtime and being set up, swapping models, including one without an Animator, new models staying hidden until swapped in, the placeholder, falling back when a model fails, cancelling loads when the character is destroyed or given another model, sources releasing their models, a model swapped in mid-run or mid-transition carrying on where the old one was, measuring on load once per model, the editor preview checked in PreparedModelTests); fitting a model to a height (in proportion to the character's size, the eyes following), fitting the body to the model by height, by shoulder width, or to its source's own Body Definition (sized with the model, replacing the collider with one of its kind), and waiting for room to grow; and the Animator parameter translator, including playing a state faster than its fastest loop by however much faster the character moves.
-- **FootLockTests**: turning on the spot, planted feet staying where they were put down (none of the slide they have without it).
-- **FoxPawPlacementTests**: the fox's paw placement (PawPlacementIK): standing on a ramp, up or down it, its paws on the ramp and its body pitched with it; standing over a step's edge, its hind paws reaching down to the floor; walking up a ramp, each paw's sole coming down onto it every stride and no paw's joint in it; turning a little on the spot, its planted paws staying where they were put down while planted (compared with paw locking off); turning on the spot, its body bending into the turn, its Animator told it's turning, and each paw stepping round; riding a platform up and down, frame by frame as drawn (interpolated), its paws and body steady on it; walking along the flat, each paw locking as it's put down and letting go as it lifts, stride after stride, staying put while locked, and its sole coming down onto the ground every stride. Its animation is stepped with the physics, and its paws placed after each step. Skipped if the fox hasn't been generated.
-- **FoxTerrainClearanceTests**: walking up and down a flight of stairs as steep as the levels', and up 30° and 40° ramps, the fox's body, head and tail stay out of them (its legs all but out: measured on its mesh, into the boxes they're made of) and its body pitches with them. The slowest of the fox's checks (the whole posed mesh, every step), so a fixture of its own; it shares FoxPawPlacementTests' set-up (`FoxPawTestsBase`). Skipped if the fox hasn't been generated.
-- **FoxAbilityTests**: the fox playing its Animator's Locomotion, Crouch and Airborne states; swimming in deep water, at its swim depth with its head out of the water and its back at the waterline, paddling (Swim), at its swim speed, and not diving; and wall-running along a wall on either side (Wall Run), its body rolled to the wall, each paw's mesh on the wall's face and nothing of it through the wall. Skipped if the fox hasn't been generated.
+  - sample content (SampleContentAnimationTests, in the same file): every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor with its arms hanging down (the character's own model, when it's one of them, checked in AnimationTests' stand-on-the-ground case instead), and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up).
+- **AnimationEventTests**: the movement's events passed on by the AnimationController, with the animation state.
+- **FootLockTests**: turning on the spot, planted feet staying where they were put down (none of the slide they have without it); a model swapped in while standing carrying on the old one's foot placement (faded in as far, the pelvis as low) rather than fading back in; and standing on a rising and falling platform, frame by frame as drawn, the feet staying on it.
 - **VisualRotationTests**: the model turning after the character: the character turning at once and the model easing round after it without overshooting; turning slower at a run than standing (no faster than its moving limit); leaning into curves by the configured share of the balancing lean (either way); walking a curve leaning about half as much as sprinting it; walking a sharp corner leaning no more than walking speed allows; leaning forward speeding up and back stopping, and upright otherwise; facing a roll at once without leaning; turning with a spinning platform without lagging.
 - **AbilityAnimationTests** (sample content):
   - crouching, sliding, rolling, wall-running, sliding down a wall, hanging, climbing, vaulting and pushing each playing their Animator state;
@@ -132,8 +255,33 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - getting out of the water onto a low side playing the climb, not the vault, without passing through the air state or the body dropping back;
   - diving playing Swim Underwater, the swimmer drawn inside its lying body, and back at the surface Swim.
 - **HeadInWaterTests**: the head-in-water hook (AnimationController's HeadSubmerged and HeadSurfaced) on the character's own model: nothing raised swimming at the surface (the stroke's head bobbing at the water line); diving raising HeadSubmerged once, the head the margin under the surface, and rising back raising HeadSurfaced once, the head the margin above it; falling in from high raising the pair in order; and nothing on dry land.
+- **FoxPawPlacementTests**: the fox's paw placement (PawPlacementIK). Its animation is stepped with the physics, and its paws placed after each step. Skipped if the fox hasn't been generated.
+  - standing on a ramp, up or down it, its paws on the ramp and its body pitched with it;
+  - standing over a step's edge, its hind paws reaching down to the floor;
+  - walking up a ramp, each paw's sole coming down onto it every stride and no paw's joint in it;
+  - turning a little on the spot, its planted paws staying where they were put down while planted (compared with paw locking off);
+  - turning on the spot, its body bending into the turn, its Animator told it's turning, and each paw stepping round;
+  - riding a platform up and down, frame by frame as drawn (interpolated), its paws and body steady on it;
+  - walking along the flat, each paw locking as it's put down and letting go as it lifts, stride after stride, staying put while locked, and its sole coming down onto the ground every stride.
+- **FoxTerrainClearanceTests**: walking up and down a flight of stairs as steep as the levels', and up ramps steeper than the levels', the fox's body, head and tail stay out of them (its legs all but out: measured on its mesh, into the boxes they're made of) and its body pitches with them. The slowest of the fox's checks (the whole posed mesh, every step), so a fixture of its own; it shares FoxPawPlacementTests' set-up (`FoxPawTestsBase`). Skipped if the fox hasn't been generated.
+- **FoxAbilityTests**: the fox playing its Animator's Locomotion, Crouch and Airborne states; swimming in deep water, at its swim depth with its head out of the water and its back at the waterline, paddling (Swim), at its swim speed, and not diving; and wall-running along a wall on either side (Wall Run), its body rolled to the wall, each paw's mesh on the wall's face and nothing of it through the wall. Skipped if the fox hasn't been generated.
 
-### Camera and spawning
+### Models (the Models category; see [Replacing the model](animation.md#replacing-the-model) and [Character models](animation.md#character-models))
+- **ModelTests**:
+  - a character left without its model (never loaded, as on a server) moving exactly as one with it, step for step, bit for bit, its body the one its model gives from the first step;
+  - model hosting: loading at runtime and being set up, swapping models (including one without an Animator), new models staying hidden until swapped in, the placeholder, falling back when a model fails, cancelling loads when the character is destroyed or given another model, sources releasing their models, a model swapped in mid-run or mid-transition carrying on where the old one was, and measuring on load once per model (the editor preview is checked in PreparedModelTests);
+  - fitting a model to a height (in proportion to the character's size, the eyes following);
+  - fitting the body to the model (Body Fit): Height, as tall as the model in proportion as authored, or Model's Body, its source's own Body Definition (sized with the model, replacing the body with one of its kind) or, for a source without one, as wide as the model's shoulders; a fallback model's body being the fallback's, not the failed source's; and waiting for room to grow;
+  - and the Animator parameter translator, including playing a state faster than its fastest loop by however much faster the character moves.
+- **ModelVariantTests**: models made facing another way, or off their origin, facing forward and standing on the spot; a model with an unevenly scaled armature staying in proportion when stretched.
+- **HitboxTests**: the character's and the fox's models bringing their hitboxes (the characters themselves having no collider), on the CharacterHitbox layer, moving with the character's Rigidbody and left out of the movement's layers; the hitboxes covering the model as it's animated, without reaching far beyond it; detecting, a ball dropped on the character reported and passing through; colliding, bouncing off, the character still walking freely; and a timing gate's trigger seeing the fox walk through it (the character's own hitboxes trigger the gates in TimingGateTests).
+
+### Levels (the Levels category; see [Test Levels](levels.md))
+- **TimingGateTests**: sprinting from a start gate to a finish gate timed at the course's length over the run speed (with its speed shown).
+- **CourseTimerTests** (no character): a lap gate starting a lap on the first pass and ending it on the next, but not straight away; only the racer counting.
+- **UnderwaterViewTests**: a camera going under a water's surface changing the scene's fog to the water's and tinting and dimming the sun, raising CameraSubmerged, and coming back up putting the scene's fog and sun back, raising CameraSurfaced; a camera just above the surface (within the margin) counting as under; outside the water's footprint not; and turning the view off underwater putting the scene's fog back.
+
+### Cameras (the Camera category; see [Camera System](camera.md))
 - **CameraRigTests**: the camera rig, which follows a plain Transform, independent of the character code, with expectations taken from its own settings:
   - third and first person placement, and mode blending and events; pitch limits and zoom limits;
   - collision with walls (only as far in as needed, ignoring walls clear of it and the target's own colliders), at several sizes of target;
@@ -145,23 +293,88 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - the landing dip, as deep as the landing settings make it, in proportion to the target's size, and recovering (landings are judged by the fastest fall since the target last rose, so a frame holding several physics steps, as in the editor, doesn't halve the impact);
   - CameraZone overrides;
   - following a new target with `Follow`: snapping to it and looking the way it faces, and taking its eye anchor and size reference in place of the old target's.
-- **SpawnerTests**: the character spawner spawning at a spawn point and facing its way, at a chosen point or one chosen at random from all of them, on Start or only when asked; telling listeners through both events; handing only the local player's character to the camera (an AI's spawned beside it isn't), each told who it's for; an NPC spawned from a route being an AI's character walking it (a waypoint source as its input), not followed by the camera, the spawner's PlayerCharacter staying the player's; treating an all-zero rotation as none; giving the spawned character the chosen model and movement mode (and keeping the prefab's without them); giving the camera its eye point and size reference; and refusing with an error when there's no prefab, no spawn points or no such point.
+
+### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
+- **SpawnerTests**: the character spawner:
+  - spawning at a spawn point and facing its way, at a chosen point or one chosen at random from all of them, on Start or only when asked; treating an all-zero rotation as none;
+  - telling listeners through both events; handing only the local player's character to the camera (an AI's spawned beside it isn't), each told who it's for;
+  - an NPC spawned from a route being an AI's character walking it (a waypoint source as its input), not followed by the camera, the spawner's PlayerCharacter staying the player's;
+  - giving the spawned character the chosen model and movement mode (and keeping the prefab's without them); giving the camera its eye point and size reference;
+  - and refusing with an error when there's no prefab, no spawn points or no such point.
 
 ## Edit mode tests
-Edit mode tests in Assets/Tests/EditMode check Prepare Character Models, the motion-capture clips, the levels and their tools without entering Play mode, so a change to preparing (or a model added without preparing it) fails fast. As in Play mode, each check's tolerances are in the test.
+Edit mode tests in Assets/Tests/EditMode check Prepare Character Models, the motion-capture clips and the shared controller's locomotion, the movement mode's composition and data, tuning presets, the physics query buffers, input frames, the level elements' editor tools (setting up a level's mechanics, climbable paint) and Set Up Scene, without entering Play mode, so a change to preparing (or a model added without preparing it) fails fast. As in Play mode, each check's tolerances are in the test, and each fixture is a file in a folder for its area (Movement, InputAndDeterminism, Animations, Models, LevelElements, Spawning, Levels), in a namespace of the same name.
 
-- **PreparedModelTests**: every model file has a source; every prepared model having a hitbox on each of its body's bones, on the CharacterHitbox layer, which the character's movement and foot placement leave out; straightening nodes above the skeleton keeping everything under them where it was, unevenly scaled ones included, and leaving what can't be straightened; facing corrections rounding to the nearest quarter turn. Sample content: ground offsets counting meshes carried by bones, not just skinned ones; every prepared model's source is ready to use and plays the shared Animator Controller; its avatar reference pose is a T-pose (spine up, arms out, legs down) with nothing rotated above its skeleton; its stored Ground Offset, Animated Ground Offset and Facing Correction match a fresh measurement; it has a body of its own, as tall as it is, standing on its feet and lying no thicker than it's wide; what it was prepared against changes when its controller changes; and previews and listed heights are sized like the loaded model, previews standing where it loads.
+They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tests the package (the character's code, its editor tools, and the level elements and theirs), and references no level builder code. The level builders' tests (and the movement envelope's, which the level checks write) are in their own, `CharacterShowcase.Tests.EditMode.Levels` (Assets/Tests/EditMode/Levels), with the builders, the Level Editor and the level checks: none of those is part of the package, so neither is this assembly.
+
+| Fixture | Folder | Category | What it checks |
+| --- | --- | --- | --- |
+| MovementCompositionTests | Movement | Movement | movement modes made of components, as assets |
+| MovementDataTests | Movement | Movement | `MovementData.Reset` |
+| MovementTuningPresetTests | Movement | Movement | tuning presets |
+| QueryBufferTests | Movement | Movement | the physics query buffers growing |
+| InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
+| LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
+| MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |
+| PreparedModelTests | Models | Models (some tests SampleContent) | Prepare Character Models |
+| LevelFixtureSetupTests | LevelElements | Levels | setting up a level's mechanics from its markers |
+| ClimbablePaintTests | LevelElements | Levels | the climbable paint tools and shader |
+| SceneGameSetupTests | Spawning | Spawning, SampleContent | Set Up Scene |
+| LevelEditorTests | Levels (own assembly) | Levels | the Level Editor |
+| LevelSpecTests | Levels (own assembly) | Levels | level specs building their levels |
+| GrayboxUV2Tests | Levels (own assembly) | Levels | the level pieces' UV2 |
+| MovementEnvelopeTests | Levels (own assembly) | Movement | envelope.json up to date |
+
+### Movement (the Movement category; see [Movement](movement.md))
+- **MovementCompositionTests**: movement modes made of components, as assets: a new BasicMovementMode starting with its default components, one of each, in order; a component's inspector name being its own (`[MovementComponentName]`) or its class name spaced out; the movement mode asset having no missing or doubled components; each ability's state declared once, by the component that sets it, with its events (on the asset and on a new mode's defaults); a mode's JSON holding its components' settings (which the capabilities rely on to know when to measure again); and components added, removed and found.
+- **MovementDataTests**: `MovementData.Reset`, which lets a character reuse its movement data step after step without allocating, putting every field (backing fields too) back as a new one's, so no step's value carries into the next.
+- **MovementTuningPresetTests**: a preset saved from a mode gives the same tuning back, curves and on/off switches included; one of a few settings changes only those; a preset never changes a mode's components or their order, and reports what it couldn't set; and a component's settings are the fields Unity saves, of kinds a preset can copy.
+- **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
+
+### InputAndDeterminism (the Movement category; see [Input](movement.md#input))
+- **InputFrameTests**:
+  - the input frame staying unmanaged and its size;
+  - presses, releases and hold durations worked out from successive frames, in steps;
+  - a tap between two physics steps seen in the next step's frame (and only it), a render frame that runs two steps pressing once, and two characters reading one device in a step seeing the same frame;
+  - a recording keeping the latest frames, and reading back from its file exactly (and refusing what isn't one).
+
+### Animations (the Animation category; see [Character Model and Animations](animation.md))
 - **LocomotionBlendTests** (sample content): the shared Animator Controller's Locomotion blend tree lines up every loop to land its left foot at the same moment, and each loop shown at its own strides' speed (the walks, the jog and the sprint) keeps its feet in step with the ground there.
 - **MotionCaptureClipTests** (sample content): every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame; played on the mannequin, every clip that moves about on its feet stays on the spot and faces forward; each check lists every clip that fails it.
-- **InputFrameTests**: the input frame staying unmanaged and its size; presses, releases and hold durations worked out from successive frames, in steps; a tap between two physics steps seen in the next step's frame (and only it), a render frame that runs two steps pressing once, and two characters reading one device in a step seeing the same frame; a recording keeping the latest frames, and reading back from its file exactly (and refusing what isn't one).
-- **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
-- **ClimbablePaintTests**: the level builders and the paint tools naming the same unpainted mask (each names it itself, as neither assembly can reference the other); the concrete shader's climbable mask and climbable look settings; every climbable material sharing the black unpainted mask (Assets/Materials/ClimbableMask_None.png); a painted face, and only it, white in its renderer's mask, given to the renderer and taken off with masks turned off; paint being for the face painted (not a thin wall's back), and erased as painted; no mask for a material that shows no climbable areas; and the level's boxes and prisms having a UV2 with no two triangles sharing a texel.
-- **LevelEditorTests**: adding a piece where it's placed (in the picked piece's group, standing on it), deleting it as the Delete key does (the scene left as it was) and undoing that, duplicating a piece, and a piece whose objects are deleted from the scene taken out of the spec; moving a piece moving its positions and not its directions or sizes; a new piece of every kind being valid and building; the preview knowing which piece made each object; rebuilding one edited piece (a platform, a spawn marker, a turntable) leaving the level as building the edited spec afresh would; and an edit undone putting the spec and the preview back.
-- **LevelSpecTests**: every level built again from its own spec (written as JSON and read back) building the same level, object for object; a hand-written spec building what it lists, with State entries and groups of the same name; mistakes (unknown pieces and settings, missing settings, wrong shapes, bad JSON, a missing parent) reported with where they are; numbers reading back as the same float; and the schema covering every piece.
-- **MovementTuningPresetTests**: a preset saved from a mode gives the same tuning back, curves and on/off switches included; one of a few settings changes only those; a preset never changes a mode's components or their order, and reports what it couldn't set; and a component's settings are the fields Unity saves, of kinds a preset can copy.
-- **MovementEnvelopeTests**: Tools/LevelSpec/envelope.json is what the default character can do now (the editor writes it again when the tuning is saved; this catches a change made outside it).
-- **LevelFixtureSetupTests** (Set Up Scene's fixtures): the level builders and Set Up Scene naming each fixture and spawn marker the same (each names the prefix itself, as neither assembly can reference the other); settings read from a fixture's name; moving platforms and crates given what they need from them; a "Ladder | …" fixture made into a Ladder that keeps the level's mesh, but not a "Ladder (future)" marker; ropes, ziplines and bounce pads made from their names (a zipline keeping the level's cable, a pad its spring) but not the placeholders named for them; a climbable panel made climbable at its speed, but not a "Climbable Wall (future)" marker; water made swimmable at its size, keeping the level's surface, but not a "Water (future)" marker; and a timer for each course, its gates' roles and distance, and its display wired to it.
-- **SceneGameSetupTests** (sample content): setting up a scene: replacing a placed character with a spawn point where it stood (or keeping it, when asked), spawning at the scene's spawn markers, keeping its spawn points and replacing its old setup when set up again, wiring the Camera Rig prefab (or the scene's own camera rig) to the spawner, adding the Input Manager prefab once, both as prefab instances, turning other cameras off rather than deleting them, and giving the camera an underwater view only in a level with water.
+
+### Models (the Models category; see [Character models](animation.md#character-models))
+- **PreparedModelTests**:
+  - every model file has a source; every prepared model having a hitbox on each of its body's bones, on the CharacterHitbox layer, which the character's movement and foot placement leave out;
+  - straightening nodes above the skeleton keeping everything under them where it was, unevenly scaled ones included, and leaving what can't be straightened; facing corrections rounding to the nearest quarter turn;
+  - sample content: ground offsets counting meshes carried by bones, not just skinned ones; every prepared model's source is ready to use and plays the shared Animator Controller; its avatar reference pose is a T-pose (spine up, arms out, legs down) with nothing rotated above its skeleton; its stored Ground Offset, Animated Ground Offset and Facing Correction match a fresh measurement; it has a body of its own, as tall as it is, standing on its feet and lying no thicker than it's wide; what it was prepared against changes when its controller changes; and previews and listed heights are sized like the loaded model, previews standing where it loads.
+
+### LevelElements (the Levels category; see [Adding Level Content](adding-level-content.md))
+The level elements' editor tools (Assets/Scripts/Level/Editor), which are part of the package, tested without the level builders.
+
+- **LevelFixtureSetupTests** (`LevelFixtureSetup`, which every level build and Set Up Scene run):
+  - settings read from a fixture's name;
+  - moving platforms and crates given what they need from them;
+  - a "Ladder | …" fixture made into a Ladder that keeps the level's mesh, but not a "Ladder (future)" marker;
+  - ropes, ziplines and bounce pads made from their names (a zipline keeping the level's cable, a pad its spring) but not the placeholders named for them;
+  - a climbable panel made climbable at its speed, but not a "Climbable Wall (future)" marker;
+  - water made swimmable at its size, keeping the level's surface, but not a "Water (future)" marker;
+  - and a timer for each course, in the scene's Course Timers group, its gates' roles and distance, and its display wired to it; set up again (as Set Up Scene does a built level), each course's timer found again rather than made twice, and its display not wired twice.
+- **ClimbablePaintTests**: the concrete shader's climbable mask and climbable look settings; every climbable material sharing the black unpainted mask (Assets/Materials/ClimbableMask_None.png); a painted face, and only it, white in its renderer's mask, given to the renderer and taken off with masks turned off; paint being for the face painted (not a thin wall's back), and erased as painted; and no mask for a material that shows no climbable areas. (That the level's pieces have a UV2 to paint in is GrayboxUV2Tests', with the builders.)
+
+The level builders take their marker names and the unpainted mask's path from the level elements (`LevelFixtureSetup`'s constants, spawn markers' too, and `ClimbablePaintAssets.NoMaskPath`), so each has one source, and there's nothing for a test to check they agree on.
+
+### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
+- **SceneGameSetupTests** (sample content): setting up a scene:
+  - replacing a placed character with a spawn point where it stood (or keeping it, when asked), spawning at the scene's spawn markers;
+  - set up again, keeping its spawn points and its spawner's NPC routes and replacing its old setup;
+  - wiring the Camera Rig prefab (or the scene's own camera rig) to the spawner, adding the Input Manager prefab once, both as prefab instances, turning other cameras off rather than deleting them;
+  - and giving the camera an underwater view only in a level with water.
+
+### Levels (the level builders' own assembly, not part of the package; see [Test Levels](levels.md) and [Level Specs](level-specs.md))
+- **LevelEditorTests** (Levels): adding a piece where it's placed (in the picked piece's group, standing on it), deleting it as the Delete key does (the scene left as it was) and undoing that, duplicating a piece, and a piece whose objects are deleted from the scene taken out of the spec; moving a piece moving its positions and not its directions or sizes; a new piece of every kind being valid and building; the preview knowing which piece made each object; rebuilding one edited piece (a platform, a spawn marker, a turntable) leaving the level as building the edited spec afresh would; and an edit undone putting the spec and the preview back.
+- **LevelSpecTests** (Levels): every level built again from its own spec (written as JSON and read back) building the same level, object for object; a hand-written spec building what it lists, with State entries and groups of the same name; mistakes (unknown pieces and settings, missing settings, wrong shapes, bad JSON, a missing parent) reported with where they are; numbers reading back as the same float; and the schema covering every piece.
+- **GrayboxUV2Tests** (Levels): the level's boxes and prisms having a UV2 within 0 to 1 with no two triangles sharing a texel, for climbable paint to paint in.
+- **MovementEnvelopeTests** (Movement): Tools/LevelSpec/envelope.json is what the default character can do now (the editor writes it again when the tuning is saved; this catches a change made outside it). Its writer is the level checks' (Assets/Editor/LevelChecks: see [Level Specs](level-specs.md)).
 
 ## The levelspec tool's tests
 The levelspec tool's tests run with `python3 -m unittest discover -s Tools/LevelSpec/tests`: the exported specs valid, every format converting to every other and back unchanged, XML and CSV written by hand reading as meant, mistakes reported where they are, groups' placement carried to their contents, gaps and climbs graded by the moves that cross and reach them (made-up moves, and the character's own from envelope.json, whatever it's tuned to), and schematics drawn.
@@ -190,7 +403,15 @@ Every test logs a line when it finishes: how long it ran, and the three profiler
 [Test timing] WallClimbTests.TakingHoldFromTheGround_…: 0.399 s; most time in Physics.Simulate 0.007 s, Movement.Step 0.004 s, Movement.Mode 0.003 s
 ```
 
-The markers are the project's (see Performance, above) and the engine's physics step (Physics.Simulate). A marker's time includes the markers inside it, so Movement.Step, which holds the rest of a step, often leads. **What keeps them quick.** Tests of the movement alone don't wait for Unity's physics steps: the rig steps the physics itself (`Physics.Simulate`), so a test takes as long as its movement code does. The movement times everything by its own clock, so the steps are the same either way. A fixture whose tests need Unity's frames (animation, IK, the model's or camera's per-frame updates) says so (`MovementOnly => false`, overriding `CharacterRigFixture`'s), but once such a test takes over the model's Animator (`TakeOverAnimator`, stepping it by hand with the physics) the rig steps the physics itself again, unless the fixture opts out (`StepsPhysicsWithTheAnimation => false`, for tests that read what's updated each frame, such as the model's easing) or the test does (`rig.StepsPhysicsItself = false`). Either way the rig waits for Unity's steps whenever the world has something only they move (a moving platform, a pushable object, a rope); stepping itself, it also does what Unity's steps would for the character (fitting its collider to its model). Those tests run up to `CharacterTestRig.TimeScale` times real speed (the fastest the suite passes at reliably), but never let one frame cover more than `CharacterTestRig.MaxFrameTime` of game time (`FrameTimeLimit`), and the camera tests likewise: what's done once a frame (animation, IK, foot placement, the camera easing) is checked against the steps, and sped up as much, a frame of the editor's (far longer than one in batch mode) would cover most of a second, enough to finish a camera blend before it could be seen, or leave the feet off the floor. So the editor runs these tests slower than batch mode does, and they pass in both. In a test that steps the physics itself, remove things with `Object.DestroyImmediate`, since `Destroy` waits for the end of a frame that doesn't come between its steps. Every `yield return` costs a frame, however little it waits for, and in the editor a frame is long: wait for something with `rig.RunUntil` (which runs its steps back to back) rather than a loop of `rig.Run(1, …)`, and start again with a second character with `ReplaceRig()` (which makes it as the first was), not a new rig. To list the slowest, search the log (the Console, or a batch run's -logFile) for "[Test timing]".
+The markers are the project's (see Performance, above) and the engine's physics step (Physics.Simulate). A marker's time includes the markers inside it, so Movement.Step, which holds the rest of a step, often leads. To list the slowest, search the log (the Console, or a batch run's -logFile) for "[Test timing]".
+
+### Writing a fast test
+- **Movement tests don't wait for Unity's physics steps.** The rig steps the physics itself (`Physics.Simulate`), so a test takes as long as its movement code does. The movement times everything by its own clock, so the steps are the same either way.
+- **A fixture whose tests need Unity's frames** (animation, IK, the model's or camera's per-frame updates) says so (`MovementOnly => false`, overriding `CharacterRigFixture`'s). But once such a test takes over the model's Animator (`TakeOverAnimator`, stepping it by hand with the physics) the rig steps the physics itself again, unless the fixture opts out (`StepsPhysicsWithTheAnimation => false`, for tests that read what's updated each frame, such as the model's easing) or the test does (`rig.StepsPhysicsItself = false`).
+- **Either way the rig waits for Unity's steps whenever the world has something only they move** (a moving platform, a pushable object, a rope). Stepping itself, it also does what Unity's steps would for the character (fitting its body to its model: `CharacterModelHost.TryFitBodyNow`).
+- **Frame-based tests run sped up, within a limit.** Those tests run up to `CharacterTestRig.TimeScale` times real speed (the fastest the suite passes at reliably), but never let one frame cover more than `CharacterTestRig.MaxFrameTime` of game time (`FrameTimeLimit`), and the camera tests likewise: what's done once a frame (animation, IK, foot placement, the camera easing) is checked against the steps, and sped up as much, a frame of the editor's (far longer than one in batch mode) would cover most of a second, enough to finish a camera blend before it could be seen, or leave the feet off the floor. So the editor runs these tests slower than batch mode does, and they pass in both.
+- **Remove things with `Object.DestroyImmediate`** in a test that steps the physics itself, since `Destroy` waits for the end of a frame that doesn't come between its steps.
+- **Every `yield return` costs a frame**, however little it waits for, and in the editor a frame is long: wait for something with `rig.RunUntil` (which runs its steps back to back) rather than a loop of `rig.Run(1, …)`, and start again with a second character with `ReplaceRig()` (which makes it as the first was), not a new rig.
 
 ## Running them
 
@@ -203,6 +424,6 @@ Run them from Window > General > Test Runner (the EditMode and PlayMode tabs), o
 
 CI (.github/workflows/tests.yml) runs both.
 
-**One area at a time.** Every fixture is in an area, as the docs are (`TestArea`: Movement, Abilities, Traversal, Animation, Models, Camera, Spawning, Levels), so while working on one, run just its tests: the Test Runner window's Category filter, or `-testCategory "Abilities"` on the command line (several: `-testCategory "Abilities;Traversal"`). Run both suites in full before committing.
+**One area at a time.** Every fixture is in an area, as the docs are (`TestArea`: Movement, Abilities, Traversal, Animation, Models, Camera, Spawning, Levels), so while working on one, run just its tests: the Test Runner window's Category filter, or `-testCategory "Abilities"` on the command line (several: `-testCategory "Abilities;Traversal"`). The Movement category also holds the Performance fixtures (the stress test and AllocationTests), so while iterating on the movement, leave them out: `-testCategory "Movement;!Performance"`. Run both suites in full before committing.
 
-The character scripts are in the CharacterShowcase assembly (Assets/Scripts), and editor tools are in CharacterShowcase.Editor (Assets/Editor), so the tests can reference them. The level builders are in their own assembly, CharacterShowcase.Level.Editor (Assets/Editor/Level), which doesn't reference the character or camera code.
+**The assemblies tested.** The character scripts are in the CharacterShowcase assembly (Assets/Scripts, but for the camera rig, in its own CameraSystem assembly, the physics query buffers, in PhysicsQueries, and the level elements, in CharacterShowcase.LevelElements: Assets/Scripts/CameraSystem, Assets/Scripts/PhysicsQueries and Assets/Scripts/Level). Editor tools are in CharacterShowcase.Editor (Assets/Editor), and the level elements' editor tools in CharacterShowcase.LevelElements.Editor (Assets/Scripts/Level/Editor), so the tests can reference them. The level builders are in their own assembly, CharacterShowcase.Level.Editor (Assets/Editor/Level), which doesn't reference the character or camera code (only the level elements), and the model pipeline (CharacterShowcase.Pipeline.Editor, Assets/Editor/Pipeline) and the level checks (CharacterShowcase.LevelChecks.Editor, Assets/Editor/LevelChecks) are in theirs. The main EditMode test assembly references none of those three; CharacterShowcase.Tests.EditMode.Levels references the builders and the level checks.

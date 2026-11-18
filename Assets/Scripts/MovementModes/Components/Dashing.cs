@@ -80,7 +80,7 @@ namespace Character
             DashState dash = controller.dash;
             float deltaTime = movementData.deltaTime;
 
-            // Start a dash in the direction of movement input (relative to the camera), or straight ahead without input
+            // Start a dash in the direction of movement input (relative to the input's look), or straight ahead without input
             if (CanDash(movementData, inputs, controller))
             {
                 Vector3 direction = movementData.lookFlat * inputs.movementVector;
