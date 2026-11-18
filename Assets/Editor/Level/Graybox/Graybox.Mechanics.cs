@@ -36,6 +36,8 @@ namespace CharacterShowcase.EditorTools.Level
         public const string WaterPrefix = "Water";
         /// <summary>How a climbable panel's name starts.</summary>
         public const string ClimbablePrefix = "Climbable Panel";
+        /// <summary>The name of a bounce pad's springy top, the child Set Up Scene squashes as it launches someone.</summary>
+        public const string BouncePadSpringName = "Spring";
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
         private static string F(Vector3 v) => $"{F(v.x)},{F(v.y)},{F(v.z)}";
@@ -216,7 +218,7 @@ namespace CharacterShowcase.EditorTools.Level
             MakeStatic(pad);
 
             // Its springy top, its origin at its bottom, so it squashes down onto the base.
-            var spring = new GameObject("Spring");
+            var spring = new GameObject(BouncePadSpringName);
             spring.transform.SetParent(pad.transform, false);
             spring.transform.localPosition = new Vector3(0f, tall - top, 0f);
             var springMesh = new GrayboxMesh();

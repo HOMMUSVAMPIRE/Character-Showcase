@@ -850,6 +850,9 @@ namespace Character
         private void ChooseFoothold(ref PawState paw, Vector3 at, Vector3 toJoint, Vector3 toMiddleJoint, Vector3 forward,
             float lineAtMiddle, float slope, float middleAlong, float top, float floor, float scale, float deltaTime)
         {
+            // A paw put down stays where it was (its lock holds it), so it isn't given a foothold, nor its grounds probed
+            // for one; a swinging one eases to its next foothold.
+            if (paw.planted >= 0.5f && paw.hasGround) { return; }
             float reach = footholdReach * scale;
             float goal = 0f;
             if (reach > 0f)
@@ -862,6 +865,9 @@ namespace Character
                     if (!FindGround(new Vector3(point.x, top, point.z), depth, out RaycastHit hit)) { continue; }
                     float along = Vector3.Dot(point - transform.position, forward) - middleAlong;
                     float cost = Mathf.Abs(hit.point.y - (lineAtMiddle + slope * along)) + FootholdMovePenalty * Mathf.Abs(offset);
+                    // A foothold no better than the best already, before the joints' checks (which only add to it), can't
+                    // be chosen: their probes are spared.
+                    if (cost >= best) { continue; }
                     // Not where the leg's joints would be in the ground there (going down a flight, a hind paw put down by
                     // the riser behind it has its hock in the step above).
                     // Nor with its toes against a riser ahead (up a flight, a paw put down at the back of a tread pokes its
@@ -874,8 +880,6 @@ namespace Character
                     if (cost < best) { best = cost; goal = offset; }
                 }
             }
-            // A paw put down stays where it was (its lock holds it); a swinging one eases to its next foothold.
-            if (paw.planted >= 0.5f && paw.hasGround) { return; }
             paw.foothold = footholdSmoothTime > 0f
                 ? Mathf.SmoothDamp(paw.foothold, goal, ref paw.footholdVelocity, footholdSmoothTime, Mathf.Infinity, deltaTime)
                 : goal;

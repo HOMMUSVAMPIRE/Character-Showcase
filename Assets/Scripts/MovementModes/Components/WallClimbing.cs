@@ -347,7 +347,9 @@ namespace Character
             for (int i = 0; i < count; i++)
             {
                 Collider candidate = climbOverlaps[i];
-                Ladder ladder = Ladder.Of(candidate);
+                // Looked up once (it's a search up the collider's parents): kept below as whether it's a ladder at all.
+                Ladder candidateLadder = Ladder.Of(candidate);
+                Ladder ladder = candidateLadder;
                 Vector3 point, normal;
                 float distance, speedMultiplier = 1f;
                 bool atEdge = false;
@@ -365,7 +367,7 @@ namespace Character
                     atEdge = IsAtEdge(candidate, grip, normal, distance, reach);
                     // A collider's nearest point decides it: where that isn't climbable (an unpainted part of a painted
                     // one, a ladder from behind or past its ends), the collider is as unclimbable there as a plain wall.
-                    if (Ladder.Of(candidate) != null
+                    if (candidateLadder != null
                         || !ClimbableSurface.IsClimbableAt(candidate, point, normal, atEdge, paintTolerance, out speedMultiplier))
                     {
                         contact.unclimbableDistance = Mathf.Min(contact.unclimbableDistance, distance);
