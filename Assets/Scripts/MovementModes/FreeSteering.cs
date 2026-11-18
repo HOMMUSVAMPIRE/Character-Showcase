@@ -44,7 +44,7 @@ namespace Character
         }
 
         /// <summary>Turns the character (about the vertical) to face the way the direction heads across, if it heads across at all.</summary>
-        public static void FaceAcross(ref MovementData movementData, Vector3 direction)
+        public static void FaceAcross(MovementData movementData, Vector3 direction)
         {
             Vector3 across = new Vector3(direction.x, 0f, direction.z);
             if (across.sqrMagnitude > SteeringThreshold) { movementData.targetRotation = Quaternion.LookRotation(across.normalized, Vector3.up); }
@@ -67,7 +67,7 @@ namespace Character
         /// level that way. Otherwise its nose, pitched down into the floor ahead, was stepped up onto, which let it pitch
         /// further and lifted it, step by step, off a floor it was being steered into.
         /// </summary>
-        public static void PitchAlong(ref MovementData movementData, Vector3 heading, float maxPitch)
+        public static void PitchAlong(MovementData movementData, Vector3 heading, float maxPitch)
         {
             CollisionFlags blocked = movementData.previousCollisions;
             if ((heading.y < 0f && (blocked & CollisionFlags.Below) != 0) || (heading.y > 0f && (blocked & CollisionFlags.Above) != 0)) { heading.y = 0f; }

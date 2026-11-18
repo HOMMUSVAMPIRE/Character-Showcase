@@ -10,7 +10,7 @@ namespace Character
         /// character means to move this step (movementData's direct movement, velocity change or override, rotation and
         /// state), before it's resolved against the world.
         /// </summary>
-        public virtual void ProcessMovementData(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void ProcessMovementData(MovementData movementData, Inputs inputs, MovementController controller)
         {
             return;
         }

@@ -44,6 +44,10 @@ namespace Character
         [HideInInspector] public MovementData lastFrameMovementData = null;
         /// <summary>The movement data of the physics step in progress (null between steps: MovementCleanup moves it to lastFrameMovementData).</summary>
         [HideInInspector] public MovementData currentMovementData = null;
+        // The two movement data objects the character's steps take turns with (see StartStep): a step's is kept as the
+        // last step's (lastFrameMovementData) until the next has run, so the next takes the other. Each step's data lives
+        // only that long: anything that needs it later copies what it needs.
+        private readonly MovementData[] stepData = { new MovementData(), new MovementData() };
 
         /// <summary>
         /// A change in velocity, in m/s, to be applied to the character in the next physics step (like if the character
@@ -238,7 +242,7 @@ namespace Character
             using (StepMarker.Auto())
             {
                 MovementData data = StartStep();
-                RunMovementMode(ref data, inputs);
+                RunMovementMode(data, inputs);
                 ResolveAndApply(data);
             }
         }
@@ -254,16 +258,16 @@ namespace Character
             // Whether the last frame's movement data is valid to be used (will be false on the first frame)
             bool hasLastFrameMovement = lastFrameMovementData != null;
 
-            // Create a data object representing the character's movement this frame, and populate it with some initial data
-            MovementData data = new MovementData()
-            {
-                deltaTime = Time.fixedDeltaTime,
-                initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position,
-                // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a
-                // smoothed render pose that lags behind the simulation.
-                initialRotation = rb.rotation,
-                cameraLook = cameraTransform != null ? cameraTransform.rotation : Quaternion.identity,
-            };
+            // The step's movement data: one of the two this character reuses (not the last step's, which this one starts
+            // from), reset, so a step allocates none. Populated with some initial data.
+            MovementData data = lastFrameMovementData == stepData[0] ? stepData[1] : stepData[0];
+            data.Reset();
+            data.deltaTime = Time.fixedDeltaTime;
+            data.initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position;
+            // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a smoothed render
+            // pose that lags behind the simulation.
+            data.initialRotation = rb.rotation;
+            data.cameraLook = cameraTransform != null ? cameraTransform.rotation : Quaternion.identity;
 
             data.previousState = hasLastFrameMovement ? lastFrameMovementData.state : CharacterState.Idle;
             data.state = CharacterState.Idle;
@@ -274,7 +278,7 @@ namespace Character
 
             // Move with whatever the character was standing on, then check whether the character is starting on the
             // ground this frame via spherecast downwards
-            data.initialGrounded = ApplyGroundCarry(ref data);
+            data.initialGrounded = ApplyGroundCarry(data);
             data.initialGroundTransform = groundTransform;
             data.resolution.groundedBy = data.initialGrounded ? lastGroundedBy : GroundedBy.None;
 
@@ -315,12 +319,12 @@ namespace Character
         }
 
         /// <summary>Has the movement mode fill in how the character means to move this step, from the inputs.</summary>
-        private void RunMovementMode(ref MovementData data, Inputs inputs)
+        private void RunMovementMode(MovementData data, Inputs inputs)
         {
             if (movementHandler == null) { return; }
             using (ModeMarker.Auto())
             {
-                movementHandler.ProcessMovementData(ref data, inputs, this);
+                movementHandler.ProcessMovementData(data, inputs, this);
             }
         }
 
@@ -333,7 +337,7 @@ namespace Character
             bool hasLastFrameMovement = lastFrameMovementData != null;
             using (CollisionMarker.Auto())
             {
-                CheckMovementValid(ref data);
+                CheckMovementValid(data);
             }
             if (movementHandler != null) { movementHandler.AfterMovementResolved(data, this); }
 

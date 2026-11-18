@@ -69,14 +69,14 @@ namespace Character
             new(CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallSlideState slide = controller.wallSlide;
             if (movementData.initialGrounded) { slide.jumpsUsed = 0; slide.hasLastWall = false; }
             slide.cooldownRemaining = MovementHelpers.CountDown(slide.cooldownRemaining, movementData.deltaTime);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.wallSlide.IsWallSliding) { EndWallSlide(controller); }
         }
@@ -94,11 +94,11 @@ namespace Character
         /// it with Crouch, the character doesn't slide down that wall again before landing. Only walls that reach up the
         /// character's body are slid down, and the wall's top can still be grabbed during a slide, if it's within reach.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallSlideState slide = controller.wallSlide;
             RememberApproach(movementData, slide, controller.StepTime);
-            if (!slide.IsWallSliding && !TryStartWallSlide(ref movementData, inputs, controller)) { return false; }
+            if (!slide.IsWallSliding && !TryStartWallSlide(movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
             if (movementData.initialGrounded || !FindWallAhead(controller, feet, -slide.wallNormal, out Vector3 normal, out Vector3 point))
@@ -135,7 +135,7 @@ namespace Character
             if (Mode.IsNewJumpPress(inputs, controller) && jumpsInARow < wallSlideMaxJumps)
             {
                 slide.jumpsUsed = jumpsInARow;
-                WallSlideJump(ref movementData, controller, normal);
+                WallSlideJump(movementData, controller, normal);
                 return true;
             }
 
@@ -156,7 +156,7 @@ namespace Character
         /// Starts a slide down a wall if the character is falling in mid-air, high enough above the ground, and heading
         /// into a wall just in front of it near head-on: steering into it, or moving toward it.
         /// </summary>
-        private bool TryStartWallSlide(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallSlide(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallSlideState slide = controller.wallSlide;
             if (wallSlideMaxDuration <= 0f || movementData.initialGrounded || slide.cooldownRemaining > 0f
@@ -257,7 +257,7 @@ namespace Character
         /// wall, jumping back onto it higher and kicking off again, the jumps given back each time climbed any wall.
         /// Air steering comes back gradually, as after a wall run's jump.
         /// </summary>
-        private void WallSlideJump(ref MovementData movementData, MovementController controller, Vector3 normal)
+        private void WallSlideJump(MovementData movementData, MovementController controller, Vector3 normal)
         {
             EndWallSlide(controller);
             controller.wallSlide.jumpsUsed++;
@@ -265,7 +265,7 @@ namespace Character
             // for every slide, hopping up one wall would have a dash each time on top of the character's own jumps.
             bool newWall = !JumpedOffThisWallLast(controller, normal);
             if (newWall) { GiveBackAirMoves(controller); }
-            MovementHelpers.JumpOffWall(ref movementData, controller,
+            MovementHelpers.JumpOffWall(movementData, controller,
                 normal * (wallSlideJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallSlideJumpUpSpeed * controller.SpeedScale),
                 normal, normal, givesBackJumps: newWall);
         }

@@ -74,7 +74,7 @@ namespace Character
         /// back its jumps less the one this uses (unless givesBackJumps is false), and launches it at the given velocity,
         /// outright, with no walking on top, raising the given event (Jumped, or WallJumped).
         /// </summary>
-        public static void JumpOff(ref MovementData movementData, MovementController controller, Vector3 velocity,
+        public static void JumpOff(MovementData movementData, MovementController controller, Vector3 velocity,
             MovementEvents jumpEvent, bool givesBackJumps = true)
         {
             controller.jump.press.Use();
@@ -93,10 +93,10 @@ namespace Character
         /// (if there is one): it also remembers the wall (see JumpedOffThisWallLast) and starts air steering coming back
         /// gradually (see StartWallJumpSteeringRecovery), so the push away carries the character off the wall.
         /// </summary>
-        public static void JumpOffWall(ref MovementData movementData, MovementController controller, Vector3 velocity, Vector3 wallNormal,
+        public static void JumpOffWall(MovementData movementData, MovementController controller, Vector3 velocity, Vector3 wallNormal,
             Vector3 facing, bool givesBackJumps = true)
         {
-            JumpOff(ref movementData, controller, velocity, MovementEvents.WallJumped, givesBackJumps);
+            JumpOff(movementData, controller, velocity, MovementEvents.WallJumped, givesBackJumps);
             RememberWallJumpedOff(controller, wallNormal);
             StartWallJumpSteeringRecovery(controller);
             if (facing.sqrMagnitude > 1e-6f) { movementData.targetRotation = Quaternion.LookRotation(facing, Vector3.up); }
@@ -119,10 +119,10 @@ namespace Character
         /// and air dashes come back), it ends whatever else had the character (a dash, or a slide down a wall: see
         /// ComposedMovementMode.InterruptOthers), and it's done standing (a character crouched in the air stands).
         /// </summary>
-        public static void TakeHoldOfALine(ref MovementData movementData, MovementController controller, MovementComponent holder)
+        public static void TakeHoldOfALine(MovementData movementData, MovementController controller, MovementComponent holder)
         {
             GiveBackAirMoves(controller);
-            if (holder.Mode != null) { holder.Mode.InterruptOthers(ref movementData, controller, holder); }
+            if (holder.Mode != null) { holder.Mode.InterruptOthers(movementData, controller, holder); }
             controller.crouch.IsCrouched = false;
             controller.crouch.wantsToStand = false;
         }

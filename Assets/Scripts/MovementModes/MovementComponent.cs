@@ -53,7 +53,7 @@ namespace Character
         /// <summary>
         /// Every step, before anything moves the character, whatever has it (an ability's cooldowns run out meanwhile).
         /// </summary>
-        public virtual void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
         }
 
@@ -61,7 +61,7 @@ namespace Character
         /// Every step, once the timers have advanced and before an ability takes over the character: for what acts on it
         /// whatever has it (gravity, which the abilities that move it without gravity override).
         /// </summary>
-        public virtual void BeforeAbilities(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void BeforeAbilities(MovementData movementData, Inputs inputs, MovementController controller)
         {
         }
 
@@ -70,7 +70,7 @@ namespace Character
         /// returns whether it has the character this step. The mode asks its components in list order, and stops at the
         /// first that has the character: earlier in the list comes first.
         /// </summary>
-        public virtual bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller) => false;
+        public virtual bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller) => false;
 
         /// <summary>Whether this ability is under way for the character (so no other ability may start).</summary>
         public virtual bool IsActive(MovementController controller) => false;
@@ -92,7 +92,7 @@ namespace Character
         /// When no ability has the character this step (none took it over), before it walks, dashes and jumps: for what
         /// changes how it moves on its own (crouching, say).
         /// </summary>
-        public virtual void BeforeLocomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
         }
 
@@ -101,7 +101,7 @@ namespace Character
         /// ground, steering in the air, the ground's friction). In list order, so what changes the momentum the character
         /// carries (friction) comes before what reads it (walking makes up the difference to its speed).
         /// </summary>
-        public virtual void Locomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
         }
 
@@ -110,7 +110,7 @@ namespace Character
         /// takes over the character's movement while it lasts; a jump). In list order, so a dash comes before the jump
         /// that can cancel it.
         /// </summary>
-        public virtual void AfterWalking(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
         {
         }
 
@@ -126,7 +126,7 @@ namespace Character
         /// Every step, last of all, whatever has the character (once its posture is set): for limits on the step's
         /// movement (how fast it falls).
         /// </summary>
-        public virtual void FinishStep(ref MovementData movementData, MovementController controller)
+        public virtual void FinishStep(MovementData movementData, MovementController controller)
         {
         }
 
@@ -134,7 +134,7 @@ namespace Character
         /// Ends this ability if it's under way, because another took the character (see ComposedMovementMode.InterruptOthers),
         /// or because this was turned off while it had the character.
         /// </summary>
-        public virtual void Interrupt(ref MovementData movementData, MovementController controller)
+        public virtual void Interrupt(MovementData movementData, MovementController controller)
         {
         }
 

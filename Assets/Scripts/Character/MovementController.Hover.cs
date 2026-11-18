@@ -168,7 +168,7 @@ namespace Character
         /// Its body meeting something its feet have no ground under slides it off (an edge it's perched on) or down (a
         /// slope too steep to stand on). Records the step it made, if one, and the ground snap.
         /// </summary>
-        private Vector3 ResolveVerticalHovering(Vector3 pos, float vert, float horizDist, ref MovementData data, ref Vector3 inertia)
+        private Vector3 ResolveVerticalHovering(Vector3 pos, float vert, float horizDist, MovementData data, ref Vector3 inertia)
         {
             bool grounded = data.initialGrounded;
             if (vert > 0f || (!grounded && vert >= 0f))

@@ -11,7 +11,7 @@ namespace Character
         /// skipped and the ground's velocity is added to their inertia instead, so they keep its momentum.
         /// Returns whether the character is grounded, and sets groundTransform.
         /// </summary>
-        private bool ApplyGroundCarry(ref MovementData data)
+        private bool ApplyGroundCarry(MovementData data)
         {
             GroundVelocity = Vector3.zero;
             Vector3 carry = Vector3.zero;

@@ -96,7 +96,7 @@ namespace Character
         public override BodyPosture? Posture(MovementController controller) =>
             controller.swim.IsUnderwater ? BodyPosture.Lying : null;
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.swim.IsSwimming) { StopSwimming(controller); }
         }
@@ -108,7 +108,7 @@ namespace Character
         /// it stands on a floor shallow enough, or leaves the water; Jump jumps out. Getting into the water gives back the
         /// character's jumps and air dashes, as touching the ground does.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             SwimState swim = controller.swim;
             Vector3 feet = movementData.initialPosition;
@@ -122,7 +122,7 @@ namespace Character
             if (!swim.IsSwimming)
             {
                 if (under < depth || movementData.initialVelocity.y > surfacingSpeed) { return false; }
-                StartSwimming(ref movementData, controller, water);
+                StartSwimming(movementData, controller, water);
             }
             else if (water == null || (movementData.initialGrounded && under < depth * FindFeetShare))
             {
@@ -146,7 +146,7 @@ namespace Character
             // on its front, its feet off the ground, so it never found its feet, and swam on underwater until its feet
             // were out of the water.
             if (swim.underwater && under < depth) { swim.underwater = false; }
-            if (swim.underwater) { return SwimUnderwater(ref movementData, inputs, controller, water, depth, verticalSpeed); }
+            if (swim.underwater) { return SwimUnderwater(movementData, inputs, controller, water, depth, verticalSpeed); }
 
             if (swimJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller))
             {
@@ -154,7 +154,7 @@ namespace Character
                 StopSwimming(controller);
                 float rise = under + swimJumpHeight * controller.HeightScale;
                 float up = MovementHelpers.LaunchSpeedFor(rise, Mode.GravityAcceleration(controller), dt);
-                MovementHelpers.JumpOff(ref movementData, controller, new Vector3(velocity.x, up, velocity.z), MovementEvents.Jumped);
+                MovementHelpers.JumpOff(movementData, controller, new Vector3(velocity.x, up, velocity.z), MovementEvents.Jumped);
                 return true;
             }
 
@@ -162,12 +162,12 @@ namespace Character
             if (swimDiveSpeed > 0f && Mode.ConsumeCrouchPress(inputs, controller))
             {
                 swim.underwater = true;
-                return SwimUnderwater(ref movementData, inputs, controller, water, depth, Mathf.Min(verticalSpeed, -swimDiveSpeed * controller.SpeedScale));
+                return SwimUnderwater(movementData, inputs, controller, water, depth, Mathf.Min(verticalSpeed, -swimDiveSpeed * controller.SpeedScale));
             }
 
             // Swimming into an edge within reach of the hands (a pool's side), up onto it, as climbing over a ledge's top.
             Vector3 input = MovementHelpers.InputDirection(movementData, inputs);
-            if (TryClimbOut(ref movementData, inputs, controller, input, under)) { return true; }
+            if (TryClimbOut(movementData, inputs, controller, input, under)) { return true; }
 
             // Across the water: speeding up toward the input's way and speed (relative to the camera), or slowing to a
             // stop, facing the way it swims.
@@ -204,7 +204,7 @@ namespace Character
         /// the swim acceleration; it faces the way it swims across, and, steered, its body pitches along the way it's
         /// steered to swim, up to the swim max pitch.
         /// </summary>
-        private bool SwimUnderwater(ref MovementData movementData, Inputs inputs, MovementController controller, Water water, float depth,
+        private bool SwimUnderwater(MovementData movementData, Inputs inputs, MovementController controller, Water water, float depth,
             float verticalSpeed)
         {
             SwimState swim = controller.swim;
@@ -220,9 +220,9 @@ namespace Character
             velocity = Vector3.MoveTowards(new Vector3(velocity.x, verticalSpeed, velocity.z), target, swimAcceleration * controller.AccelerationScale * dt);
             if (topSpeed > 0f && FreeSteering.IsSteering(steer))
             {
-                FreeSteering.FaceAcross(ref movementData, steer);
+                FreeSteering.FaceAcross(movementData, steer);
                 // Along where it's steered to (rising or sinking as Jump or Crouch ask), not the way it's drifting.
-                FreeSteering.PitchAlong(ref movementData, target, swimMaxPitch);
+                FreeSteering.PitchAlong(movementData, target, swimMaxPitch);
             }
 
             // Back up to its swimming depth, rising: at the surface again, arriving at it rather than past it.
@@ -259,13 +259,13 @@ namespace Character
         /// Starts swimming in water: it counts as touching the ground (the character's jumps and air dashes come back), it
         /// ends whatever else had the character (a dash, a roll, a slide), and it's done standing.
         /// </summary>
-        private void StartSwimming(ref MovementData movementData, MovementController controller, Water water)
+        private void StartSwimming(MovementData movementData, MovementController controller, Water water)
         {
             controller.swim.water = water;
             // Falling in, the plunge carries on; walking in, the step's vertical speed is only the ground's push.
             controller.swim.verticalSpeed = movementData.initialGrounded ? 0f : movementData.initialVelocity.y;
             MovementHelpers.GiveBackAirMoves(controller);
-            Mode.InterruptOthers(ref movementData, controller, this);
+            Mode.InterruptOthers(movementData, controller, this);
             controller.crouch.IsCrouched = false;
             controller.crouch.wantsToStand = false;
         }
@@ -283,13 +283,13 @@ namespace Character
         /// within reach of its hands and something to stand on, it climbs out onto it (handed to Ledges' climb over a
         /// top). Without those components, there's no getting out but by jumping. Returns whether it did.
         /// </summary>
-        private bool TryClimbOut(ref MovementData movementData, Inputs inputs, MovementController controller, Vector3 input, float under)
+        private bool TryClimbOut(MovementData movementData, Inputs inputs, MovementController controller, Vector3 input, float under)
         {
             if (input.sqrMagnitude < ClimbOutInput * ClimbOutInput || (movementData.previousCollisions & CollisionFlags.Sides) == 0) { return false; }
             Vaulting vaulting = Mode.Get<Vaulting>();
             float vaultTop = under + swimVaultHeight * controller.Body.StandingHeight;
-            bool gotOut = (swimVaultHeight > 0f && vaulting != null && vaulting.TryVaultOutOfWater(ref movementData, inputs, controller, input, under, vaultTop))
-                          || (Mode.Get<Ledges>() is { } ledges && ledges.TryClimbOverTop(ref movementData, controller, input.normalized, withinReach: false, requireFloor: true));
+            bool gotOut = (swimVaultHeight > 0f && vaulting != null && vaulting.TryVaultOutOfWater(movementData, inputs, controller, input, under, vaultTop))
+                          || (Mode.Get<Ledges>() is { } ledges && ledges.TryClimbOverTop(movementData, controller, input.normalized, withinReach: false, requireFloor: true));
             if (gotOut) { StopSwimming(controller); }
             return gotOut;
         }

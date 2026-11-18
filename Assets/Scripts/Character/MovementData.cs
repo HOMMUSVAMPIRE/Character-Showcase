@@ -163,6 +163,50 @@ namespace Character
         public float modelDrop;
 
         /// <summary>
+        /// Puts every field back as a new MovementData has it, so one object can be reused step after step without
+        /// allocating (see MovementController.StartStep). A field added to this class must be reset here too:
+        /// MovementDataTests fails if any isn't.
+        /// </summary>
+        public void Reset()
+        {
+            _cameraLook = default;
+            cameraLookFlat = default;
+            cameraForward = default;
+            deltaTime = 0f;
+            lastGroundedTime = 0f;
+            timeSinceGrounded = 0f;
+            previousState = default;
+            _initialPosition = default;
+            _initialRotation = default;
+            _initialInertia = default;
+            _initialVelocity = default;
+            _initialGroundTransform = null;
+            _initialGrounded = false;
+            _directMovementVector = default;
+            _velocityChange = default;
+            _velocityOverride = null;
+            _targetRotation = default;
+            state = default;
+            dirty = true;
+            computing = false;
+            _finalPosition = default;
+            _finalMovementVector = default;
+            _finalRotation = default;
+            _finalInertia = default;
+            _finalVelocity = default;
+            finalGroundTransform = null;
+            finalGrounded = false;
+            collisions = default;
+            previousCollisions = default;
+            events = default;
+            stepChange = 0f;
+            resolution = default;
+            initialPitch = 0f;
+            targetPitch = 0f;
+            modelDrop = 0f;
+        }
+
+        /// <summary>
         /// Calculates the final state of the character based on the starting data and the intended motion data (only if
         /// something changed since it last did: the final values' accessors call it).
         /// </summary>

@@ -15,8 +15,16 @@ namespace Character
         [Tooltip("The PlayerInput the character's actions are read from.")]
         public PlayerInput inputSource = null;
 
-        /// <summary>The current movement input data for the player, read anew each frame (Update).</summary>
+        /// <summary>
+        /// The current movement input data for the player, read anew each frame (Update). The same object (and buttons)
+        /// throughout, updated in place, so reading it allocates nothing: read what you need from it each step.
+        /// </summary>
         public Inputs inputs { get; private set; }
+
+        // The actions read, looked up by name once (FindAction searches by string) and again only if the action map
+        // changes; null for one the map doesn't have, which reads as never pressed.
+        private InputActionMap actionMap;
+        private InputAction move, jump, dash, sprint, crouch, roll, interact;
 
         /// <summary>
         /// Set up the singleton instance
@@ -46,51 +54,44 @@ namespace Character
         /// </summary>
         private void Update()
         {
-            var moveVector2D = inputSource.currentActionMap.FindAction("Move").ReadValue<Vector2>();
-            Vector3 moveVector = new Vector3(moveVector2D.x, 0, moveVector2D.y);
+            if (inputSource.currentActionMap != actionMap) { FindActions(inputSource.currentActionMap); }
 
-            var jumpSource = inputSource.currentActionMap.FindAction("Jump");
-            var jump = new InputButton()
-            {
-                value = jumpSource.ReadValue<float>() > 0.1f,
-            };
-            jump.justPressed = jump.value && !inputs.jump.value;
-            jump.justReleased = !jump.value && inputs.jump.value;
-            jump.holdDuration = jump.value ? (jump.justPressed ? 0 : inputs.jump.holdDuration + Time.deltaTime) : 0;
-            jump.lastHoldDuration = jump.justReleased ? inputs.jump.holdDuration : inputs.jump.lastHoldDuration;
+            Vector2 moveVector2D = move != null ? move.ReadValue<Vector2>() : Vector2.zero;
+            inputs.movementVector = new Vector3(moveVector2D.x, 0, moveVector2D.y);
+            ReadButton(jump, inputs.jump);
+            ReadButton(dash, inputs.dash);
+            ReadButton(sprint, inputs.sprint);
+            ReadButton(crouch, inputs.crouch);
+            ReadButton(roll, inputs.roll);
+            // Grabbing objects to push or pull is the Interact button, held.
+            ReadButton(interact, inputs.grab);
+        }
 
-            var newInputs = new Inputs()
-            {
-                movementVector = moveVector,
-                jump = jump,
-                dash = ReadButton("Dash", inputs.dash),
-                sprint = ReadButton("Sprint", inputs.sprint),
-                crouch = ReadButton("Crouch", inputs.crouch),
-                roll = ReadButton("Roll", inputs.roll),
-                // Grabbing objects to push or pull is the Interact button, held.
-                grab = ReadButton("Interact", inputs.grab),
-            };
-
-            inputs = newInputs;
+        private void FindActions(InputActionMap map)
+        {
+            actionMap = map;
+            move = map?.FindAction("Move");
+            jump = map?.FindAction("Jump");
+            dash = map?.FindAction("Dash");
+            sprint = map?.FindAction("Sprint");
+            crouch = map?.FindAction("Crouch");
+            roll = map?.FindAction("Roll");
+            interact = map?.FindAction("Interact");
         }
 
         /// <summary>
-        /// Reads a button action into an InputButton, tracking presses, releases and hold duration from its previous state.
-        /// A missing action reads as never pressed.
+        /// Reads a button action into its InputButton, in place, tracking presses, releases and hold duration from its
+        /// state last frame. A missing action reads as never pressed.
         /// </summary>
-        private InputButton ReadButton(string actionName, InputButton previous)
+        private static void ReadButton(InputAction action, InputButton button)
         {
-            previous ??= new InputButton();
-            var action = inputSource.currentActionMap.FindAction(actionName);
-            var button = new InputButton()
-            {
-                value = action != null && action.ReadValue<float>() > 0.1f,
-            };
-            button.justPressed = button.value && !previous.value;
-            button.justReleased = !button.value && previous.value;
-            button.holdDuration = button.value ? (button.justPressed ? 0 : previous.holdDuration + Time.deltaTime) : 0;
-            button.lastHoldDuration = button.justReleased ? previous.holdDuration : previous.lastHoldDuration;
-            return button;
+            bool wasDown = button.value;
+            float heldFor = button.holdDuration;
+            button.value = action != null && action.ReadValue<float>() > 0.1f;
+            button.justPressed = button.value && !wasDown;
+            button.justReleased = !button.value && wasDown;
+            button.holdDuration = button.value ? (button.justPressed ? 0 : heldFor + Time.deltaTime) : 0;
+            if (button.justReleased) { button.lastHoldDuration = heldFor; }
         }
     }
 }

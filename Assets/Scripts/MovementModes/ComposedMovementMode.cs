@@ -194,12 +194,12 @@ namespace Character
         }
 
         /// <summary>Ends every ability under way but the given one, which is taking the character.</summary>
-        public void InterruptOthers(ref MovementData movementData, MovementController controller, MovementComponent except)
+        public void InterruptOthers(MovementData movementData, MovementController controller, MovementComponent except)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component != except && component.Enabled) { component.Interrupt(ref movementData, controller); }
+                if (component != null && component != except && component.Enabled) { component.Interrupt(movementData, controller); }
             }
         }
 
@@ -207,15 +207,15 @@ namespace Character
         /// Every step, before anything moves the character: each turned-on component's timers (see
         /// MovementComponent.AdvanceTimers). A component turned off while it had the character lets go of it here.
         /// </summary>
-        protected void AdvanceComponentTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected void AdvanceComponentTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
                 if (component == null) { continue; }
                 component.Mode = this;
-                if (component.Enabled) { using (component.Marker.Auto()) { component.AdvanceTimers(ref movementData, inputs, controller); } }
-                else if (component.IsActive(controller)) { component.Interrupt(ref movementData, controller); }
+                if (component.Enabled) { using (component.Marker.Auto()) { component.AdvanceTimers(movementData, inputs, controller); } }
+                else if (component.IsActive(controller)) { component.Interrupt(movementData, controller); }
             }
         }
 
@@ -223,12 +223,12 @@ namespace Character
         /// Every step, once the timers have advanced, before an ability takes over: each turned-on component's
         /// BeforeAbilities (gravity), in order.
         /// </summary>
-        protected void ComponentsBeforeAbilities(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected void ComponentsBeforeAbilities(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeAbilities(ref movementData, inputs, controller); } }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeAbilities(movementData, inputs, controller); } }
             }
         }
 
@@ -236,14 +236,14 @@ namespace Character
         /// Asks the turned-on components, in order, to take over the character (see MovementComponent.TakeOver), returning
         /// whether one has it this step.
         /// </summary>
-        protected bool ComponentsTakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected bool ComponentsTakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
                 if (component == null || !component.Enabled) { continue; }
                 bool hasCharacter;
-                using (component.Marker.Auto()) { hasCharacter = component.TakeOver(ref movementData, inputs, controller); }
+                using (component.Marker.Auto()) { hasCharacter = component.TakeOver(movementData, inputs, controller); }
                 if (hasCharacter) { return true; }
             }
             return false;
@@ -252,12 +252,12 @@ namespace Character
         /// <summary>
         /// When no ability has the character, before it walks: each turned-on component's BeforeLocomotion, in order.
         /// </summary>
-        protected void ComponentsBeforeLocomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected void ComponentsBeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeLocomotion(ref movementData, inputs, controller); } }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeLocomotion(movementData, inputs, controller); } }
             }
         }
 
@@ -265,32 +265,32 @@ namespace Character
         /// When no ability has the character, after BeforeLocomotion: each turned-on component's Locomotion (friction,
         /// walking, air steering), in order.
         /// </summary>
-        protected void ComponentsLocomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected void ComponentsLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.Locomotion(ref movementData, inputs, controller); } }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.Locomotion(movementData, inputs, controller); } }
             }
         }
 
         /// <summary>When no ability has the character, once it has walked: each turned-on component's AfterWalking, in order.</summary>
-        protected void ComponentsAfterWalking(ref MovementData movementData, Inputs inputs, MovementController controller)
+        protected void ComponentsAfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.AfterWalking(ref movementData, inputs, controller); } }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.AfterWalking(movementData, inputs, controller); } }
             }
         }
 
         /// <summary>Every step, last of all: each turned-on component's FinishStep (the fall speed limit), in order.</summary>
-        protected void ComponentsFinishStep(ref MovementData movementData, MovementController controller)
+        protected void ComponentsFinishStep(MovementData movementData, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.FinishStep(ref movementData, controller); } }
+                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.FinishStep(movementData, controller); } }
             }
         }
 

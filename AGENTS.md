@@ -30,10 +30,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level mechanics' runtime components |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects) |
+| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, the movement envelope) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests |
-| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts) |
+| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Animation/` (Blender scripts for clip libraries: root motion, rest pose) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
@@ -41,16 +41,21 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `CameraSystem` | `Assets/Scripts/CameraSystem` | `CameraSystem` | Unity.InputSystem **only** |
 | `CharacterShowcase.Editor` | `Assets/Editor` (except `Level/`) | `CharacterShowcase.EditorTools` | CharacterShowcase, CameraSystem |
 | `CharacterShowcase.Level.Editor` | `Assets/Editor/Level` | `CharacterShowcase.EditorTools.Level` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro **only** |
-| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor |
-| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem |
-| `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`) |
+| `CharacterShowcase.Tests.EditMode` | `Assets/Tests/EditMode` | `CharacterShowcase.Tests.EditMode` | CharacterShowcase, CharacterShowcase.Editor, CharacterShowcase.Level.Editor, CharacterShowcase.Tests.Shared |
+| `CharacterShowcase.Tests.PlayMode` | `Assets/Tests/PlayMode` | `CharacterShowcase.Tests` | CharacterShowcase, CameraSystem, CharacterShowcase.Tests.Shared |
+| `CharacterShowcase.Tests.Shared` | `Assets/Tests/Shared` | `CharacterShowcase.Tests` | CharacterShowcase (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
+
+The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its
+`ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both.
 
 ## How to verify your work
 
 1. **Fast check, no Unity needed (before every commit):** `python3 Tools/CI/check_project_hygiene.py`. It catches
-   missing or orphaned `.meta` files, duplicate GUIDs, the camera assembly depending on character code, fields the
-   tests read by name that no longer exist, two movement settings sharing a name, and a test fixture without
-   `[TestTiming]` or a test area (`[Category(TestArea.…)]`), on it or on a class it derives from.
+   missing or orphaned `.meta` files, duplicate GUIDs, an assembly referencing what the table above doesn't allow it,
+   the camera or the level builders using character code, fields the tests read by name that no longer exist (or are
+   read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
+   (`[Category(TestArea.…)]`), on it or on a class it derives from, and a movement asset naming a component class that
+   no longer exists (renamed without `[MovedFrom]`).
 2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run:
    ```
    <Unity> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
@@ -218,7 +223,8 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
 
 - **Input** flows `InputSystem_Actions.inputactions` → `ACInputManager` (a singleton) → `Inputs` →
   `MovementController.ProcessMovementInputs`. New buttons are read with `ACInputManager`'s `ReadButton`, the way Dash
-  is. One-off presses go through a `ButtonPress`, since a press can last several physics steps or fall between them.
+  is: its action looked up once in `FindActions`, its `InputButton` updated in place (the `Inputs` and its buttons are
+  the same objects every frame, so nothing should keep one expecting it not to change). One-off presses go through a `ButtonPress`, since a press can last several physics steps or fall between them.
   `Attack` is defined but unread. Camera input is separate (`CameraInputReader`).
 - **Couplings that block NPCs:** `ACCharacterController` reads `ACInputManager.instance`. Inputs are relative to
   `MovementController.InputCamera`, falling back to `Camera.main`.

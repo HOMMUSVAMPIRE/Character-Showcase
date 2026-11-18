@@ -145,9 +145,12 @@ namespace CharacterShowcase.Tests
         public IEnumerator ASettingOfAnotherType_FailsTheTest_WhereAMissingOneIgnoresIt()
         {
             yield return rig.StandOnFloor();
-            Assert.Throws<AssertionException>(() => rig.MovementSetting<int>("ziplineGrabReach"),
+            // Asked for as the wrong type on purpose, through a constant: the hygiene check fails a test that reads a
+            // setting by its name as another type than it's declared.
+            const string floatSetting = "ziplineGrabReach";
+            Assert.Throws<AssertionException>(() => rig.MovementSetting<int>(floatSetting),
                 "Reading a float setting as an int should fail the test.");
-            Assert.Throws<AssertionException>(() => rig.SetMovementSetting("ziplineGrabReach", 0),
+            Assert.Throws<AssertionException>(() => rig.SetMovementSetting(floatSetting, 0),
                 "Setting a float setting with an int should fail the test.");
             // Named through a constant: the hygiene check fails a setting name the tests use that no movement code
             // declares, as this one deliberately isn't.

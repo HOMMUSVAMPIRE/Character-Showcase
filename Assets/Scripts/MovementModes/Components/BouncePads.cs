@@ -26,7 +26,7 @@ namespace Character
         /// <summary>What every bounce pad's launch height is multiplied by for this character. 0 turns bounce pads off.</summary>
         public float BounceHeightMultiplier { get => bounceHeightMultiplier; set => bounceHeightMultiplier = value; }
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.bounce.cooldownRemaining = MovementHelpers.CountDown(controller.bounce.cooldownRemaining, movementData.deltaTime);
         }
@@ -39,7 +39,7 @@ namespace Character
         /// the pad had the character this step (only on the step it launches: after that the character is simply in the
         /// air).
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             BounceState bounce = controller.bounce;
             if (bounceHeightMultiplier <= 0f || !movementData.initialGrounded || bounce.cooldownRemaining > 0f) { return false; }
@@ -47,7 +47,7 @@ namespace Character
             if (pad == null || pad.LaunchHeight <= 0f) { return false; }
             // Nothing that holds the character on the pad (holding a crate on it, climbing up off it) is launched.
             if (Mode.AbilityInProgressWith(AbilityTraits.HoldsOn, controller)) { return false; }
-            Mode.InterruptOthers(ref movementData, controller, this);
+            Mode.InterruptOthers(movementData, controller, this);
 
             bool boosted = inputs.jump != null && inputs.jump.value;
             float height = pad.LaunchHeight * bounceHeightMultiplier * (boosted ? bounceJumpBoost : 1f);

@@ -62,12 +62,12 @@ namespace Character
             new(CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.ledge.regrabCooldown = MovementHelpers.CountDown(controller.ledge.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.ledge.IsActive) { LetGoOfLedge(controller); }
         }
@@ -78,10 +78,10 @@ namespace Character
         /// holds still below the ledge (moving with it, if it moves); Jump climbs up onto it (crouched, if there's only
         /// room to crouch on top), and Crouch or steering away from the wall lets go, as does the ledge's object going.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             LedgeState ledge = controller.ledge;
-            if (!ledge.IsActive && !TryGrabLedge(ref movementData, inputs, controller)) { return false; }
+            if (!ledge.IsActive && !TryGrabLedge(movementData, inputs, controller)) { return false; }
             if (ledge.ledge == null || !ledge.ledge.gameObject.activeInHierarchy)
             {
                 LetGoOfLedge(controller); // What it belonged to is gone.
@@ -114,7 +114,7 @@ namespace Character
                 }
             }
 
-            if (ledge.IsClimbing) { return Climb(ref movementData, controller, ledgePosition, ledgeRotation); }
+            if (ledge.IsClimbing) { return Climb(movementData, controller, ledgePosition, ledgeRotation); }
 
             // Hanging: move into the hanging position (quickly, but not in one jump), then hold it, without gravity.
             Vector3 hang = ledgePosition + ledgeRotation * ledge.localHangPosition;
@@ -128,7 +128,7 @@ namespace Character
         /// Grabs a ledge if the character is in mid-air, not rising fast, and heading toward a wall whose top is within
         /// reach of its hands, with room to hang below it.
         /// </summary>
-        private bool TryGrabLedge(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryGrabLedge(MovementData movementData, Inputs inputs, MovementController controller)
         {
             LedgeState ledge = controller.ledge;
             // A wall being slid down doesn't stop its top being grabbed, once the slide has brought it within reach.
@@ -149,7 +149,7 @@ namespace Character
             Vector3 hang = HangPosition(controller, wallNormal, edge);
             if (!controller.CanFitAt(hang)) { return false; }
             HoldLedge(controller, top, wallNormal, edge, hang);
-            Mode.InterruptOthers(ref movementData, controller, this); // A slide down the wall, the only other thing it can be doing.
+            Mode.InterruptOthers(movementData, controller, this); // A slide down the wall, the only other thing it can be doing.
             return true;
         }
 
@@ -197,7 +197,7 @@ namespace Character
         /// to stand or crouch, the character hangs from the edge instead, holding still this step. Returns whether the
         /// ledge has the character (climbing or hanging).
         /// </summary>
-        internal bool TryClimbOverTop(ref MovementData movementData, MovementController controller, Vector3 heading, bool withinReach, bool requireFloor = false)
+        internal bool TryClimbOverTop(MovementData movementData, MovementController controller, Vector3 heading, bool withinReach, bool requireFloor = false)
         {
             if (ledgeClimbDuration <= 0f) { return false; }
             Vector3 feet = movementData.initialPosition;
@@ -223,7 +223,7 @@ namespace Character
             TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
             movementData.directMovementVector = Vector3.zero;
             movementData.targetRotation = Quaternion.LookRotation(-wallNormal, Vector3.up);
-            if (ledge.IsClimbing) { return Climb(ref movementData, controller, ledgePosition, ledgeRotation); }
+            if (ledge.IsClimbing) { return Climb(movementData, controller, ledgePosition, ledgeRotation); }
             movementData.velocityOverride = Vector3.zero;
             movementData.state |= CharacterState.LedgeHanging;
             return true;
@@ -324,7 +324,7 @@ namespace Character
         /// Climbs up onto the ledge: rising up the wall to the ledge's height, then moving forward onto it, over the
         /// climb's duration, without gravity. The character's collision still applies, so nothing is passed through.
         /// </summary>
-        private bool Climb(ref MovementData movementData, MovementController controller, Vector3 ledgePosition, Quaternion ledgeRotation)
+        private bool Climb(MovementData movementData, MovementController controller, Vector3 ledgePosition, Quaternion ledgeRotation)
         {
             LedgeState ledge = controller.ledge;
             ledge.climbElapsed += movementData.deltaTime;

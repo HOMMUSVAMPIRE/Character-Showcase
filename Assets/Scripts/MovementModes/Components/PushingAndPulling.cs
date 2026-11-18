@@ -37,7 +37,7 @@ namespace Character
             new(CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
         };
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.grab.IsGrabbing) { LetGo(controller); }
         }
@@ -49,7 +49,7 @@ namespace Character
         /// crouch or roll while holding it. Letting go of the button, leaving the ground, or the object losing the
         /// ground under it (pushed off an edge, it falls) lets go.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             GrabState grab = controller.grab;
             bool held = inputs.grab != null && inputs.grab.value;

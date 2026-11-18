@@ -80,13 +80,13 @@ namespace Character
             new(CharacterState.WallRunning, MovementEvents.WallRunStarted, MovementEvents.WallRunEnded),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.wallRun.cooldownRemaining = MovementHelpers.CountDown(controller.wallRun.cooldownRemaining, movementData.deltaTime);
             if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; }
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.wallRun.IsWallRunning) { EndWallRun(controller); }
         }
@@ -100,10 +100,10 @@ namespace Character
         /// gives back the character's air jumps, and takes away air steering for a moment. The same wall can't be run along twice without touching the ground
         /// in between (another wall can, after a short cooldown: wall jumps can chain between facing walls).
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallRunState run = controller.wallRun;
-            if (!run.IsWallRunning && !TryStartWallRun(ref movementData, inputs, controller)) { return false; }
+            if (!run.IsWallRunning && !TryStartWallRun(movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
             if (movementData.initialGrounded || !FindWall(controller, feet, -run.wallNormal, out Vector3 normal, out _, out Vector3 wallPoint)
@@ -146,7 +146,7 @@ namespace Character
 
             if (Mode.IsNewJumpPress(inputs, controller))
             {
-                WallJump(ref movementData, controller, tangent * speed, normal);
+                WallJump(movementData, controller, tangent * speed, normal);
                 return true;
             }
 
@@ -166,7 +166,7 @@ namespace Character
         /// Starts a wall run if the character is in mid-air, high enough above the ground, moving fast enough along a wall
         /// beside it (not straight into it), and steering along the wall (within the steering angle), the way it's moving.
         /// </summary>
-        private bool TryStartWallRun(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallRun(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallRunState run = controller.wallRun;
             if (wallRunMaxDuration <= 0f || movementData.initialGrounded || run.cooldownRemaining > 0f
@@ -308,12 +308,12 @@ namespace Character
         /// Jumps off the wall: away from it and upward, keeping the run's speed along it. Gives back the character's
         /// jumps, less the one this uses, and takes away air steering, which comes back over the mode's wall jump steering recovery time.
         /// </summary>
-        private void WallJump(ref MovementData movementData, MovementController controller, Vector3 alongWall, Vector3 normal)
+        private void WallJump(MovementData movementData, MovementController controller, Vector3 alongWall, Vector3 normal)
         {
             EndWallRun(controller);
             Vector3 velocity = alongWall + normal * (wallJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallJumpUpSpeed * controller.SpeedScale);
             // Facing the way it's launched.
-            MovementHelpers.JumpOffWall(ref movementData, controller, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
+            MovementHelpers.JumpOffWall(movementData, controller, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
         }
 
         private void EndWallRun(MovementController controller)

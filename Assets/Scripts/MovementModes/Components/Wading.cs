@@ -33,7 +33,7 @@ namespace Character
         public float WadeSpeedMultiplier => wadeSpeedMultiplier;
 
         /// <summary>Every step, the character walks at full speed until wading says otherwise (only on the ground, below).</summary>
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.wade.speedMultiplier = 1f;
         }
@@ -42,7 +42,7 @@ namespace Character
         /// On the ground in water at least Wade Start Depth deep over the feet (and too shallow to swim in: deeper,
         /// Swimming has the character), slows its walking by how deep it is, and marks the step as wading.
         /// </summary>
-        public override void BeforeLocomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (!movementData.initialGrounded) { return; }
             Vector3 feet = movementData.initialPosition;

@@ -29,7 +29,7 @@ Terms this project uses with a meaning of its own, and where each is explained.
 
 **Hover Over Steps.** The MovementController setting holding the body's bottom a step's height above the feet, which probes keep on the ground: steps pass under the body, which never rests on an edge or a corner. See [Collision](movement.md#collision).
 
-**Hygiene check.** A quick check of the project that needs no Unity (`Tools/CI/check_project_hygiene.py`): `.meta` files, GUIDs, assembly dependencies and setting names. See [Troubleshooting](troubleshooting.md#the-tests).
+**Hygiene check.** A quick check of the project that needs no Unity (`Tools/CI/check_project_hygiene.py`): `.meta` files, GUIDs, assembly dependencies and the code the camera and level builders may use, setting names and types, test fixtures, and the component classes movement assets name. See [Troubleshooting](troubleshooting.md#the-tests).
 
 **Level spec.** A level recorded as data: the list of pieces its builder called, with their settings, which builds the same level again. Edited in the Level Editor or by the levelspec tool. See [Level Specs](level-specs.md).
 

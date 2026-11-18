@@ -37,7 +37,7 @@ namespace Character
 
         public override bool IsActive(MovementController controller) => controller.dash.IsDashing;
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (!controller.dash.IsDashing) { return; }
             controller.dash.timeRemaining = 0f;
@@ -62,7 +62,7 @@ namespace Character
         /// Advances the dash's cooldown, gives back air dashes on the ground, and frees the next press once the button is
         /// released. Every step, including while another ability has the character, so its cooldown runs out meanwhile.
         /// </summary>
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             DashState dash = controller.dash;
             dash.cooldownRemaining = MovementHelpers.CountDown(dash.cooldownRemaining, movementData.deltaTime);
@@ -75,7 +75,7 @@ namespace Character
         /// at the dash's speed in a straight line, ignoring gravity and steering; when the dash ends they keep a fraction
         /// of its speed as momentum, which the grounded friction or the landing then eases out.
         /// </summary>
-        public override void AfterWalking(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
         {
             DashState dash = controller.dash;
             float deltaTime = movementData.deltaTime;

@@ -60,9 +60,9 @@ namespace Character
             new(CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
         };
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
-            if (controller.vault.IsActive) { EndVault(ref movementData, controller); }
+            if (controller.vault.IsActive) { EndVault(movementData, controller); }
         }
 
         /// <summary>
@@ -74,20 +74,20 @@ namespace Character
         /// speed it leaves with, until the whole body is past the wall's face, without gravity. A step up lifts the
         /// character onto the top as fast as it takes to reach the wall, keeping its speed.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             VaultState vault = controller.vault;
-            if (!vault.IsActive && !TryStartVault(ref movementData, inputs, controller)) { return false; }
+            if (!vault.IsActive && !TryStartVault(movementData, inputs, controller)) { return false; }
             if (vault.obstacle == null || !vault.obstacle.gameObject.activeInHierarchy)
             {
-                EndVault(ref movementData, controller); // What it belonged to is gone.
+                EndVault(movementData, controller); // What it belonged to is gone.
                 return false;
             }
 
             // The path is kept in the obstacle's space, so a vault over something moving still goes over it.
             MovementController.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
             vault.elapsed += movementData.deltaTime;
-            if (vault.IsSteppingUp) { return StepUp(ref movementData, controller, obstaclePosition, obstacleRotation); }
+            if (vault.IsSteppingUp) { return StepUp(movementData, controller, obstaclePosition, obstacleRotation); }
 
             Vector3 start = obstaclePosition + obstacleRotation * vault.localStart;
             Vector3 end = obstaclePosition + obstacleRotation * vault.localEnd;
@@ -148,7 +148,7 @@ namespace Character
         /// Steps up onto the top: lifted just fast enough to clear it as the body reaches the wall (no faster than the
         /// step up's rise speed), moving on at the speed the character came in at, until its axis is past the edge.
         /// </summary>
-        private bool StepUp(ref MovementData movementData, MovementController controller, Vector3 obstaclePosition, Quaternion obstacleRotation)
+        private bool StepUp(MovementData movementData, MovementController controller, Vector3 obstaclePosition, Quaternion obstacleRotation)
         {
             VaultState vault = controller.vault;
             Vector3 edge = obstaclePosition + obstacleRotation * vault.localEdge;
@@ -160,7 +160,7 @@ namespace Character
             float past = Vector3.Dot(feet - edge, -wallNormal);
             if ((rise <= 0f && past >= 0f) || vault.elapsed > StepUpTimeout * controller.DurationScale)
             {
-                EndVault(ref movementData, controller);
+                EndVault(movementData, controller);
                 return false;
             }
             float vertical = 0f;
@@ -182,7 +182,7 @@ namespace Character
         /// height and below the lowest ledge it could grab (see TakeOver), with room to rise up to it
         /// where the character is and to be on top of it just past the edge.
         /// </summary>
-        private bool TryStartVault(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartVault(MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             // Below the window a ledge is grabbed in, whether or not ledges are (see Ledges).
@@ -208,7 +208,7 @@ namespace Character
 
             // From just over a step to just under a ledge the character could grab.
             float stepHeight = controller.MaxStepHeight * controller.HeightScale;
-            return StartVaultOver(ref movementData, controller, ledges, heading, steer, grounded, stepHeight, ledges.LedgeGrabMinHeight * controller.Body.StandingHeight);
+            return StartVaultOver(movementData, controller, ledges, heading, steer, grounded, stepHeight, ledges.LedgeGrabMinHeight * controller.Body.StandingHeight);
         }
 
         /// <summary>
@@ -219,14 +219,14 @@ namespace Character
         /// had the Animator start blending from swimming into the air, which the climb out then had to wait for, and the
         /// model went up, down and up again. Returns whether it started.
         /// </summary>
-        internal bool TryVaultOutOfWater(ref MovementData movementData, Inputs inputs, MovementController controller, Vector3 heading,
+        internal bool TryVaultOutOfWater(MovementData movementData, Inputs inputs, MovementController controller, Vector3 heading,
             float low, float high)
         {
             if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || heading.sqrMagnitude < 1e-4f) { return false; }
             heading = heading.normalized;
-            if (!StartVaultOver(ref movementData, controller, SettingsOf<Ledges>(), heading, heading, grounded: false, low, high)) { return false; }
+            if (!StartVaultOver(movementData, controller, SettingsOf<Ledges>(), heading, heading, grounded: false, low, high)) { return false; }
             controller.vault.outOfWater = true;
-            return TakeOver(ref movementData, inputs, controller);
+            return TakeOver(movementData, inputs, controller);
         }
 
         /// <summary>
@@ -234,7 +234,7 @@ namespace Character
         /// low and high above the character's feet, with room to rise up to it and to be on top of it just past the edge
         /// (see TryStartVault). From the ground, only over to somewhere to land.
         /// </summary>
-        private bool StartVaultOver(ref MovementData movementData, MovementController controller, Ledges ledges, Vector3 heading,
+        private bool StartVaultOver(MovementData movementData, MovementController controller, Ledges ledges, Vector3 heading,
             Vector3 steer, bool grounded, float low, float high)
         {
             VaultState vault = controller.vault;
@@ -328,7 +328,7 @@ namespace Character
         private static float VaultClearance(MovementController controller) => 2f * controller.Skin;
 
         /// <summary>Ends a vault or step up, the character carrying on at the speed it leaves with.</summary>
-        private static void EndVault(ref MovementData movementData, MovementController controller)
+        private static void EndVault(MovementData movementData, MovementController controller)
         {
             VaultState vault = controller.vault;
             vault.phase = VaultState.Phase.None;

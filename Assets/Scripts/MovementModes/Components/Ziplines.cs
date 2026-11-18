@@ -45,12 +45,12 @@ namespace Character
             new(CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.zipline.regrabCooldown = MovementHelpers.CountDown(controller.zipline.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.zipline.IsRiding) { LetGoOfZipline(controller); }
         }
@@ -62,13 +62,13 @@ namespace Character
         /// carrying on at the ride's speed. Jump lets go with a jump; Crouch lets go and drops; so does touching the
         /// ground, or being stopped by a wall or ceiling. Catching hold gives back the character's jumps and air dashes.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             ZiplineState ride = controller.zipline;
             bool caught = false;
             if (!ride.IsRiding)
             {
-                if (!TryCatchZipline(ref movementData, controller)) { return false; }
+                if (!TryCatchZipline(movementData, controller)) { return false; }
                 caught = true;
             }
             Zipline line = ride.line;
@@ -92,7 +92,7 @@ namespace Character
                 if (Mode.IsNewJumpPress(inputs, controller))
                 {
                     LetGoOfZipline(controller);
-                    MovementHelpers.JumpOff(ref movementData, controller,
+                    MovementHelpers.JumpOff(movementData, controller,
                         direction * ride.speed + Vector3.up * (ziplineJumpUpSpeed * controller.SpeedScale), MovementEvents.Jumped);
                     return true;
                 }
@@ -144,7 +144,7 @@ namespace Character
         /// are and where they're going: a fast fall passes a cable in less than a step), with room to hang below it. Not
         /// the one let go of last, until the regrab delay is over.
         /// </summary>
-        private bool TryCatchZipline(ref MovementData movementData, MovementController controller)
+        private bool TryCatchZipline(MovementData movementData, MovementController controller)
         {
             ZiplineState ride = controller.zipline;
             if (ziplineGrabReach <= 0f || movementData.initialGrounded
@@ -181,7 +181,7 @@ namespace Character
             // The ride starts at the character's speed along the cable, either way.
             ride.speed = Vector3.Dot(movementData.initialVelocity, best.Direction);
             ride.elapsed = 0f;
-            MovementHelpers.TakeHoldOfALine(ref movementData, controller, this);
+            MovementHelpers.TakeHoldOfALine(movementData, controller, this);
             return true;
         }
 

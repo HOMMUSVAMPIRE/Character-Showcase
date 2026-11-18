@@ -39,10 +39,10 @@ namespace Character
         /// velocity override would make the jump use up a jump without any effect), nor while crouched with no room to
         /// stand up for it (see Crouching).
         /// </summary>
-        public override void AfterWalking(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (movementData.state.HasFlag(CharacterState.Dashing) || controller.crouch.IsCrouched) { return; }
-            Jump(ref movementData, inputs, controller);
+            Jump(movementData, inputs, controller);
         }
 
         /// <summary>
@@ -55,7 +55,7 @@ namespace Character
         /// Heights scale with the character's size, and with the square of the MovementController's jump strength
         /// modifier (a multiplier on the launch speed).
         /// </summary>
-        public void Jump(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public void Jump(MovementData movementData, Inputs inputs, MovementController controller)
         {
             // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
             // jumps available to us. Not if we left the ground by jumping, though: a quick tap jump would otherwise land

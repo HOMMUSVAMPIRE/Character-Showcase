@@ -41,11 +41,9 @@ namespace Character
         /// <summary>How long the button has been down, in seconds (0 on the frame it's pressed, and while it's up).</summary>
         public float holdDuration;
         /// <summary>
-        /// Reserved, and not set by the input manager yet (always 0). For how long a press has lasted, as a charge
-        /// attack needs, use holdDuration while the button is down and lastHoldDuration once it's released.
+        /// How long, in seconds, the button was held the last time it was released. For how long a press has lasted, as a
+        /// charge attack needs: holdDuration while the button is down, this once it's released.
         /// </summary>
-        public float held;
-        /// <summary>How long, in seconds, the button was held the last time it was released.</summary>
         public float lastHoldDuration;
     }
 }

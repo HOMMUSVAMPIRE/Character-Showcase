@@ -44,12 +44,12 @@ namespace Character
             new(CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.ropeSwing.regrabCooldown = MovementHelpers.CountDown(controller.ropeSwing.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.ropeSwing.IsSwinging) { LetGoOfRope(controller); }
         }
@@ -62,13 +62,13 @@ namespace Character
         /// touching the ground, lets go. The character faces the way it steers. Catching hold gives back its jumps and air
         /// dashes. Something in the way stops the swing (the character stays on the rope).
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             RopeSwingState swing = controller.ropeSwing;
             bool caught = false;
             if (!swing.IsSwinging)
             {
-                if (!TryCatchRope(ref movementData, controller)) { return false; }
+                if (!TryCatchRope(movementData, controller)) { return false; }
                 caught = true;
             }
             Rope rope = swing.rope;
@@ -91,7 +91,7 @@ namespace Character
                 {
                     Vector3 launch = swing.velocity + Vector3.up * (ropeJumpUpSpeed * controller.SpeedScale);
                     LetGoOfRope(controller);
-                    MovementHelpers.JumpOff(ref movementData, controller, launch, MovementEvents.Jumped);
+                    MovementHelpers.JumpOff(movementData, controller, launch, MovementEvents.Jumped);
                     return true;
                 }
             }
@@ -160,7 +160,7 @@ namespace Character
         /// hands hold it where they are (at least the shortest grip distance down it, at most its length), and the
         /// character's speed across the rope carries on as the swing's.
         /// </summary>
-        private bool TryCatchRope(ref MovementData movementData, MovementController controller)
+        private bool TryCatchRope(MovementData movementData, MovementController controller)
         {
             RopeSwingState swing = controller.ropeSwing;
             if (ropeGrabReach <= 0f || movementData.initialGrounded
@@ -200,7 +200,7 @@ namespace Character
             swing.velocity = velocity - outward * Vector3.Dot(velocity, outward);
             swing.elapsed = 0f;
             best.Hold(controller, outward);
-            MovementHelpers.TakeHoldOfALine(ref movementData, controller, this);
+            MovementHelpers.TakeHoldOfALine(movementData, controller, this);
             return true;
         }
 

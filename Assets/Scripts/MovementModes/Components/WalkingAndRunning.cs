@@ -44,7 +44,7 @@ namespace Character
         /// On the ground, moves the character the way the movement input points, at walking speed (see the mode's
         /// MoveSpeed), facing that way.
         /// </summary>
-        public override void Locomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             // In the air, the character steers instead (see FallAndAirHandling), and isn't picking up speed after an
             // ability any more (nor once it stops: see PickingUp).
@@ -76,7 +76,7 @@ namespace Character
                 if (stick > 1e-4f && walking > 1e-6f)
                 {
                     Vector3 direction = steer.normalized;
-                    walking = PickingUp(ref movementData, controller, direction, walking);
+                    walking = PickingUp(movementData, controller, direction, walking);
                     Vector3 carried = movementData.initialInertia;
                     float carriedAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(carried.x, 0f, carried.z), direction));
                     movementData.directMovementVector = direction * (Mathf.Max(0f, walking - carriedAlong) * movementData.deltaTime);
@@ -93,7 +93,7 @@ namespace Character
         /// rate, until it's caught up; otherwise walking. A vault ending standing on the top, or a climb onto a ledge,
         /// snapped from the speed it left with (or a near standstill) to walking or running in a step.
         /// </summary>
-        private float PickingUp(ref MovementData movementData, MovementController controller, Vector3 direction, float walking)
+        private float PickingUp(MovementData movementData, MovementController controller, Vector3 direction, float walking)
         {
             WalkState walk = controller.walk;
             if ((movementData.previousState & SlowHandOvers) != 0) { walk.pickingUp = abilityPickUpTime > 0f; }

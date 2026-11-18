@@ -71,7 +71,7 @@ namespace Character
         public override BodyPosture? Posture(MovementController controller) =>
             controller.crouch.IsCrouched || controller.slide.IsSliding ? BodyPosture.Low(crouchHeight) : null;
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.slide.IsSliding) { EndSlide(controller, crouched: controller.crouch.IsCrouched); }
         }
@@ -82,7 +82,7 @@ namespace Character
         /// character, then happens by itself. A jump stands the character up first, where there's room (the jump is
         /// skipped where there isn't).
         /// </summary>
-        public override void BeforeLocomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             CrouchState crouch = controller.crouch;
             if (holdToCrouch)
@@ -122,10 +122,10 @@ namespace Character
         /// mode, letting go of it) stands up instead. Jumping cancels the slide into a jump that keeps its speed, and
         /// sliding off an edge carries its momentum into the air.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             SlideState slide = controller.slide;
-            if (!slide.IsSliding && !TryStartSlide(ref movementData, inputs, controller)) { return false; }
+            if (!slide.IsSliding && !TryStartSlide(movementData, inputs, controller)) { return false; }
             if (!slidingEnabled)
             {
                 EndSlide(controller, crouched: true); // Sliding turned off part way through a slide.
@@ -154,7 +154,7 @@ namespace Character
             {
                 EndSlide(controller, crouched: false);
                 movementData.directMovementVector = Vector3.zero;
-                Mode.Get<Jumping>()?.Jump(ref movementData, inputs, controller);
+                Mode.Get<Jumping>()?.Jump(movementData, inputs, controller);
                 return true;
             }
 
@@ -186,7 +186,7 @@ namespace Character
         }
 
         /// <summary>Starts a slide if Crouch was just pressed while sprinting fast enough on the ground.</summary>
-        private bool TryStartSlide(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartSlide(MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (!slidingEnabled || slideMaxDuration <= 0f || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             if (inputs.sprint == null || !inputs.sprint.value) { return false; }

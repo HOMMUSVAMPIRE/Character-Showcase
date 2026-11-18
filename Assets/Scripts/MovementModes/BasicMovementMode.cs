@@ -81,35 +81,35 @@ namespace Character
         /// <param name="movementData"></param>
         /// <param name="inputs"></param>
         /// <param name="controller"></param>
-        public override void ProcessMovementData(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void ProcessMovementData(MovementData movementData, Inputs inputs, MovementController controller)
         {
             // A released jump button frees the next press to start a jump (checked here, before the dash and the other
             // abilities, which can skip jump processing while they last)
             controller.jump.press.Track(inputs.jump);
-            AdvanceAbilityTimers(ref movementData, inputs, controller);
-            AdvanceComponentTimers(ref movementData, inputs, controller);
+            AdvanceAbilityTimers(movementData, inputs, controller);
+            AdvanceComponentTimers(movementData, inputs, controller);
 
             // Gravity, whatever has the character (see FallAndAirHandling).
-            ComponentsBeforeAbilities(ref movementData, inputs, controller);
+            ComponentsBeforeAbilities(movementData, inputs, controller);
 
             // The abilities that take over the character's movement while they last, most committed first: each carries
             // on if it's under way, or starts if its inputs and surroundings call for it, and returns whether it has the
             // character this step (see DefaultComponents). Otherwise the character walks, dashes and jumps (crouched or not).
-            bool abilityHasCharacter = ComponentsTakeOver(ref movementData, inputs, controller);
+            bool abilityHasCharacter = ComponentsTakeOver(movementData, inputs, controller);
             if (!abilityHasCharacter)
             {
                 // Crouching, standing up (see Crouching), and anything else that changes how the character walks.
-                ComponentsBeforeLocomotion(ref movementData, inputs, controller);
+                ComponentsBeforeLocomotion(movementData, inputs, controller);
                 // The ground's friction, walking and running, steering in the air (see FallAndAirHandling and WalkingAndRunning).
-                ComponentsLocomotion(ref movementData, inputs, controller);
+                ComponentsLocomotion(movementData, inputs, controller);
                 // Then dashing and jumping (see Dashing and Jumping), and anything else that acts on top of walking.
-                ComponentsAfterWalking(ref movementData, inputs, controller);
+                ComponentsAfterWalking(movementData, inputs, controller);
             }
 
             // The collider is lowered while crouched, sliding or rolling, and raised again where there's room.
-            UpdatePosture(ref movementData, controller);
+            UpdatePosture(movementData, controller);
             // The fall speed limit (see FallAndAirHandling), last of all.
-            ComponentsFinishStep(ref movementData, controller);
+            ComponentsFinishStep(movementData, controller);
         }
 
         /// <summary>
@@ -117,7 +117,7 @@ namespace Character
         /// components' advance their own: see AdvanceComponentTimers). Every step, whichever ability has the character, so
         /// their cooldowns run out meanwhile.
         /// </summary>
-        private static void AdvanceAbilityTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private static void AdvanceAbilityTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             float deltaTime = movementData.deltaTime;
             // Crouch presses are tracked whether or not the character can crouch: they let go of ropes, ziplines and walls.
@@ -135,7 +135,7 @@ namespace Character
         /// something low, say), the character stays crouched, and stands up by itself once there is. Also marks the step
         /// as crouched.
         /// </summary>
-        private void UpdatePosture(ref MovementData movementData, MovementController controller)
+        private void UpdatePosture(MovementData movementData, MovementController controller)
         {
             CrouchState crouch = controller.crouch;
             Vector3 feet = movementData.initialPosition;

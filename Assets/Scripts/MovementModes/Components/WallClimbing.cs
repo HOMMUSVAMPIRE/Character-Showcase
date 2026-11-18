@@ -91,12 +91,12 @@ namespace Character
             new(CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
         };
 
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.wallClimb.regrabCooldown = MovementHelpers.CountDown(controller.wallClimb.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.wallClimb.IsClimbing) { EndWallClimb(controller); }
         }
@@ -132,10 +132,10 @@ namespace Character
         /// room (as from a ledge). Jump kicks off the surface, up and away from it; Crouch lets go, as does pressing down
         /// at the bottom with the feet on the ground, or the surface going.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallClimbState climb = controller.wallClimb;
-            if (!climb.IsClimbing && !TryStartWallClimb(ref movementData, inputs, controller)) { return false; }
+            if (!climb.IsClimbing && !TryStartWallClimb(movementData, inputs, controller)) { return false; }
 
             // Along with the surface, if it moves: every probe is made from where that takes the character.
             Vector3 carry = WallClimbCarry(movementData, controller);
@@ -168,7 +168,7 @@ namespace Character
                     return false;
                 }
                 climb.stepElapsed += movementData.deltaTime;
-                HoldStill(ref movementData, controller, here, carry);
+                HoldStill(movementData, controller, here, carry);
                 return true;
             }
 
@@ -179,7 +179,7 @@ namespace Character
             }
             if (Mode.IsNewJumpPress(inputs, controller))
             {
-                WallClimbJump(ref movementData, controller, normal);
+                WallClimbJump(movementData, controller, normal);
                 return true;
             }
 
@@ -189,7 +189,7 @@ namespace Character
                 if (!MovementHelpers.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
                 {
                     climb.stepElapsed += movementData.deltaTime;
-                    HoldStill(ref movementData, controller, here, carry);
+                    HoldStill(movementData, controller, here, carry);
                     return true;
                 }
                 climb.phase = WallClimbState.Phase.Climbing;
@@ -211,7 +211,7 @@ namespace Character
                 climb.phase = WallClimbState.Phase.Exiting;
                 climb.stepElapsed = 0f;
                 climb.stepDuration = exit;
-                HoldStill(ref movementData, controller, here, carry);
+                HoldStill(movementData, controller, here, carry);
                 return true;
             }
 
@@ -219,7 +219,7 @@ namespace Character
             // (handed to the ledge climb: without ledges, there's no climbing over the top). Off a ladder's top only onto
             // a floor there: a ladder standing on its own isn't climbed over.
             Ledges ledges = Mode.Get<Ledges>();
-            if (input.y > 0.5f && ledges != null && ledges.TryClimbOverTop(ref movementData, controller, -FlatNormal(normal, movementData), withinReach: true, requireFloor: here.ladder != null))
+            if (input.y > 0.5f && ledges != null && ledges.TryClimbOverTop(movementData, controller, -FlatNormal(normal, movementData), withinReach: true, requireFloor: here.ladder != null))
             {
                 EndWallClimb(controller);
                 return true;
@@ -232,7 +232,7 @@ namespace Character
             bool canClimbVertically = climbsVertically && CanClimbTo(controller, feet + vertical, normal, reach, here, out upOrDown);
             // Pushing up at a top too shallow to climb (or the area's top edge) climbs over it onto it, if it's walkable.
             if (climbsVertically && !canClimbVertically && input.y > 0.5f && ledges != null
-                && ledges.TryClimbOverTop(ref movementData, controller, -FlatNormal(normal, movementData), withinReach: false, requireFloor: here.ladder != null))
+                && ledges.TryClimbOverTop(movementData, controller, -FlatNormal(normal, movementData), withinReach: false, requireFloor: here.ladder != null))
             {
                 EndWallClimb(controller);
                 return true;
@@ -279,7 +279,7 @@ namespace Character
         /// angle of head-on. Not while crouched, nor during another ability, other than a wall run or a slide down a wall,
         /// which a climbable surface is climbed instead.
         /// </summary>
-        private bool TryStartWallClimb(ref MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallClimb(MovementData movementData, Inputs inputs, MovementController controller)
         {
             WallClimbState climb = controller.wallClimb;
             if (wallClimbSpeed <= 0f || climb.regrabCooldown > 0f || controller.crouch.IsCrouched) { return false; }
@@ -303,7 +303,7 @@ namespace Character
                             && Vector3.Angle(approach, into) <= wallClimbStartMaxAngle;
             if (!steeringIn && !movingIn) { return false; }
 
-            Mode.InterruptOthers(ref movementData, controller, this); // A wall run or a slide down a wall, climbed instead.
+            Mode.InterruptOthers(movementData, controller, this); // A wall run or a slide down a wall, climbed instead.
             climb.IsClimbing = true;
             climb.elapsed = 0f;
             // Taking hold from standing on the ground, the character steps up onto the surface first.
@@ -320,7 +320,7 @@ namespace Character
         }
 
         /// <summary>Holds the character where it is on the surface this step (moving with it, and kept at the holding distance).</summary>
-        private void HoldStill(ref MovementData movementData, MovementController controller, ClimbContact here, Vector3 carry)
+        private void HoldStill(MovementData movementData, MovementController controller, ClimbContact here, Vector3 carry)
         {
             float snap = wallClimbSnapSpeed * controller.SpeedScale * movementData.deltaTime;
             Vector3 hold = -here.normal * Mathf.Clamp(here.distance - WallClimbHoldDistance(controller), -snap, snap)
@@ -537,11 +537,11 @@ namespace Character
         /// Kicks off the surface: upward, and away from it. Gives back the character's jumps, less the one this uses, and
         /// takes away air steering for a moment, as jumping off a wall run does.
         /// </summary>
-        private void WallClimbJump(ref MovementData movementData, MovementController controller, Vector3 normal)
+        private void WallClimbJump(MovementData movementData, MovementController controller, Vector3 normal)
         {
             EndWallClimb(controller);
             Vector3 away = FlatNormal(normal, movementData);
-            MovementHelpers.JumpOffWall(ref movementData, controller,
+            MovementHelpers.JumpOffWall(movementData, controller,
                 away * (wallClimbJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallClimbJumpUpSpeed * controller.SpeedScale), away, away);
         }
 

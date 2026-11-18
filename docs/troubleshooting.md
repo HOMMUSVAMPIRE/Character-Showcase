@@ -35,7 +35,10 @@ Unity can't open a project that's open in the editor, so a batch-mode run quits 
 - *A duplicate GUID:* a `.meta` was copied without changing its GUID.
 - *A field the tests read by name doesn't exist:* a setting was renamed or moved. Update the test, or keep the name.
 - *Two settings share a name:* setting names must be unique across the movement mode and all its components, since tests find them by name alone.
-- *The camera depends on character code:* see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character).
+- *A field the tests read by name is read as another type* (`MovementSetting<int>` for a float setting): ask for it as the type it's declared, or the test fails (the rig won't skip it).
+- *An assembly references what it may not, or isn't in the table:* AGENTS.md's assembly table says what each may reference; the check's `ALLOWED_REFERENCES` holds it. A new assembly or reference goes in both, if it keeps the rules (the camera and the level builders know nothing of the character).
+- *The camera or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character); a level builder makes geometry, lighting and markers only, and game setup connects them (see [Adding Level Content](adding-level-content.md)).
+- *A movement asset names a class that no longer exists:* a movement component was renamed or moved. Give the class `[UnityEngine.Scripting.APIUpdating.MovedFrom(... sourceClassName: "OldName")]`, or the asset shows it as a missing component, its settings lost.
 
 ## Generated assets
 **A change to a generated asset disappeared.**

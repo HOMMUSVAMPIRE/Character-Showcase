@@ -48,14 +48,14 @@ namespace Character
             controller.roll.IsRolling ? BodyPosture.Low(SettingsOf<Crouching>().CrouchHeight) : null;
 
         /// <summary>Frees the next press of Roll once it's released, advances the cooldown, and keeps track of falls (see TrackFall).</summary>
-        public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             controller.roll.press.Track(inputs.roll);
             controller.roll.cooldownRemaining = MovementHelpers.CountDown(controller.roll.cooldownRemaining, movementData.deltaTime);
             TrackFall(movementData, controller);
         }
 
-        public override void Interrupt(ref MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementData movementData, MovementController controller)
         {
             if (controller.roll.IsRolling) { EndRoll(controller); }
         }
@@ -67,7 +67,7 @@ namespace Character
         /// roll's speed, low, facing the roll, and can't steer, jump or dash until it's over. Rolling off an edge ends
         /// the roll, keeping its momentum. Afterwards the character stands, or stays crouched where there isn't room.
         /// </summary>
-        public override bool TakeOver(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
         {
             RollState roll = controller.roll;
             if (!roll.IsRolling && !TryLandingRoll(movementData, inputs, controller))
@@ -102,7 +102,7 @@ namespace Character
             movementData.directMovementVector = Vector3.zero;
             movementData.targetRotation = Quaternion.LookRotation(roll.direction, Vector3.up);
             movementData.state |= CharacterState.Rolling | CharacterState.Moving;
-            if (!roll.IsRolling) { HandOverToWalking(ref movementData, inputs, controller, speed); }
+            if (!roll.IsRolling) { HandOverToWalking(movementData, inputs, controller, speed); }
             return true;
         }
 
@@ -159,7 +159,7 @@ namespace Character
         /// a sudden burst of speed (and a lurch in the animations) as the roll ends. Without input, the momentum is
         /// kept, to ease out.
         /// </summary>
-        private void HandOverToWalking(ref MovementData movementData, Inputs inputs, MovementController controller, float rollSpeedNow)
+        private void HandOverToWalking(MovementData movementData, Inputs inputs, MovementController controller, float rollSpeedNow)
         {
             Vector3 steer = InputDirection(movementData, inputs);
             if (steer.sqrMagnitude < 0.01f) { return; }

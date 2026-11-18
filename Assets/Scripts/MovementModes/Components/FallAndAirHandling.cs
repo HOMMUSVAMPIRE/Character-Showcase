@@ -54,7 +54,7 @@ namespace Character
         /// that move the character without gravity (a dash, a wall run, hanging from a ledge) override the velocity
         /// this gives.
         /// </summary>
-        public override void BeforeAbilities(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeAbilities(MovementData movementData, Inputs inputs, MovementController controller)
         {
             // How much gravity do we apply
             // The coyote gravity curve only applies after walking off the ground. After a jump, gravity is at full
@@ -85,7 +85,7 @@ namespace Character
         /// On the ground, the friction that takes away the momentum the character carries (before Walking &amp; Running,
         /// which makes up the difference to its speed); in the air, steering.
         /// </summary>
-        public override void Locomotion(ref MovementData movementData, Inputs inputs, MovementController controller)
+        public override void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
         {
             if (movementData.initialGrounded)
             {
@@ -100,12 +100,12 @@ namespace Character
             float steeringEffectiveness = controller.movementSpeedMultiplier
                                           * airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength
                                           * WallJumpSteering(controller);
-            SteerInAir(ref movementData, inputs, controller, steeringEffectiveness);
+            SteerInAir(movementData, inputs, controller, steeringEffectiveness);
             movementData.state |= CharacterState.Moving;
         }
 
         /// <summary>Limits how fast the character falls.</summary>
-        public override void FinishStep(ref MovementData movementData, MovementController controller)
+        public override void FinishStep(MovementData movementData, MovementController controller)
         {
             // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
             // Like every speed, the limit scales with the character's size (see MovementController.SpeedScale).
@@ -134,7 +134,7 @@ namespace Character
         /// the character slowly loses speed.
         /// </summary>
         /// <param name="steeringEffectiveness">How much control the character has right now (0 = none)</param>
-        private void SteerInAir(ref MovementData movementData, Inputs inputs, MovementController controller, float steeringEffectiveness)
+        private void SteerInAir(MovementData movementData, Inputs inputs, MovementController controller, float steeringEffectiveness)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector2 velocity = new Vector2(inertia.x, inertia.z);

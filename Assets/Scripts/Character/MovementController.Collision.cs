@@ -14,11 +14,11 @@ namespace Character
         /// CharacterBody.TurnsWithFacing, or any body while it's pitched) turns only as far as it has room to, and the body
         /// pitches (see MovementData.targetPitch) only as far as it has room to.
         /// </summary>
-        public bool CheckMovementValid(ref MovementData data)
+        public bool CheckMovementValid(MovementData data)
         {
             resolvingRotation = data.initialRotation;
             resolvingPitch = data.initialPitch;
-            try { return ResolveStep(ref data); }
+            try { return ResolveStep(data); }
             finally
             {
                 bodyPitch = data.targetPitch;
@@ -52,7 +52,7 @@ namespace Character
         // How far this step's resolution stepped the character up onto a step (see MovementData.stepChange).
         private float steppedUp;
 
-        private bool ResolveStep(ref MovementData data)
+        private bool ResolveStep(MovementData data)
         {
             data.collisions = CollisionFlags.None;
             data.stepChange = 0f;
@@ -110,7 +110,7 @@ namespace Character
                 // A long body stepping up stairs ahead of its feet (see TryStepUp).
                 data.stepChange = steppedUp;
                 data.resolution.steppedUp = steppedUp;
-                Vector3 vertical = ResolveVerticalHovering(pos, vert, new Vector2(across.x, across.z).magnitude, ref data, ref inertia);
+                Vector3 vertical = ResolveVerticalHovering(pos, vert, new Vector2(across.x, across.z).magnitude, data, ref inertia);
                 data.ForceMovementVector(depenetration + across + vertical, inertia);
                 return true;
             }
