@@ -44,6 +44,8 @@ namespace Level
         public float Distance { get => distance; set => distance = Mathf.Max(0f, value); }
         /// <summary>What's timed (null: anything).</summary>
         public Transform Racer => racer;
+        /// <summary>How soon (seconds) after a run starts a pass can end it (see Minimum Run Time).</summary>
+        public float MinimumRunTime => minimumRunTime;
         /// <summary>Called with the course's times as a line of text.</summary>
         public UnityEvent<string> OnDisplay => onDisplay;
         /// <summary>Whether a run's under way.</summary>

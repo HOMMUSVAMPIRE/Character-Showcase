@@ -8,7 +8,7 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 
 **Settings.** Each has a `[Tooltip]` written for a designer, grouped with `[Header]` where that helps. Field names must be unique across the mode and all its components (the hygiene check enforces it): tests and tuning presets find settings by name. Settings are numbers, toggles, enums or curves; `MovementTuningPresetTests` fails on any other kind, which presets couldn't copy. A value of 0 that turns the ability off (a duration, a reach) is the convention.
 
-**When it acts.** Override the hooks for the points of a physics step it acts at (see `MovementComponent` and `BasicMovementMode.ProcessMovementData`):
+**When it acts.** Override the hooks for the points of a physics step it acts at (see `MovementComponent` and `BasicMovementMode.ProcessMovementData`); the mode calls a component only at the hooks it overrides (`MovementComponent.Overridden`), so the rest cost nothing:
 
 - `TakeOver`: carries on, or starts if its inputs and surroundings call for it, and returns whether it has the character. The usual one for an ability: the first component in the list that takes over has the character for the step.
 - `IsActive` and `Interrupt`: whether it's under way, and ending it cleanly, when another ability takes the character or it's turned off while it has it.

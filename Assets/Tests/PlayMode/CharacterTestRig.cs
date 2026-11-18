@@ -162,21 +162,6 @@ namespace CharacterShowcase.Tests
         public BodyShape BodyNow => ((PrimitiveBody)Movement.Body).Current;
 
         /// <summary>
-        /// Gives the character a body shaped as a primitive collider (a box, a sphere, or a capsule shaped otherwise),
-        /// shaped by shape, which it keeps as its collider (see MovementController.RebuildBody), in place of its body
-        /// (and its collider, if it had one). After spawning it.
-        /// </summary>
-        public T UseBody<T>(System.Action<T> shape) where T : Collider
-        {
-            if (Movement.Body.Collider != null) { UnityEngine.Object.DestroyImmediate(Movement.Body.Collider); }
-            var primitive = Character.AddComponent<T>();
-            shape(primitive);
-            Movement.RebuildBody(primitive);
-            Physics.SyncTransforms();
-            return primitive;
-        }
-
-        /// <summary>
         /// Gives the character a collider of its body's kind and shape as authored (a Body Collider, which its body keeps in
         /// shape from then on): the movement doesn't need one, so the character should move exactly as it did without
         /// it. After spawning it.

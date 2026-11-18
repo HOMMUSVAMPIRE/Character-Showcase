@@ -222,30 +222,41 @@ namespace CharacterShowcase.Tests
             public bool Rolled => stepsAfterLanding >= 0;
         }
 
+        /// <summary>A fall to land from: how high (a share of the landing roll's fall), moving or not, and whether it rolls.</summary>
+        public struct LandingCase
+        {
+            public string name;
+            public float shareOfLandingRollFall;
+            public bool moving, rolls;
+            public override string ToString() => name;
+        }
+
+        private static readonly LandingCase[] LandingCases =
+        {
+            new() { name = "AHighFall_WhileMoving", shareOfLandingRollFall = 1.2f, moving = true, rolls = true },
+            new() { name = "AHighFall_StandingStill", shareOfLandingRollFall = 1.2f, moving = false, rolls = false },
+            new() { name = "ALowFall_WhileMoving", shareOfLandingRollFall = 0.6f, moving = true, rolls = false },
+        };
+
+        /// <summary>
+        /// Landing from a fall higher than the landing roll's while moving rolls on impact, the way the character's
+        /// going; landing from one standing still, or from a lower fall, doesn't roll.
+        /// </summary>
         [UnityTest]
-        public IEnumerator LandingFromAHighFall_WhileMoving_RollsOnImpact_TheWayItsGoing()
+        public IEnumerator Landing_RollsOnImpact_TheWayItsGoing_OnlyFromAHighFallWhileMoving([ValueSource(nameof(LandingCases))] LandingCase landing)
         {
             var record = new LandingRecord();
-            yield return DropOnto(1.2f, 5f, Vector3.right, record);
+            yield return DropOnto(landing.shareOfLandingRollFall, landing.moving ? 5f : 0f, landing.moving ? Vector3.right : Vector3.zero, record);
+            if (!landing.rolls)
+            {
+                Assert.That(record.Rolled, Is.False, landing.moving
+                    ? "Landing from a fall lower than the landing roll's shouldn't roll."
+                    : "Landing from a fall without moving shouldn't roll.");
+                yield break;
+            }
             Assert.That(record.Rolled, Is.True, "Landing from a high fall while moving should roll.");
             Assert.That(record.stepsAfterLanding, Is.LessThanOrEqualTo(1), "The roll should start on impact.");
             Assert.That(Vector3.Angle(record.direction, Vector3.right), Is.LessThan(5f), "The roll should go the way the character was moving.");
-        }
-
-        [UnityTest]
-        public IEnumerator LandingFromAHighFall_StandingStill_DoesNotRoll()
-        {
-            var record = new LandingRecord();
-            yield return DropOnto(1.2f, 0f, Vector3.zero, record);
-            Assert.That(record.Rolled, Is.False, "Landing from a fall without moving shouldn't roll.");
-        }
-
-        [UnityTest]
-        public IEnumerator LandingFromALowFall_WhileMoving_DoesNotRoll()
-        {
-            var record = new LandingRecord();
-            yield return DropOnto(0.6f, 5f, Vector3.right, record);
-            Assert.That(record.Rolled, Is.False, "Landing from a fall lower than the landing roll's shouldn't roll.");
         }
 
         [UnityTest]

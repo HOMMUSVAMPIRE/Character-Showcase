@@ -10,8 +10,8 @@ namespace CharacterShowcase.Tests
     /// Tests of momentum carried onto the ground: walking (or sprinting) only makes up the difference between the momentum
     /// the character carries and its walking speed, so landing from a jump doesn't add walking on top of the air speed,
     /// hopping again and again (a jump the step after each landing) never builds up speed, and momentum faster than walking
-    /// (landing from a sprint jump, walking) is carried and eases down to walking, never below it. The test camera looks
-    /// down +Z.
+    /// (landing from a sprint jump, walking) is carried and eases down to walking, never below it; and in the air, steering
+    /// doesn't stack on the momentum carried off the ground. The test camera looks down +Z.
     /// </summary>
     [Category(TestArea.Movement)]
     public class GroundMomentumTests : CharacterRigFixture
@@ -51,6 +51,30 @@ namespace CharacterShowcase.Tests
             Assert.That(landed, Is.True, "Test setup: the jump should have landed.");
             Assert.That(fastestOnLanding, Is.LessThanOrEqualTo(SpeedFor(sprint) * 1.02f),
                 "Landing should keep the speed the character had, without walking added on top of it.");
+        }
+
+        /// <summary>
+        /// Jumping while walking (or sprinting), and steering on forward through the jump, the character keeps its speed
+        /// in the air, without air steering stacking on top of the momentum it carries.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator JumpingOnTheMove_KeepsItsSpeedInTheAir_WithoutAirSteeringStackingOnIt([Values(false, true)] bool sprint)
+        {
+            yield return RunningStart(sprint);
+            if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
+            float fastest = 0f;
+            yield return rig.Run(0.8f, i =>
+            {
+                Inputs inputs = Forward(sprint, i);
+                if (i < 5) { inputs.jump = CharacterTestRig.Held(i); }
+                return inputs;
+            }, _ =>
+            {
+                if (!rig.Grounded) { fastest = Mathf.Max(fastest, rig.HorizontalSpeed); }
+            });
+
+            Assert.That(fastest, Is.GreaterThan(0.9f * SpeedFor(sprint)), "Jumping on the move should keep the character's speed.");
+            Assert.That(fastest, Is.LessThan(1.05f * SpeedFor(sprint)), "Air steering stacked on top of the carried momentum.");
         }
 
         [UnityTest]

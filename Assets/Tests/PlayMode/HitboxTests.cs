@@ -179,10 +179,14 @@ namespace CharacterShowcase.Tests
             Assert.That(speed, Is.GreaterThan(0.6f * rig.WalkSpeed), "With solid hitboxes, the character should still walk freely.");
         }
 
+        /// <summary>
+        /// A timing gate sees the fox walk through it, by its hitboxes (it has no collider either). Only the fox: the
+        /// Character's hitboxes triggering gates is what every TimingGateTests test already rests on.
+        /// </summary>
         [UnityTest]
-        public IEnumerator ATimingGate_SeesTheCharacterWalkThroughIt([ValueSource(nameof(Characters))] string character)
+        public IEnumerator ATimingGate_SeesTheCharacterWalkThroughIt()
         {
-            yield return Spawn(character);
+            yield return Spawn("Fox");
             GameObject gate = rig.Box("Start Gate", new Vector3(0f, 1f, 3f), new Vector3(4f, 2f, 0.2f));
             var timer = gate.AddComponent<CourseTimer>();
             var timing = gate.AddComponent<TimingGate>();

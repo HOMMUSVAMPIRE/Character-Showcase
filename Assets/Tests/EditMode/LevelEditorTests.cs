@@ -127,8 +127,14 @@ namespace CharacterShowcase.Tests.EditMode
             return window;
         }
 
+        /// <summary>
+        /// The editor's edits of pieces, on one preview of the Level Playground (building it is most of each check's
+        /// time): adding a piece where it's placed, deleting it as the Delete key does and undoing that; duplicating the
+        /// picked piece; and a piece whose objects are deleted from the scene taken out of the spec. Each counts the
+        /// pieces from where the one before left them.
+        /// </summary>
         [Test]
-        public void TheEditor_AddsAPieceWhereItsPlaced_AndDeletesIt()
+        public void TheEditor_AddsAPieceWhereItsPlaced_DeletesIt_DuplicatesIt_AndFollowsTheScene()
         {
             LevelEditorWindow window = OpenWithPreview();
             try
@@ -155,33 +161,17 @@ namespace CharacterShowcase.Tests.EditMode
                 // Undo brings it back.
                 Undo.PerformUndo();
                 Assert.AreEqual(before + 1, Count(window));
-            }
-            finally { Object.DestroyImmediate(window); }
-        }
 
-        [Test]
-        public void TheEditor_DuplicatesThePickedPiece()
-        {
-            LevelEditorWindow window = OpenWithPreview();
-            try
-            {
-                int before = Count(window);
+                // Duplicating the picked piece.
+                before = Count(window);
                 Assert.IsTrue(window.SelectPiece("Beam End (+4)"));
                 Assert.IsTrue(window.RunCommand("Duplicate"));
                 Assert.AreEqual(before + 1, Count(window));
                 StringAssert.Contains("\"name\": \"Beam End (+4) (Copy)\", \"x0\": -22, \"x1\": -18, \"z0\": -38, \"z1\": -34", window.Json);
                 Assert.IsNotEmpty(window.CurrentPreview.ObjectsOf(window.Picked));
-            }
-            finally { Object.DestroyImmediate(window); }
-        }
 
-        [Test]
-        public void DeletingAPiecesObjectsFromTheScene_TakesItOutOfTheSpec()
-        {
-            LevelEditorWindow window = OpenWithPreview();
-            try
-            {
-                int before = Count(window);
+                // Deleting a piece's objects from the scene takes it out of the spec.
+                before = Count(window);
                 Assert.IsTrue(window.SelectPiece("Lift Landing (+4)"));
                 foreach (GameObject o in window.CurrentPreview.ObjectsOf(window.Picked)) { Object.DestroyImmediate(o); }
                 window.SyncWithScene();

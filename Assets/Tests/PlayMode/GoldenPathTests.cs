@@ -30,6 +30,8 @@ namespace CharacterShowcase.Tests
     /// checking, so a path that no longer exercises what it should is caught too.
     /// </summary>
     [Category(TestArea.Movement)]
+    [Category(TestArea.Abilities)]
+    [Category(TestArea.Traversal)]
     public class GoldenPathTests : CharacterRigFixture
     {
         /// <summary>The environment variable that, set to 1, records the paths (and their tuning) instead of checking them.</summary>
@@ -357,11 +359,27 @@ namespace CharacterShowcase.Tests
         // ---- The test ----
 
         /// <summary>
-        /// Each run, as the character is (with no collider), and with a collider of its body's added: the movement doesn't
-        /// need one (see CharacterBody), so the character must follow the same path either way. Recorded without.
+        /// The runs whose paths turn on meeting things (steps and slopes, a vault's wall, a ledge, a platform carrying the
+        /// character), which are run with a collider of the body's added too (see FollowsItsRecordedPath_WithACollider).
+        /// </summary>
+        private static readonly string[] ContactHeavy = { "StairsAndRamps", "Vault", "LedgeHangAndClimb", "MovingPlatform" };
+
+        private static IEnumerable<string> ContactHeavyNames() => ContactHeavy;
+
+        /// <summary>Each run, as the character is (with no collider), following the path recorded for it.</summary>
+        [UnityTest]
+        public IEnumerator FollowsItsRecordedPath([ValueSource(nameof(ScenarioNames))] string name) => Follow(name, withCollider: false);
+
+        /// <summary>
+        /// The runs that meet things most, with a collider of the character's body added: the movement doesn't need one
+        /// (see CharacterBody), so the character must follow the same path either way. Only those: every run with one
+        /// doubled the suite's golden paths, for paths that meet little (BodyShapeTests also checks a character moves
+        /// exactly as it would without one).
         /// </summary>
         [UnityTest]
-        public IEnumerator FollowsItsRecordedPath([ValueSource(nameof(ScenarioNames))] string name, [Values(true, false)] bool withCollider)
+        public IEnumerator FollowsItsRecordedPath_WithACollider([ValueSource(nameof(ContactHeavyNames))] string name) => Follow(name, withCollider: true);
+
+        private IEnumerator Follow(string name, bool withCollider)
         {
             if (Recording && withCollider) { Assert.Ignore("The paths are recorded without a collider (and checked with one too)."); }
             Scenario scenario = Scenarios.Single(s => s.name == name);

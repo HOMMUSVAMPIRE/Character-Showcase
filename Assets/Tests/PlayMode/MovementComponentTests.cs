@@ -10,16 +10,14 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Tests of a movement mode's components (ComposedMovementMode): a component turned off, or removed, is left out of
-    /// the movement as if it weren't there; one turned off while it has the character lets go of it; and a test's change
-    /// to a component's settings is to the rig's own copy, not the asset. Bounce pads and ziplines stand in for any
-    /// component that takes over the character; jumping and dashing, which act on top of walking, and walking and falling
-    /// themselves, are turned off too.
+    /// the movement as if it weren't there, and one turned off while it has the character lets go of it (how the rig
+    /// changes their settings is CharacterTestRigTests'). Bounce pads and ziplines stand in for any component that
+    /// takes over the character; jumping and dashing, which act on top of walking, and walking and falling themselves,
+    /// are turned off too.
     /// </summary>
     [Category(TestArea.Movement)]
     public class MovementComponentTests : CharacterRigFixture
     {
-
-
         /// <summary>A floor, a downhill zipline, and the character in mid-air with its hands just above the cable.</summary>
         private IEnumerator UnderAZipline()
         {
@@ -123,42 +121,6 @@ namespace CharacterShowcase.Tests
             rig.Component<FallAndAirHandling>().Enabled = true;
             yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Turned back on, the character should fall to the floor.");
-        }
-
-        [UnityTest]
-        public IEnumerator AComponentsSettings_ChangedByATest_AreTheRigsOwnCopy()
-        {
-            yield return UnderAZipline();
-            var asset = CharacterTestRig.CharacterPrefab().GetComponent<MovementController>().movementHandler as ComposedMovementMode;
-            Assume.That(asset, Is.Not.Null, "Test setup: the character's movement mode should be made of components.");
-            float authored = asset.Get<Ziplines>(includeDisabled: true).ZiplineGrabReach;
-            rig.SetMovementSetting("ziplineGrabReach", authored + 1f);
-            Assert.That(rig.Component<Ziplines>().ZiplineGrabReach, Is.EqualTo(authored + 1f));
-            Assert.That(asset.Get<Ziplines>(includeDisabled: true).ZiplineGrabReach, Is.EqualTo(authored), "The asset's component should be left as it was.");
-        }
-
-        /// <summary>
-        /// A test asking for a setting as the wrong type (an int literal for a float setting) fails, rather than being
-        /// ignored as a test of a setting the mode doesn't have, which would quietly stop it testing anything.
-        /// </summary>
-        [UnityTest]
-        public IEnumerator ASettingOfAnotherType_FailsTheTest_WhereAMissingOneIgnoresIt()
-        {
-            yield return rig.StandOnFloor();
-            // Asked for as the wrong type on purpose, through a constant: the hygiene check fails a test that reads a
-            // setting by its name as another type than it's declared.
-            const string floatSetting = "ziplineGrabReach";
-            Assert.Throws<AssertionException>(() => rig.MovementSetting<int>(floatSetting),
-                "Reading a float setting as an int should fail the test.");
-            Assert.Throws<AssertionException>(() => rig.SetMovementSetting(floatSetting, 0),
-                "Setting a float setting with an int should fail the test.");
-            // Named through a constant: the hygiene check fails a setting name the tests use that no movement code
-            // declares, as this one deliberately isn't.
-            const string missing = "noSuchSetting";
-            Assert.Throws<IgnoreException>(() => rig.MovementSetting<float>(missing),
-                "A setting the mode doesn't have should ignore the test.");
-            Assert.That(rig.MovementSetting<float>("ziplineGrabReach"), Is.EqualTo(rig.Component<Ziplines>().ZiplineGrabReach),
-                "Asked for as its own type, the setting should be found.");
         }
     }
 }

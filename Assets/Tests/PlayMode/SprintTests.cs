@@ -8,8 +8,8 @@ namespace CharacterShowcase.Tests
 {
     /// <summary>
     /// Tests of sprinting: holding Sprint moves the character at its movement mode's run speed instead of its walk
-    /// speed, on the ground and steering in the air, and letting go walks again. Speeds are read from the movement
-    /// mode, so retuning them doesn't break the tests.
+    /// speed, and letting go walks again (keeping the sprint's speed in the air is in GroundMomentumTests). Speeds are
+    /// read from the movement mode, so retuning them doesn't break the tests.
     /// </summary>
     [Category(TestArea.Movement)]
     public class SprintTests : CharacterRigFixture
@@ -52,28 +52,6 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.5f, step => CharacterTestRig.Sprint(Vector3.zero, step));
             Vector3 moved = rig.Position - start;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.05f), "Holding Sprint alone shouldn't move the character.");
-        }
-
-        [UnityTest]
-        public IEnumerator SprintJump_KeepsRunSpeedInTheAir_WithoutStacking()
-        {
-            yield return Stand();
-            yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward, step));
-
-            // Jump while sprinting, and keep sprinting forward through the jump.
-            float fastest = 0f;
-            yield return rig.Run(0.8f, step =>
-            {
-                Inputs inputs = step < 5 ? CharacterTestRig.Jump(step, Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
-                inputs.sprint = CharacterTestRig.Sprint(Vector3.forward, step + 100).sprint;
-                return inputs;
-            }, _ =>
-            {
-                if (!rig.Grounded) { fastest = Mathf.Max(fastest, rig.HorizontalSpeed); }
-            });
-
-            Assert.That(fastest, Is.GreaterThan(0.9f * rig.RunSpeed), "Jumping while sprinting should keep the sprinting speed.");
-            Assert.That(fastest, Is.LessThan(1.05f * rig.RunSpeed), "Air steering stacked on top of the carried sprint momentum.");
         }
     }
 }

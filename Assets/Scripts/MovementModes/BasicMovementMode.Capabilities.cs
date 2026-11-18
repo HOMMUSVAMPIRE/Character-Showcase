@@ -130,13 +130,48 @@ namespace Character
         private float JumpAcross(MovementSimulation simulation, bool sprint, out int airtime, int dashAt = -1, int secondJumpAt = -1)
         {
             airtime = 0;
-            simulation.Reset(Vector3.zero);
-            simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, sprint));
-            if (!simulation.Grounded) { return float.NaN; }
-            float start = simulation.Position.z;
+            // The attempts (a jump with a second jump and an air dash at every time worth trying) share their start: the
+            // same run-up, and the same steps until their inputs differ. Before its second jump, an attempt is the one
+            // without it (the trunk); after it, it's on that second jump's branch; and before its dash, it's the one
+            // without a dash. Each attempt starts from the furthest point of its path an earlier attempt saved (see
+            // MovementSimulation.KeepOnPath), and saves the point where it leaves it (its dash; or, its second jump), from
+            // which the next attempt of a search (a step or two on) carries on, rather than every attempt running from
+            // the start. The steps are the same either way: so the measurement is too, exactly.
+            string runUp = sprint ? "sprinting run-up" : "walking run-up";
+            string trunk = runUp, branch = secondJumpAt >= 0 ? $"{runUp}, second jump at {secondJumpAt}" : null;
+            // The state before step i is on the trunk while the second jump hasn't begun (Jump's let go the step before
+            // it), and shared only up to the dash.
+            string PathOf(int i) => branch == null || i <= secondJumpAt - 1 ? trunk : branch;
+            int steps = MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout);
+            int shareUpTo = dashAt >= 0 ? dashAt : steps - 1;
+
+            int first = 0;
+            float start = 0f;
             bool left = false;
-            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+            object extra = null;
+            bool restored = branch != null && shareUpTo >= secondJumpAt && simulation.RestoreFurthestOnPath(branch, shareUpTo, out first, out extra);
+            if (!restored)
             {
+                restored = simulation.RestoreFurthestOnPath(trunk, branch != null ? Mathf.Min(shareUpTo, secondJumpAt - 1) : shareUpTo, out first, out extra);
+            }
+            if (restored) { (start, left, airtime) = ((float, bool, int))extra; }
+            else
+            {
+                first = 0;
+                // Every attempt runs up the same way: run once, and each attempt after starts from where it left the
+                // character (see MovementSimulation.Begin).
+                simulation.Begin(runUp, () =>
+                {
+                    simulation.Reset(Vector3.zero);
+                    simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, sprint));
+                });
+                if (!simulation.Grounded) { return float.NaN; }
+                start = simulation.Position.z;
+            }
+            for (int i = first; i < steps; i++)
+            {
+                // Where this attempt leaves its path: kept for the next attempt of its search.
+                if (i > 0 && (i == dashAt || (branch != null && i == secondJumpAt - 1))) { simulation.KeepOnPath(PathOf(i), i, (start, left, airtime)); }
                 Inputs inputs = MovementSimulation.Move(Vector3.forward, sprint);
                 // Jump held from the first step; let go for a step before a second press, then held again.
                 inputs.jump = secondJumpAt < 0 || i < secondJumpAt - 1 ? MovementSimulation.Held(i)
@@ -149,11 +184,6 @@ namespace Character
             return float.NaN;
         }
 
-        /// <summary>
-        /// The highest top (m above the floor) the character stands on after jumping at it (moving with the given mode),
-        /// from a few distances back from its face, walking or sprinting, with a second press of Jump on step secondJumpAt
-        /// (none if negative): a binary search up to upTo. NaN if not even the lowest is reached.
-        /// </summary>
         private float HighestReached(MovementSimulation simulation, BasicMovementMode mode, float upTo, int secondJumpAt)
         {
             float best = float.NaN;

@@ -143,25 +143,21 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f));
         }
 
+        /// <summary>
+        /// Sliding turned off, either way (Sliding Enabled off, or a Slide Max Duration of 0), crouching while sprinting
+        /// crouches instead.
+        /// </summary>
         [UnityTest]
-        public IEnumerator ASlideMaxDurationOfZero_TurnsSlidingOff()
+        public IEnumerator SlidingTurnedOff_CrouchesInstead([Values(false, true)] bool byMaxDurationOfZero)
         {
             yield return SprintForward();
-            rig.SetMovementSetting("slideMaxDuration", 0f);
+            if (byMaxDurationOfZero) { rig.SetMovementSetting("slideMaxDuration", 0f); }
+            else { rig.Component<Crouching>().SlidingEnabled = false; }
             bool slid = false;
             yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
-            Assert.That(slid, Is.False, "With no slide length, crouching while sprinting shouldn't slide.");
-            Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
-        }
-
-        [UnityTest]
-        public IEnumerator SlidingTurnedOff_CrouchesInstead()
-        {
-            yield return SprintForward();
-            rig.Component<Crouching>().SlidingEnabled = false;
-            bool slid = false;
-            yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
-            Assert.That(slid, Is.False, "With Sliding Enabled off, crouching while sprinting shouldn't slide.");
+            Assert.That(slid, Is.False, byMaxDurationOfZero
+                ? "With no slide length, crouching while sprinting shouldn't slide."
+                : "With Sliding Enabled off, crouching while sprinting shouldn't slide.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
         }
 

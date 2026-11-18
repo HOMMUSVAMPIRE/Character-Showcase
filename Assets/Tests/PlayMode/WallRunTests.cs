@@ -130,14 +130,23 @@ namespace CharacterShowcase.Tests
             Assert.That(ran, Is.False, "A wall run needs steering along the wall.");
         }
 
+        /// <summary>
+        /// Steering into the wall stops a wall run starting: heading straight into it (launched into it too), or moving
+        /// along it but steering well into it, past the most a wall run's steering may be off along it.
+        /// </summary>
         [UnityTest]
-        public IEnumerator HeadingStraightIntoTheWall_NoWallRunStarts()
+        public IEnumerator SteeringIntoTheWall_HeadOnOrAtAnAngle_NoWallRunStarts([Values(true, false)] bool headOn)
         {
             yield return SetUpWall();
-            yield return rig.Launch(Vector3.right * WallRunSpeed, CharacterTestRig.Move(Vector3.right));
+            // The wall is on the right, +X: head-on, launched and steered straight at it; else moving along it, steering
+            // well into it.
+            float angle = headOn ? 90f : rig.MovementSetting<float>("wallRunMaxSteerAngle") + 15f;
+            Vector3 steer = headOn ? Vector3.right : Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
+            Vector3 launch = headOn ? Vector3.right : Vector3.forward;
+            yield return rig.Launch(launch * WallRunSpeed, CharacterTestRig.Move(steer));
             bool ran = false;
-            yield return rig.Run(0.4f, _ => CharacterTestRig.Move(Vector3.right), _ => ran |= WallRunning);
-            Assert.That(ran, Is.False, "Running into a wall head-on shouldn't wall-run.");
+            yield return rig.Run(0.4f, _ => CharacterTestRig.Move(steer), _ => ran |= WallRunning);
+            Assert.That(ran, Is.False, headOn ? "Running into a wall head-on shouldn't wall-run." : "A wall run needs steering mostly along the wall.");
         }
 
         [UnityTest]
@@ -227,19 +236,6 @@ namespace CharacterShowcase.Tests
             bool ran = false;
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => ran |= WallRunning);
             Assert.That(ran, Is.False, "A wall that doesn't reach down to the character's feet shouldn't be run along.");
-        }
-
-        [UnityTest]
-        public IEnumerator SteeringIntoTheWallAtAnAngle_NoWallRunStarts()
-        {
-            yield return SetUpWall();
-            // Moving along the wall, but steering well into it (the wall is on the right, +X).
-            float angle = rig.MovementSetting<float>("wallRunMaxSteerAngle") + 15f;
-            Vector3 steer = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
-            yield return rig.Launch(Vector3.forward * WallRunSpeed, CharacterTestRig.Move(steer));
-            bool ran = false;
-            yield return rig.Run(0.4f, _ => CharacterTestRig.Move(steer), _ => ran |= WallRunning);
-            Assert.That(ran, Is.False, "A wall run needs steering mostly along the wall.");
         }
 
         [UnityTest]

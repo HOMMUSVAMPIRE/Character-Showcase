@@ -17,8 +17,9 @@ namespace CharacterShowcase.Tests
     /// away; Crouch lets go, taking hold again only after the regrab delay; and pressing down at the bottom steps off. The
     /// test camera looks down +Z, so up on the stick is +Z input. Painted climbable surfaces: only the painted part of a
     /// wall is taken hold of and climbed, the character staying within the paint; a box painted on one face isn't
-    /// climbed round its corner, but is once the face round it is painted too; and paint is for the face painted, erased
-    /// as painted. Expected values are read from the movement mode's settings.
+    /// climbed round its corner, but is once the face round it is painted too (that paint is for the face painted, erased
+    /// as painted, is checked in EditMode's ClimbablePaintTests). Expected values are read from the movement mode's
+    /// settings.
     /// </summary>
     [Category(TestArea.Traversal)]
     public class WallClimbTests : CharacterRigFixture
@@ -227,20 +228,31 @@ namespace CharacterShowcase.Tests
             Assert.That(side - (rig.Position.x + rig.FrontExtent), Is.EqualTo(0f).Within(0.05f), "The character should be against the side wall.");
         }
 
+        /// <summary>
+        /// Climbing up to a walkable top, the character climbs over onto it (a climb up onto a ledge), starting the climb
+        /// as soon as its hands reach the top, as from hanging.
+        /// </summary>
         [UnityTest]
-        public IEnumerator ClimbingUpToAWalkableTop_ClimbsOverOntoIt()
+        public IEnumerator ClimbingUpToAWalkableTop_ClimbsOverOntoIt_FromWhereTheHandsReachIt()
         {
             yield return SetUpStanding();
             // Too high to reach from the ground: it has to be climbed.
-            const float top = 3.5f;
+            const float top = 4f;
             // Deep, so walking on after climbing onto it doesn't walk off its far side.
             rig.ClimbableBox("Block", new Vector3(0f, top / 2f, face + 5f), new Vector3(4f, top, 10f));
             rig.ClearEvents();
             var events = rig.EventsRaised;
             yield return TakeHold();
-            yield return rig.Run(top / rig.ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up);
-            Assert.That(Climbing, Is.False);
+            float climbStartFeet = float.NaN;
+            yield return rig.Run(top / rig.ClimbSpeed + rig.Component<Ledges>().LedgeClimbDuration * rig.Movement.DurationScale + 0.5f, _ => Up, _ =>
+            {
+                if (float.IsNaN(climbStartFeet) && rig.InState(CharacterState.LedgeClimbing)) { climbStartFeet = rig.Position.y; }
+            });
 
+            Assert.That(climbStartFeet, Is.Not.NaN, "The character should climb onto the top.");
+            float reach = rig.MovementSetting<float>("ledgeGrabMaxHeight") * rig.StandingHeight;
+            float lowest = rig.MovementSetting<float>("ledgeGrabMinHeight") * rig.StandingHeight;
+            Assert.That(top - climbStartFeet, Is.InRange(lowest, reach + 0.1f), "The climb onto the top should start as soon as the hands reach it, as from hanging.");
             Assert.That(Climbing, Is.False, "The character should no longer be climbing.");
             Assert.That(rig.Grounded, Is.True, "The character should be standing on top.");
             Assert.That(rig.Position.y, Is.EqualTo(top).Within(0.05f), "The character should be on top of the block.");
@@ -291,20 +303,42 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should still be in mid-air.");
         }
 
+        /// <summary>
+        /// At the bottom, pressing down steps off the wall onto the ground, holding still for the exit time first, then
+        /// walking away; higher up, letting go with Crouch drops at once, without stepping off.
+        /// </summary>
         [UnityTest]
-        public IEnumerator AtTheBottom_PressingDown_StepsOffOntoTheGround()
+        public IEnumerator AtTheBottom_PressingDown_StepsOff_HoldingStillForTheExitTime_ButLettingGoHigherUpDoesNot()
         {
             yield return SetUpWall();
             rig.ClearEvents();
             var events = rig.EventsRaised;
             yield return TakeHold();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should be at the bottom, on the ground.");
-            float atWall = rig.Position.z;
-            yield return rig.Run(ExitDuration + 0.5f, _ => Down);
+            Vector3 start = rig.Position;
+            int exitingSteps = 0;
+            yield return rig.Run(ExitDuration + 0.5f, _ => Down, _ =>
+            {
+                if (rig.Movement.wallClimb.IsExiting)
+                {
+                    exitingSteps++;
+                    Assert.That(Mathf.Abs(rig.Position.y - start.y) + Mathf.Abs(rig.Position.x - start.x), Is.LessThan(0.01f), "Stepping off the wall, the character should hold still.");
+                }
+            });
+            Assert.That(exitingSteps * Time.fixedDeltaTime, Is.EqualTo(ExitDuration).Within(Time.fixedDeltaTime), "Stepping off should take the exit time.");
             Assert.That(Climbing, Is.False, "Pressing down at the bottom should step off the wall.");
-            Assert.That(rig.Position.z, Is.LessThan(atWall - 0.5f), "The character should walk away from the wall.");
+            Assert.That(rig.Position.z, Is.LessThan(start.z - 0.5f), "The character should walk away from the wall.");
             Assert.That(events.Count(e => e == MovementEvents.WallClimbStarted), Is.EqualTo(1));
             Assert.That(events.Count(e => e == MovementEvents.WallClimbEnded), Is.EqualTo(1));
+
+            // Higher up, letting go with Crouch drops at once.
+            yield return rig.Run(0.6f, _ => Up);
+            yield return TakeHold();
+            yield return rig.Run(1f, _ => Up);
+            bool exited = false;
+            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), _ => exited |= rig.Movement.wallClimb.IsExiting);
+            Assert.That(Climbing, Is.False, "Crouch should let go.");
+            Assert.That(exited, Is.False, "Letting go in mid-air shouldn't play stepping off.");
         }
 
         [UnityTest]
@@ -391,23 +425,6 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator Paint_IsForTheFacePainted_AndErasedAsPainted()
-        {
-            yield return SetUpPaintableWall(new Vector3(4f, 4f, 0.2f));
-            var front = new Vector3(0f, 2f, face);
-            var back = new Vector3(0f, 2f, face + 0.2f);
-            Assert.That(painted.Paint(front, Vector3.back, 0.5f), Is.GreaterThan(0));
-            Assert.That(painted.IsPaintedAt(front, Vector3.back, atEdge: false), Is.True, "The point painted should be painted.");
-            Assert.That(painted.IsPaintedAt(front + Vector3.right * 0.3f, Vector3.back, atEdge: false), Is.True, "The brush's area should be painted.");
-            Assert.That(painted.IsPaintedAt(front + Vector3.right * 1.2f, Vector3.back, atEdge: false), Is.False, "Beyond the brush shouldn't be painted.");
-            Assert.That(painted.IsPaintedAt(back, Vector3.forward, atEdge: false), Is.False, "The back of a thin wall shouldn't be painted with its front.");
-
-            Assert.That(painted.Erase(front, Vector3.back, 0.2f), Is.GreaterThan(0));
-            Assert.That(painted.IsPaintedAt(front, Vector3.back, atEdge: false), Is.False, "An erased point shouldn't be painted.");
-            Assert.That(painted.IsPaintedAt(front + Vector3.right * 0.4f, Vector3.back, atEdge: false), Is.True, "Erasing should leave the paint beyond it.");
-        }
-
-        [UnityTest]
         public IEnumerator TakingHoldOfAClimbableWall_GivesBackAirDashesAndJumps_AsLandingDoes()
         {
             rig.Floor();
@@ -459,52 +476,6 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.3f, _ => Up, _ => entered |= rig.Movement.wallClimb.IsEntering);
             Assert.That(Climbing, Is.True, "Test setup: the character should have taken hold.");
             Assert.That(entered, Is.False, "Taking hold in mid-air shouldn't play stepping onto the wall.");
-        }
-
-        [UnityTest]
-        public IEnumerator SteppingOffTheBottom_HoldsStillForTheExitTime_ButLettingGoOrJumpingOffDoesNot()
-        {
-            yield return SetUpWall();
-            yield return TakeHold();
-            Vector3 start = rig.Position;
-            int exitingSteps = 0;
-            yield return rig.Run(ExitDuration + 0.3f, _ => Down, _ =>
-            {
-                if (rig.Movement.wallClimb.IsExiting)
-                {
-                    exitingSteps++;
-                    Assert.That(Mathf.Abs(rig.Position.y - start.y) + Mathf.Abs(rig.Position.x - start.x), Is.LessThan(0.01f), "Stepping off the wall, the character should hold still.");
-                }
-            });
-            Assert.That(exitingSteps * Time.fixedDeltaTime, Is.EqualTo(ExitDuration).Within(Time.fixedDeltaTime), "Stepping off should take the exit time.");
-            Assert.That(Climbing, Is.False);
-
-            // Higher up, letting go with Crouch drops at once.
-            yield return rig.Run(0.6f, _ => Up);
-            yield return TakeHold();
-            yield return rig.Run(1f, _ => Up);
-            bool exited = false;
-            yield return rig.Run(0.2f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), _ => exited |= rig.Movement.wallClimb.IsExiting);
-            Assert.That(Climbing, Is.False, "Crouch should let go.");
-            Assert.That(exited, Is.False, "Letting go in mid-air shouldn't play stepping off.");
-        }
-
-        [UnityTest]
-        public IEnumerator PushingUpWithAWalkableTopWithinReach_ClimbsOntoIt_FromWhereTheHandsReachIt()
-        {
-            yield return SetUpStanding();
-            const float top = 4f;
-            rig.ClimbableBox("Block", new Vector3(0f, top / 2f, face + 5f), new Vector3(4f, top, 10f));
-            yield return TakeHold();
-            float climbStartFeet = float.NaN;
-            yield return rig.Run((top - 1f) / rig.ClimbSpeed + 0.5f, _ => Up, _ =>
-            {
-                if (float.IsNaN(climbStartFeet) && rig.InState(CharacterState.LedgeClimbing)) { climbStartFeet = rig.Position.y; }
-            });
-            Assert.That(climbStartFeet, Is.Not.NaN, "The character should climb onto the top.");
-            float reach = rig.MovementSetting<float>("ledgeGrabMaxHeight") * rig.StandingHeight;
-            float lowest = rig.MovementSetting<float>("ledgeGrabMinHeight") * rig.StandingHeight;
-            Assert.That(top - climbStartFeet, Is.InRange(lowest, reach + 0.1f), "The climb onto the top should start as soon as the hands reach it, as from hanging.");
         }
     }
 }

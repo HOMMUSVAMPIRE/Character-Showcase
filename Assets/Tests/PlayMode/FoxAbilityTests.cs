@@ -8,7 +8,8 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of what the fox can do beyond walking (Fox.prefab, with its movement mode, its Animator and its paw placement):
+    /// Tests of the fox's animation and what it can do beyond walking (Fox.prefab, with its movement mode, its Animator and
+    /// its paw placement): its own Animator's states as it trots, crouches and jumps (Locomotion, Crouch, Airborne);
     /// swimming, at the surface of deep water at its swim depth, its head out of the water, paddling (Swim), at its swim
     /// speed, without diving; and wall-running, along a wall in mid-air (Wall Run), its body rolled toward the wall, its
     /// paws on the wall's face and nothing of it through the wall. Its tuning is read from its own movement mode. The
@@ -17,6 +18,9 @@ namespace CharacterShowcase.Tests
     /// </summary>
     public class FoxAbilityTests : AnimationTestsBase
     {
+        // Its wall run and swimming read what paw placement updates each frame (the wall's roll, the swim's paddle).
+        protected override bool StepsPhysicsWithTheAnimation => false;
+
         private const string FoxPrefabPath = "Assets/Prefabs/Fox.prefab";
 
         private PawPlacementIK paws;
@@ -45,6 +49,23 @@ namespace CharacterShowcase.Tests
         private bool InState(string state) => animator.GetCurrentAnimatorStateInfo(0).IsName(state);
 
         private Transform Bone(string name) => animator.GetComponentsInChildren<Transform>().First(t => t.name == name);
+
+        [UnityTest]
+        public IEnumerator TheFox_PlaysLocomotion_Crouch_AndAirborne()
+        {
+            rig.Floor();
+            yield return SpawnFox(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle(), StepAnimator); // Settled on the floor.
+
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
+            Assert.That(InState("Locomotion"), Is.True, "Trotting, the fox should play Locomotion.");
+            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), StepAnimator);
+            Assert.That(InState("Crouch"), Is.True, "Crouched, the fox should play Crouch.");
+            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), StepAnimator);
+            bool airborne = false;
+            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), step => { StepAnimator(step); airborne |= InState("Airborne"); });
+            Assert.That(airborne, Is.True, "Jumping, the fox should play Airborne.");
+        }
 
         /// <summary>Deep water with no floor under it (only swimming holds the fox up), and the fox in it, swimming.</summary>
         private IEnumerator SwimInDeepWater(System.Action<Level.Water> made)

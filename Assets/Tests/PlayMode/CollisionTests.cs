@@ -15,9 +15,6 @@ namespace CharacterShowcase.Tests
     public class CollisionTests : CharacterRigFixture
     {
 
-        private float CapsuleRadius => rig.BodyNow.radius;
-        private float CapsuleHeight => rig.BodyNow.height;
-
         [UnityTest]
         public IEnumerator JumpingIntoLowCeiling_FallsAwayInsteadOfSticking()
         {
@@ -27,7 +24,7 @@ namespace CharacterShowcase.Tests
             yield return rig.WaitForModel();
             // Half a step height above the head: the jump clears a step, so it reaches the ceiling.
             float headroom = 0.5f * rig.StepHeight;
-            float ceiling = CapsuleHeight + headroom;
+            float ceiling = rig.CurrentHeight + headroom;
             rig.Box("Ceiling", new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(10f, 1f, 10f));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
 
@@ -58,12 +55,12 @@ namespace CharacterShowcase.Tests
             yield return rig.WaitForModel();
             Dashing dash = rig.Component<Dashing>();
             // The wall's face halfway along the dash, so the dash reaches it with speed to spare.
-            float face = CapsuleRadius + 0.5f * dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration;
+            float face = rig.FrontExtent + 0.5f * dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration;
             GameObject wall = rig.Box("Wall", new Vector3(0f, 20f, face + 0.5f), new Vector3(10f, 100f, 1f));
 
             int dashSteps = CharacterTestRig.StepsFor(dash.DashDuration);
             yield return rig.Run(dashSteps + 3, step => step == 0 ? CharacterTestRig.Dash(0, Vector3.forward) : CharacterTestRig.Idle());
-            Assert.That(rig.Position.z, Is.EqualTo(face - CapsuleRadius).Within(0.05f), "The dash should end against the wall.");
+            Assert.That(rig.Position.z, Is.EqualTo(face - rig.FrontExtent).Within(0.05f), "The dash should end against the wall.");
 
             // Take the wall away: momentum the wall blocked shouldn't still be there to carry the character onward.
             wall.SetActive(false);
@@ -83,7 +80,7 @@ namespace CharacterShowcase.Tests
             // tall's doesn't.
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            float radius = CapsuleRadius;
+            float radius = rig.Movement.Body.FootprintRadius;
             rig.Box("Block", new Vector3(0f, 1f, -2f), new Vector3(4f, 2f, 4f)); // Its edge at z = 0.
             rig.Body.position = new Vector3(0f, 2f + 0.3f * radius, 0.85f * radius);
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
@@ -109,11 +106,11 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// Falling onto a walkable ramp, the character stops where it lands. (Removing only the part of the fall heading
-        /// into the ramp's surface would turn the rest into sliding down it.)
+        /// Falling onto a walkable ramp, the character stops where it lands, and stays there standing idle. (Removing only
+        /// the part of the fall heading into the ramp's surface would turn the rest into sliding down it.)
         /// </summary>
         [UnityTest]
-        public IEnumerator LandingOnAWalkableRamp_StopsWhereItLands()
+        public IEnumerator LandingOnAWalkableRamp_StopsWhereItLands_AndDoesntSlideIdle()
         {
             rig.SpawnCharacter(new Vector3(0f, 50f, 0f));
             yield return rig.WaitForModel();
@@ -132,6 +129,15 @@ namespace CharacterShowcase.Tests
 
             Vector3 moved = rig.Position - dropped;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.03f), "Landing on a walkable ramp turned the fall into a slide down it.");
+
+            // Standing idle there a while longer, it doesn't creep down the ramp either.
+            Assert.That(rig.Grounded, Is.True, "Character should be standing on the ramp.");
+            Vector3 settled = rig.Position;
+            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
+
+            Vector3 drift = rig.Position - settled;
+            Assert.That(new Vector2(drift.x, drift.z).magnitude, Is.LessThan(0.02f), "Character slid down the ramp while idle.");
+            Assert.That(Mathf.Abs(drift.y), Is.LessThan(0.02f), "Character slid down the ramp while idle.");
         }
 
         [UnityTest]
@@ -147,7 +153,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(1.4f, _ => CharacterTestRig.Idle(), _ =>
             {
                 float wallFace = wallBody.position.x + 0.5f;
-                deepest = Mathf.Max(deepest, wallFace - (rig.Position.x - CapsuleRadius));
+                deepest = Mathf.Max(deepest, wallFace - (rig.Position.x - rig.SideExtent));
             });
 
             Assert.That(rig.Position.x, Is.GreaterThan(1f), "The wall should have pushed the character along.");

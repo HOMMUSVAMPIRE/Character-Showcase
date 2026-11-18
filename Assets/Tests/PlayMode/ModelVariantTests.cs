@@ -146,6 +146,15 @@ namespace CharacterShowcase.Tests
 
         private static readonly Vector3[] Stretches = { new(1f, 2f, 1f), new(1f, 0.5f, 1f), new(2f, 1f, 0.5f) };
 
+        // The taller variant's top and hips unstretched: the baseline every stretch compares with, measured once per run
+        // of the fixture (by the first case) rather than again for each. Numbers only, so nothing of a disposed rig (or
+        // of a variant, destroyed after each test) is kept.
+        private (float top, float hips)? unstretchedTaller;
+
+        /// <summary>Starts each run of the fixture with no baseline measured, so none is left from an earlier run.</summary>
+        [OneTimeSetUp]
+        public void ForgetBaseline() => unstretchedTaller = null;
+
         /// <summary>
         /// An armature scaled unevenly (taller than wide, say) stretches the model, and stretching the character
         /// stretches it the same way on top: it stays in proportion, with its feet on the ground.
@@ -154,10 +163,14 @@ namespace CharacterShowcase.Tests
         public IEnumerator AModelWithAnUnevenlyScaledArmature_StaysInProportion_WhenStretched([ValueSource(nameof(Stretches))] Vector3 stretch)
         {
             void Taller(Transform armature) => armature.localScale = new Vector3(1f, 1.25f, 1f);
-            yield return StandVariant(Taller, Vector3.one);
-            (float bottom, float top) normal = Extent();
-            float normalHips = Bone(HumanBodyBones.Hips).y;
-            yield return ReplaceRig();
+            if (unstretchedTaller == null)
+            {
+                yield return StandVariant(Taller, Vector3.one);
+                unstretchedTaller = (Extent().top, Bone(HumanBodyBones.Hips).y);
+                yield return ReplaceRig();
+            }
+            (float top, float hips) normal = unstretchedTaller.Value;
+            float normalHips = normal.hips;
 
             yield return StandVariant(Taller, stretch);
             (float bottom, float top) stretched = Extent();

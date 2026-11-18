@@ -11,8 +11,8 @@ namespace CharacterShowcase.Tests
     /// Tests of the fox (Fox.prefab, made by FoxGenerator), the first creature that isn't a humanoid: it stands on its
     /// paws in a box body, its eye point at its eyes; trots as it walks and gallops sprinting, at its speeds; jumps once,
     /// to its jump height; crouches under what's too low to stand under; turns only as far as a corridor narrower than
-    /// it's long lets it; walks up and down stairs; plays its own Animator's states (Locomotion, Crouch, Airborne); and,
-    /// jumping onto a wall at an angle, runs along it.
+    /// it's long lets it; walks up and down stairs; and, jumping onto a wall at an angle, runs along it. (Its Animator's states are
+    /// FoxAbilityTests'.)
     /// Its tuning is read from its own movement mode, so retuning it doesn't fail them.
     /// </summary>
     [Category(TestArea.Movement)]
@@ -134,30 +134,6 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.y, Is.EqualTo(up ? top : 0f).Within(0.05f), up ? "It should be on the landing at the top." : "It should be at the bottom.");
         }
 
-        [UnityTest]
-        public IEnumerator TheFox_PlaysLocomotion_Crouch_AndAirborne()
-        {
-            yield return SpawnFox();
-            Animator animator = rig.Models.Animator;
-            AnimationController animation = rig.Animation;
-            animator.enabled = false; // Stepped here, with the movement, as the character's own update would each frame.
-            void Step(int _)
-            {
-                animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
-                animator.Update(Time.fixedDeltaTime);
-            }
-            bool InState(string state) => animator.GetCurrentAnimatorStateInfo(0).IsName(state);
-
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), Step);
-            Assert.That(InState("Locomotion"), Is.True, "Trotting, the fox should play Locomotion.");
-            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Step);
-            Assert.That(InState("Crouch"), Is.True, "Crouched, the fox should play Crouch.");
-            yield return rig.Run(0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle(), Step);
-            bool airborne = false;
-            yield return rig.Run(0.6f, step => CharacterTestRig.Jump(step), step => { Step(step); airborne |= InState("Airborne"); });
-            Assert.That(airborne, Is.True, "Jumping, the fox should play Airborne.");
-        }
-    
         /// <summary>
         /// Sprinting at a wall at an angle and jumping onto it, steering along it, the fox runs along the wall, for most of
         /// a wall run's longest time. (Its long box reaches the wall first with a corner; the run is judged by how far its

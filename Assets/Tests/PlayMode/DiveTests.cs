@@ -13,7 +13,7 @@ namespace CharacterShowcase.Tests
     /// swims, resting on its feet (the model drawn lowered to it), so it swims along the floor under an arch too low to
     /// stand under, and turns in a narrow channel only as far as it has room; underwater, the character swims the way the camera looks (looking down, forward swims down), and holding
     /// Jump or Crouch rises or sinks whichever way it looks; without input it drifts up (by its buoyancy, or holds its
-    /// depth with none) and is back at the surface, its collider standing again; a press of Jump underwater doesn't jump out at the surface; and a dive speed of 0 turns
+    /// depth with none) and is back at the surface, its body standing again; a press of Jump underwater doesn't jump out at the surface; and a dive speed of 0 turns
     /// diving off. The test camera looks down +Z (turned here to look up or down). Expected values are read from the
     /// movement mode's settings.
     /// </summary>
@@ -257,7 +257,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.DiveEnded));
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             Assert.That(FeetUnder, Is.EqualTo(rig.SwimDepth).Within(0.02f), "At the surface, the character should float at its swimming depth.");
-            Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f), "At the surface, the collider should stand again.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f), "At the surface, the body should stand again.");
         }
 
         [UnityTest]

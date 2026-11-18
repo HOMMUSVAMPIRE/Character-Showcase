@@ -8,7 +8,7 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of bodies of Unity's other primitive colliders (see PrimitiveBody), in place of the character's upright
+    /// Tests of bodies of the other primitive shapes (see BodyShape and PrimitiveBody), in place of the character's upright
     /// capsule: a box, a sphere, and a capsule centred off the feet each walk up to a wall and stop with their front
     /// against it, stand on the floor, and hold postures: lowered from the top (crouched), and laid down along the facing,
     /// resting on the feet (lying). Bodies that aren't round about the feet turn with the character.
@@ -18,25 +18,27 @@ namespace CharacterShowcase.Tests
     {
         private const float WallDistance = 2f;
 
-        private static void ABox(BoxCollider box)
-        {
-            box.size = new Vector3(0.8f, 1.8f, 0.6f);
-            box.center = new Vector3(0f, 0.9f, 0f);
-        }
+        private static BodyShape ABox => BodyShape.Box(new Vector3(0.8f, 1.8f, 0.6f));
 
-        private static void ASphere(SphereCollider sphere)
-        {
-            sphere.radius = 0.45f;
-            sphere.center = new Vector3(0f, 0.45f, 0f);
-        }
+        private static BodyShape ASphere => BodyShape.Sphere(0.45f);
 
         // A capsule whose middle is ahead of the feet (a body leaning forward, or one carried in front of its legs).
-        private static void ACapsuleAhead(CapsuleCollider capsule)
+        private static BodyShape ACapsuleAhead
         {
-            capsule.direction = 1;
-            capsule.radius = 0.4f;
-            capsule.height = 1.8f;
-            capsule.center = new Vector3(0f, 0.9f, 0.3f);
+            get
+            {
+                BodyShape capsule = BodyShape.Capsule(0.4f, 1.8f);
+                capsule.center = new Vector3(0f, 0.9f, 0.3f);
+                return capsule;
+            }
+        }
+
+        /// <summary>Gives the character the given body in place of its own (after spawning it), returning it.</summary>
+        private BodyShape UseBody(BodyShape shape)
+        {
+            Assert.That(rig.Movement.SetBody(shape, checkRoom: false), Is.True, $"Test setup: the character should take the body {shape}.");
+            Physics.SyncTransforms();
+            return shape;
         }
 
         private IEnumerator OnTheFloor()
@@ -61,7 +63,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator ABox_WalksUpToAWall_AndStopsWithItsFrontAgainstIt()
         {
             yield return OnTheFloor();
-            BoxCollider box = rig.UseBody<BoxCollider>(ABox);
+            BodyShape box = UseBody(ABox);
             Assert.That(rig.FrontExtent, Is.EqualTo(box.size.z / 2f).Within(1e-4f), "A box reaches half its depth ahead.");
             Assert.That(rig.SideExtent, Is.EqualTo(box.size.x / 2f).Within(1e-4f), "A box reaches half its width to the sides.");
             Assert.That(rig.Movement.Body.TurnsWithFacing, Is.True, "A box isn't round: it turns with the character.");
@@ -75,7 +77,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator ASphere_WalksUpToAWall_AndStopsWithItsFrontAgainstIt()
         {
             yield return OnTheFloor();
-            SphereCollider sphere = rig.UseBody<SphereCollider>(ASphere);
+            BodyShape sphere = UseBody(ASphere);
             Assert.That(rig.FrontExtent, Is.EqualTo(sphere.radius).Within(1e-4f));
             Assert.That(rig.Movement.Body.TurnsWithFacing, Is.False, "A sphere on the feet is round: turning doesn't move it.");
             Assert.That(rig.StandingHeight, Is.EqualTo(2f * sphere.radius).Within(1e-4f), "A sphere stands as tall as it's across.");
@@ -88,7 +90,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator ACapsuleCentredAheadOfTheFeet_StopsWithItsFrontAgainstAWall()
         {
             yield return OnTheFloor();
-            CapsuleCollider capsule = rig.UseBody<CapsuleCollider>(ACapsuleAhead);
+            BodyShape capsule = UseBody(ACapsuleAhead);
             Assert.That(rig.FrontExtent, Is.EqualTo(capsule.center.z + capsule.radius).Within(1e-4f), "It reaches its radius beyond its middle, ahead.");
             Assert.That(rig.BackExtent, Is.EqualTo(capsule.radius - capsule.center.z).Within(1e-4f), "And its radius short of it, behind.");
             Assert.That(rig.Movement.Body.TurnsWithFacing, Is.True, "Off the feet, it swings round as the character turns.");
@@ -101,13 +103,13 @@ namespace CharacterShowcase.Tests
         public IEnumerator ABox_Crouched_IsLoweredFromTheTop()
         {
             yield return OnTheFloor();
-            BoxCollider box = rig.UseBody<BoxCollider>(ABox);
+            BodyShape box = UseBody(ABox);
             float standing = rig.StandingHeight;
             Assert.That(standing, Is.EqualTo(box.size.y).Within(1e-4f));
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             Assert.That(rig.Movement.Posture.Kind, Is.EqualTo(BodyPostureKind.Low));
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.CrouchHeight * standing).Within(0.01f), "Crouched, the box should be the crouch height tall.");
-            Assert.That(box.center.y - box.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Its bottom should stay at the feet.");
+            Assert.That(rig.BodyNow.center.y - rig.BodyNow.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Its bottom should stay at the feet.");
             yield return rig.Run(0.3f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "Pressing Crouch again, it should stand back up.");
         }
@@ -184,7 +186,7 @@ namespace CharacterShowcase.Tests
         public IEnumerator ALyingThickness_LaysTheBodyDownThinner([Values("box", "capsule")] string kind)
         {
             yield return OnTheFloor();
-            if (kind == "box") { rig.UseBody<BoxCollider>(ABox); }
+            if (kind == "box") { UseBody(ABox); }
             BodyShape shape = rig.Movement.AuthoredBody;
             float length = rig.StandingHeight, wide = 2f * rig.SideExtent;
             const float thickness = 0.3f;
@@ -199,7 +201,7 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator SetBody_OfAnotherKind_ReplacesTheCollider_OnceThereIsRoom()
+        public IEnumerator SetBody_OfAnotherKind_ReplacesTheBody_OnceThereIsRoom()
         {
             // A ceiling just above the character's head, from z = -2 to z = 2.
             rig.Floor();
@@ -226,7 +228,7 @@ namespace CharacterShowcase.Tests
         {
             yield return OnTheFloor();
             float tall, deep;
-            if (kind == "box") { BoxCollider box = rig.UseBody<BoxCollider>(ABox); tall = box.size.y; deep = box.size.z; }
+            if (kind == "box") { BodyShape box = UseBody(ABox); tall = box.size.y; deep = box.size.z; }
             else
             {
                 tall = rig.StandingHeight;

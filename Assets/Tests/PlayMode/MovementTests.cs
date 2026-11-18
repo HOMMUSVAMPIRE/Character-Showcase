@@ -17,18 +17,6 @@ namespace CharacterShowcase.Tests
 
 
         [UnityTest]
-        public IEnumerator SettlesOnGround_WithoutHoveringOrSinking()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.5f, 0f));
-
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
-
-            Assert.That(rig.Grounded, Is.True, "Character should be grounded after settling.");
-            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "Feet should rest on the floor, not hover above or sink into it.");
-        }
-
-        [UnityTest]
         public IEnumerator StandingStill_DoesNotDrift()
         {
             rig.Floor();
@@ -75,7 +63,12 @@ namespace CharacterShowcase.Tests
             // From the moment the character starts dropping, its downward speed can't exceed what gravity could
             // build up in that time, plus one step of ground snap while the capsule rolls over the edge.
             float dt = Time.fixedDeltaTime;
-            float snapAllowance = (0.1f + 0.02f) / dt; // GroundedTolerance + skin width, per step.
+            // The grounded tolerance (how far below the feet the floor still counts as ground: the movement's own, with no
+            // setting) and the skin width, per step.
+            var groundedTolerance = typeof(MovementController).GetProperty("GroundedTolerance",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(groundedTolerance, Is.Not.Null, "Test setup: MovementController.GroundedTolerance should exist.");
+            float snapAllowance = ((float)groundedTolerance.GetValue(rig.Movement) + rig.Movement.Skin) / dt;
             float? previousY = null;
             int dropStartStep = -1;
             float worstMargin = float.PositiveInfinity, worstSpeed = 0f, worstLimit = 0f;
@@ -155,23 +148,6 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator Jump_RisesAndLandsBackOnGround()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
-
-            float apex = 0f;
-            int holdSteps = CharacterTestRig.StepsFor(0.2f);
-            yield return rig.RunUntilBackOnTheGround(step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle(),
-                _ => apex = Mathf.Max(apex, rig.Position.y));
-
-            Assert.That(apex, Is.GreaterThan(rig.StepHeight), "Jump barely left the ground (not even a step's height).");
-            Assert.That(rig.Grounded, Is.True, "Character should have landed.");
-            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "Character should land on the floor, not above or inside it.");
-        }
-
-        [UnityTest]
         public IEnumerator TapJump_DoesNotGetItsJumpRefundedByCoyoteTime()
         {
             rig.Floor();
@@ -233,68 +209,6 @@ namespace CharacterShowcase.Tests
 
             Assert.That(slowestInAir, Is.Not.EqualTo(float.PositiveInfinity), "Test setup: the character should have been in the air.");
             Assert.That(slowestInAir, Is.GreaterThan(0.9f * walkSpeed), "Character halted at the edge instead of carrying its speed off it.");
-        }
-
-        [UnityTest]
-        public IEnumerator WalkingDownStairs_KeepsSpeed_AndFollowsTheSteps()
-        {
-            // A landing, then six steps down along +Z to the floor, each a little over half the step height.
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
-            float rise = 0.55f * rig.StepHeight, run = 0.35f, top = 6f * rise;
-            rig.Box("Top Landing", new Vector3(0f, top / 2f, -5f), new Vector3(4f, top, 10f));
-            for (int i = 0; i < 6; i++)
-            {
-                float height = top - rise * (i + 1);
-                if (height <= 1e-4f) { break; }
-                rig.Box($"Step {i + 1}", new Vector3(0f, height / 2f, i * run + run / 2f), new Vector3(4f, height, run));
-            }
-            rig.Body.position = new Vector3(0f, top + 0.05f, -1.5f);
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
-
-            float dt = Time.fixedDeltaTime;
-            float slowest = float.PositiveInfinity, biggestGap = 0f;
-            Vector3? previous = null;
-            yield return rig.Run(rig.SecondsToWalk(1.5f + 6f * run, 0.2f), _ => CharacterTestRig.Move(Vector3.forward), _ =>
-            {
-                Vector3 p = rig.Position;
-                if (previous.HasValue && p.z > -0.5f && p.z < 6 * run + 0.5f)
-                {
-                    Vector3 d = p - previous.Value;
-                    slowest = Mathf.Min(slowest, new Vector2(d.x, d.z).magnitude / dt);
-                    if (Physics.Raycast(p + Vector3.up * 0.1f, Vector3.down, out RaycastHit hit, 5f))
-                    {
-                        biggestGap = Mathf.Max(biggestGap, hit.distance - 0.1f);
-                    }
-                }
-                previous = p;
-            });
-
-            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "Character should reach the bottom of the stairs.");
-            Assert.That(slowest, Is.GreaterThan(0.85f * walkSpeed), "Character slowed down at the step edges.");
-            Assert.That(biggestGap, Is.LessThan(1.25f * rise), "Character floated off the steps instead of walking down them.");
-        }
-
-        [UnityTest]
-        public IEnumerator AirSteering_DoesNotStackOnCarriedMomentum()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
-
-            // Run, jump while running, and keep steering forward through the jump.
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
-            float fastest = 0f;
-            yield return rig.Run(0.8f, step => step < 5 ? CharacterTestRig.Jump(step, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), _ =>
-            {
-                Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
-                if (!rig.Grounded) { fastest = Mathf.Max(fastest, new Vector2(v.x, v.z).magnitude); }
-            });
-
-            Assert.That(fastest, Is.GreaterThan(0.9f * walkSpeed), "Jumping while running should keep the running speed.");
-            Assert.That(fastest, Is.LessThan(1.05f * walkSpeed), "Air steering stacked on top of the carried momentum.");
         }
 
         [UnityTest]
@@ -390,12 +304,13 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// Falling, the character is on the ground only once its feet are near the floor. The ground check once counted it
-        /// on the ground up to its sphere's radius (plus the grounded tolerance) above the floor, cancelling its fall
-        /// while it was still in the air.
+        /// Falling, the character is on the ground only once its feet are near the floor, and then settles with them on
+        /// it, neither hovering above it nor sunk into it; jumping from there, it rises and lands back on the floor. The
+        /// ground check once counted it on the ground up to its sphere's radius (plus the grounded tolerance) above the
+        /// floor, cancelling its fall while it was still in the air.
         /// </summary>
         [UnityTest]
-        public IEnumerator Falling_IsntOnTheGround_UntilItsFeetAreNearTheFloor()
+        public IEnumerator FallingOrJumping_IsntOnTheGround_UntilItsFeetAreNearTheFloor_ThenRestsOnIt()
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 2f, 0f));
@@ -410,28 +325,19 @@ namespace CharacterShowcase.Tests
                 previous = rig.Position;
             });
 
-            Assert.That(rig.Grounded, Is.True, "Test setup: the character should have landed.");
+            Assert.That(rig.Grounded, Is.True, "The character should have landed.");
             Assert.That(highestGrounded, Is.LessThan(0.5f * rig.StepHeight), "The character counted as on the ground while still well above the floor.");
-        }
+            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "Feet should rest on the floor, not hover above or sink into it.");
 
-        [UnityTest]
-        public IEnumerator ClimbsStairs()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            // Six steps, each a little over half the step height, starting just ahead, then a long landing.
-            float rise = 0.55f * rig.StepHeight, run = 0.35f, start = rig.FrontExtent + 0.5f, top = 6f * rise;
-            for (int i = 0; i < 6; i++)
-            {
-                float height = rise * (i + 1);
-                rig.Box($"Step {i + 1}", new Vector3(0f, height / 2f, start + i * run + run / 2f), new Vector3(4f, height, run));
-            }
-            rig.Box("Landing", new Vector3(0f, top / 2f, start + 6 * run + 10f), new Vector3(4f, top, 20f));
+            // Jumping from there, it rises and lands back on the floor the same way.
+            float apex = 0f;
+            int holdSteps = CharacterTestRig.StepsFor(0.2f);
+            yield return rig.RunUntilBackOnTheGround(step => step < holdSteps ? CharacterTestRig.Jump(step) : CharacterTestRig.Idle(),
+                _ => apex = Mathf.Max(apex, rig.Position.y));
 
-            yield return rig.Run(rig.SecondsToWalk(start + 6f * run + 1f), _ => CharacterTestRig.Move(Vector3.forward));
-
-            Assert.That(rig.Position.z, Is.GreaterThan(start + 6 * run), "Character didn't get past the stairs.");
-            Assert.That(rig.Position.y, Is.InRange(top - 0.01f, top + 0.03f), "Character should be standing on the landing.");
+            Assert.That(apex, Is.GreaterThan(rig.StepHeight), "Jump barely left the ground (not even a step's height).");
+            Assert.That(rig.Grounded, Is.True, "Character should have landed from the jump.");
+            Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "Character should land on the floor, not above or inside it.");
         }
 
         [UnityTest]
@@ -463,44 +369,27 @@ namespace CharacterShowcase.Tests
 
             Vector3 heading = Quaternion.Euler(0f, inputAngle, 0f) * Vector3.forward;
             float speed = sprint ? rig.RunSpeed : rig.WalkSpeed;
+            float dt = Time.fixedDeltaTime;
             int airborneSteps = 0;
-            float fastest = 0f;
+            float fastest = 0f, slowest = float.PositiveInfinity;
+            Vector3 previous = rig.Position;
             yield return rig.Run((1.5f + steps * run) / (speed * heading.z) + 0.5f,
                 step => sprint ? CharacterTestRig.Sprint(heading, step) : CharacterTestRig.Move(heading), _ =>
             {
-                if (rig.Position.z < 0f || rig.Position.z > steps * run) { return; }
+                Vector3 p = rig.Position, moved = p - previous;
+                previous = p;
+                if (p.z < 0f || p.z > steps * run) { return; }
                 if (!rig.Grounded) { airborneSteps++; }
                 fastest = Mathf.Max(fastest, rig.HorizontalSpeed);
+                // How far it actually went along the steps, not the velocity it was given: held up at a step's edge, it
+                // doesn't get as far as its velocity says.
+                slowest = Mathf.Min(slowest, new Vector2(moved.x, moved.z).magnitude / dt);
             });
 
             Assert.That(rig.Position.y, Is.InRange(-0.01f, 0.03f), "The character should reach the bottom of the stairs.");
             Assert.That(airborneSteps, Is.Zero, "The character left the steps instead of walking down them.");
             Assert.That(fastest, Is.LessThanOrEqualTo(1.02f * speed), "The character sped up going down the stairs.");
-        }
-
-        [UnityTest]
-        public IEnumerator IdleOnRamp_DoesNotSlide()
-        {
-            // A ramp a little over half as steep as the steepest walkable slope, rising along +Z from the origin. (The
-            // character is spawned first, to read its slope limit, then put on the ramp.)
-            rig.SpawnCharacter(new Vector3(0f, 50f, 0f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Collider Fit) is the one tested.
-            yield return rig.WaitForModel();
-            float angle = 0.55f * rig.MaxSlopeAngle;
-            Quaternion tilt = Quaternion.Euler(-angle, 0f, 0f);
-            rig.Box("Ramp", tilt * new Vector3(0f, -0.25f, 5f), new Vector3(6f, 0.5f, 10f), tilt);
-            float surfaceHeight = Mathf.Tan(angle * Mathf.Deg2Rad) * 3f;
-            rig.Body.position = new Vector3(0f, surfaceHeight + 0.4f, 3f);
-
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Grounded, Is.True, "Character should be standing on the ramp.");
-            Vector3 settled = rig.Position;
-
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
-
-            Vector3 drift = rig.Position - settled;
-            Assert.That(new Vector2(drift.x, drift.z).magnitude, Is.LessThan(0.02f), "Character slid down the ramp while idle.");
-            Assert.That(Mathf.Abs(drift.y), Is.LessThan(0.02f), "Character slid down the ramp while idle.");
+            Assert.That(slowest, Is.GreaterThan(0.85f * speed), "The character slowed down at the step edges.");
         }
     }
 }

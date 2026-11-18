@@ -193,6 +193,107 @@ namespace Character
             sprint = sprint ? Held(1) : new InputButton(),
         };
 
+        /// <summary>
+        /// The simulated character's state saved partway through a measurement (see Save), to start later attempts from
+        /// rather than running up to the same point again.
+        /// </summary>
+        public sealed class Snapshot
+        {
+            internal MovementController controller;
+            internal ObjectGraphSnapshot state;
+            internal Vector3 position;
+            internal Quaternion rotation;
+            internal MovementEvents lastEvents;
+            /// <summary>Whatever else the attempt that saved it needs to carry on from it (its own counters, say).</summary>
+            public object extra;
+        }
+
+        // Snapshots saved by Begin, by what they're of.
+        private readonly Dictionary<string, Snapshot> saved = new();
+
+        /// <summary>
+        /// Saves the character as it is now: everything about it a step reads or changes (the movement controller's state,
+        /// its abilities', its body's pose), so Restore puts it back exactly, and the steps after behave exactly as they
+        /// would have.
+        /// </summary>
+        public Snapshot Save() => new()
+        {
+            controller = Controller,
+            state = ObjectGraphSnapshot.Capture(Controller, typeof(MonoBehaviour)),
+            position = body.position,
+            rotation = body.rotation,
+            lastEvents = LastEvents,
+        };
+
+        /// <summary>
+        /// Puts the character back as it was when the snapshot was saved. False, changing nothing, if the character has
+        /// been made afresh since (Reset), which a snapshot can't be put into.
+        /// </summary>
+        public bool Restore(Snapshot snapshot)
+        {
+            if (snapshot == null || snapshot.controller != Controller || Controller == null) { return false; }
+            snapshot.state.Restore();
+            body.position = snapshot.position;
+            body.rotation = snapshot.rotation;
+            character.transform.SetPositionAndRotation(snapshot.position, snapshot.rotation);
+            LastEvents = snapshot.lastEvents;
+            Physics.SyncTransforms();
+            return true;
+        }
+
+        /// <summary>
+        /// Starts an attempt from the point named key: from the snapshot saved there, if there is one this character can
+        /// be put back into (see Restore); else by running prepare (which may Reset the character), saving where that
+        /// leaves it under key for the next. So attempts that all start the same way (a run-up) run it once. prepare must
+        /// leave the character the same way each time it's run, for a key.
+        /// </summary>
+        public void Begin(string key, Action prepare)
+        {
+            if (saved.TryGetValue(key, out Snapshot snapshot) && Restore(snapshot)) { return; }
+            prepare();
+            saved[key] = Save();
+        }
+
+        // Snapshots along paths that attempts share (see KeepOnPath), by path, and by step along it.
+        private readonly Dictionary<string, SortedList<int, Snapshot>> paths = new();
+
+        /// <summary>
+        /// Saves the character as it is now, before step step of the path named path (the steps every attempt with the
+        /// same start and inputs so far takes alike), with extra (the attempt's own counters), for later attempts on the
+        /// path to start from (see RestoreFurthestOnPath). Kept once: saving the same step of a path again does nothing.
+        /// </summary>
+        public void KeepOnPath(string path, int step, object extra)
+        {
+            if (!paths.TryGetValue(path, out SortedList<int, Snapshot> along)) { paths[path] = along = new SortedList<int, Snapshot>(); }
+            if (along.TryGetValue(step, out Snapshot existing) && existing.controller == Controller) { return; }
+            Snapshot snapshot = Save();
+            snapshot.extra = extra;
+            along[step] = snapshot;
+        }
+
+        /// <summary>
+        /// Puts the character back as it was at the furthest step (no further than upTo) saved on the path, giving the
+        /// step and its extra; false if none is saved there that this character can be put back into.
+        /// </summary>
+        public bool RestoreFurthestOnPath(string path, int upTo, out int step, out object extra)
+        {
+            step = 0;
+            extra = null;
+            if (!paths.TryGetValue(path, out SortedList<int, Snapshot> along)) { return false; }
+            IList<int> steps = along.Keys;
+            // The last saved step no further than upTo (steps are sorted).
+            int low = 0, high = steps.Count - 1, found = -1;
+            while (low <= high)
+            {
+                int mid = (low + high) / 2;
+                if (steps[mid] <= upTo) { found = mid; low = mid + 1; } else { high = mid - 1; }
+            }
+            if (found < 0 || !Restore(along.Values[found])) { return false; }
+            step = steps[found];
+            extra = along.Values[found].extra;
+            return true;
+        }
+
         /// <summary>Destroys the simulation's world and its copies of the movement modes.</summary>
         public void Dispose()
         {

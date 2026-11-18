@@ -24,7 +24,10 @@ namespace CharacterShowcase.Tests
     public class MovementPerformanceTests : CharacterRigFixture
     {
         // How many characters step together, how long they settle before timing starts, and how long they're timed.
-        private const int CharacterCount = 50;
+        // Enough characters for a crowd's cost, and enough timed steps for a steady average: the budget is per character
+        // per step, so it holds the same whatever the count, and halving the count (from 50) halved the test's time
+        // (spawning them, and stepping them) without making it less of a guard.
+        private const int CharacterCount = 25;
         private const float WarmUpSeconds = 1f;
         private const float TimedSeconds = 4f;
         // Far over what a character's step takes (well under a tenth of this on a desktop): only a step many times

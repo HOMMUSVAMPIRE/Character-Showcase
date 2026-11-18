@@ -38,26 +38,12 @@ namespace CharacterShowcase.Tests
             yield return rig.StandOnFloor();
         }
 
+        /// <summary>
+        /// A tap of Jump (held one step) rises the min jump height, Jump held to the top of the jump rises the max jump
+        /// height, and holding it longer in between rises higher.
+        /// </summary>
         [UnityTest]
-        public IEnumerator ATapOfJump_RisesTheMinJumpHeight()
-        {
-            yield return OnTheFloor();
-            float risen = 0f;
-            yield return JumpHolding(1, h => risen = h);
-            Assert.That(risen, Is.EqualTo(MinHeight).Within(0.01f), "A tap should rise the min jump height.");
-        }
-
-        [UnityTest]
-        public IEnumerator JumpHeldToTheTop_RisesTheMaxJumpHeight()
-        {
-            yield return OnTheFloor();
-            float risen = 0f;
-            yield return JumpHolding(1000, h => risen = h);
-            Assert.That(risen, Is.EqualTo(MaxHeight).Within(0.01f), "Jump held should rise the max jump height.");
-        }
-
-        [UnityTest]
-        public IEnumerator HoldingJumpLonger_RisesHigher_BetweenTheMinAndMax()
+        public IEnumerator HoldingJumpLonger_RisesHigher_FromTheMinHeightForATap_ToTheMaxHeldToTheTop()
         {
             yield return OnTheFloor();
             float previous = 0f;
@@ -67,10 +53,11 @@ namespace CharacterShowcase.Tests
                 yield return JumpHolding(held, h => risen = h);
                 Assert.That(risen, Is.InRange(MinHeight - 0.01f, MaxHeight + 0.01f), $"Held {held} steps, the jump should rise between the min and max heights.");
                 Assert.That(risen, Is.GreaterThanOrEqualTo(previous - 0.01f), $"Held {held} steps, the jump should rise at least as high as held for less.");
+                if (held == 1) { Assert.That(risen, Is.EqualTo(MinHeight).Within(0.01f), "A tap should rise the min jump height."); }
                 previous = risen;
                 yield return rig.Run(0.5f, _ => CharacterTestRig.Idle()); // Land and settle.
             }
-            Assert.That(previous, Is.EqualTo(MaxHeight).Within(0.01f));
+            Assert.That(previous, Is.EqualTo(MaxHeight).Within(0.01f), "Jump held should rise the max jump height.");
         }
 
         [UnityTest]

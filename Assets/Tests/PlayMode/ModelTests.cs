@@ -366,12 +366,12 @@ namespace CharacterShowcase.Tests
 
 
         /// <summary>
-        /// Collider Fit makes the collider as tall as the model, standing on the character's feet: its width in proportion
-        /// as authored (Height), or, for a source without a body of its own, as wide as the model's shoulders, times the
-        /// margin (Model's Body). The character's size still multiplies it.
+        /// Collider Fit makes the character's body as tall as the model, standing on the character's feet: its width in
+        /// proportion as authored (Height), or, for a source without a body of its own, as wide as the model's shoulders,
+        /// times the margin (Model's Body). The character's size still multiplies it.
         /// </summary>
         [UnityTest]
-        public IEnumerator ColliderFit_MakesTheColliderAsTallAsTheModel_AndAsWideAsAsked(
+        public IEnumerator ColliderFit_MakesTheBodyAsTallAsTheModel_AndAsWideAsAsked(
             [Values(ColliderFit.Height, ColliderFit.ModelsBody)] ColliderFit fit)
         {
             rig.Floor();
@@ -382,7 +382,7 @@ namespace CharacterShowcase.Tests
             rig.Models.ColliderFitting = fit;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
 
-            Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "The collider should be as tall as the model.");
+            Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "The body should be as tall as the model.");
             Assert.That(rig.BodyNow.center.y, Is.EqualTo(rig.BodyNow.height / 2f).Within(1e-4f), "It should stand on the character's feet.");
             if (fit == ColliderFit.Height)
             {
@@ -395,7 +395,7 @@ namespace CharacterShowcase.Tests
                 float shoulders = Vector3.Distance(animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position,
                     animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position);
                 Assert.That(rig.BodyNow.radius, Is.EqualTo(0.5f * shoulders * rig.Models.ColliderWidthMargin).Within(0.01f),
-                    "The collider should be as wide as the shoulders, times the margin.");
+                    "The body should be as wide as the shoulders, times the margin.");
             }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.True);
@@ -410,7 +410,7 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator ColliderFit_WaitsForRoom_BeforeGrowing()
         {
-            // A ceiling 1.5 m up from z = -2 to z = 2: room for a 1.2 m collider, not a 1.8 m one.
+            // A ceiling 1.5 m up from z = -2 to z = 2: room for a 1.2 m body, not a 1.8 m one.
             rig.Box("Low Ceiling", new Vector3(0f, 2f, 0f), new Vector3(10f, 1f, 4f));
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
@@ -418,7 +418,7 @@ namespace CharacterShowcase.Tests
             rig.Models.ColliderFitting = ColliderFit.Height;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.2f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter collider should fit.");
+            Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "Test setup: the shorter body should fit.");
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(Fitted(1.8f)));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
@@ -437,7 +437,7 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// With Model's Body, a source's own body (its Body Definition, in the model's units) is the character's, sized as
-        /// the source sizes the model; one of another kind than the character's collider replaces it with one of its kind.
+        /// the source sizes the model; one of another kind than the character's body replaces it with one of its kind.
         /// </summary>
         [UnityTest]
         public IEnumerator ModelsBody_TakesTheSourcesBodyDefinition_SizedWithTheModel()
@@ -510,8 +510,8 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// A model swapped in while the character runs carries on from where the old one was: in the same state, the
-        /// same way through it, with the same parameters, and its feet as planted; rather than starting over from
-        /// standing, with its feet placement fading back in.
+        /// same way through it, with the same parameters, rather than starting over from standing. (Its foot placement
+        /// carrying on is FootLockTests.ASwappedInModel_CarriesOnTheOldOnesFootPlacement.)
         /// </summary>
         [UnityTest]
         public IEnumerator SwappingTheModelMidRun_CarriesOnWhereTheOldOneWas()
@@ -530,22 +530,14 @@ namespace CharacterShowcase.Tests
 
             AnimatorStateInfo was = default;
             float[] wasFloats = null;
-            float wasFeet = -1f, newFeet = -1f;
             int swapFrame = -1;
             float swapTime = 0f;
             models.ModelReplacing += old =>
             {
                 was = old.Animator.GetCurrentAnimatorStateInfo(0);
                 wasFloats = floats.Select(old.Animator.GetFloat).ToArray();
-                FootPlacementIK feet = old.Animator.GetComponent<FootPlacementIK>();
-                wasFeet = feet != null ? feet.ActiveWeight : -1f;
                 swapFrame = Time.frameCount;
                 swapTime = Time.time;
-            };
-            models.ModelLoaded += created =>
-            {
-                FootPlacementIK feet = created.Animator.GetComponent<FootPlacementIK>();
-                newFeet = feet != null ? feet.ActiveWeight : -1f;
             };
             _ = models.LoadModelAsync(OwnCopy());
             // Running on while the new model loads, until the frame after it's in.
@@ -557,8 +549,8 @@ namespace CharacterShowcase.Tests
             // A frame or so has passed since the swap, which the tolerance below covers.
             AnimatorStateInfo now = models.Animator.GetCurrentAnimatorStateInfo(0);
 
-            TestContext.WriteLine($"Before the swap: state {was.fullPathHash}, {was.normalizedTime:0.000} through it, feet at {wasFeet:0.00}. " +
-                                  $"After: state {now.fullPathHash}, {now.normalizedTime:0.000}, feet at {newFeet:0.00}.");
+            TestContext.WriteLine($"Before the swap: state {was.fullPathHash}, {was.normalizedTime:0.000} through it. " +
+                                  $"After: state {now.fullPathHash}, {now.normalizedTime:0.000}.");
             Assert.That(was.normalizedTime, Is.GreaterThan(0.5f), "Test setup: the old model should have been well into its state.");
             Assert.That(now.fullPathHash, Is.EqualTo(was.fullPathHash), "The new model should be in the state the old one was in.");
             // As far through, give or take the time that's passed since (now.length is the state's length at the speed
@@ -569,11 +561,6 @@ namespace CharacterShowcase.Tests
             {
                 // A frame's change at most (the speed is smoothed).
                 Assert.That(models.Animator.GetFloat(floats[i]), Is.EqualTo(wasFloats[i]).Within(0.1f * Mathf.Abs(wasFloats[i]) + 1e-3f), "Its parameters should carry over.");
-            }
-            if (wasFeet >= 0f)
-            {
-                Assert.That(wasFeet, Is.GreaterThan(0.99f), "Test setup: the old model's feet should have been placed.");
-                Assert.That(newFeet, Is.EqualTo(wasFeet), "Its feet should be placed as the old one's were, not fading back in.");
             }
         }
 
@@ -675,39 +662,6 @@ namespace CharacterShowcase.Tests
             source.ForgetMeasurement();
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
             Assert.That(FloorOffset(), Is.EqualTo(-0.4f).Within(0.01f), "Once forgotten, the model should be measured again.");
-        }
-
-        [UnityTest]
-        public IEnumerator PreviewMeshes_ShowTheModelWhereItLoads()
-        {
-            rig.Floor();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.WaitForModel();
-            yield return null; // Let the skinned mesh update its bounds.
-
-            var previews = new List<CharacterModelSource.PreviewMesh>();
-            rig.Models.ModelSource.GetPreviewMeshes(previews);
-            Assert.That(previews, Is.Not.Empty);
-
-            // The preview should sit on the character's feet and be about as tall as the loaded model.
-            Transform parent = rig.Models.Model.transform.parent;
-            float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
-            foreach (CharacterModelSource.PreviewMesh preview in previews)
-            {
-                Bounds bounds = preview.mesh.bounds;
-                for (int corner = 0; corner < 8; corner++)
-                {
-                    Vector3 local = bounds.center + Vector3.Scale(bounds.extents,
-                        new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1));
-                    float y = preview.matrix.MultiplyPoint3x4(local).y;
-                    bottom = Mathf.Min(bottom, y);
-                    top = Mathf.Max(top, y);
-                }
-            }
-            float modelHeight = rig.Models.Model.GetComponentInChildren<Renderer>().bounds.size.y;
-            Assert.That(bottom, Is.EqualTo(0f).Within(0.15f), "The preview should stand on the character's feet.");
-            Assert.That(top - bottom, Is.EqualTo(modelHeight).Within(0.25f), "The preview should be the model's size.");
-            Assert.That(parent, Is.Not.Null);
         }
 
 #if UNITY_EDITOR

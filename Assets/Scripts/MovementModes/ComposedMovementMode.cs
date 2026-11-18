@@ -207,6 +207,13 @@ namespace Character
         /// Every step, before anything moves the character: each turned-on component's timers (see
         /// MovementComponent.AdvanceTimers). A component turned off while it had the character lets go of it here.
         /// </summary>
+        /// <summary>
+        /// Whether a component is called at a hook: turned on, and overriding it (one that doesn't would do nothing: see
+        /// MovementComponent.Overridden).
+        /// </summary>
+        private static bool Calls(MovementComponent component, Hooks hook) =>
+            component != null && component.Enabled && (component.Overridden & hook) != 0;
+
         protected void AdvanceComponentTimers(MovementData movementData, Inputs inputs, MovementController controller)
         {
             for (int i = 0; i < components.Count; i++)
@@ -214,7 +221,10 @@ namespace Character
                 MovementComponent component = components[i];
                 if (component == null) { continue; }
                 component.Mode = this;
-                if (component.Enabled) { using (component.Marker.Auto()) { component.AdvanceTimers(movementData, inputs, controller); } }
+                if (component.Enabled)
+                {
+                    if ((component.Overridden & Hooks.AdvanceTimers) != 0) { using (component.Marker.Auto()) { component.AdvanceTimers(movementData, inputs, controller); } }
+                }
                 else if (component.IsActive(controller)) { component.Interrupt(movementData, controller); }
             }
         }
@@ -228,7 +238,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeAbilities(movementData, inputs, controller); } }
+                if (Calls(component, Hooks.BeforeAbilities)) { using (component.Marker.Auto()) { component.BeforeAbilities(movementData, inputs, controller); } }
             }
         }
 
@@ -241,7 +251,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component == null || !component.Enabled) { continue; }
+                if (!Calls(component, Hooks.TakeOver)) { continue; }
                 bool hasCharacter;
                 using (component.Marker.Auto()) { hasCharacter = component.TakeOver(movementData, inputs, controller); }
                 if (hasCharacter) { return true; }
@@ -257,7 +267,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.BeforeLocomotion(movementData, inputs, controller); } }
+                if (Calls(component, Hooks.BeforeLocomotion)) { using (component.Marker.Auto()) { component.BeforeLocomotion(movementData, inputs, controller); } }
             }
         }
 
@@ -270,7 +280,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.Locomotion(movementData, inputs, controller); } }
+                if (Calls(component, Hooks.Locomotion)) { using (component.Marker.Auto()) { component.Locomotion(movementData, inputs, controller); } }
             }
         }
 
@@ -280,7 +290,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.AfterWalking(movementData, inputs, controller); } }
+                if (Calls(component, Hooks.AfterWalking)) { using (component.Marker.Auto()) { component.AfterWalking(movementData, inputs, controller); } }
             }
         }
 
@@ -290,7 +300,7 @@ namespace Character
             for (int i = 0; i < components.Count; i++)
             {
                 MovementComponent component = components[i];
-                if (component != null && component.Enabled) { using (component.Marker.Auto()) { component.FinishStep(movementData, controller); } }
+                if (Calls(component, Hooks.FinishStep)) { using (component.Marker.Auto()) { component.FinishStep(movementData, controller); } }
             }
         }
 

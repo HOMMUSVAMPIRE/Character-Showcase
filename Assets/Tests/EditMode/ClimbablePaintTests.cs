@@ -15,7 +15,8 @@ namespace CharacterShowcase.Tests.EditMode
     /// twin of each of its look's settings; the materials that show climbable areas share the 1-pixel black mask that
     /// means nothing's painted; painting a face paints it, and only it, in its renderer's mask, given to the renderer's
     /// material (and taken off when the masks are turned off), and a renderer whose material shows no climbable areas
-    /// gets none; and the level's boxes and prisms have a UV2 giving each face its own space. On a new, unsaved scene.
+    /// gets none; paint is for the face painted (not the back of a thin wall), and erased as painted; and the level's
+    /// boxes and prisms have a UV2 giving each face its own space. On a new, unsaved scene.
     /// </summary>
     [Category(TestArea.Levels)]
     [TestTiming]
@@ -155,6 +156,28 @@ namespace CharacterShowcase.Tests.EditMode
             surface.PaintsMasks = false;
             renderer.GetPropertyBlock(block, 0);
             Assert.That(block.isEmpty, Is.True, "With masks off, the material should show its own (unpainted) mask.");
+        }
+
+        [Test]
+        public void Paint_IsForTheFacePainted_AndErasedAsPainted()
+        {
+            // A thin wall, 4 x 4 m and 0.2 m thick, its front face (facing -Z) at z = 0.
+            GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            created.Add(wall);
+            wall.transform.SetPositionAndRotation(new Vector3(0f, 2f, 0.1f), Quaternion.identity);
+            wall.transform.localScale = new Vector3(4f, 4f, 0.2f);
+            var painted = wall.AddComponent<PaintedClimbableSurface>();
+            var front = new Vector3(0f, 2f, 0f);
+            var back = new Vector3(0f, 2f, 0.2f);
+            Assert.That(painted.Paint(front, Vector3.back, 0.5f), Is.GreaterThan(0));
+            Assert.That(painted.IsPaintedAt(front, Vector3.back, atEdge: false), Is.True, "The point painted should be painted.");
+            Assert.That(painted.IsPaintedAt(front + Vector3.right * 0.3f, Vector3.back, atEdge: false), Is.True, "The brush's area should be painted.");
+            Assert.That(painted.IsPaintedAt(front + Vector3.right * 1.2f, Vector3.back, atEdge: false), Is.False, "Beyond the brush shouldn't be painted.");
+            Assert.That(painted.IsPaintedAt(back, Vector3.forward, atEdge: false), Is.False, "The back of a thin wall shouldn't be painted with its front.");
+
+            Assert.That(painted.Erase(front, Vector3.back, 0.2f), Is.GreaterThan(0));
+            Assert.That(painted.IsPaintedAt(front, Vector3.back, atEdge: false), Is.False, "An erased point shouldn't be painted.");
+            Assert.That(painted.IsPaintedAt(front + Vector3.right * 0.4f, Vector3.back, atEdge: false), Is.True, "Erasing should leave the paint beyond it.");
         }
 
         [Test]

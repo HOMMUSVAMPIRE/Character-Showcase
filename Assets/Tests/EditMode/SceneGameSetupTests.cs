@@ -1,9 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Character;
 using CharacterShowcase.EditorTools;
-using CharacterShowcase.EditorTools.Level;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -53,47 +51,6 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         private SceneGameSetup.Settings Settings() => new() { characterPrefab = prefab };
-
-        /// <summary>
-        /// The level fixtures' names (how a ladder's, a rope's, a moving platform's name starts, a bounce pad's spring's
-        /// name) are the same in the level builders (Graybox) and in Set Up Scene (LevelFixtureSetup), which finds the
-        /// fixtures by them: neither assembly can reference the other, so each names them itself. Every prefix Set Up
-        /// Scene looks for, and the spring, must be named by the builders too.
-        /// </summary>
-        [Test]
-        public void LevelFixtures_AreNamedTheSame_ByTheLevelBuildersAndSetUpScene()
-        {
-            const BindingFlags Constants = BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy;
-            var builders = new Dictionary<string, string>();
-            foreach (FieldInfo field in typeof(Graybox).GetFields(Constants))
-            {
-                if (field.IsLiteral && field.FieldType == typeof(string)) { builders[field.Name] = (string)field.GetRawConstantValue(); }
-            }
-            int compared = 0;
-            foreach (FieldInfo field in typeof(LevelFixtureSetup).GetFields(Constants))
-            {
-                if (!field.IsLiteral || field.FieldType != typeof(string)) { continue; }
-                bool mustMatch = field.Name.EndsWith("Prefix") || field.Name == nameof(LevelFixtureSetup.BouncePadSpringName);
-                if (!builders.TryGetValue(field.Name, out string built))
-                {
-                    Assert.That(mustMatch, Is.False, $"Set Up Scene looks for {field.Name} (\"{field.GetRawConstantValue()}\"), but the level " +
-                                                     $"builders name nothing by it: give Graybox a {field.Name} too.");
-                    continue;
-                }
-                Assert.That(field.GetRawConstantValue(), Is.EqualTo(built),
-                    $"Set Up Scene's {field.Name} should be the level builders' (Graybox.{field.Name}), or it won't find their fixtures.");
-                compared++;
-            }
-            Assert.That(compared, Is.GreaterThanOrEqualTo(10), "Test setup: the fixtures' names should have been compared.");
-        }
-
-        [Test]
-        public void SpawnMarkers_AreNamedTheSame_ByTheLevelBuildersAndSetUpScene()
-        {
-            // The level builders' assembly can't reference Set Up Scene's, so each names the prefix itself.
-            Assert.That(SceneGameSetup.SpawnMarkerPrefix, Is.EqualTo(Graybox.SpawnMarkerPrefix),
-                "Set Up Scene finds the levels' spawn markers by the prefix the builders name them with.");
-        }
 
         [Test]
         public void SetUp_ReplacesThePlacedCharacter_WithASpawnPointWhereItStood()

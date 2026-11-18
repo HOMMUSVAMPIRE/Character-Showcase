@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.WadeEnded));
         }
 
-        // Walking too (unlike on dry land, where only a sprint vaults: see VaultTests): the water's too slow to sprint in.
+        // Walking too, as on dry land (see VaultTests): the water's too slow to sprint in.
         [UnityTest]
         public IEnumerator WalkingOrSprintingIntoALowWallWhileWading_VaultsIt([Values(false, true)] bool sprint)
         {

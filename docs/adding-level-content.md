@@ -8,7 +8,7 @@ Something in the level the character uses or that moves by itself: a moving plat
 
 1. **Its runtime component** in Assets/Scripts/Level (namespace `Level`), knowing nothing about the character. An ability that uses it finds it (as `Level.Rope.All` lists the ropes), and moving parts are kinematic Rigidbodies moved in `FixedUpdate`.
 2. **A piece that builds it** in `Graybox.Mechanics.cs`, naming its geometry "Name | key=value | ...": its settings, read back when the scene is set up.
-3. **A set-up step in `LevelFixtureSetup`** that finds its geometry by that name and adds the runtime component. The prefixes must match (a constant of the same name on `Graybox` and `LevelFixtureSetup`, as neither assembly can reference the other: `SceneGameSetupTests` fails if they differ, or if Set Up Scene looks for a prefix the builders don't name), and match only "Name |": "(future)" markers and placeholders are named for mechanics too, and shouldn't be made to work.
+3. **A set-up step in `LevelFixtureSetup`** that finds its geometry by that name and adds the runtime component. The prefixes must match (a constant of the same name on `Graybox` and `LevelFixtureSetup`, as neither assembly can reference the other: `LevelFixtureSetupTests` fails if they differ, or if Set Up Scene looks for a prefix the builders don't name), and match only "Name |": "(future)" markers and placeholders are named for mechanics too, and shouldn't be made to work.
 4. **A `LevelFixtureSetupTests` case**, showing its settings are read from its name, and that a "(future)" marker isn't set up.
 5. **An example in the Level Playground** (`LevelPlaygroundBuilder`).
 6. **An outline in Tools/LevelSpec/levelspec/geometry.py**, so the levelspec tool's schematics and checks know its shape.

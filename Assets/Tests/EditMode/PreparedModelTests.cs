@@ -14,8 +14,10 @@ namespace CharacterShowcase.Tests.EditMode
     /// the editor without entering Play mode: each is ready to use with the shared animation, its avatar's reference
     /// pose is a T-pose with nothing rotated above its skeleton, and its stored ground offset matches a fresh
     /// measurement. A model added without being prepared, or a change to preparing that breaks one of these, fails
-    /// here. Also checks the pieces of preparing that don't need a model file: ground offsets counting meshes that
-    /// aren't skinned, what makes a model due to be prepared again, and sizing previews like loaded models.
+    /// here. Also checks pieces of preparing on their own: the facing correction and straightening above the skeleton
+    /// (needing no model), and, on one of the prepared models (so in SampleContent, skipped without one), ground offsets
+    /// counting meshes that aren't skinned, what makes a model due to be prepared again, and sizing previews like loaded
+    /// models.
     /// </summary>
     [Category(TestArea.Models)]
     [TestTiming]
@@ -264,7 +266,7 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         /// <summary>A mesh carried by a bone (a shoe, say) reaching below the skinned feet sets the ground offset.</summary>
-        [Test]
+        [Test, Category(SampleContent)]
         public void GroundOffsets_CountMeshesCarriedByBones()
         {
             DirectCharacterModelSource source = Load(PreparedSources().First());
@@ -325,7 +327,9 @@ namespace CharacterShowcase.Tests.EditMode
             }
         }
 
-        /// <summary>Previews are sized as the model is when it loads, Fit To Height included.</summary>
+        /// <summary>
+        /// Previews are sized as the model is when it loads, Fit To Height included, and stand on the character's feet.
+        /// </summary>
         [Test, Category(SampleContent)]
         public void Previews_AreSizedLikeTheLoadedModel_FitToHeightIncluded()
         {
@@ -351,6 +355,7 @@ namespace CharacterShowcase.Tests.EditMode
                     top = Mathf.Max(top, y);
                 }
             }
+            Assert.That(bottom, Is.EqualTo(0f).Within(0.15f), "The preview should stand on the character's feet.");
             Assert.That(top - bottom, Is.EqualTo(1.2f).Within(0.01f), "A model fitted to 1.2 m should preview 1.2 m tall.");
             Assert.That(source.StandingHeightFor(source.OwnHeight()), Is.EqualTo(1.2f).Within(1e-4f),
                 "Its height, as the Character Model window lists it, should be the fitted one.");

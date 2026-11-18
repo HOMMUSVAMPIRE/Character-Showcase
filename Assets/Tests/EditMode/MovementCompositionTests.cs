@@ -11,7 +11,7 @@ namespace CharacterShowcase.Tests.EditMode
     /// Tests of movement modes made of components (ComposedMovementMode) as assets: a new BasicMovementMode starts with
     /// its default components, one of each, in order; the movement mode asset has no missing or doubled components; a
     /// mode's JSON holds its components' settings (which the character's capabilities rely on to know when to measure
-    /// again); and adding, removing and finding components.
+    /// again); each ability's state is declared once, with its events; and adding, removing and finding components.
     /// </summary>
     [Category(TestArea.Movement)]
     [TestTiming]
@@ -68,6 +68,37 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.That(mode.Components, Has.None.Null, "A component's type is missing (renamed or deleted?).");
             Assert.That(mode.Components.Select(c => c.GetType()), Is.Unique, "A mode should have one of each component.");
             Assert.That(mode.Components.Count, Is.GreaterThan(0), "The asset has no components.");
+        }
+
+        /// <summary>
+        /// Each ability's state's starts and ends are declared once, by the component that sets it (StateEvents), with
+        /// an event for each: a state declared by two components would raise its events twice over, and one with no
+        /// events would come and go unannounced. Checked on the movement mode asset (the character's) and on a new
+        /// BasicMovementMode's default components.
+        /// </summary>
+        [Test]
+        public void EachAbilityState_IsDeclaredOnce_WithItsEvents()
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(ModeAssetPath);
+            Assert.That(asset, Is.Not.Null, $"There's no movement mode made of components at {ModeAssetPath}.");
+            foreach (ComposedMovementMode mode in new ComposedMovementMode[] { asset, NewMode() })
+            {
+                var declaredBy = new Dictionary<CharacterState, string>();
+                foreach (MovementComponent component in mode.Components.Where(c => c != null))
+                {
+                    foreach (StateEvent pair in component.StateEvents)
+                    {
+                        string name = component.GetType().Name;
+                        Assert.That(declaredBy.ContainsKey(pair.state), Is.False,
+                            $"{pair.state} is declared by both {(declaredBy.TryGetValue(pair.state, out string other) ? other : "")} and {name}.");
+                        declaredBy[pair.state] = name;
+                        Assert.That(pair.started, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it starts.");
+                        Assert.That(pair.ended, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it ends.");
+                        Assert.That(pair.started, Is.Not.EqualTo(pair.ended), $"{name}'s {pair.state} should start and end with different events.");
+                    }
+                }
+                Assert.That(declaredBy, Is.Not.Empty, "Test setup: the abilities should declare their states' events.");
+            }
         }
 
         [Test]

@@ -378,6 +378,24 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
+        /// The full-size run over the course that every size's is compared with: the same for each (a new character from
+        /// the same prefab and tuning, on the same course, stepped the same way: the movement is deterministic), so it's
+        /// run by the first size's test and kept for the others, rather than run again by each. Kept only for one run of
+        /// the fixture (cleared as it starts), so a retuning between runs is run again.
+        /// </summary>
+        private sealed class FullSizeRun
+        {
+            public List<CourseStep> steps;
+            public Course course;
+            public float frontExtent;
+        }
+
+        private static FullSizeRun fullSizeRun;
+
+        [OneTimeSetUp]
+        public void ForgetTheFullSizeRun() => fullSizeRun = null;
+
+        /// <summary>
         /// The character moves exactly like a scaled copy of itself at any size: over a course scaled with it (ramps up
         /// and down, a step, a jump, a dash, a low ceiling and a step too tall for it), every physics step puts it in the
         /// same place for its size as at full size, on the ground or in the air at the same moments. So its speed for
@@ -387,11 +405,19 @@ namespace CharacterShowcase.Tests
         [UnityTest]
         public IEnumerator AtAnySize_TheCharacterMovesLikeAScaledCopyOfItself([ValueSource(nameof(AnySize))] float size)
         {
-            var normal = new List<CourseStep>();
-            Course course = null;
-            yield return RunCourse(1f, normal, c => course = c);
-            float radius = rig.FrontExtent;
-            yield return ReplaceRig();
+            // The full-size run, run once for all the sizes (see FullSizeRun): the test's rig is then the scaled run's,
+            // made afresh as ReplaceRig would make it.
+            if (fullSizeRun == null)
+            {
+                var run = new FullSizeRun { steps = new List<CourseStep>() };
+                yield return RunCourse(1f, run.steps, c => run.course = c);
+                run.frontExtent = rig.FrontExtent;
+                fullSizeRun = run;
+                yield return ReplaceRig();
+            }
+            List<CourseStep> normal = fullSizeRun.steps;
+            Course course = fullSizeRun.course;
+            float radius = fullSizeRun.frontExtent;
             var scaled = new List<CourseStep>();
             yield return RunCourse(size, scaled);
 

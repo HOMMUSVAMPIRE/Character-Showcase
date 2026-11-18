@@ -24,14 +24,25 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Steps the model's animation by hand with the physics (see StepAnimator), so measurements don't depend on the
-        /// frame rate, and stops interpolating the character so the model sits exactly where physics put it.
+        /// frame rate, and stops interpolating the character so the model sits exactly where physics put it. With the
+        /// animation stepped by hand, nothing waits for Unity's frames, so the rig steps the physics itself from here on
+        /// (far faster, the same steps: see CharacterTestRig.StepsPhysicsItself), unless the world has something only
+        /// Unity's steps move (a moving platform, which the rig then waits for), or the fixture says its tests still need
+        /// Unity's frames (StepsPhysicsWithTheAnimation).
         /// </summary>
         protected void TakeOverAnimator()
         {
             rig.Body.interpolation = RigidbodyInterpolation.None;
             animator = rig.Models.Animator;
             animator.enabled = false;
+            rig.StepsPhysicsItself = StepsPhysicsWithTheAnimation;
         }
+
+        /// <summary>
+        /// Whether, once the Animator is taken over (TakeOverAnimator), the rig steps the physics itself. Off for a fixture
+        /// whose tests still read what's updated each frame (the model's easing, or the animation state paw placement reads).
+        /// </summary>
+        protected virtual bool StepsPhysicsWithTheAnimation => true;
 
         protected void StepAnimator(int step)
         {
@@ -183,6 +194,45 @@ namespace CharacterShowcase.Tests
             TestContext.WriteLine($"At {scale}, foot placement at {footPlacementWeight}: soles between {lowest * 1000f:0.00} and {highest * 1000f:0.00} mm from the floor.");
             result((lowest, highest));
         }
+
+        /// <summary>Where Prepare Character Models puts the package's own models (the ones SampleContentAnimationTests checks).</summary>
+        protected const string ModelsFolder = "Assets/Models/CharacterModels";
+
+        /// <summary>The asset path of the character prefab's own model source (in the editor; null in a player, or if it has none).</summary>
+        protected static string CharactersOwnSourcePath()
+        {
+#if UNITY_EDITOR
+            GameObject prefab = CharacterTestRig.CharacterPrefab();
+            CharacterModelHost host = prefab != null ? prefab.GetComponent<CharacterModelHost>() : null;
+            return host != null && host.ModelSource != null ? UnityEditor.AssetDatabase.GetAssetPath(host.ModelSource) : null;
+#else
+            return null;
+#endif
+        }
+
+        /// <summary>Whether the character's own model is one of the package's prepared models (in ModelsFolder).</summary>
+        protected static bool OwnModelIsPrepared()
+        {
+            string path = CharactersOwnSourcePath();
+            return !string.IsNullOrEmpty(path) && path.StartsWith(ModelsFolder + "/", System.StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Humanoid animation plays relative to each avatar's T-pose, so a model whose avatar took an A-pose as its T-pose
+        /// holds its arms that much higher in every clip. Standing idle, the mannequin's upper arms hang about 12 degrees
+        /// from straight down; a model rigged in an A-pose without its T-pose corrected holds them out near 70. Checked on
+        /// a model standing idle (the animator taken over and stepped for a while).
+        /// </summary>
+        protected void AssertArmsDown()
+        {
+            foreach ((HumanBodyBones upper, HumanBodyBones lower) in new[]
+                     { (HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm), (HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm) })
+            {
+                Vector3 arm = animator.GetBoneTransform(lower).position - animator.GetBoneTransform(upper).position;
+                float fromDown = Vector3.Angle(arm, Vector3.down);
+                Assert.That(fromDown, Is.LessThan(30f), $"Standing idle, the {upper} is held {fromDown:0} degrees out from the body.");
+            }
+        }
     }
 
     /// <summary>
@@ -214,6 +264,19 @@ namespace CharacterShowcase.Tests
             yield return Case(new Vector3(2f, 1f, 0.5f), 0.5f);
         }
 
+        // The soles measured unstretched, by foot placement weight: the baseline the stretched part-way cases compare
+        // with, measured once per run of the fixture (by the first case that needs it, or by the unstretched case at
+        // that weight) rather than again for each. Numbers only, so nothing of a disposed rig is kept.
+        private readonly Dictionary<float, (float lowest, float highest)> unstretchedSoles = new();
+
+        /// <summary>Starts each run of the fixture with no baselines measured, so none is left from an earlier run.</summary>
+        [OneTimeSetUp]
+        public void ForgetBaselines()
+        {
+            unstretchedSoles.Clear();
+            ownSizeSlide.Clear();
+        }
+
         /// <summary>
         /// Standing idle on a floor, the model's soles touch it: neither floating above it nor sunk into it, at any size,
         /// including stretched along one axis only, with foot placement on, off or fading. The model is placed for its
@@ -221,21 +284,26 @@ namespace CharacterShowcase.Tests
         /// lower (on a model of other proportions than the clips'), which foot placement makes up for in proportion to
         /// how far off it is. Part way (only while fading, for an eighth of a second), Unity's IK blends the leg's joint
         /// rotations, which shortens the leg a little: the feet dip a few millimetres even where foot placement has
-        /// nothing to change, so stretched, part way, the model is compared with itself unstretched instead.
+        /// nothing to change, so stretched, part way, the model is compared with itself unstretched instead. At its own
+        /// size with foot placement on, a model that's one of the package's prepared ones also holds its arms down
+        /// (SampleContentAnimationTests.EveryModel_StandsOnTheGround_WithItsArmsDown checks the others, and leaves this
+        /// one to this case, the same run).
         /// </summary>
         [UnityTest, TestCaseSource(nameof(Groundings))]
         public IEnumerator StandsOnTheGround_AtAnySize_WithFootPlacementOnOffOrFading(Vector3 scale, float footPlacementWeight)
         {
             bool partWay = footPlacementWeight > 0f && footPlacementWeight < 1f, stretched = scale != Vector3.one;
             (float lowest, float highest) soles = default, normal = default;
-            if (partWay && stretched)
+            if (partWay && stretched && !unstretchedSoles.TryGetValue(footPlacementWeight, out normal))
             {
                 yield return SpawnWithOwnModel();
                 yield return MeasureStandingSoles(Vector3.one, footPlacementWeight, s => normal = s);
+                unstretchedSoles[footPlacementWeight] = normal;
                 yield return ReplaceRig();
             }
             yield return SpawnWithOwnModel();
             yield return MeasureStandingSoles(scale, footPlacementWeight, s => soles = s);
+            if (!stretched) { unstretchedSoles[footPlacementWeight] = soles; }
             Assert.That(rig.Grounded, Is.True);
 
             if (partWay && stretched)
@@ -249,6 +317,7 @@ namespace CharacterShowcase.Tests
             float sink = (partWay ? 0.005f : 0.002f) * scale.y, rise = 0.002f * scale.y;
             Assert.That(soles.lowest, Is.GreaterThan(-sink), $"The soles sink {-soles.lowest * 1000f:0.0} mm into the floor.");
             Assert.That(soles.highest, Is.LessThan(rise), $"The soles float {soles.highest * 1000f:0.0} mm above the floor.");
+            if (!stretched && footPlacementWeight >= 1f && OwnModelIsPrepared()) { AssertArmsDown(); }
         }
 
         /// <summary>
@@ -289,6 +358,11 @@ namespace CharacterShowcase.Tests
             }
         }
 
+        // The planted feet's slide at the character's own size, by walking speed: the baseline every case compares with,
+        // measured once per run of the fixture rather than again for each case. Numbers only, so nothing of a disposed
+        // rig is kept.
+        private readonly Dictionary<float, float> ownSizeSlide = new();
+
         private static readonly Vector3[] SlideScales = { Vector3.one * 0.25f, Vector3.one * 0.5f, Vector3.one * 2f, new(1f, 1.5f, 1.5f) };
 
         /// <summary>
@@ -304,9 +378,13 @@ namespace CharacterShowcase.Tests
             float normal = 0f, scaled = 0f;
             yield return SpawnWithOwnModel();
             float speed = 0.1f * rig.WalkSpeed;
-            yield return MeasureFootSlide(speed, s => normal = s);
-            yield return ReplaceRig();
-            yield return SpawnWithOwnModel();
+            if (!ownSizeSlide.TryGetValue(speed, out normal))
+            {
+                yield return MeasureFootSlide(speed, s => normal = s);
+                ownSizeSlide[speed] = normal;
+                yield return ReplaceRig();
+                yield return SpawnWithOwnModel();
+            }
             yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
             Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
             yield return MeasureFootSlide(speed * scale.z, s => scaled = s);
@@ -434,7 +512,6 @@ namespace CharacterShowcase.Tests
     [Category("SampleContent")]
     public class SampleContentAnimationTests : AnimationTestsBase
     {
-        private const string ModelsFolder = "Assets/Models/CharacterModels";
         private const string NoModels = "(no prepared models)";
         // The most the planted feet may slide, as a fraction of the character's speed. Motion capture's planted feet
         // roll and drift a little under a body moving at a steady speed (the walk loop's slide 4.5 to 5 percent on the
@@ -455,6 +532,18 @@ namespace CharacterShowcase.Tests
 #else
             return new[] { NoModels };
 #endif
+        }
+
+        /// <summary>
+        /// Every prepared model but the character's own, or a placeholder if there are none: standing the character's own
+        /// on the ground at its own size with foot placement on is the same run as the (1, 1, 1) case at full weight of
+        /// AnimationTests.StandsOnTheGround_AtAnySize_WithFootPlacementOnOffOrFading, which checks its arms down too.
+        /// </summary>
+        private static IEnumerable<string> PreparedModelsButTheCharactersOwn()
+        {
+            string own = CharactersOwnSourcePath();
+            string[] others = PreparedModels().Where(path => path != own).ToArray();
+            return others.Length > 0 ? others : new[] { NoModels };
         }
 
         private IEnumerator SpawnWithPreparedModel(string path)
@@ -501,35 +590,19 @@ namespace CharacterShowcase.Tests
             Assert.That(slide, Is.LessThan(AllowedFootSlide), $"The planted feet slide at {slide:P0} of the character's speed.");
         }
 
+        /// <summary>
+        /// Standing idle, every model's soles touch the floor and it holds its arms down (see AssertArmsDown). The
+        /// character's own model is left to AnimationTests (see PreparedModelsButTheCharactersOwn).
+        /// </summary>
         [UnityTest]
-        public IEnumerator EveryModel_StandsOnTheGround([ValueSource(nameof(PreparedModels))] string path)
+        public IEnumerator EveryModel_StandsOnTheGround_WithItsArmsDown([ValueSource(nameof(PreparedModelsButTheCharactersOwn))] string path)
         {
             yield return SpawnWithPreparedModel(path);
             (float lowest, float highest) soles = default;
             yield return MeasureStandingSoles(Vector3.one, 1f, s => soles = s);
             Assert.That(soles.lowest, Is.GreaterThan(-0.002f), $"The soles sink {-soles.lowest * 1000f:0.0} mm into the floor.");
             Assert.That(soles.highest, Is.LessThan(0.002f), $"The soles float {soles.highest * 1000f:0.0} mm above the floor.");
-        }
-
-        /// <summary>
-        /// Humanoid animation plays relative to each avatar's T-pose, so a model whose avatar took an A-pose as its T-pose
-        /// holds its arms that much higher in every clip. Standing idle, the mannequin's upper arms hang about 12 degrees
-        /// from straight down; a model rigged in an A-pose without its T-pose corrected holds them out near 70.
-        /// </summary>
-        [UnityTest]
-        public IEnumerator EveryModel_StandsWithItsArmsDown([ValueSource(nameof(PreparedModels))] string path)
-        {
-            yield return SpawnWithPreparedModel(path);
-            TakeOverAnimator();
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), StepAnimator);
-
-            foreach ((HumanBodyBones upper, HumanBodyBones lower) in new[]
-                     { (HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm), (HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm) })
-            {
-                Vector3 arm = animator.GetBoneTransform(lower).position - animator.GetBoneTransform(upper).position;
-                float fromDown = Vector3.Angle(arm, Vector3.down);
-                Assert.That(fromDown, Is.LessThan(30f), $"Standing idle, the {upper} is held {fromDown:0} degrees out from the body.");
-            }
+            AssertArmsDown();
         }
 
         /// <summary>How far the torso (hips to head) leans forward from upright, in degrees, toward the character's facing.</summary>

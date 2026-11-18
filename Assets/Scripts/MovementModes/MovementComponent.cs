@@ -38,6 +38,46 @@ namespace Character
             }
         }
 
+        /// <summary>
+        /// The hooks (the points of a step) this kind of component overrides: its mode calls only these, as the others
+        /// are this class's, which do nothing. Every component is called at every point of every step otherwise, most of
+        /// them doing nothing there, each call timed (see Marker): that was half of a step's time in the mode.
+        /// </summary>
+        internal Hooks Overridden
+        {
+            get
+            {
+                if (!hasHooks) { hooks = HooksOf(GetType()); hasHooks = true; }
+                return hooks;
+            }
+        }
+
+        [NonSerialized] private Hooks hooks;
+        [NonSerialized] private bool hasHooks;
+        private static readonly System.Collections.Generic.Dictionary<Type, Hooks> hooksByType = new();
+
+        private static Hooks HooksOf(Type type)
+        {
+            if (hooksByType.TryGetValue(type, out Hooks found)) { return found; }
+            Hooks overridden = Hooks.None;
+            Type[] step = { typeof(MovementData), typeof(Inputs), typeof(MovementController) };
+            Type[] finish = { typeof(MovementData), typeof(MovementController) };
+            void Check(string name, Type[] parameters, Hooks hook)
+            {
+                System.Reflection.MethodInfo method = type.GetMethod(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, null, parameters, null);
+                if (method != null && method.DeclaringType != typeof(MovementComponent)) { overridden |= hook; }
+            }
+            Check(nameof(AdvanceTimers), step, Hooks.AdvanceTimers);
+            Check(nameof(BeforeAbilities), step, Hooks.BeforeAbilities);
+            Check(nameof(TakeOver), step, Hooks.TakeOver);
+            Check(nameof(BeforeLocomotion), step, Hooks.BeforeLocomotion);
+            Check(nameof(Locomotion), step, Hooks.Locomotion);
+            Check(nameof(AfterWalking), step, Hooks.AfterWalking);
+            Check(nameof(FinishStep), finish, Hooks.FinishStep);
+            hooksByType[type] = overridden;
+            return overridden;
+        }
+
         /// <summary>The movement mode this is a component of (set by the mode before it calls the component).</summary>
         public ComposedMovementMode Mode { get => mode; internal set => mode = value; }
 
@@ -160,6 +200,20 @@ namespace Character
         public virtual void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
         {
         }
+    }
+
+    /// <summary>The points of a step a component may act at (its hooks): see MovementComponent.Overridden.</summary>
+    [Flags]
+    internal enum Hooks
+    {
+        None = 0,
+        AdvanceTimers = 1 << 0,
+        BeforeAbilities = 1 << 1,
+        TakeOver = 1 << 2,
+        BeforeLocomotion = 1 << 3,
+        Locomotion = 1 << 4,
+        AfterWalking = 1 << 5,
+        FinishStep = 1 << 6,
     }
 
     /// <summary>

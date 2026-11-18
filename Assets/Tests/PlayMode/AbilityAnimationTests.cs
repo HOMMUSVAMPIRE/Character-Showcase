@@ -11,7 +11,7 @@ namespace CharacterShowcase.Tests
     /// <summary>
     /// Checks that the movement abilities show on the character's own model, through the shared Animator Controller
     /// (MannequinGenerator): crouching, sliding, rolling, wall-running, hanging, climbing, vaulting, pushing, swinging on a
-    /// rope, riding a zipline and swimming each play their state, a crouched model fits its lowered collider, a hanging
+    /// rope, riding a zipline and swimming each play their state, a crouched model fits its lowered body, a hanging
     /// model's hands reach up to the ledge, the rope or the cable, and a swimmer's head is just out of the water. In the
     /// SampleContent category, as they check the package's own controller and model.
     /// </summary>
@@ -70,12 +70,12 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator Crouching_PlaysCrouch_AndTheModelFitsItsLoweredCollider()
+        public IEnumerator Crouching_PlaysCrouch_AndTheModelFitsItsLoweredBody()
         {
             yield return Spawn();
             yield return ExpectState(MannequinAnimatorStates.Crouch, 1f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             float top = HighestPointOfModel() - rig.Position.y;
-            Assert.That(top, Is.LessThan(rig.CurrentHeight + 0.05f), "A crouching model should fit inside its crouched collider.");
+            Assert.That(top, Is.LessThan(rig.CurrentHeight + 0.05f), "A crouching model should fit inside its crouched body.");
 
             yield return ExpectState(MannequinAnimatorStates.Crouch, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
         }
@@ -239,7 +239,7 @@ namespace CharacterShowcase.Tests
             // As far apart as the Quaternius library's climbs grip ledges (0.75 to 1.4 m on the mannequin).
             float grip = Vector3.Distance(left.position, right.position) / size;
             Assert.That(grip, Is.InRange(0.7f, 1.4f), "The hands should grip the ledge about as far apart as the library's climbs do.");
-            Assert.That(face - hips.position.z, Is.LessThan(0.25f * size), "The body should hang against the wall, not a collider's width away from it.");
+            Assert.That(face - hips.position.z, Is.LessThan(0.25f * size), "The body should hang against the wall, not held a body's width away from it.");
             Assert.That(face - hips.position.z, Is.GreaterThan(0.05f * size), "The body shouldn't be pushed into the wall.");
 
             yield return ExpectState(MannequinAnimatorStates.Climb, 0.4f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
@@ -270,62 +270,45 @@ namespace CharacterShowcase.Tests
             Assert.That(outOfClimb, Is.Zero, "A crouched climb shouldn't leave the Climb state.");
         }
 
-        [UnityTest]
-        public IEnumerator VaultingOverALowWall_PlaysVault()
-        {
-            yield return Spawn();
-            rig.Body.position = new Vector3(0f, 3f, 0f);
-            float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
-            float top = 3f + share * rig.StandingHeight, face = rig.FrontExtent + 0.25f;
-            rig.Box("Low Wall", new Vector3(0f, top / 2f, face + 0.2f), new Vector3(10f, top, 0.4f));
-
-            // Through the middle of the vault, the planted hand is on the wall's top, the body lowered for it to reach
-            // (rather than floating over the top, held clear of it by the collider).
-            bool played = false;
-            float closest = float.PositiveInfinity, size = rig.Controller.Scale.y;
-            Transform hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
-            yield return rig.Run(0.8f, _ => CharacterTestRig.Sprint(Vector3.forward), step =>
-            {
-                StepAnimator(step);
-                played |= InAnimatorState(MannequinAnimatorStates.Vault);
-                float progress = rig.Movement.vault.Progress;
-                if (rig.InState(CharacterState.Vaulting) && progress > 0.35f && progress < 0.55f)
-                {
-                    closest = Mathf.Min(closest, Mathf.Abs(hand.position.y - top));
-                }
-            });
-            Assert.That(played, Is.True, $"The 'Vault' state should play (the Animator is in '{CurrentAnimatorState()}').");
-            Assert.That(closest, Is.LessThan(0.08f * size), "Mid-vault, the planted hand should be on the wall's top.");
-        }
-
         /// <summary>
-        /// Vaulting, the body lowered for the planted hand to reach the top eases down and back up over time: the vault
-        /// swings over the top in a moment, its progress racing through the end of the hand's planting, and eased by
-        /// progress alone the body popped back up a third of a metre in a frame or two.
+        /// Sprinting over a low wall plays the vault, and through the middle of the vault the planted hand is on the wall's
+        /// top, the body lowered for it to reach (rather than floating over the top, held clear of it by the character's
+        /// body). That lowering eases down and back up over time: the vault swings over the top in a moment, its progress
+        /// racing through the end of the hand's planting, and eased by progress alone the body popped back up a third of
+        /// a metre in a frame or two.
         /// </summary>
         [UnityTest]
-        public IEnumerator Vaulting_TheHipsDontJumpAsTheHandLetsGo()
+        public IEnumerator VaultingOverALowWall_PlaysVault_WithTheHandOnTheTop_AndTheHipsDontJump()
         {
             yield return Spawn();
             float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
             float top = share * rig.StandingHeight;
             rig.Box("Low Wall", new Vector3(0f, top / 2f, 3f), new Vector3(10f, top, 0.4f));
             Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips), parent = rig.Models.ModelParent;
-            bool vaulted = false;
-            float biggestJump = 0f;
+            Transform hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            bool vaulted = false, played = false;
+            float biggestJump = 0f, closest = float.PositiveInfinity, size = rig.Controller.Scale.y;
             Vector3 last = hips.position - parent.position;
             yield return rig.Run(1.4f, step => CharacterTestRig.Sprint(Vector3.forward, step), step =>
             {
                 rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
                 StepAnimator(step);
+                played |= InAnimatorState(MannequinAnimatorStates.Vault);
                 Vector3 inModel = hips.position - parent.position;
                 bool vaulting = rig.InState(CharacterState.Vaulting);
                 vaulted |= vaulting;
                 if (vaulting) { biggestJump = Mathf.Max(biggestJump, Mathf.Abs(inModel.y - last.y)); }
                 last = inModel;
+                float progress = rig.Movement.vault.Progress;
+                if (vaulting && progress > 0.35f && progress < 0.55f)
+                {
+                    closest = Mathf.Min(closest, Mathf.Abs(hand.position.y - top));
+                }
             });
             Assert.That(vaulted, Is.True, "Test setup: the character should vault over the wall.");
-            Assert.That(biggestJump, Is.LessThan(0.12f * rig.Controller.Scale.y), "Vaulting, the hips shouldn't jump up or down within the model.");
+            Assert.That(played, Is.True, $"The 'Vault' state should play (the Animator is in '{CurrentAnimatorState()}').");
+            Assert.That(closest, Is.LessThan(0.08f * size), "Mid-vault, the planted hand should be on the wall's top.");
+            Assert.That(biggestJump, Is.LessThan(0.12f * size), "Vaulting, the hips shouldn't jump up or down within the model.");
         }
 
         [UnityTest]
@@ -384,7 +367,7 @@ namespace CharacterShowcase.Tests
                 Assert.That(hand.position.y - head.position.y, Is.InRange(-0.2f * size, 0.2f * size), $"The {hand.name} should be at about head height.");
             }
             Assert.That(Vector3.Distance(left.position, right.position) / size, Is.InRange(0.7f, 1.4f), "The hands should be spread about as wide as the library's climbs hold them.");
-            Assert.That(face - hips.position.z, Is.LessThan(0.3f * size), "The body should be against the wall, not a collider's width away from it.");
+            Assert.That(face - hips.position.z, Is.LessThan(0.3f * size), "The body should be against the wall, not held a body's width away from it.");
         }
 
         [UnityTest]
@@ -469,7 +452,8 @@ namespace CharacterShowcase.Tests
         /// <summary>
         /// Stepping onto a wall from the ground and off it again, the step's animation plays once each way: its progress
         /// (which its pose is drawn at) never goes back while the Animator shows it, blending out of it included. Dropping
-        /// back to 0 as the step ended drew the step's start again for the blend, so it seemed to play twice.
+        /// back to 0 as the step ended drew the step's start again for the blend, so it seemed to play twice. Climb Enter
+        /// hands over to the climb (Wall Climb), and Climb Exit to walking (Locomotion).
         /// </summary>
         [UnityTest]
         public IEnumerator SteppingOntoAndOffAWall_PlaysEachStepOnce()
@@ -491,32 +475,25 @@ namespace CharacterShowcase.Tests
                 shownFor++;
             }
             float lastEnter = 0f, lastExit = 0f;
+            bool climbShown = false, walkingAfterExit = false;
             yield return rig.Run(1.4f, _ => CharacterTestRig.Move(Vector3.forward), step =>
             {
                 StepAnimator(step);
                 Watch(MannequinAnimatorStates.ClimbEnter, ref enterShown, ref lastEnter);
+                climbShown |= enterShown > 0 && InAnimatorState(MannequinAnimatorStates.WallClimb);
             });
             yield return rig.Run(1.4f, _ => CharacterTestRig.Move(Vector3.back), step =>
             {
                 StepAnimator(step);
                 Watch(MannequinAnimatorStates.ClimbExit, ref exitShown, ref lastExit);
+                walkingAfterExit |= exitShown > 0 && InAnimatorState(MannequinAnimatorStates.Locomotion);
             });
             Assert.That(enterShown, Is.GreaterThan(0), "Test setup: stepping onto the wall should have played Climb Enter.");
             Assert.That(exitShown, Is.GreaterThan(0), "Test setup: stepping off it should have played Climb Exit.");
             Assert.That(backwards, Is.LessThan(1e-4f), "A step's animation should play through once: its progress shouldn't go back while it shows.");
-        }
-
-        [UnityTest]
-        public IEnumerator TakingHoldFromTheGround_PlaysClimbEnter_AndSteppingOffPlaysClimbExit()
-        {
-            yield return Spawn();
-            rig.Floor();
-            float face = rig.Position.z + rig.FrontExtent + 0.3f;
-            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
-            yield return ExpectState(MannequinAnimatorStates.ClimbEnter, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
-            yield return ExpectState(MannequinAnimatorStates.WallClimb, 1f, _ => CharacterTestRig.Idle());
-            yield return ExpectState(MannequinAnimatorStates.ClimbExit, 0.4f, _ => CharacterTestRig.Move(Vector3.back));
-            yield return ExpectState(MannequinAnimatorStates.Locomotion, 1.2f, _ => CharacterTestRig.Idle());
+            Assert.That(climbShown, Is.True, $"Stepped onto the wall, the '{MannequinAnimatorStates.WallClimb}' state should play.");
+            // Stepped off late in the walk back, the blend into walking may not have begun yet: stood still, it does.
+            if (!walkingAfterExit) { yield return ExpectState(MannequinAnimatorStates.Locomotion, 1.2f, _ => CharacterTestRig.Idle()); }
         }
 
         [UnityTest]
@@ -791,6 +768,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator SprintingOverALowWall_TheModelMovesSmoothlyIntoAndOutOfTheVault()
         {
             yield return Spawn();
+            // The model eases over the vault each frame (see AnimationController), which this measures: Unity's frames.
+            rig.StepsPhysicsItself = false;
             float share = Mathf.Lerp(rig.StepHeight / rig.StandingHeight, rig.MovementSetting<float>("ledgeGrabMinHeight"), 0.5f);
             float top = share * rig.StandingHeight;
             rig.Box("Low Wall", new Vector3(0f, top / 2f, 4.2f), new Vector3(10f, top, 0.4f));
@@ -825,6 +804,8 @@ namespace CharacterShowcase.Tests
         public IEnumerator SwimmingIntoALowSide_PlaysClimb_NotVault()
         {
             yield return Spawn();
+            // The model eases up the climb out each frame (see AnimationController), which this measures: Unity's frames.
+            rig.StepsPhysicsItself = false;
             // Deep water (no floor under it), with a side ahead whose top is a little out of the water: low enough to
             // vault onto from the water (see Swimming), which shows as climbing out.
             Level.Water water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));

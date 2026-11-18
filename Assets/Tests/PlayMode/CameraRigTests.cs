@@ -87,6 +87,35 @@ namespace CharacterShowcase.Tests
             for (int i = 0; i < count; i++) { yield return null; }
         }
 
+        /// <summary>
+        /// Waits frame by frame until done says so, or timeoutSeconds pass: for something easing to where it settles, as
+        /// long as that takes however it's tuned, rather than a time chosen for one tuning. Doesn't fail by itself on the
+        /// timeout: assert what should then be true.
+        /// </summary>
+        private static IEnumerator WaitUntil(System.Func<bool> done, float timeoutSeconds = 5f)
+        {
+            float until = Time.time + timeoutSeconds;
+            while (!done() && Time.time < until) { yield return null; }
+        }
+
+        /// <summary>
+        /// Waits frame by frame until value stops changing (by less than tolerance a frame, for several frames running),
+        /// or timeoutSeconds pass.
+        /// </summary>
+        private static IEnumerator WaitUntilSettled(System.Func<float> value, float tolerance, float timeoutSeconds = 5f)
+        {
+            const int SteadyFrames = 5;
+            float until = Time.time + timeoutSeconds, last = value();
+            int steady = 0;
+            while (steady < SteadyFrames && Time.time < until)
+            {
+                yield return null;
+                float now = value();
+                steady = Mathf.Abs(now - last) < tolerance ? steady + 1 : 0;
+                last = now;
+            }
+        }
+
         /// <summary>Waits for a physics step (the rig samples its target once per step) and a frame to apply it.</summary>
         private static IEnumerator PhysicsStepAndFrame()
         {
@@ -407,9 +436,9 @@ namespace CharacterShowcase.Tests
             target.position += new Vector3(2f, 0f, 0f); // Under the teleport distance, so the camera should ease over.
             yield return PhysicsStepAndFrame();
             Vector3 shortlyAfter = cam.transform.position;
-            yield return new WaitForSeconds(1f);
-
             Vector3 expected = ExpectedThirdPersonPosition(rig.Zoom.defaultDistance);
+            yield return WaitUntil(() => Vector3.Distance(cam.transform.position, expected) < 0.01f);
+
             Assert.That(Vector3.Distance(shortlyAfter, expected), Is.GreaterThan(0.05f), "Camera should ease toward the target, not jump.");
             Assert.That(Vector3.Distance(cam.transform.position, expected), Is.LessThan(0.01f), "Camera should catch up with the target.");
         }
@@ -594,7 +623,7 @@ namespace CharacterShowcase.Tests
             float fullFov = 0f;
             yield return MoveTargetAndMeasureFov(rig.SpeedFov.maxSpeed * size, f => fullFov = f);
             Assert.That(fullFov, Is.EqualTo(baseFov + rig.SpeedFov.extraFov).Within(0.5f), "At the full-effect speed for its size, the FOV should widen by the extra FOV.");
-            yield return new WaitForSeconds(2f);
+            yield return WaitUntil(() => Mathf.Abs(cam.fieldOfView - baseFov) < 0.1f);
             Assert.That(cam.fieldOfView, Is.EqualTo(baseFov).Within(0.1f), "FOV should settle back once the target stops.");
 
             if (size > 1f)
@@ -673,7 +702,7 @@ namespace CharacterShowcase.Tests
                 yield return null;
                 lowest = Mathf.Min(lowest, cam.transform.position.y);
             }
-            yield return new WaitForSeconds(1f);
+            yield return WaitUntilSettled(() => cam.transform.position.y, 1e-5f);
             rest = cam.transform.position.y;
             Time.captureDeltaTime = 0f;
             timeLimit.enabled = true;

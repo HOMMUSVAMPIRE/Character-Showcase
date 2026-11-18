@@ -10,30 +10,11 @@ namespace CharacterShowcase.Tests
     public class MovingGroundTests : CharacterRigFixture
     {
 
-        [UnityTest]
-        public IEnumerator StandingOnSlidingPlatform_MovesWithIt()
-        {
-            // Travels 6 m out over 3 s at a constant 2 m/s (period 6 s, no easing or pauses).
-            var platform = rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(6f, 0f, 0f), 6f, Vector3.zero);
-            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Grounded, Is.True, "Character should be standing on the platform.");
-            Vector3 offset = rig.Position - platformBody.position;
-            float platformStart = platformBody.position.x;
-
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
-
-            Assert.That(platformBody.position.x - platformStart, Is.GreaterThan(2f), "Test setup: the platform should have moved.");
-            Vector3 drift = rig.Position - platformBody.position - offset;
-            Assert.That(drift.magnitude, Is.LessThan(0.05f), "Character slid relative to the platform instead of riding it.");
-        }
-
         /// <summary>
-        /// On a platform rising and falling, and one sliding to and fro, the character rides it exactly, step by step: its
-        /// feet stay on the platform's top, and keep their place across it. Read the platform a step late (before it
-        /// moved), it rode a step behind: on a platform rising at 1 m/s, 2 cm low, and as high above it falling.
+        /// On a platform rising and falling, and one sliding to and fro, the character rides it exactly, step by step: it
+        /// stays on the ground, its feet stay on the platform's top, and keep their place across it. Read the platform a
+        /// step late (before it moved), it rode a step behind: on a platform rising at 1 m/s, 2 cm low, and as high above
+        /// it falling.
         /// </summary>
         [UnityTest]
         public IEnumerator OnAMovingPlatform_TheCharacterRidesIt_StepByStep([Values(true, false)] bool vertical)
@@ -49,8 +30,10 @@ namespace CharacterShowcase.Tests
             Vector3 offset = rig.Position - platformBody.position;
 
             float worstHeight = 0f, worstDrift = 0f;
+            bool alwaysGrounded = true;
             yield return rig.Run(3f, _ => CharacterTestRig.Idle(), _ =>
             {
+                alwaysGrounded &= rig.Grounded;
                 Vector3 now = rig.Position - platformBody.position;
                 worstHeight = Mathf.Max(worstHeight, Mathf.Abs(now.y - size.y / 2f));
                 worstDrift = Mathf.Max(worstDrift, new Vector2(now.x - offset.x, now.z - offset.z).magnitude);
@@ -59,6 +42,7 @@ namespace CharacterShowcase.Tests
                                   $"and moved at most {worstDrift * 1000f:0.0} mm across it.");
             Assert.That(worstHeight, Is.LessThan(0.002f), "The feet should stay on the platform's top, step by step.");
             Assert.That(worstDrift, Is.LessThan(0.002f), "The feet should keep their place on the platform, step by step.");
+            Assert.That(alwaysGrounded, Is.True, "The character lost contact with the moving platform.");
         }
 
         /// <summary>
@@ -123,25 +107,6 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
 
             Assert.That(Vector3.Distance(rig.Position, target), Is.LessThan(0.01f), "The ground carried the character back to where it stood before the teleport.");
-        }
-
-        [UnityTest]
-        public IEnumerator StandingOnElevator_RidesUp()
-        {
-            // Rises 3 m over 3 s.
-            var platform = rig.Platform(Vector3.zero, new Vector3(4f, 0.3f, 4f), new Vector3(0f, 3f, 0f), 6f, Vector3.zero);
-            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
-            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            float heightAbovePlatform = rig.Position.y - platformBody.position.y;
-
-            bool alwaysGrounded = true;
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle(), _ => alwaysGrounded &= rig.Grounded);
-
-            Assert.That(alwaysGrounded, Is.True, "Character lost contact with the rising elevator.");
-            Assert.That(rig.Position.y - platformBody.position.y, Is.EqualTo(heightAbovePlatform).Within(0.03f),
-                "Character should stay on top of the elevator.");
         }
 
         [UnityTest]

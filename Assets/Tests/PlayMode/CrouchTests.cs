@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of crouching: Crouch lowers the character's collider and slows it to its crouch speed, pressing again stands
+    /// Tests of crouching: Crouch lowers the character's body and slows it to its crouch speed, pressing again stands
     /// it up, only where there's room (it waits for room, then stands by itself), the hold-to-crouch option, and
     /// jumping from a crouch. Expected values are read from the movement mode's settings.
     /// </summary>
@@ -27,14 +27,14 @@ namespace CharacterShowcase.Tests
 
 
         [UnityTest]
-        public IEnumerator PressingCrouch_LowersTheCollider_AndMovesAtCrouchSpeed()
+        public IEnumerator PressingCrouch_LowersTheBody_AndMovesAtCrouchSpeed()
         {
             yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
             yield return PressCrouch();
 
             Assert.That(Crouched, Is.True, "Pressing Crouch should crouch.");
-            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "Crouching should lower the collider to the crouch height.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.01f), "Crouching should lower the body to the crouch height.");
             Assert.That(rig.Grounded, Is.True, "Crouching should keep the character's feet on the ground.");
 
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
@@ -66,21 +66,31 @@ namespace CharacterShowcase.Tests
             Assert.That(models.EyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-3f), "Standing again, it's back up.");
         }
 
+        /// <summary>
+        /// A second press of Crouch stands the character up again, walking at its walk speed, the crouch raising
+        /// CrouchStarted and then CrouchEnded, once each.
+        /// </summary>
         [UnityTest]
-        public IEnumerator PressingCrouchAgain_StandsUp_AndWalksAtWalkSpeed()
+        public IEnumerator PressingCrouchAgain_StandsUp_AndWalksAtWalkSpeed_RaisingCrouchStartedAndCrouchEndedOnceEach()
         {
             yield return rig.StandOnFloor();
             float standing = rig.StandingHeight;
+            rig.ClearEvents();
+            var events = rig.EventsRaised;
             yield return PressCrouch();
             yield return PressCrouch();
 
             Assert.That(Crouched, Is.False, "A second press should stand the character up.");
-            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "Standing should raise the collider again.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.01f), "Standing should raise the body again.");
 
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
             float speed = 0f;
             yield return rig.MeanSpeed(0.4f, _ => CharacterTestRig.Move(Vector3.forward), s => speed = s);
             Assert.That(speed, Is.EqualTo(rig.WalkSpeed).Within(0.05f * rig.WalkSpeed), "Once standing, the character should walk at its walk speed.");
+
+            Assert.That(events.Count(e => e == MovementEvents.CrouchStarted), Is.EqualTo(1));
+            Assert.That(events.Count(e => e == MovementEvents.CrouchEnded), Is.EqualTo(1));
+            Assert.That(events.ToList().IndexOf(MovementEvents.CrouchStarted), Is.LessThan(events.ToList().IndexOf(MovementEvents.CrouchEnded)));
         }
 
         [UnityTest]
@@ -99,7 +109,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Position.z, Is.GreaterThan(start + rig.FrontExtent), "Test setup: the character should be under the ceiling.");
             yield return PressCrouch();
             Assert.That(Crouched, Is.True, "With no room above, the character should stay crouched.");
-            Assert.That(rig.CurrentHeight, Is.LessThan(underside), "The collider should stay under the ceiling.");
+            Assert.That(rig.CurrentHeight, Is.LessThan(underside), "The body should stay under the ceiling.");
 
             // Walk out the far side: it stands up by itself as soon as there's room.
             bool stoodUnderCeiling = false;
@@ -190,24 +200,7 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator Crouching_RaisesCrouchStartedAndCrouchEnded_OnceEach()
-        {
-            yield return rig.StandOnFloor();
-            rig.ClearEvents();
-            var events = rig.EventsRaised;
-
-            yield return PressCrouch();
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-            yield return PressCrouch();
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
-
-            Assert.That(events.Count(e => e == MovementEvents.CrouchStarted), Is.EqualTo(1));
-            Assert.That(events.Count(e => e == MovementEvents.CrouchEnded), Is.EqualTo(1));
-            Assert.That(events.ToList().IndexOf(MovementEvents.CrouchStarted), Is.LessThan(events.ToList().IndexOf(MovementEvents.CrouchEnded)));
-        }
-
-        [UnityTest]
-        public IEnumerator CrouchingAtTwiceTheSize_LowersTheColliderInProportion()
+        public IEnumerator CrouchingAtTwiceTheSize_LowersTheBodyInProportion()
         {
             yield return rig.StandOnFloor();
             rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
@@ -217,7 +210,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.02f), "The crouch height is a share of the character's height at any size.");
 
             yield return PressCrouch();
-            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.02f), "Standing up should restore the collider at the character's size.");
+            Assert.That(rig.CurrentHeight, Is.EqualTo(standing).Within(0.02f), "Standing up should restore the body at the character's size.");
         }
     }
 }

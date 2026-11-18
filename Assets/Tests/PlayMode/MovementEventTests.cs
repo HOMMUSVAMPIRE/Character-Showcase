@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using Character;
 using NUnit.Framework;
@@ -9,8 +8,9 @@ using UnityEngine.TestTools;
 namespace CharacterShowcase.Tests
 {
     /// <summary>
-    /// Tests of the movement events animation, effects and sound hook into: each is raised once, at the right moment,
-    /// and the AnimationController passes them on along with the animation state.
+    /// Tests of the movement events animation, effects and sound hook into: each is raised once, at the right moment.
+    /// (That the AnimationController passes them on is AnimationEventTests'; that each ability's state has its events,
+    /// declared once, is MovementCompositionTests'.)
     /// </summary>
     [Category(TestArea.Movement)]
     public class MovementEventTests : CharacterRigFixture
@@ -128,49 +128,6 @@ namespace CharacterShowcase.Tests
 
             Assert.That(rig.Count(MovementEvents.HitCeiling), Is.EqualTo(1));
             Assert.That(rig.Count(MovementEvents.HitWall), Is.EqualTo(1), "Pressing into the wall shouldn't raise it again every step.");
-        }
-
-        [UnityTest]
-        public IEnumerator AnimationController_PassesEventsOn_WithTheAnimationState()
-        {
-            rig.Floor();
-            yield return SettleAndRecord(new Vector3(0f, 0.05f, 0f));
-            var received = new List<(MovementEvents movementEvent, CharacterAnimationState state)>();
-            rig.Animation.MovementEventReceived += (movementEvent, state) => received.Add((movementEvent, state));
-
-            yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
-
-            Assert.That(received.Select(r => r.movementEvent), Is.EqualTo(rig.EventsRaised),
-                "The AnimationController should pass on every movement event, in order.");
-            var jumped = received.First(r => r.movementEvent == MovementEvents.Jumped);
-            Assert.That(jumped.state.jumping, Is.True);
-            Assert.That(jumped.state.verticalSpeed, Is.GreaterThan(0f));
-        }
-
-        /// <summary>
-        /// Each ability's state's starts and ends are declared once, by the component that sets it (StateEvents), with
-        /// an event for each: a state declared by two components would raise its events twice over, and one with no
-        /// events would come and go unannounced.
-        /// </summary>
-        [UnityTest]
-        public IEnumerator EachAbilityState_IsDeclaredOnce_WithItsEvents()
-        {
-            yield return rig.StandOnFloor();
-            var declaredBy = new Dictionary<CharacterState, string>();
-            foreach (MovementComponent component in rig.ComposedMode.Components.Where(c => c != null))
-            {
-                foreach (StateEvent pair in component.StateEvents)
-                {
-                    string name = component.GetType().Name;
-                    Assert.That(declaredBy.ContainsKey(pair.state), Is.False,
-                        $"{pair.state} is declared by both {(declaredBy.TryGetValue(pair.state, out string other) ? other : "")} and {name}.");
-                    declaredBy[pair.state] = name;
-                    Assert.That(pair.started, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it starts.");
-                    Assert.That(pair.ended, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it ends.");
-                    Assert.That(pair.started, Is.Not.EqualTo(pair.ended), $"{name}'s {pair.state} should start and end with different events.");
-                }
-            }
-            Assert.That(declaredBy, Is.Not.Empty, "Test setup: the character's abilities should declare their states' events.");
         }
     }
 }
