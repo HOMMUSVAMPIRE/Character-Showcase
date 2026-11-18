@@ -124,7 +124,7 @@ It runs by itself: when model files in the folder are added, changed, moved or d
 
 **Set Up Scene…** opens a window for choosing which character, model (any Prepare Character Models has set up, with previews and heights) and movement mode a scene spawns, and sets the open scene up to spawn it (see [Spawning the Character](spawning.md)). The choice is stored on the scene's Character Spawner, so the Character prefab itself, which the tests spawn, keeps the mannequin.
 
-All three also run from the command line for automation (each quits Unity when it's done, with code 1 if it failed, so `-quit` isn't needed): `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAllFromCommandLine`, and `...SceneGameSetup.SetUpFromCommandLine -scene Assets/Scenes/SampleScene.unity -model "base_basic_shaded"` (see [Spawning the Character](spawning.md)).
+All three also run from the command line for automation (each quits Unity when it's done, with code 1 if it failed, so `-quit` isn't needed): `-executeMethod CharacterShowcase.EditorTools.MannequinGenerator.GenerateFromCommandLine` (with `-blender <path>` or `-skipBlender`), `...CharacterModelImporter.PrepareAllFromCommandLine`, and `...SceneGameSetup.SetUpFromCommandLine -scene Assets/Scenes/LevelPlayground/LevelPlayground.unity -model "base_basic_shaded"` (see [Spawning the Character](spawning.md)).
 
 ### The reference pose
 

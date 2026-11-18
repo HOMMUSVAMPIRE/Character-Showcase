@@ -11,7 +11,7 @@ namespace CharacterShowcase.EditorTools
     /// Sets up the open scene to spawn a character (see SceneGameSetup): choose the character prefab, the model it
     /// uses (any prepared by Prepare Character Models, or the prefab's own) and its movement mode asset, then confirm.
     /// The scene gets a Game Setup object with a CharacterSpawner, using the scene's own camera rig and input manager
-    /// or copies of the demo scene's. Its changes can be undone, and are left for you to save.
+    /// or instances of the Camera Rig and Input Manager prefabs. Its changes can be undone, and are left for you to save.
     /// </summary>
     public sealed class SceneSetupWindow : EditorWindow
     {
@@ -287,7 +287,7 @@ namespace CharacterShowcase.EditorTools
             var rig = SceneGameSetup.FindOwnCameraRig(scene);
             EditorGUILayout.LabelField(rig != null
                     ? $"The scene's own camera rig ('{rig.name}') follows the character."
-                    : "A copy of the demo scene's camera follows the character.",
+                    : "The Camera Rig prefab follows the character.",
                 EditorStyles.wordWrappedMiniLabel);
             List<Camera> cameras = SceneGameSetup.OtherCameras(scene);
             if (cameras.Count > 0)
@@ -299,7 +299,7 @@ namespace CharacterShowcase.EditorTools
             }
             EditorGUILayout.LabelField(SceneGameSetup.InputManagersOutsideSetup(scene).Count > 0
                     ? "The scene's own input manager is kept."
-                    : "A copy of the demo scene's input manager reads the player's input.",
+                    : "The Input Manager prefab reads the player's input.",
                 EditorStyles.wordWrappedMiniLabel);
         }
 

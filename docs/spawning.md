@@ -43,7 +43,7 @@ spawner.CharacterSpawned += c => { ... };  // after every spawn, from code or on
 
 The choices start from the scene: its existing setup's, or else its placed character's (the prefab it's an instance of, its model and movement mode), or else the package's Character prefab as it is. Then press Set Up.
 
-The scene gets a Game Setup object with a Character Spawner that spawns the character on Start and hands it to a camera. The camera is the scene's own camera rig if it has one, or else a copy of the demo scene's Main Camera (so it's set up and tuned the same). The input manager is likewise the scene's own, or a copy of the demo's. Only the model and movement mode that differ from the prefab's are stored on the spawner, so later changes to the prefab carry through.
+The scene gets a Game Setup object with a Character Spawner that spawns the character on Start and hands it to a camera. The camera is the scene's own camera rig if it has one, or else an instance of the Camera Rig prefab (`Assets/Prefabs/Camera Rig.prefab`), so it's set up and tuned the same, and retuning the prefab retunes every scene set up with it. The input manager is likewise the scene's own, or an instance of the Input Manager prefab. Only the model and movement mode that differ from the prefab's are stored on the spawner, so later changes to the prefab carry through.
 
 Where the character spawns, in order of preference:
 1. The scene's existing setup's spawn points: setting up a scene again replaces its setup but keeps them.
@@ -56,7 +56,7 @@ Move or add spawn points on the Character Spawner afterwards.
 - The scene's other cameras are turned off (their objects deactivated, not deleted), unless you untick that too.
 - The change can be undone and isn't saved for you.
 
-To change the demo scene's model, open it and set it up with the model you want: its placed character, if it still has one, becomes a spawn point. The window's buttons set up the model files (Prepare Character Models) and the animation files (the Quaternius libraries and motion-capture clips), and Refresh lists newly prepared models.
+To change a level's model, open it and set it up again with the model you want: its spawn points are kept. The window's buttons set up the model files (Prepare Character Models) and the animation files (the Quaternius libraries and motion-capture clips), and Refresh lists newly prepared models.
 
 ## Levels and the command line
 

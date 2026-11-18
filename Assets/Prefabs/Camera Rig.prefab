@@ -1,0 +1,299 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5323356493638678382
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1993334437266457665}
+  - component: {fileID: 4655998335281103851}
+  - component: {fileID: 1673797063102528293}
+  - component: {fileID: 2812916449755431242}
+  - component: {fileID: 5283702475765623092}
+  m_Layer: 0
+  m_Name: Camera Rig
+  m_TagString: MainCamera
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1993334437266457665
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5323356493638678382}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 3, z: -20}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!20 &4655998335281103851
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5323356493638678382}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 1000
+  field of view: 60
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: -1
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!81 &1673797063102528293
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5323356493638678382}
+  m_Enabled: 1
+--- !u!114 &2812916449755431242
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5323356493638678382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 1
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
+--- !u!114 &5283702475765623092
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5323356493638678382}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 11249b4fb8a543cc88f1c42d181af284, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 0}
+  targetSizeReference: {fileID: 0}
+  input:
+    playerInput: {fileID: 0}
+    actionsOverride: {fileID: 0}
+    lookAction: Look
+    zoomAction: Zoom
+    toggleViewAction: ToggleView
+    swapShoulderAction: SwapShoulder
+    aimAction: Aim
+  modes:
+    startMode: 1
+    allowFirstPerson: 1
+    allowThirdPerson: 1
+    transitionDuration: 0.35
+    transitionCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  look:
+    mouseSensitivity: 0.36
+    gamepadSensitivity: 200
+    gamepadResponseExponent: 1.6
+    verticalSensitivityScale: 0.8
+    invertX: 0
+    invertY: 0
+    smoothing: 0
+  cursor:
+    manageCursor: 1
+    unlockKey: 60
+    relockOnClick: 1
+    ignoreMouseWhileUnlocked: 1
+  firstPerson:
+    eyeHeight: 1.7
+    eyeAnchor: {fileID: 0}
+    eyeForwardOffset: 0.1
+    fieldOfView: 75
+    minPitch: -85
+    maxPitch: 85
+    nearClipPlane: 0.05
+    hideTarget: 2
+    verticalDamping: 0.05
+  thirdPerson:
+    pivotHeight: 1.6
+    shoulderOffset: {x: 0.6, y: 0.1}
+    startOnRightShoulder: 1
+    shoulderSwapTime: 0.2
+    autoSwapWhenBlocked: 1
+    fieldOfView: 60
+    minPitch: -60
+    maxPitch: 75
+    nearClipPlane: 0.1
+    horizontalDamping: 0.04
+    verticalDamping: 0.15
+    hideWhenClose: 1
+    hideDistance: 0.6
+  zoom:
+    enabled: 1
+    defaultDistance: 3.5
+    minDistance: 1.5
+    maxDistance: 8
+    scrollStep: 0.75
+    analogSpeed: 6
+    smoothTime: 0.12
+    zoomIntoFirstPerson: 1
+  aim:
+    enabled: 1
+    inputMode: 0
+    fieldOfView: 40
+    distanceMultiplier: 0.55
+    shoulderMultiplier: 1.15
+    sensitivityMultiplier: 0.5
+    blendTime: 0.12
+  collision:
+    enabled: 1
+    layers:
+      serializedVersion: 2
+      m_Bits: 4294967295
+    probeRadius: 0.2
+    minDistance: 0.25
+    returnSmoothTime: 0.25
+    triggerInteraction: 1
+  follow:
+    interpolateTarget: 1
+    teleportDistance: 5
+    maxHorizontalLag: 0.75
+    maxVerticalLag: 0.5
+  speedFov:
+    enabled: 1
+    minSpeed: 4
+    maxSpeed: 10
+    extraFov: 8
+    smoothTime: 0.3
+  headBob:
+    enabled: 1
+    amplitude: {x: 0.03, y: 0.045}
+    cyclesPerMeter: 0.55
+    fullAmplitudeSpeed: 5
+    fadeTime: 0.15
+    applyInThirdPerson: 0
+    thirdPersonScale: 0.3
+  landing:
+    enabled: 1
+    minImpactSpeed: 4
+    minFallTime: 0.1
+    dipPerSpeed: 0.025
+    maxDip: 0.35
+    springStiffness: 140
+    springDamping: 20
+    traumaPerSpeed: 0.02
+  shake:
+    enabled: 1
+    decayPerSecond: 1.5
+    traumaExponent: 2
+    maxOffset: 0.08
+    maxAngles: {x: 3, y: 0.5, z: 3}
+    frequency: 22
+  recenter:
+    enabled: 0
+    heading: 0
+    delay: 1.5
+    smoothTime: 0.6
+    minTargetSpeed: 1
+    recenterPitch: 0
+    restingPitch: 10
+  debug:
+    drawGizmos: 1

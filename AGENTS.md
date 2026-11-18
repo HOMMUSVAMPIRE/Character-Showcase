@@ -171,7 +171,8 @@ shows it as a missing component. Unity silently drops enum fields wider than 32 
   (defaults in field initializers, `GetComponent` fallbacks); an editor script run with `-executeMethod`; a minimal
   edit of a value you understand (a tuning number in `Assets/ScriptableObjects/BasicMovementMode.asset` is fine). If
   a task needs inspector wiring you can't do safely, describe the exact change for a person to make.
-- `Assets/Scenes/SampleScene.unity` is the playable demo: don't modify it unless the task is about it.
+- The level scenes are generated (see Generated assets) and stored with Git LFS, as are the models and their textures: a
+  scene's diff isn't readable, so rebuild a level and look at it rather than reviewing its YAML.
 
 **Generated assets: regenerate, don't edit.** Edit the generator and regenerate. All have `-executeMethod` entry
 points (see docs/animation.md, docs/levels.md, docs/spawning.md). If you can't run Blender or Unity, make the source

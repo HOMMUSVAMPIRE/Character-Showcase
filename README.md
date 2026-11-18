@@ -6,14 +6,14 @@ This project is still a work in progress. I will be adding to it in my free time
 Once the project meets my standards for completion, I may release it as a Unity Asset Store package for others to use in their games.
 
 ## How to open this Project
-1. Clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
+1. Install Git LFS (https://git-lfs.com), then clone the repo locally (more details here if needed: https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository). The scenes, models and animation clips are stored with Git LFS: cloned without it, they're placeholder text files
 2. Download UnityHub from https://unity.com/download
 3. Download and install the Unity version in ProjectSettings/ProjectVersion.txt via UnityHub or from https://unity.com/releases/editor/archive
 4. Open UnityHub
 5. Navigate to Add => Add project from disk
 6. Select the location of the cloned repo from step 1
 7. Open the project
-8. Click "Play" (in Assets/Scenes/SampleScene, the character's demo scene)
+8. Click "Play" (in Assets/Scenes/LevelPlayground, the graybox level with every mechanic, which opens by default)
 
 The test levels are in Assets/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)).
 

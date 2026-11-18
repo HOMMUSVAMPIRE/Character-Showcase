@@ -15,18 +15,19 @@ namespace CharacterShowcase.EditorTools
     /// Makes a scene spawn its character rather than have it placed in it: adds a "Game Setup" object with a
     /// CharacterSpawner that spawns a character prefab on Start, at one of its spawn points chosen at random, optionally
     /// with another model and movement mode, and hands it to a camera to follow (with its eye point and size). The
-    /// camera and input manager are the scene's own if it has them (a CameraRig, an ACInputManager), or else copies of
-    /// the demo scene's, so they're set up and tuned the same. Characters placed in the scene can be replaced by spawn
+    /// camera and input manager are the scene's own if it has them (a CameraRig, an ACInputManager), or else instances
+    /// of the Camera Rig and Input Manager prefabs, so they're set up and tuned the same (retuning a prefab retunes every
+    /// scene set up with it). Characters placed in the scene can be replaced by spawn
     /// points where they stood. The level's fixtures (moving platforms, pushable crates, timing gates) are set up from
     /// the markers it builds (see LevelFixtureSetup). Used by the Scene Setup window (the open scene) and from the
     /// command line.
     /// </summary>
     public static class SceneGameSetup
     {
-        /// <summary>
-        /// The demo scene, whose camera and input manager are copied into scenes that haven't their own.
-        /// </summary>
-        public const string DemoScenePath = "Assets/Scenes/SampleScene.unity";
+        /// <summary>The camera rig the setup adds to scenes that haven't their own.</summary>
+        public const string CameraRigPrefabPath = "Assets/Prefabs/Camera Rig.prefab";
+        /// <summary>The input manager the setup adds to scenes that haven't their own.</summary>
+        public const string InputManagerPrefabPath = "Assets/Prefabs/Input Manager.prefab";
         /// <summary>The character prefab the command line spawns unless it's given another (-prefab).</summary>
         public const string CharacterPrefabPath = "Assets/Prefabs/Character.prefab";
         /// <summary>The name of the object the setup makes (and finds again) at the scene's root.</summary>
@@ -36,10 +37,6 @@ namespace CharacterShowcase.EditorTools
         /// their forward. The level builders make them (Graybox.SpawnMarkerPrefix, which this must match).
         /// </summary>
         public const string SpawnMarkerPrefix = "Spawn Point";
-        // The objects copied from the demo scene, by name.
-        private const string InputManagerName = "InputManager";
-        private const string CameraName = "Main Camera";
-
         /// <summary>What to set a scene up with.</summary>
         public sealed class Settings
         {
@@ -74,7 +71,7 @@ namespace CharacterShowcase.EditorTools
             return setup != null ? setup.GetComponentInChildren<CharacterSpawner>(true) : null;
         }
 
-        /// <summary>The scene's own camera rig (outside its game setup), which the setup uses rather than copying the demo's, or null.</summary>
+        /// <summary>The scene's own camera rig (outside its game setup), which the setup uses rather than adding its own, or null.</summary>
         public static CameraRig FindOwnCameraRig(Scene scene) =>
             OutsideSetup<CameraRig>(scene).FirstOrDefault(rig => rig.gameObject.activeInHierarchy);
 
@@ -162,7 +159,7 @@ namespace CharacterShowcase.EditorTools
                 ? PlacedCharacters(scene).Select(c => c.gameObject).Where(CanRemove).ToList()
                 : new List<GameObject>();
 
-            // Copied first, so a demo scene without what's needed changes nothing.
+            // Added first, so a missing prefab changes nothing.
             var setup = new GameObject(SetupName).transform;
             SceneManager.MoveGameObjectToScene(setup.gameObject, scene);
             bool keepInputManager = InputManagersOutsideSetup(scene).Count > 0;
@@ -170,12 +167,12 @@ namespace CharacterShowcase.EditorTools
             bool keepCamera = rig != null;
             if (!keepCamera || !keepInputManager)
             {
-                if (!CopyFromDemo(setup, !keepInputManager, !keepCamera, out GameObject copiedCamera))
+                if (!AddFromPrefabs(setup, !keepInputManager, !keepCamera, out GameObject addedCamera))
                 {
                     Object.DestroyImmediate(setup.gameObject);
                     return false;
                 }
-                if (!keepCamera) { rig = copiedCamera.GetComponent<CameraRig>(); }
+                if (!keepCamera) { rig = addedCamera.GetComponent<CameraRig>(); }
             }
 
             int undoGroup = Undo.GetCurrentGroup();
@@ -358,82 +355,30 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// Copies the demo scene's input manager and camera, as asked, into the setup. The demo scene is opened
-        /// alongside and closed again unless it was open already, and is never saved.
+        /// Adds the Input Manager and Camera Rig prefabs, as asked, to the setup, as prefab instances (so they follow the
+        /// prefabs). Returns false, adding nothing, if a prefab it needs is missing (logged as an error).
         /// </summary>
-        private static bool CopyFromDemo(Transform setup, bool copyInputManager, bool copyCamera, out GameObject camera)
+        private static bool AddFromPrefabs(Transform setup, bool addInputManager, bool addCamera, out GameObject camera)
         {
             camera = null;
-            Scene demo = SceneManager.GetSceneByPath(DemoScenePath);
-            bool wasOpen = demo.isLoaded;
-            if (!wasOpen)
+            GameObject inputManagerPrefab = addInputManager ? LoadPrefab(InputManagerPrefabPath) : null;
+            GameObject cameraPrefab = addCamera ? LoadPrefab(CameraRigPrefabPath) : null;
+            if ((addInputManager && inputManagerPrefab == null) || (addCamera && cameraPrefab == null)) { return false; }
+            if (addCamera && cameraPrefab.GetComponent<CameraRig>() == null)
             {
-                if (AssetDatabase.LoadAssetAtPath<SceneAsset>(DemoScenePath) == null)
-                {
-                    Debug.LogError($"[{nameof(SceneGameSetup)}] The demo scene '{DemoScenePath}' wasn't found. Nothing was changed.");
-                    return false;
-                }
-                demo = EditorSceneManager.OpenScene(DemoScenePath, OpenSceneMode.Additive);
+                Debug.LogError($"[{nameof(SceneGameSetup)}] '{CameraRigPrefabPath}' has no {nameof(CameraRig)}. Nothing was changed.");
+                return false;
             }
-            try
-            {
-                if (copyInputManager && CopyFrom(demo, InputManagerName, setup) == null) { return false; }
-                if (!copyCamera) { return true; }
-                camera = CopyFrom(demo, CameraName, setup);
-                if (camera != null && camera.GetComponent<CameraRig>() == null)
-                {
-                    Debug.LogError($"[{nameof(SceneGameSetup)}] The demo scene's '{CameraName}' has no {nameof(CameraRig)}. Nothing was changed.");
-                    camera = null;
-                }
-                return camera != null;
-            }
-            finally
-            {
-                if (!wasOpen) { EditorSceneManager.CloseScene(demo, true); }
-            }
+            if (addInputManager) { PrefabUtility.InstantiatePrefab(inputManagerPrefab, setup); }
+            if (addCamera) { camera = (GameObject)PrefabUtility.InstantiatePrefab(cameraPrefab, setup); }
+            return true;
         }
 
-        /// <summary>
-        /// Copies a root object of the demo scene into the setup, keeping its name. References from it into the demo
-        /// scene (the camera's target is the demo's character, say) can't cross into another scene, so they're
-        /// cleared; references within the copy, and to assets, are kept.
-        /// </summary>
-        private static GameObject CopyFrom(Scene demo, string objectName, Transform setup)
+        private static GameObject LoadPrefab(string path)
         {
-            GameObject original = demo.GetRootGameObjects().FirstOrDefault(root => root.name == objectName);
-            if (original == null)
-            {
-                Debug.LogError($"[{nameof(SceneGameSetup)}] Couldn't find '{objectName}' in '{DemoScenePath}' to copy. Nothing was changed.");
-                return null;
-            }
-
-            GameObject copy = Object.Instantiate(original, setup);
-            copy.name = original.name;
-            foreach (Component component in copy.GetComponentsInChildren<Component>(true))
-            {
-                if (component == null) { continue; } // A missing script.
-                var serialized = new SerializedObject(component);
-                SerializedProperty property = serialized.GetIterator();
-                bool changed = false;
-                while (property.Next(true))
-                {
-                    if (property.propertyType != SerializedPropertyType.ObjectReference || property.objectReferenceValue == null) { continue; }
-                    Scene referenced = property.objectReferenceValue switch
-                    {
-                        GameObject gameObject => gameObject.scene,
-                        Component other => other.gameObject.scene,
-                        _ => default,
-                    };
-                    // A demo scene being set up itself keeps them: references within one scene are fine.
-                    if (referenced == demo && referenced != setup.gameObject.scene)
-                    {
-                        property.objectReferenceValue = null;
-                        changed = true;
-                    }
-                }
-                if (changed) { serialized.ApplyModifiedPropertiesWithoutUndo(); }
-            }
-            return copy;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null) { Debug.LogError($"[{nameof(SceneGameSetup)}] There's no prefab at '{path}'. Nothing was changed."); }
+            return prefab;
         }
     }
 }

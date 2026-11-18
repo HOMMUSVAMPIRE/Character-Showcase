@@ -14,10 +14,10 @@ namespace CharacterShowcase.Tests.EditMode
     /// Checks of SceneGameSetup (what the Scene Setup window and the command line do), each on a new, unsaved scene
     /// replacing whatever is open (Unity can't add a new scene beside an untitled one, which the test runner may have):
     /// placed characters replaced by spawn points where they stood, spawn markers used as spawn points, a set-up scene
-    /// keeping its spawn points when set up again, the camera wired to the spawner (copied from the demo scene, or the
-    /// scene's own), the input manager copied once, other cameras turned off rather than deleted, and the camera given an
-    /// underwater view in a level with water. They need the
-    /// demo scene, which the camera and input manager are copied from, and the Character prefab.
+    /// keeping its spawn points when set up again, the camera wired to the spawner (the Camera Rig prefab, or the scene's
+    /// own), the input manager added once, both as instances of their prefabs, other cameras turned off rather than
+    /// deleted, and the camera given an underwater view in a level with water. They need the Camera Rig, Input Manager and
+    /// Character prefabs.
     /// </summary>
     [Category(TestArea.Spawning)]
     [Category(PreparedModelTests.SampleContent)]
@@ -32,7 +32,10 @@ namespace CharacterShowcase.Tests.EditMode
         {
             prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
             if (prefab == null) { Assert.Ignore($"There's no character prefab at '{SceneGameSetup.CharacterPrefabPath}'."); }
-            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(SceneGameSetup.DemoScenePath) == null) { Assert.Ignore($"There's no demo scene at '{SceneGameSetup.DemoScenePath}'."); }
+            foreach (string path in new[] { SceneGameSetup.CameraRigPrefabPath, SceneGameSetup.InputManagerPrefabPath })
+            {
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(path) == null) { Assert.Ignore($"There's no prefab at '{path}'."); }
+            }
             scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         }
 
@@ -148,7 +151,7 @@ namespace CharacterShowcase.Tests.EditMode
         }
 
         [Test]
-        public void SetUp_WiresTheDemosCameraToTheSpawner_AndTurnsOffOtherCameras()
+        public void SetUp_WiresThePrefabsCameraToTheSpawner_AndTurnsOffOtherCameras()
         {
             GameObject otherCamera = Add("Old Camera");
             otherCamera.AddComponent<Camera>();
@@ -158,9 +161,15 @@ namespace CharacterShowcase.Tests.EditMode
             Assert.IsTrue(otherCamera != null, "Other cameras should be turned off, not deleted.");
             Assert.IsFalse(otherCamera.activeSelf);
             GameObject setup = SceneGameSetup.FindSetup(scene);
-            Assert.AreEqual(1, setup.GetComponentsInChildren<ACInputManager>(true).Length, "The demo's input manager should have been copied.");
+            ACInputManager[] inputManagers = setup.GetComponentsInChildren<ACInputManager>(true);
+            Assert.AreEqual(1, inputManagers.Length, "The Input Manager prefab should have been added.");
+            GameObject camera = setup.GetComponentsInChildren<Camera>(true).Single().gameObject;
+            Assert.AreEqual(SceneGameSetup.CameraRigPrefabPath, PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(camera),
+                "The camera should be an instance of the Camera Rig prefab, so it follows the prefab's tuning.");
+            Assert.AreEqual(SceneGameSetup.InputManagerPrefabPath, PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(inputManagers[0].gameObject),
+                "The input manager should be an instance of the Input Manager prefab.");
             CharacterSpawner spawner = SceneGameSetup.FindSpawner(scene);
-            AssertFollowedBy(spawner, setup.GetComponentsInChildren<Camera>(true).Single().gameObject);
+            AssertFollowedBy(spawner, camera);
         }
 
         [Test]
