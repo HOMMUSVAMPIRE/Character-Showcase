@@ -18,8 +18,11 @@ import sys
 import bpy
 from mathutils import Vector
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import fox_animations  # noqa: E402
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "Blender"))
+import fox_animations  # noqa: E402  (needs the script directory on sys.path first)
+from blender_common import activate, export_fbx, make_material, parse_args, validate  # noqa: E402
 
 # ---------------------------------------------------------------------------------------------------------------
 # Proportions. +X is the fox's left, -Y is forward, +Z is up.
@@ -107,23 +110,6 @@ NOSE = (0.03, 0.03, 0.03, 1.0)
 
 # ---------------------------------------------------------------------------------------------------------------
 
-def make_material(name, color, roughness=0.8):
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = color
-    bsdf.inputs["Metallic"].default_value = 0.0
-    bsdf.inputs["Roughness"].default_value = roughness
-    mat.diffuse_color = color
-    return mat
-
-
-def activate(obj):
-    bpy.ops.object.select_all(action="DESELECT")
-    obj.select_set(True)
-    bpy.context.view_layer.objects.active = obj
-
-
 def region(center):
     """Which colour a face is, by where it is (its centre): flat regions, as a low-poly fox's coat."""
     x, y, z = center
@@ -184,7 +170,7 @@ def build_body():
     for v in body.data.vertices:
         v.co.z -= lowest
 
-    materials = {name: make_material(name, color) for name, color in
+    materials = {name: make_material(name, color, roughness=0.8) for name, color in
                  (("Orange", ORANGE), ("White", WHITE), ("Dark", DARK), ("Nose", NOSE))}
     order = list(materials)
     for mat in materials.values():
@@ -231,25 +217,6 @@ def skin_to_armature(body, rig):
     return body
 
 
-def validate(body, rig):
-    """Fails loudly if any vertex isn't skinned, so a bad heat-weighting pass never reaches Unity."""
-    bone_names = set(rig.data.bones.keys())
-    group_names = {g.index: g.name for g in body.vertex_groups}
-    unweighted = 0
-    for v in body.data.vertices:
-        total = sum(g.weight for g in v.groups if group_names.get(g.group) in bone_names)
-        if total <= 1e-4:
-            unweighted += 1
-    used = {group_names[g.group] for v in body.data.vertices for g in v.groups if g.weight > 1e-4}
-    unused = sorted(bone_names - used)
-    dims = body.dimensions
-    print(f"[fox] vertices={len(body.data.vertices)} faces={len(body.data.polygons)} "
-          f"bones={len(bone_names)} size=({dims.x:.2f}, {dims.y:.2f}, {dims.z:.2f})")
-    print(f"[fox] unweighted vertices={unweighted}; bones with no influence={unused}")
-    if unweighted:
-        raise RuntimeError(f"{unweighted} vertices have no bone weights; heat weighting failed.")
-
-
 def render_previews(directory, rig):
     """Renders the fox from the side, front and three-quarters at rest, and from the side through each clip."""
     os.makedirs(directory, exist_ok=True)
@@ -289,49 +256,20 @@ def render_previews(directory, rig):
 
 
 def main():
-    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if not argv:
-        raise SystemExit("Usage: ... -- <output.fbx> [--preview <dir>]")
-    output = os.path.abspath(argv[0])
-    preview_dir = argv[argv.index("--preview") + 1] if "--preview" in argv else None
+    output, preview_dir = parse_args()
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
     body = build_body()
     rig = build_armature()
     body = skin_to_armature(body, rig)
-    validate(body, rig)
+    validate(body, rig, "fox")
     if preview_dir:
         render_previews(preview_dir, rig)
     clips = fox_animations.build_actions(rig)
     print(f"[fox] animation clips={clips}")
 
-    os.makedirs(os.path.dirname(output), exist_ok=True)
-    bpy.ops.object.select_all(action="DESELECT")
-    body.select_set(True)
-    rig.select_set(True)
-    bpy.ops.export_scene.fbx(
-        filepath=output,
-        use_selection=True,
-        object_types={"ARMATURE", "MESH"},
-        apply_unit_scale=True,
-        apply_scale_options="FBX_SCALE_ALL",
-        bake_space_transform=True,
-        axis_forward="-Z",
-        axis_up="Y",
-        add_leaf_bones=False,
-        primary_bone_axis="Y",
-        secondary_bone_axis="X",
-        armature_nodetype="NULL",
-        use_armature_deform_only=True,
-        mesh_smooth_type="FACE",
-        bake_anim=True,
-        bake_anim_use_all_actions=True,
-        bake_anim_use_nla_strips=False,
-        bake_anim_force_startend_keying=True,
-        bake_anim_simplify_factor=0.0,
-    )
-    print(f"[fox] exported {output}")
+    export_fbx(output, [body, rig], "fox")
 
 
 if __name__ == "__main__":

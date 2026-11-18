@@ -30,10 +30,10 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level mechanics' runtime components |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, the movement envelope) |
+| `Assets/Editor` | `Blender/` (`BlenderRunner`: finding Blender and running the generators' scripts), `Mannequin/` (MannequinGenerator), `Creatures/` (FoxGenerator), `Models/` (CharacterModelImporter), `Animation/` (clip importers), `Scene/` (Set Up Scene, level fixtures), `ClimbablePaint/`, `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, the movement envelope) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests |
-| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
+| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |

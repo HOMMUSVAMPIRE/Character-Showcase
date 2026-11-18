@@ -138,20 +138,7 @@ namespace CharacterShowcase.EditorTools
         [MenuItem("Tools/Character Showcase/Generate Mannequin", priority = 1)]
         public static void GenerateFromMenu()
         {
-            string blender = FindBlender();
-            if (blender == null)
-            {
-                int choice = EditorUtility.DisplayDialogComplex("Generate Mannequin",
-                    "Blender is needed to generate the mannequin, but wasn't found. Locate it, or rebuild the animations and " +
-                    "prefabs from the Mannequin.fbx that's already in the project.",
-                    "Locate Blender…", "Cancel", "Use Existing Mannequin.fbx");
-                if (choice == 1) { return; }
-                if (choice == 0)
-                {
-                    blender = LocateBlender();
-                    if (blender == null) { return; }
-                }
-            }
+            if (!BlenderRunner.FindOrAsk("Generate Mannequin", "the mannequin and its animations", "Mannequin.fbx", out string blender)) { return; }
             if (Generate(blender))
             {
                 EditorUtility.DisplayDialog("Generate Mannequin", "The mannequin and its animations are ready. " +
@@ -165,11 +152,8 @@ namespace CharacterShowcase.EditorTools
         /// </summary>
         public static void GenerateFromCommandLine()
         {
-            bool skipBlender = CommandLine.Has("-skipBlender");
-            string blender = skipBlender ? null : CommandLine.Argument("-blender") ?? FindBlender();
-            if (blender == null && !skipBlender)
+            if (!BlenderRunner.FromCommandLine(nameof(MannequinGenerator), "Mannequin.fbx", out string blender))
             {
-                Debug.LogError("[MannequinGenerator] Blender wasn't found. Pass -blender <path>, or -skipBlender to use the existing Mannequin.fbx.");
                 CommandLine.Finish(false);
                 return;
             }
@@ -190,7 +174,11 @@ namespace CharacterShowcase.EditorTools
 
         private static bool GenerateWhileBusy(string blenderPath)
         {
-            if (blenderPath != null && !RunBlender(blenderPath)) { return false; }
+            if (blenderPath != null
+                && !BlenderRunner.RunScript(blenderPath, GeneratorScript, ModelPath, "mannequin", "Generate Mannequin", nameof(MannequinGenerator)))
+            {
+                return false;
+            }
             AssetDatabase.Refresh();
             if (!ConfigureImporter()) { return false; }
             AnimatorController controller = BuildAnimatorController();

@@ -20,20 +20,11 @@ import math
 
 from mathutils import Matrix, Quaternion, Vector
 
+# Shared with the other generators (Tools/Blender, which the generator puts on sys.path before importing this).
+from blender_common import rotate_x, rx, ry, rz  # noqa: E402
+
 FPS = 60
 TAU = math.pi * 2.0
-
-
-def rx(deg):
-    return Quaternion((1.0, 0.0, 0.0), math.radians(deg))
-
-
-def ry(deg):
-    return Quaternion((0.0, 1.0, 0.0), math.radians(deg))
-
-
-def rz(deg):
-    return Quaternion((0.0, 0.0, 1.0), math.radians(deg))
 
 
 def positive(x):
@@ -74,13 +65,6 @@ ANKLE_HEIGHT = 0.09
 # Where the sole meets the ground, relative to the ankle: under the heel, and under the ball of the foot.
 HEEL = (0.03, -ANKLE_HEIGHT)
 BALL = (-0.13, -ANKLE_HEIGHT)
-
-
-def rotate_x(point, deg):
-    """Rotates a (y, z) point about X, the same way rx() does."""
-    a = math.radians(deg)
-    y, z = point
-    return (y * math.cos(a) - z * math.sin(a), y * math.sin(a) + z * math.cos(a))
 
 
 def sole_depth(thigh, knee, foot):

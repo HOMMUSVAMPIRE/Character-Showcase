@@ -107,19 +107,7 @@ namespace CharacterShowcase.EditorTools
         [MenuItem("Tools/Character Showcase/Generate Fox", priority = 3)]
         public static void GenerateFromMenu()
         {
-            string blender = MannequinGenerator.FindBlender();
-            if (blender == null)
-            {
-                int choice = EditorUtility.DisplayDialogComplex("Generate Fox",
-                    "Blender is needed to generate the fox, but wasn't found. Locate it, or rebuild the fox's setup from the " +
-                    "Fox.fbx that's already in the project.", "Locate Blender…", "Cancel", "Use Existing Fox.fbx");
-                if (choice == 1) { return; }
-                if (choice == 0)
-                {
-                    blender = MannequinGenerator.LocateBlender();
-                    if (blender == null) { return; }
-                }
-            }
+            if (!BlenderRunner.FindOrAsk("Generate Fox", "the fox", "Fox.fbx", out string blender)) { return; }
             Generate(blender);
         }
 
@@ -129,11 +117,8 @@ namespace CharacterShowcase.EditorTools
         /// </summary>
         public static void GenerateFromCommandLine()
         {
-            bool skipBlender = CommandLine.Has("-skipBlender");
-            string blender = skipBlender ? null : CommandLine.Argument("-blender") ?? MannequinGenerator.FindBlender();
-            if (blender == null && !skipBlender)
+            if (!BlenderRunner.FromCommandLine(LogName, "Fox.fbx", out string blender))
             {
-                Debug.LogError($"[{LogName}] Blender wasn't found. Pass -blender <path>, or -skipBlender to use the existing Fox.fbx.");
                 CommandLine.Finish(false);
                 return;
             }
@@ -144,7 +129,7 @@ namespace CharacterShowcase.EditorTools
         public static bool Generate(string blenderPath)
         {
             Directory.CreateDirectory(Folder);
-            if (blenderPath != null && !MannequinGenerator.RunBlenderScript(blenderPath, GeneratorScript, ModelPath, "fox", "Generate Fox", LogName))
+            if (blenderPath != null && !BlenderRunner.RunScript(blenderPath, GeneratorScript, ModelPath, "fox", "Generate Fox", LogName))
             {
                 return false;
             }

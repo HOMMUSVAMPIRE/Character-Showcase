@@ -85,6 +85,6 @@ The character's code and the camera's don't reference each other at all (both us
 | Generators, importers, Set Up Scene, inspectors | Assets/Editor |
 | The level builders, pieces and Level Editor | Assets/Editor/Level |
 | Tests | Assets/Tests/EditMode, PlayMode (see [Automated Tests](testing.md)) |
-| The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Animation |
+| The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Blender, Tools/Animation |
 
 Why it's built this way is in [Design Decisions](decisions.md).

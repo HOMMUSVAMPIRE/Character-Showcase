@@ -1,19 +1,18 @@
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Character;
 using UnityEditor;
-using UnityEditor.Animations;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 namespace CharacterShowcase.EditorTools
 {
-    // Running Tools/Mannequin/generate_mannequin.py in Blender to write the mannequin's FBX, and finding Blender. Other
-    // generators (FoxGenerator) run their scripts the same way (RunBlenderScript).
-    public static partial class MannequinGenerator
+    /// <summary>
+    /// Finding Blender and running the generators' scripts in it (Generate Mannequin's Tools/Mannequin/generate_mannequin.py,
+    /// Generate Fox's Tools/Fox/generate_fox.py), for any generator: each gives its own title and names.
+    /// </summary>
+    internal static class BlenderRunner
     {
         private const string BlenderPathPreference = "CharacterShowcase.BlenderPath";
         private static readonly string[] CommonBlenderPaths =
@@ -24,15 +23,15 @@ namespace CharacterShowcase.EditorTools
         };
 
         /// <summary>Blender's program, where it was last located or in a usual place; null if it isn't found.</summary>
-        internal static string FindBlender()
+        public static string Find()
         {
             string saved = EditorPrefs.GetString(BlenderPathPreference, "");
             if (File.Exists(saved)) { return saved; }
             return CommonBlenderPaths.FirstOrDefault(File.Exists);
         }
 
-        /// <summary>Asks for Blender's program and remembers it; null if none was picked.</summary>
-        internal static string LocateBlender()
+        /// <summary>Asks for Blender's program and remembers it; null if none was picked. title: the generator's, for the dialog.</summary>
+        public static string Locate(string title)
         {
             string picked = EditorUtility.OpenFilePanel("Locate Blender", Application.platform == RuntimePlatform.OSXEditor ? "/Applications" : "", "");
             if (string.IsNullOrEmpty(picked)) { return null; }
@@ -40,23 +39,50 @@ namespace CharacterShowcase.EditorTools
             if (picked.EndsWith(".app")) { picked = Path.Combine(picked, "Contents/MacOS/Blender"); }
             if (!File.Exists(picked))
             {
-                EditorUtility.DisplayDialog("Generate Mannequin", $"'{picked}' isn't the Blender program.", "OK");
+                EditorUtility.DisplayDialog(title, $"'{picked}' isn't the Blender program.", "OK");
                 return null;
             }
             EditorPrefs.SetString(BlenderPathPreference, picked);
             return picked;
         }
 
-        /// <summary>Runs the generator script in Blender, writing the mannequin's FBX. Returns whether it succeeded.</summary>
-        private static bool RunBlender(string blenderPath) =>
-            RunBlenderScript(blenderPath, GeneratorScript, ModelPath, "mannequin", "Generate Mannequin", nameof(MannequinGenerator));
+        /// <summary>
+        /// For a generator run from its menu: Blender, found, or else asked for (located, or the generator told to rebuild
+        /// from the file it made before, existingFile, with blender null). False if the generator shouldn't run (cancelled).
+        /// what: what it generates, for the dialog ("the mannequin and its animations").
+        /// </summary>
+        public static bool FindOrAsk(string title, string what, string existingFile, out string blender)
+        {
+            blender = Find();
+            if (blender != null) { return true; }
+            int choice = EditorUtility.DisplayDialogComplex(title,
+                $"Blender is needed to generate {what}, but wasn't found. Locate it, or rebuild from the {existingFile} that's " +
+                "already in the project.", "Locate Blender…", "Cancel", $"Use Existing {existingFile}");
+            if (choice == 1) { return false; }
+            if (choice == 2) { return true; }
+            blender = Locate(title);
+            return blender != null;
+        }
+
+        /// <summary>
+        /// For a generator run with -executeMethod: Blender from -blender &lt;path&gt;, or found; null (blender) with
+        /// -skipBlender, to rebuild from existingFile. False, logged as from logName, if it's needed and not found.
+        /// </summary>
+        public static bool FromCommandLine(string logName, string existingFile, out string blender)
+        {
+            bool skip = CommandLine.Has("-skipBlender");
+            blender = skip ? null : CommandLine.Argument("-blender") ?? Find();
+            if (blender != null || skip) { return true; }
+            Debug.LogError($"[{logName}] Blender wasn't found. Pass -blender <path>, or -skipBlender to use the existing {existingFile}.");
+            return false;
+        }
 
         /// <summary>
         /// Runs a generator script (a path from the project's root) in Blender, writing the FBX at modelPath (an asset
         /// path). The script prints lines starting "[tag]", and "[tag] exported" once it's written the file. Returns
-        /// whether it succeeded, logging Blender's output as from logName.
+        /// whether it succeeded, logging Blender's output as from logName, its progress shown under title.
         /// </summary>
-        internal static bool RunBlenderScript(string blenderPath, string script, string modelPath, string tag, string title, string logName)
+        public static bool RunScript(string blenderPath, string script, string modelPath, string tag, string title, string logName)
         {
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string output = Path.Combine(projectRoot, modelPath);

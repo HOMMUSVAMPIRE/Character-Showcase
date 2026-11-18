@@ -21,6 +21,9 @@ import math
 
 from mathutils import Quaternion, Vector
 
+# Shared with the other generators (Tools/Blender, which the generator puts on sys.path before importing this).
+from blender_common import rotate_x, rx, rz, smoothstep  # noqa: E402
+
 # Keys per second. The FBX bakes a key a frame, and a galloping leg landing straight flexes fast as the body comes down
 # over it: between keys far apart, the joints' interpolated turns don't keep the paw off the floor, so the clips are
 # keyed at twice the usual 60.
@@ -29,19 +32,6 @@ SAMPLES_PER_SECOND = FPS
 TAU = math.pi * 2.0
 # A one-frame take holding the rest pose, named to sort first, so it's the FBX's current take (see the mannequin's).
 BIND_POSE_TAKE = "!BindPose"
-
-
-def rx(deg):
-    return Quaternion((1.0, 0.0, 0.0), math.radians(deg))
-
-
-def rz(deg):
-    return Quaternion((0.0, 0.0, 1.0), math.radians(deg))
-
-
-def smoothstep(t):
-    t = min(max(t, 0.0), 1.0)
-    return t * t * (3.0 - 2.0 * t)
 
 
 class Pose:
@@ -60,13 +50,6 @@ FRONT_SEGMENTS = [(0.03, -0.22), (-0.02, -0.26), (-0.09, -0.07)]
 HIND_SEGMENTS = [(-0.08, -0.22), (0.12, -0.20), (-0.03, -0.12), (-0.06, -0.015)]
 FRONT_BONES = ["FrontUpperLeg", "FrontLowerLeg", "FrontPaw"]
 HIND_BONES = ["HindUpperLeg", "HindLowerLeg", "HindFoot", "HindPaw"]
-
-
-def rotate_x(point, deg):
-    """Rotates a (y, z) point about X, the same way rx() does."""
-    a = math.radians(deg)
-    y, z = point
-    return (y * math.cos(a) - z * math.sin(a), y * math.sin(a) + z * math.cos(a))
 
 
 def leg_depth(segments, angles):
@@ -173,7 +156,7 @@ class Gait:
             lift = 0.0
         else:
             t = (q - self.stance) / (1.0 - self.stance)
-            swing = sweep - 2.0 * sweep * smoothstep(t)
+            swing = sweep - 2.0 * sweep * smoothstep(0.0, 1.0, t)
             lift = math.sin(math.pi * t)
         if leg.front:
             base = CROUCH_FRONT if self.crouch else (0.0, 0.0, 0.0)
