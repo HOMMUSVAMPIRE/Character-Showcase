@@ -652,7 +652,7 @@ namespace CharacterShowcase.Tests
             yield return ExpectState(MannequinAnimatorStates.SwimUnderwater, 0.6f, step => CharacterTestRig.Crouch());
             Assume.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
             const float lookDown = 30f;
-            Camera.main.transform.rotation = Quaternion.Euler(lookDown, 0f, 0f);
+            rig.Look = Quaternion.Euler(lookDown, 0f, 0f);
             yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), step =>
             {
                 StepAnimator(step);

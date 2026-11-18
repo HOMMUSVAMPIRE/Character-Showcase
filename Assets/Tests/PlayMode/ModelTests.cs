@@ -49,6 +49,49 @@ namespace CharacterShowcase.Tests
             return source;
         }
 
+        /// <summary>
+        /// A character left without its model (never loaded, as on a server) moves exactly as one with it, step for step,
+        /// bit for bit: its body is the one its model would give it from its first step (fitted from its source's prepared
+        /// body, not measured once the model arrives: see CharacterModelHost.FitBodyFromSource), and nothing of the model
+        /// (its animation, IK, hitboxes) touches the movement.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator WithoutItsModel_ACharacterMovesExactlyAsWithIt()
+        {
+            var poses = new List<(Vector3 position, Vector3 velocity)>();
+            BodyShape withModel = default;
+            for (int run = 0; run < 2; run++)
+            {
+                bool loads = run == 0;
+                if (!loads) { yield return ReplaceRig(); }
+                rig.Floor();
+                rig.Box("Step", new Vector3(0f, 0.1f, 3f), new Vector3(4f, 0.2f, 1f));
+                rig.SpawnCharacter(new Vector3(0f, 0f, 0f));
+                // Before its Start, which would load it.
+                rig.Models.LoadModelOnStart = loads;
+                if (loads)
+                {
+                    yield return rig.WaitForModel();
+                    withModel = rig.BodyNow;
+                }
+                else
+                {
+                    yield return null;
+                    Assume.That(rig.Models.IsModelReady || rig.Models.IsLoadingModel, Is.False, "Test setup: the second character should have no model.");
+                    Assert.That(rig.BodyNow, Is.EqualTo(withModel), "Without its model, the character should have the body its model gives it.");
+                }
+                int step = 0, differed = -1;
+                yield return rig.Run(2f, i => i >= 30 && i < 38 ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(Vector3.forward), _ =>
+                {
+                    (Vector3, Vector3) now = (rig.Position, rig.Velocity);
+                    if (loads) { poses.Add(now); }
+                    else if (differed < 0 && !now.Equals(poses[step])) { differed = step; }
+                    step++;
+                });
+                if (!loads) { Assert.That(differed, Is.EqualTo(-1), $"Without its model, the character should move exactly as with it: step {differed} differed."); }
+            }
+        }
+
         [UnityTest]
         public IEnumerator Model_LoadsAtRuntime_AndIsSetUpForTheCharacter()
         {

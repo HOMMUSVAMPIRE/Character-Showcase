@@ -20,7 +20,7 @@ namespace Character
         /// turned by the whole of the camera's look, so its pitch tips it up or down.
         /// </summary>
         public static Vector3 Direction(MovementData movementData, Inputs inputs) =>
-            Vector3.ClampMagnitude(movementData.cameraLook * inputs.movementVector, 1f);
+            Vector3.ClampMagnitude(movementData.look * inputs.movementVector, 1f);
 
         /// <summary>Whether the direction (see Direction) steers anywhere.</summary>
         public static bool IsSteering(Vector3 direction) => direction.sqrMagnitude >= SteeringThreshold;

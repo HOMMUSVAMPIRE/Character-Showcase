@@ -6,7 +6,8 @@ namespace Character
     /// <summary>
     /// Reads the player's device (through a PlayerInput) each render frame, and gives the character one input frame per
     /// physics step (FrameFor: see InputLatch), so a tap between two physics steps still counts and a frame that runs two
-    /// steps doesn't press a button twice. The look in each frame is the main camera's. One per scene (a second destroys
+    /// steps doesn't press a button twice. The look in each frame is the main camera's (the player's view), so the move
+    /// input is relative to it; the movement itself never reads a camera. One per scene (a second destroys
     /// itself): instance.
     /// </summary>
     public class ACInputManager : MonoBehaviour
@@ -60,10 +61,10 @@ namespace Character
             ReadButton(interact, InputButtons.Grab, ref down, ref pressed);
             ReadButton(attack, InputButtons.Attack, ref down, ref pressed);
 
+            // The player looks the way their camera does: the move input is relative to it. Without one, along +Z.
             Camera view = Camera.main;
-            Vector3 look = view != null ? view.transform.rotation.eulerAngles : Vector3.zero;
-            // Euler pitch is 0 to 360, down positive: as degrees up, -90 to 90.
-            latch.Sample(moveInput, look.y, -Mathf.DeltaAngle(0f, look.x), down, pressed);
+            CharacterInputFrame look = view != null ? default(CharacterInputFrame).LookingAlong(view.transform.rotation) : default;
+            latch.Sample(moveInput, look.lookYaw, look.lookPitch, down, pressed);
         }
 
         private void FindActions(InputActionMap map)

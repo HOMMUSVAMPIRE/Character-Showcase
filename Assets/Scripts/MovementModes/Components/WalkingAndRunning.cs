@@ -68,7 +68,7 @@ namespace Character
             if (!steering && (movementData.previousState & SlowHandOvers) == 0) { controller.walk.pickingUp = false; }
             if (steering)
             {
-                Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
+                Vector3 steer = movementData.lookFlat * inputs.movementVector;
                 steer.y = 0f;
                 float stick = Mathf.Min(steer.magnitude, 1f);
                 float walking = stick * steeringEffectiveness * Mode.MoveSpeed(inputs, controller) * controller.SpeedScale;

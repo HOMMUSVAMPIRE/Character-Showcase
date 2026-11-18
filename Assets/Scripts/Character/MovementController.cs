@@ -22,14 +22,6 @@ namespace Character
         [Tooltip("The rigidbody that drives this character's physics interactions and enables proper movement behaviour")]
         private Rigidbody rb;
 
-        /// <summary>
-        /// The camera the character's inputs are relative to, if not the main camera (an NPC's, say, or none: a movement
-        /// simulation's own, which looks along +Z). Not saved.
-        /// </summary>
-        [System.NonSerialized] public Transform InputCamera;
-        /// <summary>The camera the character's inputs are relative to: InputCamera, else the main camera; null for none (inputs in world space).</summary>
-        public Transform cameraTransform => InputCamera != null ? InputCamera : (Camera.main != null ? Camera.main.transform : null);
-
         [Tooltip("The scriptable object that drives this character's movement")]
         public MovementMode movementHandler;
 
@@ -246,6 +238,9 @@ namespace Character
             {
                 MovementData data = StartStep();
                 InputState.Advance(frame, data.deltaTime);
+                // The move input is relative to the frame's look (the player's camera, an AI's aim): the movement never
+                // reads a camera, so it steps the same on a machine without one.
+                data.look = frame.Look;
                 RunMovementMode(data, InputState.View);
                 ResolveAndApply(data);
                 Tick++;
@@ -284,7 +279,6 @@ namespace Character
             // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a smoothed render
             // pose that lags behind the simulation.
             data.initialRotation = rb.rotation;
-            data.cameraLook = cameraTransform != null ? cameraTransform.rotation : Quaternion.identity;
 
             data.previousState = hasLastFrameMovement ? lastFrameMovementData.state : CharacterState.Idle;
             data.state = CharacterState.Idle;

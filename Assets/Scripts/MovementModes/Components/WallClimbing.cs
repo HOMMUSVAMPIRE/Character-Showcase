@@ -492,7 +492,7 @@ namespace Character
             Vector2 stick = new Vector2(inputs.movementVector.x, inputs.movementVector.z);
             float amount = Mathf.Clamp01(stick.magnitude);
             if (amount < 0.05f) { return Vector2.zero; }
-            Quaternion look = movementData.cameraLook;
+            Quaternion look = movementData.look;
             Vector3 onScreen = look * Vector3.right * stick.x + look * Vector3.up * stick.y;
             Vector2 onSurface = new Vector2(Vector3.Dot(onScreen, right), Vector3.Dot(onScreen, up));
             if (onSurface.magnitude < 0.25f * amount) { onSurface = stick; }

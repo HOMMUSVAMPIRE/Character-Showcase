@@ -97,7 +97,6 @@ namespace Character
             body.interpolation = RigidbodyInterpolation.None;
             Controller = character.AddComponent<MovementController>();
             Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementHandler, authoredBody);
-            Controller.InputCamera = root.transform;
             Controller.MovementEventRaised += (e, _) => LastEvents |= e;
             character.SetActive(true);
             Place(feet);

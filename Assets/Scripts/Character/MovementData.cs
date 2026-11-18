@@ -8,20 +8,20 @@ namespace Character
     [System.Serializable]
     public class MovementData
     {
-        // The view that inputs this frame are based on
-        private Quaternion _cameraLook;
-        /// <summary>The camera's yaw alone (its look turned flat onto the ground plane): what move inputs are turned by.</summary>
-        public Quaternion cameraLookFlat { get; private set; }
-        /// <summary>The way the camera looks, pitch included.</summary>
-        public Vector3 cameraForward { get; private set; }
+        // The look this step's inputs are based on
+        private Quaternion _look;
+        /// <summary>The look's yaw alone (turned flat onto the ground plane): what move inputs are turned by.</summary>
+        public Quaternion lookFlat { get; private set; }
+        /// <summary>The way the look faces, pitch included.</summary>
+        public Vector3 lookForward { get; private set; }
 
         /// <summary>
-        /// The rotation of the view this step's inputs are based on (the input camera's, or identity without one).
-        /// Setting it sets cameraLookFlat and cameraForward.
+        /// The look this step's inputs are based on (its input frame's: CharacterInputFrame.Look), which the move input is
+        /// relative to. Setting it sets lookFlat and lookForward.
         /// </summary>
-        public Quaternion cameraLook
+        public Quaternion look
         {
-            get { return _cameraLook; } set { _cameraLook = value; cameraLookFlat = Quaternion.Euler(0, value.eulerAngles.y, 0); cameraForward = value * Vector3.forward; }
+            get { return _look; } set { _look = value; lookFlat = Quaternion.Euler(0, value.eulerAngles.y, 0); lookForward = value * Vector3.forward; }
         }
 
         /// <summary>
@@ -169,9 +169,9 @@ namespace Character
         /// </summary>
         public void Reset()
         {
-            _cameraLook = default;
-            cameraLookFlat = default;
-            cameraForward = default;
+            _look = default;
+            lookFlat = default;
+            lookForward = default;
             deltaTime = 0f;
             lastGroundedTime = 0f;
             timeSinceGrounded = 0f;

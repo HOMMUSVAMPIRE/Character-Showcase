@@ -30,8 +30,8 @@ namespace CharacterShowcase.Tests
         private bool Diving => rig.InState(CharacterState.Diving);
         private float FeetUnder => water.SurfaceHeight - rig.Position.y;
 
-        /// <summary>Turns the test camera to look the given degrees down (negative: up), along +Z.</summary>
-        private static void LookDown(float degrees) => Camera.main.transform.rotation = Quaternion.Euler(degrees, 0f, 0f);
+        /// <summary>Turns the inputs' look the given degrees down (negative: up), along +Z.</summary>
+        private void LookDown(float degrees) => rig.Look = Quaternion.Euler(degrees, 0f, 0f);
 
         /// <summary>A deep pool, the character swimming at its surface, then dived under it with a press of Crouch.</summary>
         private IEnumerator DivedInThePool()
@@ -111,14 +111,14 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator Underwater_SwimsTheWayTheCameraLooks([Values(45f, -30f)] float lookDown)
+        public IEnumerator Underwater_SwimsTheWayItsInputLooks([Values(45f, -30f)] float lookDown)
         {
             yield return DivedInThePool();
             yield return rig.Run(1.5f, step => CharacterTestRig.Crouch()); // Well under, so looking up doesn't surface.
             LookDown(lookDown);
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward));
-            Vector3 looking = Camera.main.transform.forward;
-            Assert.That(Vector3.Angle(rig.Velocity, looking), Is.LessThan(2f), "Pushing forward underwater, the character should swim the way the camera looks.");
+            Vector3 looking = rig.Look * Vector3.forward;
+            Assert.That(Vector3.Angle(rig.Velocity, looking), Is.LessThan(2f), "Pushing forward underwater, the character should swim the way its input looks.");
             Assert.That(rig.Velocity.magnitude, Is.EqualTo(SwimSpeed).Within(0.05f), "Underwater, the character should swim at the swim speed.");
             Assert.That(Diving, Is.True);
         }

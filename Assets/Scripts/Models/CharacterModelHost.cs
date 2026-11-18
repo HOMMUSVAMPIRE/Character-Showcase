@@ -72,6 +72,13 @@ namespace Character
         /// Chooses the model to load on Start, for a character that's just been created (CharacterSpawner's model
         /// override). It does nothing to a model that's already loaded or loading: use LoadModelAsync to swap models.
         /// </summary>
+        /// <summary>
+        /// Whether the model source's model is loaded on Start. Set it before Start (straight after instantiating the
+        /// character) to leave the character without a model (a server's, say): it still moves the body its model would
+        /// give it (see FitBodyFromSource).
+        /// </summary>
+        public bool LoadModelOnStart { get => loadModelOnStart; set => loadModelOnStart = value; }
+
         internal void SetModelSourceBeforeStart(CharacterModelSource source)
         {
             if (IsModelReady || IsLoadingModel) { return; }
@@ -170,7 +177,27 @@ namespace Character
 
         private void Start()
         {
+            FitBodyFromSource();
             if (loadModelOnStart && modelSource != null && !IsModelReady && !IsLoadingModel) { _ = LoadModelAsync(modelSource); }
+        }
+
+        // The source whose prepared body the character was given before its model loaded (see FitBodyFromSource), or null.
+        private CharacterModelSource bodyFromSource;
+
+        /// <summary>
+        /// Fits the body the model will want (see bodyFit) from what its source measured when it was prepared (BodyFor),
+        /// before the model is loaded, so the character moves its final body from its first step: the same body on a
+        /// machine that loads the model later, or not at all (a server). When the model arrives it keeps it (see
+        /// MeasureModel). Nothing to do with Body Fit off, or a source never prepared (fitted once the model loads).
+        /// </summary>
+        private void FitBodyFromSource()
+        {
+            bodyFromSource = null;
+            if (movement == null || BodyFor(modelSource, movement) is not { } body) { return; }
+            fitBody = body;
+            bodyFromSource = modelSource;
+            pendingBodyFit = true;
+            TryFitBody();
         }
 
         // A fitted body that didn't have room to grow tries again each physics step.
@@ -349,7 +376,9 @@ namespace Character
             PlaceEyePoint();
             if (bodyFit != BodyFit.Off && baseModelHeight > 0f)
             {
-                PlanBodyFit();
+                // Already given its source's prepared body (FitBodyFromSource): kept, not measured again, so the body
+                // doesn't change when (or whether) the model arrives. A model from another source (a fallback) is fitted.
+                if (bodyFromSource == null || bodyFromSource != modelOwner) { PlanBodyFit(); }
                 return; // Fitted, so it can't fail to fit.
             }
 

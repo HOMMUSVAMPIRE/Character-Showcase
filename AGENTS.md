@@ -237,8 +237,14 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
 
   `Attack` is read into the frame but used by nothing. Camera input is separate (`CameraInputReader`). An
   `InputRecorder` on a character records its frames, which can be saved and replayed (`InputRecording`).
-- **Couplings that block NPCs:** `ACCharacterController` reads `ACInputManager.instance`. Inputs are relative to
-  `MovementController.InputCamera`, falling back to `Camera.main`.
+- **The movement never reads a camera.** The move input is relative to the input frame's look
+  (`CharacterInputFrame.lookYaw`/`lookPitch`, `MovementData.look`), which `ACInputManager` fills from the main camera
+  for the player. A character's owner (`ACCharacterController.Owner`, a `CharacterOwner`) says who it's for: only the
+  local player's reads the device and is handed to the camera by `CharacterSpawner`; an AI's or a remote one stands
+  idle until something drives it (the coupling that still blocks NPCs: there are no other input sources yet).
+- **The body doesn't wait for the model.** With Body Fit on, `CharacterModelHost` fits the body its source was prepared
+  with (`BodyFor`) in `Start`, before the first step, and keeps it when the model arrives, so a character moves the same
+  body with its model, before it, or without one (`LoadModelOnStart` off, as a server would run it).
 - **Movement times things by `MovementController.StepTime`,** its own clock, never `Time.fixedTime`, so a copy stepped
   faster than real time (`MovementSimulation`, which measures `Capabilities`) behaves the same. Don't read global time
   in movement code.

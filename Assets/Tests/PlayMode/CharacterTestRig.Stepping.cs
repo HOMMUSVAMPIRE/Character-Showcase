@@ -22,9 +22,19 @@ namespace CharacterShowcase.Tests
         public IEnumerator Run(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
             RunFrames(steps, Frames(inputsForStep), afterStep);
 
-        /// <summary>Scripted inputs as the frames the character is given (see CharacterInputFrame.Holding), tagged with its tick.</summary>
-        private Func<int, CharacterInputFrame> Frames(Func<int, Inputs> inputsForStep) =>
-            step => CharacterInputFrame.Holding(inputsForStep(step), Movement.Tick);
+        /// <summary>
+        /// Scripted inputs as the frames the character is given (see CharacterInputFrame.Holding), tagged with its tick and
+        /// looking along Look.
+        /// </summary>
+        private Func<int, CharacterInputFrame> Frames(Func<int, Inputs> inputsForStep) => step => Frame(inputsForStep(step));
+
+        private CharacterInputFrame Frame(Inputs inputs) => CharacterInputFrame.Holding(inputs, Movement.Tick).LookingAlong(Look);
+
+        /// <summary>
+        /// The way the scripted inputs look (each frame's look: see CharacterInputFrame), which their move input is relative
+        /// to: along +Z unless a test turns it.
+        /// </summary>
+        public Quaternion Look { get; set; } = Quaternion.identity;
 
         /// <summary>Runs the character for a number of physics steps, given each step's input frame (see Run).</summary>
         public IEnumerator RunFrames(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep = null)
@@ -154,7 +164,7 @@ namespace CharacterShowcase.Tests
                 int i = step;
                 // Stepping the physics itself, the steps run back to back: a yield costs a frame however little it waits
                 // for, and in the editor a frame is long.
-                if (CanStepPhysicsItself) { RunDirectly(1, _ => CharacterInputFrame.Holding(inputsForStep(i), Movement.Tick), _ => afterStep?.Invoke(i)); }
+                if (CanStepPhysicsItself) { RunDirectly(1, _ => Frame(inputsForStep(i)), _ => afterStep?.Invoke(i)); }
                 else { yield return Run(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
             }
         }

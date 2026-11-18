@@ -59,7 +59,7 @@ namespace Character
         /// <summary>The movement input in world space, relative to the camera: horizontal, and no longer than 1.</summary>
         public static Vector3 InputDirection(MovementData movementData, Inputs inputs)
         {
-            Vector3 direction = movementData.cameraLookFlat * inputs.movementVector;
+            Vector3 direction = movementData.lookFlat * inputs.movementVector;
             direction.y = 0f;
             return Vector3.ClampMagnitude(direction, 1f);
         }

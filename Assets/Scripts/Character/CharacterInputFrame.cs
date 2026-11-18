@@ -35,12 +35,30 @@ namespace Character
     {
         /// <summary>The physics step it's for (the character's MovementController.Tick when it's stepped).</summary>
         public uint tick;
-        /// <summary>The move input on the ground plane (x right, y forward, each -1 to 1), relative to the look.</summary>
+        /// <summary>The move input on the ground plane (x right, y forward, each -1 to 1), relative to the look (turned by its yaw).</summary>
         public Vector2 move;
-        /// <summary>The look direction's yaw (degrees about up) and pitch (degrees, up positive), as the player aims.</summary>
+        /// <summary>
+        /// The way the character's input looks: its yaw (degrees about up, 0 along +Z) and pitch (degrees, up positive). The
+        /// move input is relative to it, and steering in three dimensions (underwater) follows its pitch too. A player's
+        /// is their camera's; an AI's, its own aim.
+        /// </summary>
         public float lookYaw, lookPitch;
         /// <summary>The buttons held.</summary>
         public InputButtons held;
+
+        /// <summary>The look as a rotation: turned lookYaw about up, then lookPitch up, with no roll.</summary>
+        public readonly Quaternion Look => Quaternion.Euler(-lookPitch, lookYaw, 0f);
+
+        /// <summary>This frame, looking along the rotation given (its yaw and pitch; a roll is dropped).</summary>
+        public readonly CharacterInputFrame LookingAlong(Quaternion rotation)
+        {
+            CharacterInputFrame frame = this;
+            Vector3 euler = rotation.eulerAngles;
+            frame.lookYaw = euler.y;
+            // Euler pitch is 0 to 360, down positive: as degrees up, -90 to 90.
+            frame.lookPitch = -Mathf.DeltaAngle(0f, euler.x);
+            return frame;
+        }
 
         /// <summary>Whether any of the buttons given is held.</summary>
         public readonly bool Holds(InputButtons buttons) => (held & buttons) != 0;

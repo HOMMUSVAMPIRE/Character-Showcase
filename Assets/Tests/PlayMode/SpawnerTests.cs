@@ -231,6 +231,31 @@ namespace CharacterShowcase.Tests
             Assert.AreSame(expectedSize, heardSize, "The size reference should be the model parent, whose scale is the character's size.");
         }
 
+        /// <summary>
+        /// Spawning the local player's character and an AI's: each is told who it's for (ACCharacterController.Owner), and
+        /// only the local player's is handed to the camera, so the camera follows the player whatever else is spawned.
+        /// </summary>
+        [Test]
+        public void OnlyTheLocalPlayersCharacter_IsHandedToTheCamera()
+        {
+            using var rig = new CharacterTestRig();
+            CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity),
+                new SpawnPoint(new Vector3(4f, 0f, 0f), Quaternion.identity));
+            var followed = new List<Transform>();
+            spawner.OnCameraTargetSpawned.AddListener((target, _, _) => followed.Add(target));
+
+            GameObject player = Track(spawner.SpawnAt(0));
+            GameObject npc = Track(spawner.SpawnAt(1, CharacterOwner.AI));
+            // Not stepped here (as SpawnCharacter's aren't).
+            player.GetComponent<ACCharacterController>().enabled = false;
+            npc.GetComponent<ACCharacterController>().enabled = false;
+
+            Assert.That(player.GetComponent<ACCharacterController>().Owner, Is.EqualTo(CharacterOwner.LocalPlayer));
+            Assert.That(npc.GetComponent<ACCharacterController>().Owner, Is.EqualTo(CharacterOwner.AI));
+            Assert.That(followed, Is.EqualTo(new[] { player.transform }), "Only the local player's character should be handed to the camera.");
+            Assert.AreSame(npc, spawner.Character, "The spawner's Character is still the latest spawned.");
+        }
+
         [Test]
         public void Spawn_WithoutOverrides_KeepsThePrefabsModelAndMovementMode()
         {

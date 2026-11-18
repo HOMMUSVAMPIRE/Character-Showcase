@@ -16,6 +16,12 @@ namespace Character
         [Tooltip("The component that holds the character's model, whose model parent is scaled to resize the character. Found automatically if left empty.")]
         [SerializeField] private CharacterModelHost modelHost;
 
+        [Header("Owner")]
+        [Tooltip("Who the character is for. Local Player: moved by the player's device (the scene's ACInputManager), and " +
+                 "followed by the camera when spawned. AI or Remote: not moved by the player's input (it stands idle until " +
+                 "something else drives it), and not followed by the camera. Set by CharacterSpawner when it spawns one.")]
+        [SerializeField] private CharacterOwner owner = CharacterOwner.LocalPlayer;
+
         [Header("Size")]
         [Tooltip("The character's scale: x is width, y height and z depth, relative to the character as authored. Change it " +
                  "while playing to resize the character (it goes through SetScale). Only the model is scaled, never the " +
@@ -36,6 +42,9 @@ namespace Character
         private float scaleProgress = 1f;
         private float baseMass = -1f;
         private Rigidbody body;
+
+        /// <summary>Who the character is for: only the local player's is moved by the player's device. See owner.</summary>
+        public CharacterOwner Owner { get => owner; set => owner = value; }
 
         /// <summary>The character's scale right now (it changes over scaleChangeDuration after SetScale).</summary>
         public Vector3 Scale => currentScale;
@@ -196,7 +205,11 @@ namespace Character
             UpdateScale(Time.fixedDeltaTime);
             if (movementController != null)
             {
-                CharacterInputFrame frame = ACInputManager.instance.FrameFor(movementController.Tick);
+                // Only the local player's character is moved by the player's device; another stands idle (an empty frame)
+                // until something else drives it.
+                CharacterInputFrame frame = owner == CharacterOwner.LocalPlayer && ACInputManager.instance != null
+                    ? ACInputManager.instance.FrameFor(movementController.Tick)
+                    : new CharacterInputFrame { tick = movementController.Tick };
                 if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
                 movementController.ProcessMovementInputs(frame);
 

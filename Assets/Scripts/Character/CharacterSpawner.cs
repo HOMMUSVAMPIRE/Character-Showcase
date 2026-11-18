@@ -41,7 +41,9 @@ namespace Character
     /// Spawns a character into the scene at one of a list of spawn points, chosen at random, so a scene doesn't need
     /// the character placed in it beforehand. It can spawn the character on Start, or wait for Spawn to be called.
     /// Whatever needs the spawned character (a camera to follow it, say) can listen for it through the
-    /// CharacterSpawned event or the onCharacterSpawned UnityEvent, which can be wired up in the inspector.
+    /// CharacterSpawned event or the onCharacterSpawned UnityEvent, which can be wired up in the inspector. A spawn says
+    /// who the character is for (CharacterOwner): only the local player's is handed to the camera (onCameraTargetSpawned),
+    /// so a scene can have several characters, the camera following the player's.
     /// </summary>
     // Early, so a character spawned on Start is there before other scripts' Start runs: a camera's Start then
     // starts out behind it, facing its way, rather than warning that it has no target.
@@ -74,7 +76,7 @@ namespace Character
         [Tooltip("Called after each spawn with what a camera needs to follow the character: its root transform, its eye " +
                  "point (for a first-person view) and its size reference (its model parent, whose scale is its size), " +
                  "in that order. Wire it to CameraRig.Follow. The eye point or size reference is empty if the character " +
-                 "has none.")]
+                 "has none. Only for the local player's character, not an AI's or a remote one's.")]
         [SerializeField] private UnityEvent<Transform, Transform, Transform> onCameraTargetSpawned = new();
 
         [Header("Scene View")]
@@ -119,24 +121,26 @@ namespace Character
         }
 
         /// <summary>
-        /// Spawns a new character at a spawn point chosen at random, and returns it. Returns null, with an error, if
-        /// there's no prefab or no spawn points. Each call spawns another character: earlier ones are left as they are.
+        /// Spawns a new character at a spawn point chosen at random, for the owner given (the local player unless said:
+        /// see CharacterOwner), and returns it. Returns null, with an error, if there's no prefab or no spawn points. Each
+        /// call spawns another character: earlier ones are left as they are.
         /// </summary>
-        public GameObject Spawn()
+        public GameObject Spawn(CharacterOwner owner = CharacterOwner.LocalPlayer)
         {
             if (spawnPoints == null || spawnPoints.Count == 0)
             {
                 Debug.LogError($"[{nameof(CharacterSpawner)}] '{name}' has no spawn points, so no character was spawned.", this);
                 return null;
             }
-            return SpawnAt(Random.Range(0, spawnPoints.Count));
+            return SpawnAt(Random.Range(0, spawnPoints.Count), owner);
         }
 
         /// <summary>
-        /// Spawns a new character at the given spawn point, and returns it. Returns null, with an error, if there's
-        /// no prefab or the index is out of range.
+        /// Spawns a new character at the given spawn point, for the owner given (the local player unless said), and
+        /// returns it. Returns null, with an error, if there's no prefab or the index is out of range. Only the local
+        /// player's is handed to the camera (onCameraTargetSpawned).
         /// </summary>
-        public GameObject SpawnAt(int index)
+        public GameObject SpawnAt(int index, CharacterOwner owner = CharacterOwner.LocalPlayer)
         {
             if (characterPrefab == null)
             {
@@ -158,6 +162,7 @@ namespace Character
             // Overrides go on before the character's Start, which is when it loads its model (Awake has already run,
             // during Instantiate, but doesn't load or move anything).
             if (movementMode != null && character.TryGetComponent(out MovementController movement)) { movement.movementHandler = movementMode; }
+            if (character.TryGetComponent(out ACCharacterController controller)) { controller.Owner = owner; }
             character.TryGetComponent(out CharacterModelHost host);
             if (modelSource != null && host != null) { host.SetModelSourceBeforeStart(modelSource); }
             Character = character;
@@ -165,6 +170,8 @@ namespace Character
 
             CharacterSpawned?.Invoke(character);
             onCharacterSpawned?.Invoke(character.transform);
+            // Only the local player's character is followed by the camera.
+            if (owner != CharacterOwner.LocalPlayer) { return character; }
             // The model parent's scale is the character's size (see ACCharacterController.SetScale), unless the model
             // goes straight under the root, which is never scaled.
             Transform eyePoint = host != null ? host.EyePoint : null;

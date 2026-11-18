@@ -83,7 +83,7 @@ namespace Character
             // Start a dash in the direction of movement input (relative to the camera), or straight ahead without input
             if (CanDash(movementData, inputs, controller))
             {
-                Vector3 direction = movementData.cameraLookFlat * inputs.movementVector;
+                Vector3 direction = movementData.lookFlat * inputs.movementVector;
                 if (direction.sqrMagnitude < 0.01f) { direction = movementData.initialRotation * Vector3.forward; }
                 direction.y = 0f;
                 dash.direction = direction.normalized;

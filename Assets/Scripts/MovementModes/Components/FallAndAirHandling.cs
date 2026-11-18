@@ -138,7 +138,7 @@ namespace Character
         {
             Vector3 inertia = movementData.initialInertia;
             Vector2 velocity = new Vector2(inertia.x, inertia.z);
-            Vector3 steer = movementData.cameraLookFlat * inputs.movementVector;
+            Vector3 steer = movementData.lookFlat * inputs.movementVector;
             Vector2 steerDirection = new Vector2(steer.x, steer.z);
             float input = Mathf.Clamp01(steerDirection.magnitude);
 

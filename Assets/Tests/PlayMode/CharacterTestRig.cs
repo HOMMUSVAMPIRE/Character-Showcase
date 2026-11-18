@@ -55,7 +55,8 @@ namespace CharacterShowcase.Tests
             stepper = new GameObject("Test Stepper").AddComponent<FixedStepper>();
             created.Add(stepper.gameObject);
 
-            // MovementController makes inputs relative to Camera.main.
+            // A main camera, as a scene has (what's drawn looks for one). The movement doesn't read it: the inputs' look is
+            // the rig's own (Look).
             var camera = new GameObject("Test Camera") { tag = "MainCamera" };
             camera.AddComponent<Camera>();
             created.Add(camera);

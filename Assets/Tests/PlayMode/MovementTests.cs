@@ -16,6 +16,23 @@ namespace CharacterShowcase.Tests
     {
 
 
+        /// <summary>
+        /// The move input is relative to the input's own look (each frame's: see CharacterInputFrame), not to a camera: with
+        /// the scene's main camera turned to face -X, input looking along +X and pushing forward walks along +X. So a
+        /// character with no camera of its own (an NPC, a server's copy) steers as its input says.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TheMoveInput_IsRelativeToTheInputsLook_NotTheCamera()
+        {
+            yield return rig.StandOnFloor();
+            Camera.main.transform.rotation = Quaternion.Euler(0f, -90f, 0f);
+            rig.Look = Quaternion.Euler(0f, 90f, 0f);
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            Vector3 flat = Vector3.ProjectOnPlane(rig.Velocity, Vector3.up);
+            Assume.That(flat.magnitude, Is.GreaterThan(0.5f * rig.WalkSpeed), "Test setup: the character should walk.");
+            Assert.That(Vector3.Angle(flat, Vector3.right), Is.LessThan(1f), "Pushing forward, the character should walk the way its input looks (+X).");
+        }
+
         [UnityTest]
         public IEnumerator StandingStill_DoesNotDrift()
         {
