@@ -207,8 +207,11 @@ namespace Character
         /// </summary>
         public bool CanFitAt(Vector3 feet, BodyPosture held) => Body.Fits(feet, BodyRotation, Scale, held);
 
-        // The character's physics pose (the Rigidbody's, which the transform lags behind while it's interpolated).
-        private Vector3 PhysicsPosition => rb != null ? rb.position : transform.position;
+        /// <summary>
+        /// Where the character's feet are in the physics simulation: its Rigidbody's position, which the transform lags
+        /// behind while it's interpolated. What anything deciding how to move it (an AI input source) should read.
+        /// </summary>
+        public Vector3 PhysicsPosition => rb != null ? rb.position : transform.position;
 
         // Set while collision resolves a step: the way the body faces as it moves (the step's turn, as far as it has room),
         // and how far it's pitched.

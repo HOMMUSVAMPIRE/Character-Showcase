@@ -38,6 +38,23 @@ namespace Character
     }
 
     /// <summary>
+    /// A route an NPC spawned by a CharacterSpawner walks (see CharacterSpawner.Npcs): where it spawns, and the points it
+    /// goes to (a WaypointInputSource).
+    /// </summary>
+    [Serializable]
+    public class NpcRoute
+    {
+        [Tooltip("The spawn point (its index in the spawner's Spawn Points) the NPC spawns at.")]
+        [Min(0)] public int spawnPoint;
+        [Tooltip("The points the NPC walks to, in world space, in order.")]
+        public List<Vector3> waypoints = new();
+        [Tooltip("Sprint along the route, rather than walk.")]
+        public bool sprint;
+        [Tooltip("Go round the route again after the last point, rather than standing there.")]
+        public bool loop;
+    }
+
+    /// <summary>
     /// Spawns a character into the scene at one of a list of spawn points, chosen at random, so a scene doesn't need
     /// the character placed in it beforehand. It can spawn the character on Start, or wait for Spawn to be called.
     /// Whatever needs the spawned character (a camera to follow it, say) can listen for it through the
@@ -79,6 +96,12 @@ namespace Character
                  "has none. Only for the local player's character, not an AI's or a remote one's.")]
         [SerializeField] private UnityEvent<Transform, Transform, Transform> onCameraTargetSpawned = new();
 
+        [Header("NPCs")]
+        [Tooltip("Characters controlled by an AI, spawned after the player's when the scene starts (with Spawn On Start), " +
+                 "each walking its route (a WaypointInputSource added to it) and not followed by the camera. Spawn one " +
+                 "from code with SpawnNpc.")]
+        [SerializeField] private List<NpcRoute> npcs = new();
+
         [Header("Scene View")]
         [Tooltip("The height of the capsule drawn at each spawn point in the Scene view, in meters.")]
         [Min(0.1f)] [SerializeField] private float gizmoHeight = 1.8f;
@@ -88,8 +111,14 @@ namespace Character
         /// <summary>Raised after each spawn, with the spawned character.</summary>
         public event Action<GameObject> CharacterSpawned;
 
-        /// <summary>The character spawned most recently, or null if none has been (or it's been destroyed).</summary>
+        /// <summary>The character spawned most recently (the player's or an NPC), or null if none has been (or it's been destroyed).</summary>
         public GameObject Character { get; private set; }
+
+        /// <summary>The local player's character spawned most recently, or null if none has been (or it's been destroyed).</summary>
+        public GameObject PlayerCharacter { get; private set; }
+
+        /// <summary>The NPCs' routes, spawned on Start (with Spawn On Start).</summary>
+        public List<NpcRoute> Npcs => npcs;
 
         /// <summary>The spawn point the most recent character was spawned at, or -1 if none has been.</summary>
         public int LastSpawnIndex { get; private set; } = -1;
@@ -117,7 +146,9 @@ namespace Character
 
         private void Start()
         {
-            if (spawnOnStart) { Spawn(); }
+            if (!spawnOnStart) { return; }
+            Spawn();
+            foreach (NpcRoute route in npcs) { SpawnNpc(route); }
         }
 
         /// <summary>
@@ -166,6 +197,7 @@ namespace Character
             character.TryGetComponent(out CharacterModelHost host);
             if (modelSource != null && host != null) { host.SetModelSourceBeforeStart(modelSource); }
             Character = character;
+            if (owner == CharacterOwner.LocalPlayer) { PlayerCharacter = character; }
             LastSpawnIndex = index;
 
             CharacterSpawned?.Invoke(character);
@@ -180,8 +212,37 @@ namespace Character
             return character;
         }
 
+        /// <summary>
+        /// Spawns an NPC at its route's spawn point: a character controlled by an AI (CharacterOwner.AI) that walks the
+        /// route (a WaypointInputSource added to it), not followed by the camera. Returns it, or null (with an error) as
+        /// SpawnAt does.
+        /// </summary>
+        public GameObject SpawnNpc(NpcRoute route)
+        {
+            if (route == null) { return null; }
+            GameObject character = SpawnAt(route.spawnPoint, CharacterOwner.AI);
+            if (character == null) { return null; }
+            var walker = character.AddComponent<WaypointInputSource>();
+            walker.SetRoute(route.waypoints, route.loop, route.sprint);
+            if (character.TryGetComponent(out ACCharacterController controller)) { controller.InputSource = walker; }
+            return character;
+        }
+
         private void OnDrawGizmos()
         {
+            // Each NPC's route, from its spawn point through its points.
+            Gizmos.color = new Color(1f, 0.6f, 0.2f);
+            foreach (NpcRoute route in npcs)
+            {
+                if (route == null || spawnPoints == null || route.spawnPoint < 0 || route.spawnPoint >= spawnPoints.Count) { continue; }
+                Vector3 from = spawnPoints[route.spawnPoint].position;
+                foreach (Vector3 point in route.waypoints)
+                {
+                    Gizmos.DrawLine(from, point);
+                    Gizmos.DrawWireSphere(point, 0.2f);
+                    from = point;
+                }
+            }
             if (spawnPoints == null) { return; }
             float radius = Mathf.Min(gizmoRadius, gizmoHeight / 2f);
             for (int i = 0; i < spawnPoints.Count; i++)

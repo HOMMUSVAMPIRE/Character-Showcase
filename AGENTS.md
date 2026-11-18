@@ -239,9 +239,15 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
   `InputRecorder` on a character records its frames, which can be saved and replayed (`InputRecording`).
 - **The movement never reads a camera.** The move input is relative to the input frame's look
   (`CharacterInputFrame.lookYaw`/`lookPitch`, `MovementData.look`), which `ACInputManager` fills from the main camera
-  for the player. A character's owner (`ACCharacterController.Owner`, a `CharacterOwner`) says who it's for: only the
-  local player's reads the device and is handed to the camera by `CharacterSpawner`; an AI's or a remote one stands
-  idle until something drives it (the coupling that still blocks NPCs: there are no other input sources yet).
+  for the player.
+- **What drives a character** is its input source (`ICharacterInputSource`; components derive from
+  `CharacterInputSource`): `ACCharacterController.InputSource`, the one on the character, else its owner's
+  (`ACCharacterController.Owner`, a `CharacterOwner`). The local player's reads the device (`PlayerInputSource`). An
+  AI's stands idle without one. A remote one without one isn't stepped at all: something else places it. The sources
+  are `ScriptedInputSource` (timed steps, or a recording) and `WaypointInputSource` (an AI walking a route, jumping gaps
+  and what the capabilities say it can get up). `CharacterSpawner` hands only the local player's character to the
+  camera, and spawns NPCs from its routes (`Npcs`, `SpawnNpc`). `ACCharacterController.StepMovement` is one step, from
+  the source: the game's FixedUpdate and the test rig both call it.
 - **The body doesn't wait for the model.** With Body Fit on, `CharacterModelHost` fits the body its source was prepared
   with (`BodyFor`) in `Start`, before the first step, and keeps it when the model arrives, so a character moves the same
   body with its model, before it, or without one (`LoadModelOnStart` off, as a server would run it).
@@ -260,8 +266,9 @@ swimming clips are floated at Swimming's Swim Depth, for the height of the body 
   climbable look by. Ladders are climbed by the same ability, up and down their middle, animated by `LadderIK`.
 - **Spawn points** are spawn markers ("Spawn Point (…)") that `SceneGameSetup` turns into the spawner's spawn
   points; `SceneGameSetup.SpawnMarkerPrefix` must match `Graybox.SpawnMarkerPrefix`.
-- **Test rig:** `CharacterTestRig` spawns the real Character prefab with `ACCharacterController` disabled, steps the
-  `MovementController` itself with scripted inputs at a sped-up time scale (same physics step), and moves it with its
+- **Test rig:** `CharacterTestRig` spawns the real Character prefab with `ACCharacterController` disabled, steps it
+  itself through the controller (`StepMovement`) with scripted inputs (its own input source; `rig.RunWithSource` for a
+  source of the test's, an AI's say) at a sped-up time scale (same physics step), and moves it with its
   own copy of the movement mode: change settings with `rig.SetMovementSetting`, never on the asset. Add helpers there
   rather than repeating setup in tests.
 

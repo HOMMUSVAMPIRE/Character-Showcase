@@ -256,6 +256,37 @@ namespace CharacterShowcase.Tests
             Assert.AreSame(npc, spawner.Character, "The spawner's Character is still the latest spawned.");
         }
 
+        /// <summary>
+        /// An NPC spawned from a route is an AI's character (CharacterOwner.AI) walking it (a WaypointInputSource, its
+        /// input source), not handed to the camera; the spawner's PlayerCharacter stays the player's.
+        /// </summary>
+        [Test]
+        public void AnNpc_IsAnAIsCharacter_WalkingItsRoute_NotFollowedByTheCamera()
+        {
+            using var rig = new CharacterTestRig();
+            CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity),
+                new SpawnPoint(new Vector3(4f, 0f, 0f), Quaternion.identity));
+            var followed = new List<Transform>();
+            spawner.OnCameraTargetSpawned.AddListener((target, _, _) => followed.Add(target));
+            var route = new NpcRoute { spawnPoint = 1, waypoints = { new Vector3(4f, 0f, 5f), new Vector3(0f, 0f, 5f) }, loop = true };
+
+            GameObject player = Track(spawner.SpawnAt(0));
+            GameObject npc = Track(spawner.SpawnNpc(route));
+            player.GetComponent<ACCharacterController>().enabled = false;
+            var controller = npc.GetComponent<ACCharacterController>();
+            controller.enabled = false;
+
+            Assert.That(controller.Owner, Is.EqualTo(CharacterOwner.AI));
+            var walker = npc.GetComponent<WaypointInputSource>();
+            Assert.That(walker, Is.Not.Null, "The NPC should have an AI walking its route.");
+            Assert.AreSame(walker, controller.InputSource, "The AI should drive the NPC's input.");
+            Assert.That(walker.Waypoints, Is.EqualTo(route.waypoints));
+            Assert.That(walker.Loop, Is.True);
+            Assert.That(followed, Is.EqualTo(new[] { player.transform }), "Only the player's character should be handed to the camera.");
+            Assert.AreSame(player, spawner.PlayerCharacter, "PlayerCharacter should stay the player's.");
+            Assert.AreSame(npc, spawner.Character, "Character is the latest spawned.");
+        }
+
         [Test]
         public void Spawn_WithoutOverrides_KeepsThePrefabsModelAndMovementMode()
         {

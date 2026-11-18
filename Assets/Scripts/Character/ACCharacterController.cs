@@ -16,11 +16,15 @@ namespace Character
         [Tooltip("The component that holds the character's model, whose model parent is scaled to resize the character. Found automatically if left empty.")]
         [SerializeField] private CharacterModelHost modelHost;
 
-        [Header("Owner")]
-        [Tooltip("Who the character is for. Local Player: moved by the player's device (the scene's ACInputManager), and " +
-                 "followed by the camera when spawned. AI or Remote: not moved by the player's input (it stands idle until " +
-                 "something else drives it), and not followed by the camera. Set by CharacterSpawner when it spawns one.")]
+        [Header("Owner and Input")]
+        [Tooltip("Who the character is for. Local Player: followed by the camera when spawned, and moved by the player's " +
+                 "device unless given another input source. AI: moved by its input source, standing idle without one. " +
+                 "Remote: moved by its input source; without one it isn't stepped at all (something else places it, as " +
+                 "another machine's character is). Set by CharacterSpawner when it spawns one.")]
         [SerializeField] private CharacterOwner owner = CharacterOwner.LocalPlayer;
+        [Tooltip("Optional: what drives the character's input (a ScriptedInputSource, a WaypointInputSource). Empty: the " +
+                 "one on the character if it has one, else its owner's (the player's device for the local player's).")]
+        [SerializeField] private CharacterInputSource inputSource;
 
         [Header("Size")]
         [Tooltip("The character's scale: x is width, y height and z depth, relative to the character as authored. Change it " +
@@ -46,6 +50,29 @@ namespace Character
         /// <summary>Who the character is for: only the local player's is moved by the player's device. See owner.</summary>
         public CharacterOwner Owner { get => owner; set => owner = value; }
 
+        // A source given from code that isn't a component (a test's script, a network feed).
+        private ICharacterInputSource givenSource;
+
+        /// <summary>
+        /// What drives the character's input, if it's been given something (a component on it, or any source set from
+        /// code); null for its owner's (see ActiveInputSource). Set null to go back to the owner's.
+        /// </summary>
+        public ICharacterInputSource InputSource
+        {
+            get => givenSource ?? (inputSource != null ? inputSource : null);
+            set
+            {
+                inputSource = value as CharacterInputSource;
+                givenSource = value is CharacterInputSource ? null : value;
+            }
+        }
+
+        /// <summary>
+        /// What drives the character now: its input source, else its owner's (the player's device for the local player's;
+        /// none for an AI's or a remote one: see owner).
+        /// </summary>
+        public ICharacterInputSource ActiveInputSource => InputSource ?? (owner == CharacterOwner.LocalPlayer ? PlayerInputSource.Instance : null);
+
         /// <summary>The character's scale right now (it changes over scaleChangeDuration after SetScale).</summary>
         public Vector3 Scale => currentScale;
         /// <summary>The scale the character is changing to: the last one passed to SetScale.</summary>
@@ -64,6 +91,7 @@ namespace Character
             if (movementController == null) { movementController = GetComponent<MovementController>(); }
             body = GetComponent<Rigidbody>();
             recorder = GetComponent<InputRecorder>();
+            if (inputSource == null) { inputSource = GetComponent<CharacterInputSource>(); }
             if (body != null) { baseMass = body.mass; }
             CheckRootScale();
         }
@@ -199,22 +227,27 @@ namespace Character
             }
         }
 
-        private void FixedUpdate()
-        {
-            // Calculate and apply movement to the character using input data
-            UpdateScale(Time.fixedDeltaTime);
-            if (movementController != null)
-            {
-                // Only the local player's character is moved by the player's device; another stands idle (an empty frame)
-                // until something else drives it.
-                CharacterInputFrame frame = owner == CharacterOwner.LocalPlayer && ACInputManager.instance != null
-                    ? ACInputManager.instance.FrameFor(movementController.Tick)
-                    : new CharacterInputFrame { tick = movementController.Tick };
-                if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
-                movementController.ProcessMovementInputs(frame);
+        private void FixedUpdate() => StepMovement(Time.fixedDeltaTime);
 
-                movementController.MovementCleanup();
-            }
+        /// <summary>
+        /// One physics step of the character, as its FixedUpdate takes it: any change of size, then its movement, given its
+        /// input source's frame for the step (ActiveInputSource; an idle frame without one). A remote character with no
+        /// source isn't moved: something else places it. Called by FixedUpdate; call it yourself to step a character that
+        /// isn't (the tests' rig does, with the controller turned off).
+        /// </summary>
+        public void StepMovement(float deltaTime)
+        {
+            UpdateScale(deltaTime);
+            if (movementController == null) { return; }
+            ICharacterInputSource source = ActiveInputSource;
+            if (source == null && owner == CharacterOwner.Remote) { return; }
+            uint tick = movementController.Tick;
+            CharacterInputFrame frame = source != null ? source.FrameFor(tick, movementController) : default;
+            // Tagged with the step it's for, whatever its source tagged it.
+            frame.tick = tick;
+            if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
+            movementController.ProcessMovementInputs(frame);
+            movementController.MovementCleanup();
         }
     }
 }

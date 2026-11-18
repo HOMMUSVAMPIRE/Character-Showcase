@@ -37,11 +37,39 @@ namespace CharacterShowcase.Tests
         public Quaternion Look { get; set; } = Quaternion.identity;
 
         /// <summary>Runs the character for a number of physics steps, given each step's input frame (see Run).</summary>
-        public IEnumerator RunFrames(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep = null)
+        public IEnumerator RunFrames(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep = null) =>
+            RunSources(steps, step => Scripted(framesForStep(step)), afterStep);
+
+        /// <summary>
+        /// Runs the character for a number of physics steps driven by the input source given (an AI's, say), as its
+        /// ACCharacterController steps it in the game: the source is asked for each step's frame.
+        /// </summary>
+        public IEnumerator RunWithSource(int steps, ICharacterInputSource source, Action<int> afterStep = null) =>
+            RunSources(steps, _ => source, afterStep);
+
+        public IEnumerator RunWithSource(float seconds, ICharacterInputSource source, Action<int> afterStep = null) =>
+            RunWithSource(StepsFor(seconds), source, afterStep);
+
+        // The rig's own source: the scripted frame for the step being taken, given to the character as any source's is.
+        private sealed class ScriptedFrame : ICharacterInputSource
+        {
+            public CharacterInputFrame next;
+            public CharacterInputFrame FrameFor(uint tick, MovementController character) => next;
+        }
+
+        private readonly ScriptedFrame scripted = new();
+
+        private ICharacterInputSource Scripted(in CharacterInputFrame frame)
+        {
+            scripted.next = frame;
+            return scripted;
+        }
+
+        private IEnumerator RunSources(int steps, Func<int, ICharacterInputSource> sourceForStep, Action<int> afterStep)
         {
             if (CanStepPhysicsItself)
             {
-                RunDirectly(steps, framesForStep, afterStep);
+                RunDirectly(steps, sourceForStep, afterStep);
                 yield break;
             }
             for (int i = 0; i < steps; i++)
@@ -49,7 +77,7 @@ namespace CharacterShowcase.Tests
                 int step = i;
                 // Stepped in the coming physics step's FixedUpdate, after the level's moving platforms have moved (see
                 // FixedStepper), as ACCharacterController steps it in the game.
-                stepper.Next = () => Step(step, framesForStep(step));
+                stepper.Next = () => Step(step, sourceForStep(step));
                 yield return new WaitForFixedUpdate();
                 // The step's Rigidbody.Move has now been simulated, so Position reflects it.
                 afterStep?.Invoke(i);
@@ -75,16 +103,18 @@ namespace CharacterShowcase.Tests
         public IEnumerator Replay(InputRecording recording, Action<int> afterStep = null) =>
             RunFrames(recording.Count, step => recording[step], afterStep);
 
-        /// <summary>One physics step of the character, as ACCharacterController does it: any change of size first, then movement.</summary>
-        private void Step(int step, in CharacterInputFrame frame)
+        /// <summary>
+        /// One physics step of the character, through its ACCharacterController as the game steps it
+        /// (ACCharacterController.StepMovement: any change of size, then movement), driven by the source given.
+        /// </summary>
+        private void Step(int step, ICharacterInputSource source)
         {
             runStep = step;
-            Recording?.Add(frame);
+            Controller.InputSource = source;
             if (MeasuresStepAllocations) { AllocationCounter.Start(); }
-            Controller.UpdateScale(Time.fixedDeltaTime);
-            Movement.ProcessMovementInputs(frame);
-            Movement.MovementCleanup();
+            Controller.StepMovement(Time.fixedDeltaTime);
             if (MeasuresStepAllocations) { StepAllocations += AllocationCounter.Stop(); }
+            Recording?.Add(Movement.InputState.Frame);
         }
 
         private readonly FixedStepper stepper;
@@ -128,7 +158,7 @@ namespace CharacterShowcase.Tests
         private bool CanStepPhysicsItself => StepsPhysicsItself && !needsUnityPhysicsSteps && Character != null;
 
         /// <summary>Runs the steps at once, stepping the physics itself (see StepsPhysicsItself), in the same order as Run.</summary>
-        private void RunDirectly(int steps, Func<int, CharacterInputFrame> framesForStep, Action<int> afterStep)
+        private void RunDirectly(int steps, Func<int, ICharacterInputSource> sourceForStep, Action<int> afterStep)
         {
             SimulationMode previous = Physics.simulationMode;
             Physics.simulationMode = SimulationMode.Script;
@@ -139,7 +169,7 @@ namespace CharacterShowcase.Tests
                 CharacterModelHost models = Models;
                 for (int i = 0; i < steps; i++)
                 {
-                    Step(i, framesForStep(i));
+                    Step(i, sourceForStep(i));
                     // As the model host's FixedUpdate would, before the physics step.
                     if (models != null) { models.TryFitBodyNow(); }
                     Physics.Simulate(Time.fixedDeltaTime);
@@ -164,7 +194,7 @@ namespace CharacterShowcase.Tests
                 int i = step;
                 // Stepping the physics itself, the steps run back to back: a yield costs a frame however little it waits
                 // for, and in the editor a frame is long.
-                if (CanStepPhysicsItself) { RunDirectly(1, _ => Frame(inputsForStep(i)), _ => afterStep?.Invoke(i)); }
+                if (CanStepPhysicsItself) { RunDirectly(1, _ => Scripted(Frame(inputsForStep(i))), _ => afterStep?.Invoke(i)); }
                 else { yield return Run(1, _ => inputsForStep(i), _ => afterStep?.Invoke(i)); }
             }
         }

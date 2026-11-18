@@ -27,6 +27,8 @@ The character is given one input frame each physics step (`CharacterInputFrame`)
 
 The player's device is read every render frame (`ACInputManager`) and latched into one frame per physics step (`InputLatch`). A button counts as held in a step's frame if it's down then, or went down at any time since the last step's frame, so a tap shorter than a step still counts. A render frame that runs two steps doesn't press a button twice.
 
+**What gives the frames.** A character's input source (see [NPCs and input sources](spawning.md#npcs-and-input-sources)): the player's device for the local player's character, a script, a recording or an AI for others.
+
 **Recording input.** Add an `InputRecorder` to a character and play: it keeps the latest Keep Seconds of the frames the character is given. Its context menu's Save Recording writes them to a file in the Input Recordings folder, in the player's data folder (it logs where). A recording (`InputRecording`) holds its frames oldest first, with the step length and the tuning it was recorded with (`MovementController.TuningFingerprint`). Replayed to the same character, in the same world, with the same tuning, it moves exactly as it did (the tests replay one: `CharacterTestRig.Replay`).
 
 ## Walking and Sprinting
