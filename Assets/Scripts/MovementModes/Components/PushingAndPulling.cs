@@ -30,6 +30,12 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.grab.IsGrabbing;
         /// <summary>Pushing or pulling, the character holds on to the crate.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsOn;
+        /// <summary>The events of Grabbing starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
+        };
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {
@@ -167,5 +173,13 @@ namespace Character
 
         /// <summary>Whether the character is holding an object.</summary>
         public bool IsGrabbing => target != null;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's state grabbing an object to push or pull it (PushingAndPulling).</summary>
+        public GrabState grab { get; } = new GrabState();
     }
 }

@@ -54,6 +54,13 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.ledge.IsActive;
         /// <summary>Hanging from a ledge (or climbing up it), the character holds on, and is held up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>The events of LedgeHanging and LedgeClimbing starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.LedgeHanging, MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased),
+            new(CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
+        };
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -414,5 +421,13 @@ namespace Character
         public bool IsClimbing => phase == Phase.Climbing;
         /// <summary>How far through the climb the character is: 0 at its start, 1 on top.</summary>
         public float ClimbProgress => climbDuration > 0f ? Mathf.Clamp01(climbElapsed / climbDuration) : 0f;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's ledge hanging and climbing state (Ledges).</summary>
+        public LedgeState ledge { get; } = new LedgeState();
     }
 }

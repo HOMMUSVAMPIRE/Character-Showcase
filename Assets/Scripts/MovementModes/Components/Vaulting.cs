@@ -52,6 +52,13 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.vault.IsActive;
         /// <summary>Vaulting, the character's hands are on the obstacle, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>The events of Vaulting and SteppingUp starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
+            new(CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
+        };
 
         public override void Interrupt(ref MovementData movementData, MovementController controller)
         {
@@ -418,5 +425,13 @@ namespace Character
             wallNormal.Normalize();
             return true;
         }
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's vaulting and stepping-up state (Vaulting).</summary>
+        public VaultState vault { get; } = new VaultState();
     }
 }

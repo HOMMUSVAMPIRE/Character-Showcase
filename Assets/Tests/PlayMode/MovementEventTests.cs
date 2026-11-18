@@ -146,5 +146,31 @@ namespace CharacterShowcase.Tests
             Assert.That(jumped.state.jumping, Is.True);
             Assert.That(jumped.state.verticalSpeed, Is.GreaterThan(0f));
         }
+
+        /// <summary>
+        /// Each ability's state's starts and ends are declared once, by the component that sets it (StateEvents), with
+        /// an event for each: a state declared by two components would raise its events twice over, and one with no
+        /// events would come and go unannounced.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator EachAbilityState_IsDeclaredOnce_WithItsEvents()
+        {
+            yield return rig.StandOnFloor();
+            var declaredBy = new Dictionary<CharacterState, string>();
+            foreach (MovementComponent component in rig.ComposedMode.Components.Where(c => c != null))
+            {
+                foreach (StateEvent pair in component.StateEvents)
+                {
+                    string name = component.GetType().Name;
+                    Assert.That(declaredBy.ContainsKey(pair.state), Is.False,
+                        $"{pair.state} is declared by both {(declaredBy.TryGetValue(pair.state, out string other) ? other : "")} and {name}.");
+                    declaredBy[pair.state] = name;
+                    Assert.That(pair.started, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it starts.");
+                    Assert.That(pair.ended, Is.Not.EqualTo(MovementEvents.None), $"{name}'s {pair.state} should raise an event as it ends.");
+                    Assert.That(pair.started, Is.Not.EqualTo(pair.ended), $"{name}'s {pair.state} should start and end with different events.");
+                }
+            }
+            Assert.That(declaredBy, Is.Not.Empty, "Test setup: the character's abilities should declare their states' events.");
+        }
     }
 }

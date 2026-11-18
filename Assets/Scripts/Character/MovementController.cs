@@ -200,44 +200,10 @@ namespace Character
         /// <summary>Velocity of the ground carrying the character during the last step (zero on static ground or in the air).</summary>
         public Vector3 GroundVelocity { get; private set; }
 
-        // The state of the character's abilities, which persists between physics steps (each kept with its component, in
-        // Components/: movement modes are shared assets, so it lives here, one per character).
-        /// <summary>The character's jumping state (Jumping).</summary>
-        public JumpState jump { get; } = new JumpState();
-        /// <summary>The character's dashing state (Dashing).</summary>
-        public DashState dash { get; } = new DashState();
-        /// <summary>The character's crouching state (Crouching).</summary>
-        public CrouchState crouch { get; } = new CrouchState();
-        /// <summary>The character's sliding state (Crouching, which slides when Crouch is pressed while sprinting).</summary>
-        public SlideState slide { get; } = new SlideState();
-        /// <summary>The character's rolling state (Rolling).</summary>
-        public RollState roll { get; } = new RollState();
-        /// <summary>The character's wall running state (WallRunning).</summary>
-        public WallRunState wallRun { get; } = new WallRunState();
-        /// <summary>The character's wall sliding state (WallSliding).</summary>
-        public WallSlideState wallSlide { get; } = new WallSlideState();
-        /// <summary>The state shared by the wall jumps of every ability that wall jumps (see MovementHelpers).</summary>
-        public WallJumpState wallJump { get; } = new WallJumpState();
-        /// <summary>The character's ledge hanging and climbing state (Ledges).</summary>
-        public LedgeState ledge { get; } = new LedgeState();
-        /// <summary>The character's vaulting and stepping-up state (Vaulting).</summary>
-        public VaultState vault { get; } = new VaultState();
-        /// <summary>The character's state grabbing an object to push or pull it (PushingAndPulling).</summary>
-        public GrabState grab { get; } = new GrabState();
-        /// <summary>The character's wall and ladder climbing state (WallClimbing).</summary>
-        public WallClimbState wallClimb { get; } = new WallClimbState();
-        /// <summary>The character's rope swinging state (RopeSwinging).</summary>
-        public RopeSwingState ropeSwing { get; } = new RopeSwingState();
-        /// <summary>The character's zipline riding state (Ziplines).</summary>
-        public ZiplineState zipline { get; } = new ZiplineState();
-        /// <summary>The character's bounce pad state (BouncePads).</summary>
-        public BounceState bounce { get; } = new BounceState();
-        /// <summary>The character's swimming state (Swimming).</summary>
-        public SwimState swim { get; } = new SwimState();
-        /// <summary>The character's wading state (Wading).</summary>
-        public WadeState wade { get; } = new WadeState();
-        /// <summary>The character's walking state (Walking &amp; Running): picking up speed after an ability.</summary>
-        public WalkState walk { get; } = new WalkState();
+        // The state of the character's abilities, which persists between physics steps: movement modes are shared
+        // assets, so it lives on the character, one per character. Each ability's state is declared beside its component
+        // (a part of this class in the component's file: Components/Ledges.cs has `ledge`, say), so adding an ability
+        // doesn't touch this file.
 
         /// <summary>
         /// The character's own clock: the time (s) of its current physics step, counted from its first. Movement times
@@ -387,7 +353,7 @@ namespace Character
         /// Adds the events every movement mode shares, found by comparing this step to the last: landing, leaving the
         /// ground, and newly touching a ceiling or wall. (Movement modes report jumps and dashes themselves.)
         /// </summary>
-        private static void DetectEvents(MovementData data)
+        private void DetectEvents(MovementData data)
         {
             bool wasGrounded = data.previousState.HasFlag(CharacterState.Grounded);
             bool isGrounded = data.state.HasFlag(CharacterState.Grounded);
@@ -398,37 +364,9 @@ namespace Character
             if ((newContacts & CollisionFlags.Above) != 0) { data.events |= MovementEvents.HitCeiling; }
             if ((newContacts & CollisionFlags.Sides) != 0) { data.events |= MovementEvents.HitWall; }
 
-            foreach (var (state, started, ended) in StateEvents)
-            {
-                bool was = (data.previousState & state) != 0, now = (data.state & state) != 0;
-                if (!was && now) { data.events |= started; }
-                if (was && !now) { data.events |= ended; }
-            }
+            // The abilities' starts and ends, which the movement mode knows (each ability's component declares them).
+            if (movementHandler != null) { movementHandler.DetectStateEvents(data); }
         }
-
-        /// <summary>
-        /// The events raised when the character starts and stops being in each state, so movement modes only have to
-        /// set the state (a new ability adds its state and events here).
-        /// </summary>
-        private static readonly (CharacterState state, MovementEvents started, MovementEvents ended)[] StateEvents =
-        {
-            (CharacterState.Crouching, MovementEvents.CrouchStarted, MovementEvents.CrouchEnded),
-            (CharacterState.Sliding, MovementEvents.SlideStarted, MovementEvents.SlideEnded),
-            (CharacterState.Rolling, MovementEvents.RollStarted, MovementEvents.RollEnded),
-            (CharacterState.WallRunning, MovementEvents.WallRunStarted, MovementEvents.WallRunEnded),
-            (CharacterState.LedgeHanging, MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased),
-            (CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
-            (CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
-            (CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
-            (CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
-            (CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
-            (CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
-            (CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
-            (CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
-            (CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
-            (CharacterState.Wading, MovementEvents.WadeStarted, MovementEvents.WadeEnded),
-            (CharacterState.Diving, MovementEvents.DiveStarted, MovementEvents.DiveEnded),
-        };
 
         private void RaiseEvents(MovementData data)
         {

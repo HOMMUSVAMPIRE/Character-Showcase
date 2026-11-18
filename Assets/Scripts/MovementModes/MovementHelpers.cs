@@ -230,4 +230,12 @@ namespace Character
         /// <summary>Whether lastWallNormal holds a wall (cleared on landing).</summary>
         public bool hasLastWall;
     }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The state shared by the wall jumps of every ability that wall jumps (see MovementHelpers).</summary>
+        public WallJumpState wallJump { get; } = new WallJumpState();
+    }
 }

@@ -31,6 +31,37 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
+        /// On a platform rising and falling, and one sliding to and fro, the character rides it exactly, step by step: its
+        /// feet stay on the platform's top, and keep their place across it. Read the platform a step late (before it
+        /// moved), it rode a step behind: on a platform rising at 1 m/s, 2 cm low, and as high above it falling.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator OnAMovingPlatform_TheCharacterRidesIt_StepByStep([Values(true, false)] bool vertical)
+        {
+            // 1.5 m out and back in 3 s, at a constant 1 m/s (no easing or pauses).
+            var size = new Vector3(4f, 0.3f, 4f);
+            Vector3 travel = vertical ? new Vector3(0f, 1.5f, 0f) : new Vector3(1.5f, 0f, 0f);
+            var platform = rig.Platform(Vector3.zero, size, travel, 3f, Vector3.zero);
+            Rigidbody platformBody = platform.GetComponent<Rigidbody>();
+            rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the platform.");
+            Vector3 offset = rig.Position - platformBody.position;
+
+            float worstHeight = 0f, worstDrift = 0f;
+            yield return rig.Run(3f, _ => CharacterTestRig.Idle(), _ =>
+            {
+                Vector3 now = rig.Position - platformBody.position;
+                worstHeight = Mathf.Max(worstHeight, Mathf.Abs(now.y - size.y / 2f));
+                worstDrift = Mathf.Max(worstDrift, new Vector2(now.x - offset.x, now.z - offset.z).magnitude);
+            });
+            TestContext.WriteLine($"Over a trip out and back, the feet were at most {worstHeight * 1000f:0.0} mm off the platform's top, " +
+                                  $"and moved at most {worstDrift * 1000f:0.0} mm across it.");
+            Assert.That(worstHeight, Is.LessThan(0.002f), "The feet should stay on the platform's top, step by step.");
+            Assert.That(worstDrift, Is.LessThan(0.002f), "The feet should keep their place on the platform, step by step.");
+        }
+
+        /// <summary>
         /// A platform parented under a static object (as a level's are, under its Environment) still carries the
         /// character: the ground is the object hit, not the root of its hierarchy, which never moves.
         /// </summary>

@@ -13,6 +13,13 @@ namespace Character
     [Serializable]
     public class Wading : MovementComponent
     {
+        /// <summary>The events of Wading starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Wading, MovementEvents.WadeStarted, MovementEvents.WadeEnded),
+        };
+
         [Tooltip("How deep water must be over the character's feet to slow it, as a share of its standing height: " +
                  "shallower (a puddle, the shallows' edge) it walks at full speed")]
         [Range(0f, 1f)] [SerializeField] private float wadeStartDepth = 0.1f;
@@ -61,5 +68,13 @@ namespace Character
     {
         /// <summary>The share of its walking speed the character keeps this step (1 out of the water, or not wading).</summary>
         public float speedMultiplier = 1f;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's wading state (Wading).</summary>
+        public WadeState wade { get; } = new WadeState();
     }
 }

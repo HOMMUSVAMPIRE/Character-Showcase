@@ -154,4 +154,12 @@ namespace Character
         /// <summary>Whether a dash is in progress.</summary>
         public bool IsDashing => timeRemaining > 0f;
     }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's dashing state (Dashing).</summary>
+        public DashState dash { get; } = new DashState();
+    }
 }

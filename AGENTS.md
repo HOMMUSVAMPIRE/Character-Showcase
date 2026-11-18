@@ -117,7 +117,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   which reads the momentum it leaves; air steering) and `AfterWalking` (dashing, then jumping); then posture (held as
   the first component's `Posture` asks: low, or lying) and `FinishStep` (the fall speed limit). Within each point, list order
   decides. A component whose class name can't say its inspector name gets `[MovementComponentName]`. Modes are shared
-  assets, so per-character state lives on the `MovementController` (each state class in its component's file). Adding an
+  assets, so per-character state lives on the `MovementController`, declared beside its component (the state class and
+  its property, on a part of the partial `MovementController`, in the component's file). Adding an
   ability: see docs/adding-an-ability.md.
 - **Physics vs. render timing.** Movement runs in `FixedUpdate` (driven by `ACCharacterController`); visual
   smoothing and animation run in `Update`. Don't move work between them.
@@ -127,7 +128,9 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
   size-dependent values scale the same way.
 - **Read the physics pose, not the transform.** The character's and platforms' Rigidbodies are interpolated, so a
   Transform holds a lagging render pose. Movement reads `Rigidbody.position` / `rotation` (see `GetGroundPose`).
-  Moving platforms are kinematic Rigidbodies moved in `FixedUpdate`.
+  Moving platforms are kinematic Rigidbodies that move first each physics step (`MovingPlatform.MoveOrder`, before
+  the characters' FixedUpdate), their pose set at once so the characters ride and query them where they'll be; they're
+  drawn interpolated by themselves. Anything that steps a character in FixedUpdate must run after them.
 - **Collision is resolved by `MovementController` with sweeps of the character's body,** not the physics solver.
   Blocked momentum is removed; `MovementData.collisions` / `previousCollisions` record blocked sides. Every query that
   depends on the body's shape (sweeping it, whether it fits, pushing it out of overlaps, its size) goes through
@@ -148,8 +151,8 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 
 ## Files to treat with care
 
-**Hotspots.** A movement feature lands mostly in its own component file, but also in `MovementController.cs` (its
-state's property, `StateEvents`) and `BasicMovementMode.DefaultComponents`. If several agents work at once, only one
+**Hotspots.** A movement feature lands in its own component file (its state, declared there on a part of
+`MovementController`, and its state's events, its own `StateEvents`), and in `BasicMovementMode.DefaultComponents`. If several agents work at once, only one
 should own each at a time.
 
 **Serialized field names are part of the interface.** Renaming a serialized field (`[SerializeField]`, or public on a

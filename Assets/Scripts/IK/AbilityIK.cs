@@ -3,10 +3,11 @@ using UnityEngine;
 namespace Character
 {
     /// <summary>
-    /// The shared part of the IK that places hands (and feet, and the body) for an ability: on a ladder's rungs
-    /// (LadderIK), a ledge (LedgeHandIK), a rope or zipline (LineGripIK), a wall slid down (WallSlideIK). Each solves in
-    /// CharacterIK's BeforeSolve, reads the character's animation state from the model's parents (as FootPlacementIK does),
-    /// and eases its placement in and out (ActiveWeight, toward its Weight, over its Fade Time). A subclass declares its
+    /// The shared part of the IK that places limbs through CharacterIK: the feet on the ground (FootPlacementIK), and the
+    /// hands (and feet, and the body) for an ability: on a ladder's rungs (LadderIK), a ledge (LedgeHandIK), a rope or
+    /// zipline (LineGripIK), a wall slid down (WallSlideIK). Each solves in CharacterIK's BeforeSolve, reads the
+    /// character's animation state from the model's parents, and eases its placement in and out (ActiveWeight, toward
+    /// its Weight, over its Fade Time). A subclass declares its
     /// own weight and fade time settings, with their own tooltips and defaults, and gives them here.
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]

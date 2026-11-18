@@ -79,6 +79,13 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
         /// <summary>Swimming, the water holds the character up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        /// <summary>The events of Swimming and Diving starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
+            new(CharacterState.Diving, MovementEvents.DiveStarted, MovementEvents.DiveEnded),
+        };
 
         /// <summary>
         /// Underwater, the character's body lies flat along the way it swims, resting on its feet (the bottom of its body),
@@ -302,5 +309,13 @@ namespace Character
 
         /// <summary>Whether the character is swimming.</summary>
         public bool IsSwimming => water != null;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's swimming state (Swimming).</summary>
+        public SwimState swim { get; } = new SwimState();
     }
 }

@@ -25,8 +25,8 @@ namespace Character
         HitCeiling = 64,
         // Started touching a wall
         HitWall = 128,
-        // The starts and ends of the abilities below are found by the MovementController, from the character's state
-        // (see MovementController.StateEvents), so every movement mode raises them alike.
+        // The starts and ends of the abilities below are found from the character's state (each ability's component
+        // declares its states' events: see MovementComponent.StateEvents), so it only has to set the state.
         CrouchStarted = 256,
         CrouchEnded = 512,
         SlideStarted = 1024,
@@ -79,5 +79,30 @@ namespace Character
         // Dived under the water's surface, and stopped swimming underwater (back up at the surface, or out of the water)
         DiveStarted = 1L << 40,
         DiveEnded = 1L << 41,
+    }
+
+    /// <summary>
+    /// A state of the character's and the events raised as it starts and stops being in it (see
+    /// MovementComponent.StateEvents): an ability sets the state, and the events follow from it.
+    /// </summary>
+    public readonly struct StateEvent
+    {
+        public readonly CharacterState state;
+        public readonly MovementEvents started, ended;
+
+        public StateEvent(CharacterState state, MovementEvents started, MovementEvents ended)
+        {
+            this.state = state;
+            this.started = started;
+            this.ended = ended;
+        }
+
+        /// <summary>Adds this state's start or end to the step's events, if it started or ended this step.</summary>
+        public void Detect(MovementData data)
+        {
+            bool was = (data.previousState & state) != 0, now = (data.state & state) != 0;
+            if (!was && now) { data.events |= started; }
+            if (was && !now) { data.events |= ended; }
+        }
     }
 }

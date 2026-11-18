@@ -113,4 +113,12 @@ namespace Character
         /// <summary>Whether walking is picking up speed after an ability handed the character back slower than it walks.</summary>
         public bool pickingUp;
     }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's walking state (Walking &amp; Running): picking up speed after an ability.</summary>
+        public WalkState walk { get; } = new WalkState();
+    }
 }

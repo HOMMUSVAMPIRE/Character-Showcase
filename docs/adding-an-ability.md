@@ -33,12 +33,12 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 **Its name.** The inspector shows the class name spaced out. Give it `[MovementComponentName("...")]` if it needs a name a class name can't have (an ampersand, say).
 
 ## 2. Its state
-Movement modes are shared assets, so what each character is doing lives on its `MovementController`. Put a state class at the bottom of the component's file, and add a property for it on `MovementController` beside the others (`public FooState foo { get; } = new FooState();`).
+Movement modes are shared assets, so what each character is doing lives on its `MovementController`. Put a state class at the bottom of the component's file, and below it, still in the component's file, a part of `MovementController` (a partial class) with a property for it: `public partial class MovementController { public FooState foo { get; } = new FooState(); }`. Every ability's state is declared this way, beside its component, so `MovementController.cs` itself isn't touched.
 
 ## 3. Its state flag and events
 - A `CharacterState` flag for it (a 32-bit flags enum: take the next unused bit).
 - `MovementEvents` for it starting and ending (a 64-bit flags enum: take the next unused bits).
-- A row in `MovementController.StateEvents`, which raises the events when the flag comes and goes.
+- The component's `StateEvents`: a static array of `StateEvent(flag, started, ended)`, from which the mode raises the events as the flag comes and goes (`ComposedMovementMode.DetectStateEvents`). A component with several states (Crouching's crouch and slide) lists each.
 
 ## 4. Putting it in the mode
 - Add it to `BasicMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.

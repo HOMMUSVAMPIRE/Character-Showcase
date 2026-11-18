@@ -36,6 +36,12 @@ namespace Character
         public float RollDuration { get => rollDuration; set => rollDuration = value; }
 
         public override bool IsActive(MovementController controller) => controller.roll.IsRolling;
+        /// <summary>The events of Rolling starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Rolling, MovementEvents.RollStarted, MovementEvents.RollEnded),
+        };
 
         /// <summary>Rolling, low at the crouch height (Crouching's, whether or not it's turned on).</summary>
         public override BodyPosture? Posture(MovementController controller) =>
@@ -225,5 +231,13 @@ namespace Character
         public bool IsRolling => timeRemaining > 0f;
         /// <summary>How far through the roll the character is: 0 at its start, 1 at its end.</summary>
         public float Progress => duration > 0f ? Mathf.Clamp01(1f - timeRemaining / duration) : 0f;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's rolling state (Rolling).</summary>
+        public RollState roll { get; } = new RollState();
     }
 }

@@ -265,12 +265,8 @@ namespace Character
             // What the paw stood on last frame, and how high it was then: its eased ground is carried along with it.
             public Transform lastGroundTransform;
             public float lastGroundHeight;
-            // Paw lock: whether the paw is locked, where (in the space of the ground it was put down on, or the world if
-            // none), and how far the lock is blended in.
-            public bool locked;
-            public Transform lockGround;
-            public Vector3 lockPoint;
-            public float lockWeight;
+            // Paw lock: held where the paw was put down (see Paw Lock).
+            public PlantLock plantLock;
         }
 
         private Animator animator;
@@ -291,7 +287,7 @@ namespace Character
         // and its height above the animations' floor.
         private float bodyLevel, bodyLevelVelocity, bodyHeight;
         private bool hasBodyLevel;
-        private readonly RaycastHit[] hits = new RaycastHit[8];
+        private readonly GroundProbe probe = new();
         // The ground probed under the body this frame: how far along it (from its middle) and how high.
         private readonly float[] probeAlong = new float[BodyProbes], probeHeightFound = new float[BodyProbes];
 
@@ -343,11 +339,7 @@ namespace Character
         private void Awake()
         {
             animator = GetComponentInChildren<Animator>();
-            if (ignoreCollidersUnder == null)
-            {
-                Rigidbody body = GetComponentInParent<Rigidbody>();
-                ignoreCollidersUnder = body != null ? body.transform : transform.root;
-            }
+            if (ignoreCollidersUnder == null) { ignoreCollidersUnder = GroundProbe.DefaultIgnoredRoot(this); }
             if (legs.Length > MaxLegs) { Debug.LogWarning($"[{nameof(PawPlacementIK)}] Only the first {MaxLegs} legs are placed.", this); }
             paws = new PawState[Mathf.Min(legs.Length, MaxLegs)];
             for (int i = 0; i < paws.Length; i++) { paws[i].normal = Vector3.up; }
@@ -365,8 +357,9 @@ namespace Character
             hasBodyLevel = false;
             for (int i = 0; i < paws.Length; i++)
             {
-                paws[i].offset = paws[i].groundVelocity = paws[i].lockWeight = 0f;
-                paws[i].hasGround = paws[i].locked = paws[i].hasLastModelAhead = false;
+                paws[i].offset = paws[i].groundVelocity = 0f;
+                paws[i].hasGround = paws[i].hasLastModelAhead = false;
+                paws[i].plantLock.Release();
             }
         }
 
@@ -592,7 +585,7 @@ namespace Character
             if (activeWeight <= 0f)
             {
                 // Off the ground, nothing stays locked: landing, the paws lock where they come down.
-                for (int i = 0; i < paws.Length; i++) { paws[i].locked = false; paws[i].lockWeight = 0f; }
+                for (int i = 0; i < paws.Length; i++) { paws[i].plantLock.Release(); }
                 SolveWallRun(state, floor, scale, deltaTime);
                 return;
             }
@@ -866,44 +859,25 @@ namespace Character
         }
 
         /// <summary>
-        /// Holds a planted paw where it was put down: locked as the animation plants it, held there (in the space of the
-        /// ground under it, so it rides moving ground) while the animation keeps it planted, and let go as it lifts, or if
-        /// the animation's paw gets further than Max Lock Distance from the lock. The lock is blended in and out over the
-        /// animation's paw. Its height follows the ground where it was put down (and the animation's lift above it), so on a
-        /// slope it stays on the ground there.
+        /// Holds a planted paw where it was put down (see PlantLock), within Max Lock Distance, blended in and out over where
+        /// it's placed. It's locked on the ground at the paw's place across it, and its height follows the ground where it
+        /// was put down (and the animation's lift above it), so on a slope it stays on the ground there.
         /// </summary>
         private Vector3 LockPaw(ref PawState paw, Vector3 placed, float scale, float deltaTime)
         {
             if (pawLock <= 0f) { return placed; }
-            if (paw.locked)
-            {
-                Vector3 held = LockPosition(paw);
-                Vector2 apart = new Vector2(held.x - placed.x, held.z - placed.z);
-                if (paw.planted < 0.5f || apart.magnitude > maxLockDistance * scale) { paw.locked = false; }
-            }
-            else if (paw.planted >= 0.999f && paw.lockWeight <= 0f)
-            {
-                // Locked at the paw's place across the ground, on the ground there.
-                var groundPoint = new Vector3(placed.x, paw.ground, placed.z);
-                paw.locked = true;
-                paw.lockGround = paw.groundTransform;
-                paw.lockPoint = paw.lockGround != null ? paw.lockGround.InverseTransformPoint(groundPoint) : groundPoint;
-            }
-            paw.lockWeight = Mathf.MoveTowards(paw.lockWeight, paw.locked ? 1f : 0f, deltaTime / lockBlendTime);
-            if (paw.lockWeight <= 0f) { return placed; }
+            var groundPoint = new Vector3(placed.x, paw.ground, placed.z);
+            paw.plantLock.Update(placed, groundPoint, paw.groundTransform, paw.planted, maxLockDistance * scale, lockBlendTime, deltaTime);
+            if (paw.plantLock.weight <= 0f) { return placed; }
             // Held where it was put down, as high above the ground there as the animation has it above its ground now: on
             // a slope, the ground where the animation has the paw now isn't as high as where it was put down.
-            Vector3 lockAt = LockPosition(paw);
+            Vector3 lockAt = paw.plantLock.Position;
             lockAt.y += placed.y - paw.ground;
-            return Vector3.Lerp(placed, lockAt, paw.lockWeight * pawLock);
+            return Vector3.Lerp(placed, lockAt, paw.plantLock.weight * pawLock);
         }
 
-        /// <summary>Where a paw's lock is now, in the world (it moves with the ground it was put down on).</summary>
-        private static Vector3 LockPosition(in PawState paw) =>
-            paw.lockGround != null ? paw.lockGround.TransformPoint(paw.lockPoint) : paw.lockPoint;
-
         /// <summary>Whether a leg's paw is locked where it was put down now (see Paw Lock), and how far the lock is blended in.</summary>
-        public float LockWeight(int leg) => leg >= 0 && leg < paws.Length && paws[leg].locked ? paws[leg].lockWeight : 0f;
+        public float LockWeight(int leg) => leg >= 0 && leg < paws.Length && paws[leg].plantLock.locked ? paws[leg].plantLock.weight : 0f;
 
         /// <summary>
         /// The highest ground (m above the floor) probed under the body (this frame's body probes) within a probe's spacing
@@ -991,23 +965,8 @@ namespace Character
             return null;
         }
 
-        private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)
-        {
-            closest = default;
-            int count = Physics.RaycastNonAlloc(origin, Vector3.down, hits, distance, groundLayers, QueryTriggerInteraction.Ignore);
-            float best = float.PositiveInfinity;
-            for (int i = 0; i < count; i++)
-            {
-                RaycastHit h = hits[i];
-                if (ignoreCollidersUnder != null && h.transform.IsChildOf(ignoreCollidersUnder)) { continue; }
-                if (Vector3.Angle(h.normal, Vector3.up) > maxSlopeAngle) { continue; }
-                if (h.distance < best) { best = h.distance; closest = h; }
-            }
-            if (best == float.PositiveInfinity) { return false; }
-            // Where the ground is drawn: placed where physics has a moving platform, the paws jumped up and down on it.
-            CharacterUtilities.ToDrawnPose(ref closest);
-            return true;
-        }
+        private bool FindGround(Vector3 origin, float distance, out RaycastHit closest) =>
+            probe.Find(origin, distance, groundLayers, ignoreCollidersUnder, maxSlopeAngle, out closest);
 
         private void OnDrawGizmosSelected()
         {

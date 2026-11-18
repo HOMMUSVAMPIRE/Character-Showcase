@@ -79,4 +79,12 @@ namespace Character
         /// <summary>Seconds before a bounce pad can launch the character again (0 when it can).</summary>
         public float cooldownRemaining;
     }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's bounce pad state (BouncePads).</summary>
+        public BounceState bounce { get; } = new BounceState();
+    }
 }

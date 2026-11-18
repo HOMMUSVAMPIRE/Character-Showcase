@@ -52,6 +52,8 @@ namespace CharacterShowcase.Tests
             // Run the simulation faster than real time. Physics steps stay the same size, so results are unchanged.
             previousTimeScale = Time.timeScale;
             created.Add(FrameTimeLimit.Start(TimeScale, MaxFrameTime).gameObject);
+            stepper = new GameObject("Test Stepper").AddComponent<FixedStepper>();
+            created.Add(stepper.gameObject);
 
             // MovementController makes inputs relative to Camera.main.
             var camera = new GameObject("Test Camera") { tag = "MainCamera" };
@@ -422,17 +424,45 @@ namespace CharacterShowcase.Tests
             }
             for (int i = 0; i < steps; i++)
             {
+                int step = i;
+                // Stepped in the coming physics step's FixedUpdate, after the level's moving platforms have moved (see
+                // FixedStepper), as ACCharacterController steps it in the game.
+                stepper.Next = () => Step(step, inputsForStep(step));
                 yield return new WaitForFixedUpdate();
-                // The previous step's Rigidbody.Move has now been simulated, so Position reflects it.
-                if (i > 0) { afterStep?.Invoke(i - 1); }
-                // As ACCharacterController does each physics step: any change of size first, then movement.
-                runStep = i;
-                Controller.UpdateScale(Time.fixedDeltaTime);
-                Movement.ProcessMovementInputs(inputsForStep(i));
-                Movement.MovementCleanup();
+                // The step's Rigidbody.Move has now been simulated, so Position reflects it.
+                afterStep?.Invoke(i);
             }
-            yield return new WaitForFixedUpdate();
-            afterStep?.Invoke(steps - 1);
+        }
+
+        /// <summary>One physics step of the character, as ACCharacterController does it: any change of size first, then movement.</summary>
+        private void Step(int step, Inputs inputs)
+        {
+            runStep = step;
+            Controller.UpdateScale(Time.fixedDeltaTime);
+            Movement.ProcessMovementInputs(inputs);
+            Movement.MovementCleanup();
+        }
+
+        private readonly FixedStepper stepper;
+
+        /// <summary>
+        /// Runs the rig's next character step in FixedUpdate, after the level's moving platforms (MovingPlatform.MoveOrder)
+        /// have moved and before the physics step, as ACCharacterController does in the game. Stepped after the physics
+        /// step instead (on resuming from WaitForFixedUpdate), the character read the platforms a step before they moved,
+        /// and rode them a step behind.
+        /// </summary>
+        [DefaultExecutionOrder(Level.MovingPlatform.MoveOrder + 200)]
+        private sealed class FixedStepper : MonoBehaviour
+        {
+            /// <summary>The step to run in the next FixedUpdate, once.</summary>
+            public Action Next;
+
+            private void FixedUpdate()
+            {
+                Action next = Next;
+                Next = null;
+                next?.Invoke();
+            }
         }
 
         public IEnumerator Run(float seconds, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
@@ -465,10 +495,7 @@ namespace CharacterShowcase.Tests
                 CharacterModelHost models = Models;
                 for (int i = 0; i < steps; i++)
                 {
-                    runStep = i;
-                    Controller.UpdateScale(Time.fixedDeltaTime);
-                    Movement.ProcessMovementInputs(inputsForStep(i));
-                    Movement.MovementCleanup();
+                    Step(i, inputsForStep(i));
                     // As the model host's FixedUpdate would, before the physics step.
                     if (models != null) { models.TryFitColliderNow(); }
                     Physics.Simulate(Time.fixedDeltaTime);

@@ -59,6 +59,13 @@ namespace Character
 
         /// <summary>A slide has the character while it lasts (crouching is a stance, not an ability: others start from it, or refuse to).</summary>
         public override bool IsActive(MovementController controller) => controller.slide.IsSliding;
+        /// <summary>The events of Crouching and Sliding starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Crouching, MovementEvents.CrouchStarted, MovementEvents.CrouchEnded),
+            new(CharacterState.Sliding, MovementEvents.SlideStarted, MovementEvents.SlideEnded),
+        };
 
         /// <summary>Crouched or sliding, low at the crouch height.</summary>
         public override BodyPosture? Posture(MovementController controller) =>
@@ -257,5 +264,16 @@ namespace Character
         public float elapsed;
         /// <summary>The direction the slide is heading (horizontal, unit length).</summary>
         public Vector3 direction;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's crouching state (Crouching).</summary>
+        public CrouchState crouch { get; } = new CrouchState();
+
+        /// <summary>The character's sliding state (Crouching, which slides when Crouch is pressed while sprinting).</summary>
+        public SlideState slide { get; } = new SlideState();
     }
 }

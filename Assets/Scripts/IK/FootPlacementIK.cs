@@ -15,11 +15,12 @@ namespace Character
     /// edge, is lifted to stand on it at least, so the knees bend up rather than the feet sinking into it, and they
     /// straighten as the body catches up. Ordinary placement takes over again once it has.
     ///
-    /// Feeds CharacterIK's procedural channel, so goals set manually on CharacterIK still take priority.
+    /// Feeds CharacterIK's procedural channel, so goals set manually on CharacterIK still take priority. Fades in and
+    /// out as an AbilityIK does (ActiveWeight, toward Weight, over Grounded Fade Time).
     /// </summary>
     [RequireComponent(typeof(CharacterIK))]
     [DisallowMultipleComponent]
-    public class FootPlacementIK : MonoBehaviour
+    public class FootPlacementIK : AbilityIK
     {
         [Tooltip("Overall strength of foot placement. 0 = off, 1 = feet fully placed on the ground.")]
         [Range(0f, 1f)] public float weight = 1f;
@@ -95,28 +96,21 @@ namespace Character
         {
             public float offset, offsetVelocity;
             public Vector3 normal;
-            // Foot lock: whether the foot is locked, where (in the space of the ground it was put down on, or the world
-            // if none), and how far the lock is blended in.
-            public bool locked;
-            public Transform lockGround;
-            public Vector3 lockPoint;
-            public float lockWeight;
+            // Foot lock: held where the foot was put down (see Foot Lock).
+            public PlantLock plantLock;
             // Debug
             public Vector3 rayOrigin, rayEnd, hitPoint;
             public bool hit;
         }
 
-        private CharacterIK ik;
-        // Where the character's grounded and dashing state comes from (the character's AnimationController, found in
-        // the model's parents). Without one, the feet are always placed.
-        private ICharacterAnimationStateSource stateSource;
+        // The character's grounded and dashing state comes from AbilityIK's state source (its AnimationController, in the
+        // model's parents). Without one, the feet are always placed.
         private FootState left, right;
         private float pelvisOffset, pelvisVelocity;
-        private float activeWeight;
         // The step up's tuck: how far it's eased in, and the edge stepped up onto (kept while easing out).
         private float stepUpWeight;
         private Vector3 stepUpEdge, stepUpNormal;
-        private readonly RaycastHit[] hits = new RaycastHit[8];
+        private readonly GroundProbe probe = new();
 
         /// <summary>How far the pelvis is currently lowered, in meters (negative = lower).</summary>
         public float PelvisOffset => pelvisOffset;
@@ -124,8 +118,10 @@ namespace Character
         public float FloorOffset { get => floorOffset; set => floorOffset = value; }
         /// <summary>Height of the soles above the model's origin as the animation poses them, in the model's units.</summary>
         public float AnimatedFloorOffset { get => animatedFloorOffset; set => animatedFloorOffset = value; }
-        /// <summary>How far foot placement is faded in (0 to Weight): it fades out in the air and while dashing.</summary>
-        public float ActiveWeight => activeWeight;
+        /// <summary>How strongly the feet are placed when placement is fully in (Weight).</summary>
+        protected override float Weight => weight;
+        /// <summary>How long placement takes to fade in on landing and out on leaving the ground (Grounded Fade Time).</summary>
+        protected override float FadeTime => groundedFadeTime;
 
         /// <summary>
         /// Carries on from another model's foot placement, as it was this frame: how far it was faded in, and how far
@@ -142,29 +138,21 @@ namespace Character
             right = other.right;
         }
 
-        private void Awake()
+        protected override void Awake()
         {
-            ik = GetComponent<CharacterIK>();
-            if (ignoreCollidersUnder == null)
-            {
-                Rigidbody body = GetComponentInParent<Rigidbody>();
-                ignoreCollidersUnder = body != null ? body.transform : transform.root;
-            }
+            base.Awake();
+            if (ignoreCollidersUnder == null) { ignoreCollidersUnder = GroundProbe.DefaultIgnoredRoot(this); }
             left.normal = right.normal = Vector3.up;
         }
 
-        private void OnEnable() => ik.BeforeSolve += Solve;
-        private void OnDisable()
+        protected override void OnDisable()
         {
-            ik.BeforeSolve -= Solve;
-            activeWeight = 0f;
+            base.OnDisable();
             pelvisOffset = pelvisVelocity = 0f;
             left.offset = left.offsetVelocity = right.offset = right.offsetVelocity = 0f;
         }
 
-        private void Start() => stateSource = GetComponentInParent<ICharacterAnimationStateSource>();
-
-        private void Solve(Animator animator)
+        protected override void Solve(Animator animator)
         {
             float dt = Time.deltaTime;
 
@@ -175,8 +163,7 @@ namespace Character
             // Not while dashing, sliding or rolling either: their poses trail or tuck the legs, which planting the feet
             // would undo. Nor climbing a wall, whose feet are on the wall, even at its foot with the floor under them.
             bool posed = state.dashing || state.sliding || state.rolling || state.vaulting || state.wallClimbing;
-            float goal = grounded && !posed ? weight : 0f;
-            activeWeight = groundedFadeTime > 0f ? Mathf.MoveTowards(activeWeight, goal, dt / groundedFadeTime) : goal;
+            FadeTo(grounded && !posed ? weight : 0f);
 
             // The model is placed for its soles where this holds the feet (at their IK goals). Where the animation has
             // them instead, the soles are a little higher or lower; while placement is off, or blended partly over the
@@ -200,15 +187,15 @@ namespace Character
             {
                 SolveStepUp(animator, animationLift);
                 pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
-                left.locked = right.locked = false;
-                left.lockWeight = right.lockWeight = 0f;
+                left.plantLock.Release();
+                right.plantLock.Release();
                 return;
             }
             if (activeWeight <= 0f)
             {
                 pelvisOffset = Mathf.SmoothDamp(pelvisOffset, 0f, ref pelvisVelocity, pelvisSmoothTime, Mathf.Infinity, dt);
-                left.locked = right.locked = false;
-                left.lockWeight = right.lockWeight = 0f;
+                left.plantLock.Release();
+                right.plantLock.Release();
                 return;
             }
 
@@ -276,7 +263,7 @@ namespace Character
             float distance = stepUp + stepDown;
             foot.rayOrigin = origin;
             foot.rayEnd = origin + Vector3.down * distance;
-            foot.hit = FindGround(origin, distance, out RaycastHit hit);
+            foot.hit = probe.Find(origin, distance, groundLayers, ignoreCollidersUnder, maxSlopeAngle, out RaycastHit hit);
 
             float offsetGoal = 0f;
             Vector3 normalGoal = Vector3.up;
@@ -308,62 +295,24 @@ namespace Character
         }
 
         /// <summary>
-        /// Holds a planted foot where it was put down: locked as the animation plants it, held there (in the space of the
-        /// ground under it, so it rides moving ground) while the animation keeps it planted, and let go as it lifts, or
-        /// if the animation's foot gets too far from the lock. The lock is blended in and out over the animation's foot.
-        /// Only the foot's position across the ground is held; its height stays as placed.
+        /// Holds a planted foot where it was put down (see PlantLock), blended in and out over where it's placed. Only the
+        /// foot's position across the ground is held; its height stays as placed.
         /// </summary>
         private Vector3 LockFoot(ref FootState foot, Vector3 placed, float planted, Transform ground, float size, float dt)
         {
             if (footLock <= 0f) { return placed; }
-
-            if (foot.locked)
-            {
-                Vector3 held = LockPosition(foot);
-                Vector2 apart = new Vector2(held.x - placed.x, held.z - placed.z);
-                if (planted < 0.5f || apart.magnitude > maxLockDistance * size) { foot.locked = false; }
-            }
-            else if (planted >= 0.999f && foot.lockWeight <= 0f)
-            {
-                foot.locked = true;
-                foot.lockGround = ground;
-                foot.lockPoint = ground != null ? ground.InverseTransformPoint(placed) : placed;
-            }
-
-            foot.lockWeight = Mathf.MoveTowards(foot.lockWeight, foot.locked ? 1f : 0f, dt / lockBlendTime);
-            if (foot.lockWeight <= 0f) { return placed; }
-            Vector3 lockAt = LockPosition(foot);
-            float w = foot.lockWeight * footLock;
+            foot.plantLock.Update(placed, placed, ground, planted, maxLockDistance * size, lockBlendTime, dt);
+            if (foot.plantLock.weight <= 0f) { return placed; }
+            Vector3 lockAt = foot.plantLock.Position;
+            float w = foot.plantLock.weight * footLock;
             return new Vector3(Mathf.Lerp(placed.x, lockAt.x, w), placed.y, Mathf.Lerp(placed.z, lockAt.z, w));
         }
-
-        /// <summary>Where a foot's lock is now, in world space (it moves with the ground it was put down on).</summary>
-        private static Vector3 LockPosition(in FootState foot) =>
-            foot.lockGround != null ? foot.lockGround.TransformPoint(foot.lockPoint) : foot.lockPoint;
 
         /// <summary>How much the model is scaled vertically in the world (by the character's size).</summary>
         private float WorldScale => Mathf.Max(transform.lossyScale.y, 1e-4f);
 
         /// <summary>The model's vertical scale in the world.</summary>
         private float VerticalScale => transform.lossyScale.y;
-
-        private bool FindGround(Vector3 origin, float distance, out RaycastHit closest)
-        {
-            closest = default;
-            int count = Physics.RaycastNonAlloc(origin, Vector3.down, hits, distance, groundLayers, QueryTriggerInteraction.Ignore);
-            float best = float.PositiveInfinity;
-            for (int i = 0; i < count; i++)
-            {
-                RaycastHit h = hits[i];
-                if (ignoreCollidersUnder != null && h.transform.IsChildOf(ignoreCollidersUnder)) { continue; }
-                if (Vector3.Angle(h.normal, Vector3.up) > maxSlopeAngle) { continue; }
-                if (h.distance < best) { best = h.distance; closest = h; }
-            }
-            if (best == float.PositiveInfinity) { return false; }
-            // Where the ground is drawn: placed where physics has a moving platform, the feet jumped up and down on it.
-            CharacterUtilities.ToDrawnPose(ref closest);
-            return true;
-        }
 
         private void OnDrawGizmosSelected()
         {

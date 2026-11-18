@@ -178,6 +178,21 @@ namespace Character
             return false;
         }
 
+        /// <summary>
+        /// Adds the starts and ends of every component's states (see MovementComponent.StateEvents). Turned-off components
+        /// too: one turned off while it had the character lets go of it, and that ends its state.
+        /// </summary>
+        public override void DetectStateEvents(MovementData data)
+        {
+            for (int i = 0; i < components.Count; i++)
+            {
+                MovementComponent component = components[i];
+                if (component == null) { continue; }
+                StateEvent[] stateEvents = component.StateEvents;
+                for (int e = 0; e < stateEvents.Length; e++) { stateEvents[e].Detect(data); }
+            }
+        }
+
         /// <summary>Ends every ability under way but the given one, which is taking the character.</summary>
         public void InterruptOthers(ref MovementData movementData, MovementController controller, MovementComponent except)
         {

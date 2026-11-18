@@ -37,6 +37,12 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.ropeSwing.IsSwinging;
         /// <summary>Swinging, the character holds on to the rope, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>The events of RopeSwinging starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.RopeSwinging, MovementEvents.RopeGrabbed, MovementEvents.RopeReleased),
+        };
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -257,5 +263,13 @@ namespace Character
             upTheRope = -down;
             return true;
         }
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's rope swinging state (RopeSwinging).</summary>
+        public RopeSwingState ropeSwing { get; } = new RopeSwingState();
     }
 }

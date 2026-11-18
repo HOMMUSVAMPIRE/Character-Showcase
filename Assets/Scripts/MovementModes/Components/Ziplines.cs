@@ -38,6 +38,12 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.zipline.IsRiding;
         /// <summary>Riding, the character holds on to the cable, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>The events of Ziplining starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
+        };
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -225,5 +231,13 @@ namespace Character
             travel = line.Direction * (speed < 0f ? -1f : 1f);
             return true;
         }
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's zipline riding state (Ziplines).</summary>
+        public ZiplineState zipline { get; } = new ZiplineState();
     }
 }

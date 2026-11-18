@@ -25,6 +25,15 @@ namespace Character
         }
 
         /// <summary>
+        /// Adds to the step's events the starts and ends of the states this mode's movement sets (an ability's: see
+        /// StateEvent), found by comparing the step's state with the last's. Called by the MovementController after the
+        /// step.
+        /// </summary>
+        public virtual void DetectStateEvents(MovementData data)
+        {
+        }
+
+        /// <summary>
         /// Measures what this mode lets a character do (see MovementController.Capabilities), by running its movement in
         /// the given simulation, into capabilities (whose step height, slope, stand height and radius are already filled
         /// in from the character). A mode measures the moves it has: jumps, climbs, and its abilities' reach.

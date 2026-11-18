@@ -83,6 +83,12 @@ namespace Character
         public virtual AbilityTraits Traits => AbilityTraits.None;
 
         /// <summary>
+        /// The states this ability sets and the events raised as each starts and ends (see StateEvent), so the ability
+        /// only has to set the state. A static array, so asking allocates nothing. None unless the ability says.
+        /// </summary>
+        public virtual StateEvent[] StateEvents => System.Array.Empty<StateEvent>();
+
+        /// <summary>
         /// When no ability has the character this step (none took it over), before it walks, dashes and jumps: for what
         /// changes how it moves on its own (crouching, say).
         /// </summary>

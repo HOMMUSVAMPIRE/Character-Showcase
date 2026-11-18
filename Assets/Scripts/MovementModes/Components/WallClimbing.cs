@@ -84,6 +84,12 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.wallClimb.IsClimbing;
         /// <summary>Climbing, the character holds on to the surface, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>The events of WallClimbing starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
+        };
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -618,5 +624,13 @@ namespace Character
         public bool IsExiting => IsClimbing && phase == Phase.Exiting;
         /// <summary>How far through stepping onto the surface or off it the character is: 0 at its start, 1 at its end (0 otherwise).</summary>
         public float StepProgress => (IsEntering || IsExiting) && stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's wall and ladder climbing state (WallClimbing).</summary>
+        public WallClimbState wallClimb { get; } = new WallClimbState();
     }
 }

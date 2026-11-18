@@ -81,10 +81,10 @@ namespace CharacterShowcase.Tests
         /// <summary>
         /// Standing on a platform rising and falling, frame by frame as the game draws it (the platform and the character
         /// each interpolated between physics steps, the feet placed each frame after the Animator), the feet stay on the
-        /// platform: their height above it barely changes from one frame to the next. Placed where physics has the
-        /// platform (its latest step), they jumped up and down against it. Only frames in which the character itself kept
-        /// its height above the platform count: as the platform turns round, the movement settles the character a little
-        /// higher or lower on it, which the feet follow, and that isn't the feet's placement.
+        /// platform: their height above it barely changes from one frame to the next, and the character's (its root's) not
+        /// at all. Placed where physics has the platform (its latest step), the feet jumped up and down against it; and
+        /// the character, reading the platform a step late, rode it a step behind, flipping from below its top to above
+        /// it as it turned round (see MovingPlatform.FixedUpdate).
         /// </summary>
         [UnityTest]
         public IEnumerator OnARisingAndFallingPlatform_TheFeetStayOnIt_FrameByFrame()
@@ -115,23 +115,18 @@ namespace CharacterShowcase.Tests
                 yield return rig.Run(3f, _ => CharacterTestRig.Idle(), FeedAnimator);
             }
             finally { Object.Destroy(recorder.gameObject); }
-            // A frame counts if the character's height above the platform is as it was a few frames before (the feet
-            // ease after it when it changes).
-            const int SettleFrames = 6;
-            const float Kept = 0.0005f;
-            float jump = 0f;
-            int counted = 0;
-            for (int f = SettleFrames; f < recorder.frames.Count; f++)
+            float jump = 0f, rootJump = 0f;
+            for (int f = 1; f < recorder.frames.Count; f++)
             {
-                if (Mathf.Abs(recorder.frames[f].z - recorder.frames[f - SettleFrames].z) > Kept) { continue; }
                 Vector3 change = recorder.frames[f] - recorder.frames[f - 1];
                 jump = Mathf.Max(jump, Mathf.Abs(change.x), Mathf.Abs(change.y));
-                counted++;
+                rootJump = Mathf.Max(rootJump, Mathf.Abs(change.z));
             }
-            TestContext.WriteLine($"Over {counted} of {recorder.frames.Count} frames (the character keeping its height on the platform), " +
-                                  $"a foot's height above the platform changed by at most {jump * 1000f:0.0} mm from one frame to the next.");
-            Assume.That(counted, Is.GreaterThan(20), "Test setup: there should be frames to measure.");
+            TestContext.WriteLine($"Over {recorder.frames.Count} frames, a foot's height above the platform changed by at most {jump * 1000f:0.0} mm " +
+                                  $"from one frame to the next (the character's by {rootJump * 1000f:0.0} mm).");
+            Assume.That(recorder.frames.Count, Is.GreaterThan(20), "Test setup: there should be frames to measure.");
             Assert.That(jump, Is.LessThan(0.002f), "The feet shouldn't jitter on the platform from one frame to the next.");
+            Assert.That(rootJump, Is.LessThan(0.001f), "The character should ride the platform as it's drawn, frame by frame.");
         }
     }
 }

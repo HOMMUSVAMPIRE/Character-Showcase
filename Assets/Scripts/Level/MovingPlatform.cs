@@ -3,12 +3,15 @@ using UnityEngine;
 namespace Level
 {
     /// <summary>
-    /// A platform that travels back and forth along an offset and/or spins, moved as a kinematic, interpolated
-    /// Rigidbody during the physics step. That is what characters standing on it expect: they read its physics pose
-    /// each step to ride along, and interpolation keeps it visually smooth in step with them.
+    /// A platform that travels back and forth along an offset and/or spins, a kinematic Rigidbody. Each physics step it
+    /// moves first, before the characters (see FixedUpdate), so a character standing on it rides it exactly; each frame
+    /// it's drawn between its last two physics poses, as the characters' interpolated Rigidbodies are (see Update), so
+    /// it's smooth in step with them.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [DisallowMultipleComponent]
+    // Before the characters' steps (ACCharacterController's FixedUpdate, at the default order): see FixedUpdate.
+    [DefaultExecutionOrder(MoveOrder)]
     public class MovingPlatform : MonoBehaviour
     {
         [Tooltip("How far the platform travels from its starting position: meters along the platform's own axes " +
@@ -25,26 +28,70 @@ namespace Level
         [Tooltip("Offset into the cycle, from 0 to 1, so several platforms can move out of step.")]
         [Range(0f, 1f)] public float phaseOffset = 0f;
 
+        /// <summary>
+        /// The script execution order platforms move at: before anything that steps a character in FixedUpdate (which
+        /// must come after it, at a higher order).
+        /// </summary>
+        public const int MoveOrder = -100;
+
         private Rigidbody body;
         private Vector3 startPosition;
         private Quaternion startRotation;
         private float elapsed;
+        // Its last two physics poses, drawn between (see Update).
+        private Vector3 previousPosition, currentPosition;
+        private Quaternion previousRotation, currentRotation;
 
         private void Awake()
         {
             body = GetComponent<Rigidbody>();
             body.isKinematic = true;
             body.useGravity = false;
-            body.interpolation = RigidbodyInterpolation.Interpolate;
-            startPosition = body.position;
-            startRotation = body.rotation;
+            // Interpolated here (see Update): Unity's interpolation doesn't smooth a Rigidbody whose pose is set, only one
+            // moved by MovePosition, which would leave it a step late (see FixedUpdate).
+            body.interpolation = RigidbodyInterpolation.None;
+            startPosition = previousPosition = currentPosition = body.position;
+            startRotation = previousRotation = currentRotation = body.rotation;
         }
 
+        private void OnDisable()
+        {
+            // Held where physics has it: a drawn pose left on the Transform would reach physics at its next step.
+            if (body != null) { transform.SetPositionAndRotation(currentPosition, currentRotation); }
+        }
+
+        /// <summary>
+        /// Moves the platform to where it is at the end of this physics step, at once, before the characters step. A
+        /// character's step reads the platform (to ride it) and queries its collider (to stand on it) where it is when the
+        /// character steps, and the character moves at the physics step. Moved by MovePosition, which only takes it there
+        /// at the physics step too, the platform was still where it was a step before when the characters read it, so they
+        /// rode it a step behind: on a platform rising at 1 m/s, a step's 2 cm low, and as high above it falling, flipping
+        /// from one to the other as it turned round. Set straight away (Rigidbody.position), its collider is at its new
+        /// pose for their queries. Its Transform is set to it too, over the pose it was drawn at, which would otherwise
+        /// reach physics at the step (Unity syncs changed Transforms to their Rigidbodies before it simulates).
+        /// </summary>
         private void FixedUpdate()
         {
             elapsed += Time.fixedDeltaTime;
-            body.MovePosition(startPosition + startRotation * travel * TravelFraction(elapsed / period + phaseOffset));
-            body.MoveRotation(startRotation * Quaternion.Euler(spinDegreesPerSecond * elapsed));
+            previousPosition = currentPosition;
+            previousRotation = currentRotation;
+            currentPosition = startPosition + startRotation * travel * TravelFraction(elapsed / period + phaseOffset);
+            currentRotation = startRotation * Quaternion.Euler(spinDegreesPerSecond * elapsed);
+            body.position = currentPosition;
+            body.rotation = currentRotation;
+            transform.SetPositionAndRotation(currentPosition, currentRotation);
+        }
+
+        /// <summary>
+        /// Draws the platform between its last two physics poses, as far between them as the time since the last physics
+        /// step is through a step: as Unity draws an interpolated Rigidbody (the characters on it), so the two move
+        /// together. Early in the frame (MoveOrder), before anything reads where it's drawn (foot and paw placement).
+        /// </summary>
+        private void Update()
+        {
+            float t = Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime);
+            transform.SetPositionAndRotation(Vector3.Lerp(previousPosition, currentPosition, t),
+                Quaternion.Slerp(previousRotation, currentRotation, t));
         }
 
         /// <summary>0 at the start of the trip, 1 at the far end, pausing at each end.</summary>

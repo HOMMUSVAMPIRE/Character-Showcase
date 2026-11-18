@@ -73,15 +73,15 @@ namespace Character
         }
 
         /// <summary>
-        /// Moves a ground hit to where the ground is drawn, not where physics has it. A moving platform's Rigidbody is
-        /// interpolated, drawn between its physics steps as the character is, while a ray hits it at its latest step: a
-        /// foot or paw placed at the hit jumped up and down against the platform each frame. Hits on anything else
-        /// (not interpolated) are left as they are.
+        /// Moves a ground hit to where the ground is drawn, not where physics has it. A moving platform is drawn between
+        /// its physics steps (interpolated, by Unity or by itself: see Level.MovingPlatform) as the character is, while a
+        /// ray hits it at its latest step: a foot or paw placed at the hit jumped up and down against the platform each
+        /// frame. A Rigidbody drawn where physics has it is left as it is (the move is none); hits on no Rigidbody too.
         /// </summary>
         public static void ToDrawnPose(ref RaycastHit hit)
         {
             Rigidbody moving = hit.rigidbody;
-            if (moving == null || moving.interpolation == RigidbodyInterpolation.None) { return; }
+            if (moving == null) { return; }
             Transform drawn = moving.transform;
             hit.point = drawn.position + drawn.rotation * Quaternion.Inverse(moving.rotation) * (hit.point - moving.position);
         }

@@ -73,6 +73,12 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.wallRun.IsWallRunning;
         /// <summary>Running along it, the wall holds the character up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        /// <summary>The events of WallRunning starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEvent[] StateEvents => stateEvents;
+        private static readonly StateEvent[] stateEvents =
+        {
+            new(CharacterState.WallRunning, MovementEvents.WallRunStarted, MovementEvents.WallRunEnded),
+        };
 
         public override void AdvanceTimers(ref MovementData movementData, Inputs inputs, MovementController controller)
         {
@@ -427,5 +433,13 @@ namespace Character
         public Vector3 lastWallNormal;
         /// <summary>Whether lastWallNormal holds a wall.</summary>
         public bool hasLastWall;
+    }
+
+    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MovementController.cs.
+    public partial class MovementController
+    {
+        /// <summary>The character's wall running state (WallRunning).</summary>
+        public WallRunState wallRun { get; } = new WallRunState();
     }
 }
