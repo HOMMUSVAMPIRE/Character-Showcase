@@ -6,7 +6,7 @@ namespace Character
 {
     /// <summary>
     /// Vaulting: heading into something whose top is too low to grab as a ledge (see Ledges) but too high to step onto,
-    /// in mid-air or sprinting at it on the ground, the character puts a hand on the top and swings itself over. Onto
+    /// in mid-air or walking or sprinting at it on the ground, the character puts a hand on the top and swings itself over. Onto
     /// the top of something low and deep (a platform rather than a wall), it steps up instead, at once, as it does onto
     /// stairs.
     /// </summary>
@@ -26,11 +26,10 @@ namespace Character
         [Tooltip("The slowest (m/s) a vault leaves the character, at its authored size: a slower approach is sped up to " +
                  "this, so a vault is always brisk")]
         [SerializeField] private float vaultMinSpeed = 3f;
-        [Tooltip("Whether sprinting into something low on the ground vaults it, as running into it in mid-air does (or " +
-                 "walking into it, while wading: see Wading)")]
+        [Tooltip("Whether walking or sprinting into something low on the ground vaults it, as running into it in mid-air does")]
         [SerializeField] private bool vaultFromGround = true;
-        [Tooltip("How far (degrees) from head-on a sprint into something low on the ground can be and still vault it, so " +
-                 "running along a railing doesn't")]
+        [Tooltip("How far (degrees) from head-on a walk or sprint into something low on the ground can be and still vault " +
+                 "it, so running along a railing doesn't")]
         [Range(0f, 60f)] [SerializeField] private float vaultGroundMaxAngle = 25f;
         [Tooltip("From the ground, something is only vaulted over if there's somewhere to land beyond it no further than " +
                  "this below the character's feet, as a share of its standing height: a railing at the edge of a drop " +
@@ -191,11 +190,9 @@ namespace Character
             Vector3 steer = InputDirection(movementData, inputs);
             if (grounded)
             {
-                // Sprinting into it; or, wading (as the last step was), walking into it: the water slows the character
-                // too much to sprint up to something low in it, and climbing over beats wading round.
-                bool sprinting = inputs.sprint != null && inputs.sprint.value;
-                bool wading = (movementData.previousState & CharacterState.Wading) != 0;
-                if (!vaultFromGround || !(sprinting || wading) || steer.sqrMagnitude < 0.25f) { return false; }
+                // Steering into it, walking or sprinting (or wading: climbing over beats wading round). A vault is never
+                // slow (see Vault Min Speed), so a walk into a low wall goes over it as briskly as a run.
+                if (!vaultFromGround || steer.sqrMagnitude < 0.25f) { return false; }
             }
             else if (movementData.initialVelocity.y > ledges.LedgeMaxGrabRiseSpeed * controller.SpeedScale) { return false; }
 

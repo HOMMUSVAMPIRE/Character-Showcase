@@ -68,7 +68,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
 - **VaultTests**:
   - heading into the top of a low wall in mid-air vaults over it (giving back air dashes and jumps), rising over the rise time and leaving at its share of the speed, without sliding down it or hanging from it;
   - a low platform stepped up onto, keeping the speed, rather than vaulted; a higher block vaulted onto; at the vault's slowest speed with no speed of its own;
-  - sprinting into a low wall on the ground vaults it, but walking into it (or sprinting, with vaulting from the ground off), glancing along it, or a railing at the edge of a drop doesn't;
+  - walking or sprinting into a low wall on the ground vaults it, but not with vaulting from the ground off, glancing along it, or a railing at the edge of a drop;
   - stairs sprinted up or jumped onto climbed, not vaulted; not without room over the top;
   - with vaulting off, a low wall not slid down, its top grabbed once in reach.
 

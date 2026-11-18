@@ -118,7 +118,10 @@ namespace Character
         /// climbStepProgress).
         /// </summary>
         public bool climbExiting;
-        /// <summary>How far through stepping onto or off a climbed surface (0 to 1; 0 otherwise).</summary>
+        /// <summary>
+        /// How far through stepping onto or off a climbed surface (0 to 1), held at 1 after a step, until the next begins
+        /// (see WallClimbState.StepProgress).
+        /// </summary>
         public float climbStepProgress;
         /// <summary>Climbing a ladder (wallClimbing is set too): see ladder.</summary>
         public bool onLadder;

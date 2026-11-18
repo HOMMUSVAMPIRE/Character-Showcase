@@ -355,7 +355,8 @@ namespace Character
                 wallClimbing = wallClimbing,
                 climbEntering = wallClimbing && movementController.wallClimb.IsEntering,
                 climbExiting = wallClimbing && movementController.wallClimb.IsExiting,
-                climbStepProgress = wallClimbing ? movementController.wallClimb.StepProgress : 0f,
+                // Held after a step, even off the surface (see WallClimbState.StepProgress).
+                climbStepProgress = movementController.wallClimb.StepProgress,
                 onLadder = wallClimbing && movementController.wallClimb.ladder != null,
                 ladder = wallClimbing ? LadderPoseOf(movementController.wallClimb.ladder) : default,
                 wallPoint = wallPoint,

@@ -20,4 +20,5 @@ MonoBehaviour:
     direction: 1
     size: {x: 0, y: 0, z: 0}
     lyingThickness: 0.30903327
+  extraParts: []
   refitOnPrepare: 1

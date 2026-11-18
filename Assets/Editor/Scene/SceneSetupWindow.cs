@@ -26,6 +26,9 @@ namespace CharacterShowcase.EditorTools
         // The scene the choices were started from, so opening another scene starts from its own.
         private Scene choicesScene;
 
+        // The project's character prefabs (those with an ACCharacterController), for the Character Prefab dropdown: Unity's
+        // object picker searches assets by type, and can't find prefabs by a component on them, so it lists none.
+        private readonly List<GameObject> characterPrefabs = new();
         private readonly List<DirectCharacterModelSource> readyModels = new();
         private readonly List<string> unavailableModels = new();
         // Heights by model prefab: measuring means instantiating the model, so it isn't redone on every refresh.
@@ -62,6 +65,13 @@ namespace CharacterShowcase.EditorTools
         /// <summary>Lists the models that are ready to use, and starts the choices from the open scene (see StartChoices).</summary>
         private void Refresh()
         {
+            characterPrefabs.Clear();
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }))
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
+                if (prefab != null && prefab.GetComponent<ACCharacterController>() != null) { characterPrefabs.Add(prefab); }
+            }
+            characterPrefabs.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             readyModels.Clear();
             readyModels.AddRange(CharacterModelImporter.FindReadyDefinitions());
             unavailableModels.Clear();
@@ -163,18 +173,42 @@ namespace CharacterShowcase.EditorTools
         private void DrawCharacter()
         {
             EditorGUILayout.LabelField("Character", EditorStyles.boldLabel);
-            using (var check = new EditorGUI.ChangeCheckScope())
+            using (new EditorGUILayout.HorizontalScope())
             {
-                var chosen = (GameObject)EditorGUILayout.ObjectField(new GUIContent("Character Prefab", "The character the scene spawns."),
-                                                                     characterPrefab, typeof(GameObject), false);
-                if (check.changed)
+                // A field for dropping a prefab on (as its ACCharacterController, so only characters are taken) and finding
+                // it, and beside it the project's character prefabs to choose from (see characterPrefabs).
+                ACCharacterController shown = characterPrefab != null ? characterPrefab.GetComponent<ACCharacterController>() : null;
+                using (var check = new EditorGUI.ChangeCheckScope())
                 {
-                    // The movement mode follows the prefab, unless one other than the old prefab's was chosen.
-                    bool modeWasPrefabs = movementMode == PrefabMovementMode();
-                    characterPrefab = chosen;
-                    if (modeWasPrefabs || movementMode == null) { movementMode = PrefabMovementMode(); }
+                    var dropped = (ACCharacterController)EditorGUILayout.ObjectField(
+                        new GUIContent("Character Prefab", "The character the scene spawns: a prefab with an ACCharacterController. " +
+                                                           "Choose one from the list beside it, or drop one here."),
+                        shown, typeof(ACCharacterController), false);
+                    if (check.changed) { ChooseCharacter(dropped != null ? dropped.gameObject : null); }
+                }
+                if (EditorGUILayout.DropdownButton(new GUIContent("Choose", "The project's character prefabs."), FocusType.Keyboard, GUILayout.Width(64f)))
+                {
+                    var menu = new GenericMenu();
+                    foreach (GameObject prefab in characterPrefabs)
+                    {
+                        GameObject choice = prefab;
+                        menu.AddItem(new GUIContent($"{prefab.name}  ({AssetDatabase.GetAssetPath(prefab)})".Replace('/', '\u2215')),
+                                     prefab == characterPrefab, () => ChooseCharacter(choice));
+                    }
+                    if (characterPrefabs.Count == 0) { menu.AddDisabledItem(new GUIContent("No prefabs with an ACCharacterController")); }
+                    menu.ShowAsContext();
                 }
             }
+        }
+
+        /// <summary>Makes the prefab the scene's character. The movement mode follows it, unless one other than the old prefab's was chosen.</summary>
+        private void ChooseCharacter(GameObject prefab)
+        {
+            if (prefab == characterPrefab) { return; }
+            bool modeWasPrefabs = movementMode == PrefabMovementMode();
+            characterPrefab = prefab;
+            if (modeWasPrefabs || movementMode == null) { movementMode = PrefabMovementMode(); }
+            Repaint();
         }
 
         private void DrawModels()

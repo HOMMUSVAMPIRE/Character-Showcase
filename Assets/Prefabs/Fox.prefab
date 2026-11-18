@@ -25,10 +25,6 @@ PrefabInstance:
       value: Fox
       objectReference: {fileID: 0}
     - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: bodyCollider
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
       propertyPath: bodyDefinition
       value: 
       objectReference: {fileID: 11400000, guid: 6fedef50458cb4c6a864457e58ea92a4, type: 2}

@@ -22,8 +22,12 @@ namespace CharacterShowcase.EditorTools
         private void OnPreprocessModel()
         {
             if (!InModelsFolder(assetPath) || assetImporter is not ModelImporter importer || !importer.importSettingsMissing) { return; }
+            // As Prepare Character Models sets a model up the first time (see CharacterModelImporter.ConfigureImporter),
+            // which it then leaves alone: set up as a Humanoid here without its axis conversion baked in, a model came out
+            // turned round (Quaternius's male mannequin did), its skeleton hung under a node turned to convert axes.
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+            importer.bakeAxisConversion = true;
             importer.importCameras = false;
             importer.importLights = false;
         }

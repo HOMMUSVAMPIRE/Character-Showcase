@@ -10,8 +10,8 @@ namespace CharacterShowcase.Tests
     /// Tests of vaulting: a character in mid-air heading into a wall whose top is too low to grab as a ledge but too
     /// high to step onto goes over it, rising over the vault's rise time and leaving at its share of the speed it came
     /// in at (or the vault's slowest), rather than sliding down it from its knees; onto something low and deep it steps
-    /// up instead, keeping its speed; sprinting into a low wall on the ground vaults it, but walking into it, glancing
-    /// along it, or a railing at the edge of a drop doesn't; stairs are climbed, not vaulted, run up or jumped onto;
+    /// up instead, keeping its speed; walking or sprinting into a low wall on the ground vaults it, but glancing along
+    /// it, a railing at the edge of a drop, or anything with vaulting from the ground off doesn't; stairs are climbed, not vaulted, run up or jumped onto;
     /// without room over the top it doesn't vault; and with vaulting off, a low wall isn't slid down either, its top
     /// grabbed once the character has fallen far enough to reach it. Expected values are read from the movement mode's
     /// settings.
@@ -206,6 +206,37 @@ namespace CharacterShowcase.Tests
             Assert.That(record.hung, Is.True, "Falling beside the wall, the character should grab its top once it's within reach.");
         }
 
+        /// <summary>
+        /// Anything lower than the lowest ledge the character could grab (Ledges' Ledge Grab Min Height) is passable on
+        /// the ground, walking or sprinting into it head-on: stepped over or onto, or vaulted over or onto, thin or deep.
+        /// Heights are shares of that ledge height, so this holds the tuning as it is, whatever it is.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AnythingLowerThanALedge_IsPassable_WalkingOrSprinting(
+            [Values(0.05f, 0.15f, 0.25f, 0.35f, 0.45f, 0.55f, 0.65f, 0.75f, 0.85f, 0.95f)] float shareOfLedgeHeight,
+            [Values(0.15f, 0.6f, 3f)] float depth, [Values(false, true)] bool sprinting)
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(Vector3.zero);
+            float height = shareOfLedgeHeight * LedgeShare * rig.StandingHeight;
+            top = rig.Position.y + height;
+            face = rig.Position.z + rig.FrontExtent + 1.5f;
+            back = face + depth;
+            rig.Box("Obstacle", new Vector3(0f, top / 2f, face + depth / 2f), new Vector3(10f, top, depth));
+
+            bool passed = false;
+            yield return rig.RunUntil(() => passed, step => sprinting ? CharacterTestRig.Sprint(Vector3.forward, step) : CharacterTestRig.Move(Vector3.forward),
+                _ =>
+                {
+                    bool beyond = rig.Position.z - rig.BackExtent > back;
+                    bool onTop = rig.Grounded && Mathf.Abs(rig.Position.y - top) < 0.05f && rig.Position.z > face;
+                    passed |= beyond || onTop;
+                }, timeoutSeconds: 5f);
+            Assert.That(passed, Is.True, $"A {height:0.00} m high, {depth} m deep obstacle (under the lowest ledge, " +
+                                         $"{LedgeShare * rig.StandingHeight:0.00} m) should be passable {(sprinting ? "sprinting" : "walking")} " +
+                                         $"into it: the character stopped at z {rig.Position.z:0.00}, y {rig.Position.y:0.00} (its face at {face:0.00}).");
+        }
+
         [UnityTest]
         public IEnumerator SprintingIntoALowWallOnTheGround_VaultsOverIt()
         {
@@ -220,17 +251,27 @@ namespace CharacterShowcase.Tests
         }
 
         [UnityTest]
-        public IEnumerator WalkingIntoALowWallOnTheGround_DoesNotVault([Values(false, true)] bool vaultingFromTheGroundOff)
+        public IEnumerator WalkingIntoALowWallOnTheGround_VaultsOverIt()
+        {
+            yield return SetUpLowWall(onTheGround: true, distance: 2f);
+            var record = new VaultRecord();
+            yield return RunInto(0f, CharacterTestRig.Move(Vector3.forward), 1.5f, record);
+
+            Assert.That(record.vaulted, Is.True, "Walking into the low wall should vault over it, as sprinting does.");
+            Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(back), "The character should end up beyond the wall.");
+            Assert.That(rig.Grounded, Is.True, "The character should land on the far side.");
+        }
+
+        [UnityTest]
+        public IEnumerator WithVaultingFromTheGroundOff_ALowWallOnTheGround_IsNotVaulted([Values(false, true)] bool sprinting)
         {
             yield return SetUpLowWall(onTheGround: true, distance: 1f);
-            if (vaultingFromTheGroundOff) { rig.SetMovementSetting("vaultFromGround", false); }
+            rig.SetMovementSetting("vaultFromGround", false);
             var record = new VaultRecord();
-            Inputs inputs = vaultingFromTheGroundOff ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
+            Inputs inputs = sprinting ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return RunInto(0f, inputs, 1f, record);
 
-            Assert.That(record.vaulted, Is.False, vaultingFromTheGroundOff
-                ? "With vaulting from the ground off, sprinting into the wall shouldn't vault it."
-                : "Walking into the low wall shouldn't vault it: only sprinting does.");
+            Assert.That(record.vaulted, Is.False, "With vaulting from the ground off, walking or sprinting into the wall shouldn't vault it.");
             Assert.That(rig.Position.z + rig.FrontExtent, Is.LessThan(face + 0.05f), "The character should stay in front of the wall.");
         }
 

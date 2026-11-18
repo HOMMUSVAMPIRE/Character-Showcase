@@ -466,6 +466,46 @@ namespace CharacterShowcase.Tests
             Assert.That(highest, Is.GreaterThan(0f), "Climbing up, a hand should reach up above the head.");
         }
 
+        /// <summary>
+        /// Stepping onto a wall from the ground and off it again, the step's animation plays once each way: its progress
+        /// (which its pose is drawn at) never goes back while the Animator shows it, blending out of it included. Dropping
+        /// back to 0 as the step ended drew the step's start again for the blend, so it seemed to play twice.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator SteppingOntoAndOffAWall_PlaysEachStepOnce()
+        {
+            yield return Spawn();
+            rig.Floor();
+            float face = rig.Position.z + rig.FrontExtent + 0.3f;
+            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
+            int enterShown = 0, exitShown = 0;
+            float backwards = 0f;
+            void Watch(string state, ref int shownFor, ref float last)
+            {
+                bool shown = animator.GetCurrentAnimatorStateInfo(0).IsName(state)
+                             || (animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsName(state));
+                if (!shown) { last = 0f; return; }
+                float progress = animator.GetFloat(AnimatorParameterTranslator.DefaultClimbStepProgressParameter);
+                if (shownFor > 0) { backwards = Mathf.Max(backwards, last - progress); }
+                last = progress;
+                shownFor++;
+            }
+            float lastEnter = 0f, lastExit = 0f;
+            yield return rig.Run(1.4f, _ => CharacterTestRig.Move(Vector3.forward), step =>
+            {
+                StepAnimator(step);
+                Watch(MannequinAnimatorStates.ClimbEnter, ref enterShown, ref lastEnter);
+            });
+            yield return rig.Run(1.4f, _ => CharacterTestRig.Move(Vector3.back), step =>
+            {
+                StepAnimator(step);
+                Watch(MannequinAnimatorStates.ClimbExit, ref exitShown, ref lastExit);
+            });
+            Assert.That(enterShown, Is.GreaterThan(0), "Test setup: stepping onto the wall should have played Climb Enter.");
+            Assert.That(exitShown, Is.GreaterThan(0), "Test setup: stepping off it should have played Climb Exit.");
+            Assert.That(backwards, Is.LessThan(1e-4f), "A step's animation should play through once: its progress shouldn't go back while it shows.");
+        }
+
         [UnityTest]
         public IEnumerator TakingHoldFromTheGround_PlaysClimbEnter_AndSteppingOffPlaysClimbExit()
         {

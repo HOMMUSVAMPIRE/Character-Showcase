@@ -624,8 +624,13 @@ namespace Character
         public bool IsEntering => IsClimbing && phase == Phase.Entering;
         /// <summary>Whether the character is stepping off the surface onto the ground.</summary>
         public bool IsExiting => IsClimbing && phase == Phase.Exiting;
-        /// <summary>How far through stepping onto the surface or off it the character is: 0 at its start, 1 at its end (0 otherwise).</summary>
-        public float StepProgress => (IsEntering || IsExiting) && stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
+        /// <summary>
+        /// How far through stepping onto the surface or off it the character is, or was on its last step: 0 at its start,
+        /// 1 at its end, and held at 1 once it's done, until the next begins (0 if it took hold in mid-air, without a
+        /// step). Held, because the step's animation is drawn at this for a moment after the step, blending out into the
+        /// climb or onto the ground: dropping to 0 as the step ended drew it back at its start, so it seemed to play twice.
+        /// </summary>
+        public float StepProgress => stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
     }
 
     // This state's place on the character (see MovementController): declared here, beside its ability, so a new

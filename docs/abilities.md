@@ -60,7 +60,7 @@ Crouch, or steering away from the wall, lets go, and the same ledge can't be cau
 Heading into a wall whose top is too low to grab as a ledge but too high to step onto (above the step height, the MovementController's Max Step Height on the Character prefab, and below Ledge Grab Min Height), with room to go over it, the character vaults it:
 
 - in mid-air, steering into it or moving toward it within Ledge Max Grab Angle of head-on, and, like ledges, rising slower than Ledge Max Grab Rise Speed, so a jump that's still climbing clears the wall itself;
-- on the ground (with Vault From Ground on), sprinting into it within Vault Ground Max Angle of head-on; walking into it, or running along it, doesn't. From the ground it only vaults over to somewhere to land no more than Vault Max Drop (a share of the character's height) below its feet, so a railing at the edge of a drop stays a railing.
+- on the ground (with Vault From Ground on), walking or sprinting into it within Vault Ground Max Angle of head-on; running along it doesn't. From the ground it only vaults over to somewhere to land no more than Vault Max Drop (a share of the character's height) below its feet, so a railing at the edge of a drop stays a railing.
 
 Anything with something to stand on just in front of it, no more than a step below its top, is a step, not a wall: stairs rising ahead are climbed, never vaulted.
 

@@ -28,4 +28,4 @@ floor (their root height offsets): don't reset them by hand.
 its Standard edition, which it contains). Drop a Pro edition's Unity FBX (the in-place one, not `_RM`) in this folder,
 in place of the edition it contains, and run Prepare Quaternius Animations: every FBX here is set up the same way.
 
-The libraries' female mannequin (CC0 too) is in `Assets/Models/CharacterModels/Quaternius`, as a character model.
+The libraries' female and male mannequins (CC0 too) are in `Assets/Models/CharacterModels/Quaternius`, as character models. The male one is the mannequin in these files, taken out without its animations by `Tools/Animation/extract_mannequin.py`.

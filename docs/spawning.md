@@ -37,7 +37,7 @@ spawner.CharacterSpawned += c => { ... };  // after every spawn, from code or on
 ## Setting up a scene
 
 **Tools > Character Showcase > Set Up Scene…** sets up the open scene to spawn a character. In its window, choose:
-- the character prefab
+- the character prefab: chosen from the project's prefabs with an ACCharacterController (the Choose list beside the field), or dropped on the field, which takes only those
 - its model: the prefab's own, or any model Prepare Character Models has set up (see [Character models](animation.md#character-models)), shown with a preview and its height
 - its movement mode asset
 
