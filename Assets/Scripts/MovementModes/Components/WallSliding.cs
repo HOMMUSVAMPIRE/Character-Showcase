@@ -241,12 +241,9 @@ namespace Character
         {
             normal = point = Vector3.zero;
             float reach = wallSlideCheckDistance * controller.HeightScale + controller.Skin;
-            if (!controller.SweepBody(feet, direction, reach, out RaycastHit hit)) { return false; }
             // As upright as a wall run's wall, whether or not walls are run along (see WallRunning).
-            if (Mathf.Abs(hit.normal.y) > Mathf.Sin(SettingsOf<WallRunning>().WallRunMaxWallTilt * Mathf.Deg2Rad)) { return false; }
-            normal = new Vector3(hit.normal.x, 0f, hit.normal.z);
-            if (normal.sqrMagnitude < 1e-6f) { return false; }
-            normal.Normalize();
+            float maxTilt = SettingsOf<WallRunning>().WallRunMaxWallTilt;
+            if (!MovementHelpers.FindUprightWall(controller, feet, direction, reach, maxTilt, out RaycastHit hit, out normal)) { return false; }
             point = hit.point;
             return true;
         }

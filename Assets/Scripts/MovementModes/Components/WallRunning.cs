@@ -281,11 +281,7 @@ namespace Character
             distance = 0f;
             point = Vector3.zero;
             float reach = Reach(controller) + controller.Skin;
-            if (!controller.SweepBody(feet, direction, reach, out RaycastHit hit)) { return false; }
-            if (Mathf.Abs(hit.normal.y) > Mathf.Sin(wallRunMaxWallTilt * Mathf.Deg2Rad)) { return false; }
-            normal = new Vector3(hit.normal.x, 0f, hit.normal.z);
-            if (normal.sqrMagnitude < 1e-6f) { return false; }
-            normal.Normalize();
+            if (!MovementHelpers.FindUprightWall(controller, feet, direction, reach, wallRunMaxWallTilt, out RaycastHit hit, out normal)) { return false; }
             // Facing the character, not a surface it would only graze.
             if (Vector3.Dot(normal, -direction.normalized) < 0.5f) { return false; }
             distance = hit.distance;

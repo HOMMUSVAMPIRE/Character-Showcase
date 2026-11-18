@@ -30,7 +30,7 @@ namespace CameraSystem
                 if (autoSwapped)
                 {
                     // Hysteresis: only return once the preferred side is clearly free again (or no worse than the other).
-                    if (preferredFree > 0.95f || preferredFree >= otherFree) { autoSwapped = false; }
+                    if (preferredFree > thirdPerson.autoSwapReturnFree || preferredFree >= otherFree) { autoSwapped = false; }
                 }
                 else
                 {
@@ -38,7 +38,7 @@ namespace CameraSystem
                     // only partly blocked is no good either: it leaves the camera's backward sweep grazing the wall, which
                     // pulls the camera in to its minimum distance. (Swapping only once the side was half blocked left a
                     // target moving along a wall, a wall run say, framed from inches behind its head, against the wall.)
-                    autoSwapped = preferredFree < 0.9f && otherFree > preferredFree + 0.15f;
+                    autoSwapped = preferredFree < thirdPerson.autoSwapBlockedFree && otherFree > preferredFree + thirdPerson.autoSwapFreerBy;
                 }
                 if (autoSwapped) { side = -preferredSide; }
             }

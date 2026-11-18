@@ -109,7 +109,9 @@ namespace CameraSystem
                 : speedGoal;
             fov += speedFovAmount * (1f - aimBlend);
 
-            zoneFov = Mathf.SmoothDamp(zoneFov, activeZone != null ? activeZone.fovOffset : 0f, ref zoneFovVelocity, 0.3f, Mathf.Infinity, dt);
+            // Eased over the zone's Fov Blend Time entering it, and the last zone's leaving it.
+            if (activeZone != null) { zoneFovBlendTime = activeZone.fovBlendTime; }
+            zoneFov = Mathf.SmoothDamp(zoneFov, activeZone != null ? activeZone.fovOffset : 0f, ref zoneFovVelocity, zoneFovBlendTime, Mathf.Infinity, dt);
             fov += zoneFov;
 
             cam.fieldOfView = Mathf.Clamp(fov, 1f, 179f);

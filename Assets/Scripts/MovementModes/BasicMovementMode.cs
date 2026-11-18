@@ -106,7 +106,7 @@ namespace Character
                 ComponentsAfterWalking(movementData, inputs, controller);
             }
 
-            // The collider is lowered while crouched, sliding or rolling, and raised again where there's room.
+            // The body is held low while crouched, sliding or rolling (its posture), and stood up again where there's room.
             UpdatePosture(movementData, controller);
             // The fall speed limit (see FallAndAirHandling), last of all.
             ComponentsFinishStep(movementData, controller);

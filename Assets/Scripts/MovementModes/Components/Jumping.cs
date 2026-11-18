@@ -111,7 +111,10 @@ namespace Character
         /// gravity no speed reaches a height, so a jump then launches as it would under Earth's, and drifts on.
         /// </summary>
         private static float JumpSpeedFor(float height, float g, float deltaTime) =>
-            g > 0f ? MovementHelpers.LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * 9.81f * Mathf.Max(0f, height));
+            g > 0f ? MovementHelpers.LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * EarthGravity * Mathf.Max(0f, height));
+
+        // Earth's gravity (m/s²), which a jump's launch speed is worked out under when the character has none.
+        private const float EarthGravity = 9.81f;
     }
 
     /// <summary>

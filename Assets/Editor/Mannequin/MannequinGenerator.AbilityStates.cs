@@ -51,7 +51,7 @@ namespace CharacterShowcase.EditorTools
 
             // Crouch: still, then crouch-walking at the speed its strides are made for, played faster past it (see
             // PlaysPastItsTop).
-            AnimatorState crouch = stateMachine.AddState("Crouch");
+            AnimatorState crouch = stateMachine.AddState(MannequinAnimatorStates.Crouch);
             float crouchStrides = crouchWalk != crouchIdle ? Strides(crouchWalk) : 0f;
             if (crouchStrides > 0f)
             {
@@ -60,11 +60,11 @@ namespace CharacterShowcase.EditorTools
             }
             else { crouch.motion = crouchIdle; }
 
-            AnimatorState slide = stateMachine.AddState("Slide");
+            AnimatorState slide = stateMachine.AddState(MannequinAnimatorStates.Slide);
             slide.motion = Library("Slide_Loop", clips["Dash"]);
 
             // The roll and the climb play through once over the roll or climb, however long it's tuned to take.
-            AnimatorState roll = stateMachine.AddState("Roll");
+            AnimatorState roll = stateMachine.AddState(MannequinAnimatorStates.Roll);
             roll.motion = Library("Roll", clips["Apex"]);
             roll.timeParameterActive = true;
             roll.timeParameter = RollProgressParameter;
@@ -72,7 +72,7 @@ namespace CharacterShowcase.EditorTools
             // Running along a wall: the library's wall runs (the Source edition of Universal Animation Library 2 has them),
             // one for a wall on each side, chosen by WallSide (-1 left, 1 right: their feet are toward the wall, and the
             // body leans away from it); or else sprinting. At the speed the character runs.
-            AnimatorState wallRun = stateMachine.AddState("Wall Run");
+            AnimatorState wallRun = stateMachine.AddState(MannequinAnimatorStates.WallRun);
             AnimationClip wallOnLeft = Library("WallRun_L_Loop", null), wallOnRight = Library("WallRun_R_Loop", null);
             AnimationClip wallRunStride = sprint;
             if (wallOnLeft != null && wallOnRight != null)
@@ -89,22 +89,22 @@ namespace CharacterShowcase.EditorTools
                 wallRun.speed = 1f / wallRunStrides;
             }
 
-            AnimatorState hang = stateMachine.AddState("Hang");
+            AnimatorState hang = stateMachine.AddState(MannequinAnimatorStates.Hang);
             hang.motion = clips["Hang"];
 
-            AnimatorState wallSlide = stateMachine.AddState("Wall Slide");
+            AnimatorState wallSlide = stateMachine.AddState(MannequinAnimatorStates.WallSlide);
             wallSlide.motion = clips["Wall Slide"];
 
             // Swinging on a rope and riding a zipline: the mannequin's own hangs (the libraries have neither), which
             // LineGripIK puts the hands of on the rope or the cable.
-            AnimatorState ropeSwing = stateMachine.AddState("Rope Swing");
+            AnimatorState ropeSwing = stateMachine.AddState(MannequinAnimatorStates.RopeSwing);
             ropeSwing.motion = clips["Rope Swing"];
-            AnimatorState zipline = stateMachine.AddState("Zipline");
+            AnimatorState zipline = stateMachine.AddState(MannequinAnimatorStates.Zipline);
             zipline.motion = clips["Zipline"];
 
             // Swimming at the surface: the library's treading water, blending into its swim stroke by swimming speed (Speed,
             // as at the authored size: see SwimStrokeSpeed); or else the mannequin's own treading water.
-            AnimatorState swim = stateMachine.AddState("Swim");
+            AnimatorState swim = stateMachine.AddState(MannequinAnimatorStates.Swim);
             AnimationClip swimIdle = Library("Swim_Idle_Loop", null), swimStroke = Library("Swim_Fwd_Loop", null);
             swim.motion = swimIdle != null && swimStroke != null
                 ? CreateBlendTree(controller, "Swim", SpeedParameter, (swimIdle, 0f, 1f, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
@@ -114,7 +114,7 @@ namespace CharacterShowcase.EditorTools
             // is always the library's stroke, lying, never its treading water (upright, its legs hanging through the floor
             // below a swimmer near the bottom): drifting along slowly without swimming, at its own pace swimming. Or else
             // the surface's.
-            AnimatorState swimUnderwater = stateMachine.AddState("Swim Underwater");
+            AnimatorState swimUnderwater = stateMachine.AddState(MannequinAnimatorStates.SwimUnderwater);
             swimUnderwater.motion = swimStroke != null
                 ? CreateBlendTree(controller, "Swim Underwater", SpeedParameter, (swimStroke, 0f, UnderwaterDriftStrokePace, 0f), (swimStroke, SwimStrokeSpeed, 1f, 0f))
                 : swim.motion;
@@ -124,7 +124,7 @@ namespace CharacterShowcase.EditorTools
             // the speed its holding hands are made for, played faster past it (see PlaysPastItsTop), and the climbing idle
             // in the middle. Without them,
             // the mannequin's hang, held still.
-            AnimatorState wallClimb = stateMachine.AddState("Wall Climb");
+            AnimatorState wallClimb = stateMachine.AddState(MannequinAnimatorStates.WallClimb);
             AnimationClip climbIdle = Library("Climb_Idle_Loop", null);
             var climbLoops = new (AnimationClip clip, Vector2 direction)[]
             {
@@ -154,7 +154,7 @@ namespace CharacterShowcase.EditorTools
 
             // Climbing a ladder: the library's climbing idle (or the mannequin's hang) as the pose, which LadderIK puts the
             // hands and feet of on the rungs, moving them rung to rung as the character climbs.
-            AnimatorState ladderState = stateMachine.AddState("Ladder");
+            AnimatorState ladderState = stateMachine.AddState(MannequinAnimatorStates.Ladder);
             ladderState.motion = climbIdle != null ? climbIdle : clips["Hang"];
 
             // Stepping onto a climbable surface from standing on the ground, and off its bottom onto the ground: the
@@ -164,11 +164,11 @@ namespace CharacterShowcase.EditorTools
             AnimatorState climbEnter = null, climbExit = null;
             if (climbEnterClip != null && climbExitClip != null)
             {
-                climbEnter = stateMachine.AddState("Climb Enter");
+                climbEnter = stateMachine.AddState(MannequinAnimatorStates.ClimbEnter);
                 climbEnter.motion = climbEnterClip;
                 climbEnter.timeParameterActive = true;
                 climbEnter.timeParameter = ClimbStepProgressParameter;
-                climbExit = stateMachine.AddState("Climb Exit");
+                climbExit = stateMachine.AddState(MannequinAnimatorStates.ClimbExit);
                 climbExit.motion = climbExitClip;
                 climbExit.timeParameterActive = true;
                 climbExit.timeParameter = ClimbStepProgressParameter;
@@ -176,21 +176,21 @@ namespace CharacterShowcase.EditorTools
 
             // Climbing up onto a ledge, from hanging or from climbing a wall below it: the library's climb onto a ledge
             // (from a climbing pose, as the hang's), or else its 1 m climb, or the mannequin's rise.
-            AnimatorState climb = stateMachine.AddState("Climb");
+            AnimatorState climb = stateMachine.AddState(MannequinAnimatorStates.Climb);
             climb.motion = Library("ClimbLedge", Library("ClimbUp_1m", clips["Rise"]));
             climb.timeParameterActive = true;
             climb.timeParameter = ClimbProgressParameter;
 
             // Vaulting over something low: the library's safety vault (a hand on the top, the legs swung over beside
             // it), or else the mannequin's rise, played through once over the vault.
-            AnimatorState vault = stateMachine.AddState("Vault");
+            AnimatorState vault = stateMachine.AddState(MannequinAnimatorStates.Vault);
             vault.motion = Library("SafetyVault", clips["Rise"]);
             vault.timeParameterActive = true;
             vault.timeParameter = VaultProgressParameter;
 
             // Pushing at the speed the push's strides are made for, and pulling the same played backward; standing
             // still holding the object, held still.
-            AnimatorState pushPull = stateMachine.AddState("Push");
+            AnimatorState pushPull = stateMachine.AddState(MannequinAnimatorStates.Push);
             pushPull.motion = push;
             float pushStrides = Strides(push);
             pushPull.speedParameterActive = true;

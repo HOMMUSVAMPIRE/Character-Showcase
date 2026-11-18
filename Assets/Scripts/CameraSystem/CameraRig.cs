@@ -133,6 +133,8 @@ namespace CameraSystem
         // Effects
         private float speedFovAmount, speedFovVelocity;
         private float zoneFov, zoneFovVelocity;
+        // How long the zone field of view eases over: the zone's (see CameraZone.fovBlendTime), kept as it's left.
+        private float zoneFovBlendTime = CameraZone.DefaultFovBlendTime;
         private float bobPhase, bobWeight, bobWeightVelocity;
         private float landingOffset, landingVelocity;
 
@@ -415,7 +417,7 @@ namespace CameraSystem
             UpdateModeTransition(dt);
             float tpBlend = ThirdPersonBlend;
 
-            HandleZoomInput(frame);
+            HandleZoomInput(frame, dt);
             HandleAimInput(frame, dt);
             if (frame.swapShoulderPressed && activeMode == CameraMode.ThirdPerson) { rightShoulder = !rightShoulder; }
 

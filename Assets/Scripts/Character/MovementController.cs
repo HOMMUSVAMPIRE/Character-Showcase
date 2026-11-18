@@ -6,9 +6,10 @@ namespace Character
     /// <summary>
     /// Moves a character: each physics step it runs its movement mode on the inputs (ProcessMovementInputs), resolves
     /// the result against the world (CheckMovementValid) and moves the Rigidbody. It holds the character's movement
-    /// settings and its abilities' state. Split by area: its collider (MovementController.Capsule.cs), the ground
-    /// (.Ground.cs), collision (.Collision.cs), the queries abilities use (.Queries.cs) and what it can do
-    /// (.Capabilities.cs). Serialized fields all stay in this file, so the inspector keeps their order.
+    /// settings and its abilities' state. Split by area: its body (MovementController.Body.cs), hovering over steps
+    /// (.Hover.cs), the ground (.Ground.cs), collision (.Collision.cs), the queries abilities use (.Queries.cs) and what
+    /// it can do (.Capabilities.cs); each ability's state is declared beside its component (in Components/). Serialized
+    /// fields all stay in this file, so the inspector keeps their order.
     /// </summary>
     public partial class MovementController : MonoBehaviour
     {

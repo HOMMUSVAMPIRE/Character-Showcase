@@ -23,9 +23,15 @@ namespace CharacterShowcase.Tests
         private bool InAnimatorState(string state) =>
             animator.GetCurrentAnimatorStateInfo(0).IsName(state) || (animator.IsInTransition(0) && animator.GetNextAnimatorStateInfo(0).IsName(state));
 
+        /// <summary>Every state the generator makes (MannequinAnimatorStates), for naming the one playing.</summary>
+        private static readonly string[] AllStates = typeof(MannequinAnimatorStates)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()).ToArray();
+
         private string CurrentAnimatorState()
         {
-            foreach (string name in new[] { "Locomotion", "Airborne", "Jump", "Land", "Dash", "Crouch", "Slide", "Roll", "Wall Run", "Wall Slide", "Wall Climb", "Climb Enter", "Climb Exit", "Hang", "Climb", "Vault", "Push", "Rope Swing", "Zipline", "Swim", "Swim Underwater" })
+            foreach (string name in AllStates)
             {
                 if (animator.GetCurrentAnimatorStateInfo(0).IsName(name)) { return name; }
             }
@@ -67,11 +73,11 @@ namespace CharacterShowcase.Tests
         public IEnumerator Crouching_PlaysCrouch_AndTheModelFitsItsLoweredCollider()
         {
             yield return Spawn();
-            yield return ExpectState("Crouch", 1f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Crouch, 1f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             float top = HighestPointOfModel() - rig.Position.y;
             Assert.That(top, Is.LessThan(rig.CurrentHeight + 0.05f), "A crouching model should fit inside its crouched collider.");
 
-            yield return ExpectState("Crouch", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Crouch, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
         }
 
         [UnityTest]
@@ -79,7 +85,7 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             yield return rig.Run(0.4f, step => CharacterTestRig.Sprint(Vector3.forward, step), StepAnimator);
-            yield return ExpectState("Slide", 0.5f, step =>
+            yield return ExpectState(MannequinAnimatorStates.Slide, 0.5f, step =>
             {
                 Inputs inputs = CharacterTestRig.Sprint(Vector3.forward, step + 100);
                 if (step == 0) { inputs.crouch = CharacterTestRig.Held(0); }
@@ -97,7 +103,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(rollSteps, step => step == 0 ? CharacterTestRig.Roll(0) : CharacterTestRig.Idle(), step =>
             {
                 StepAnimator(step);
-                played |= InAnimatorState("Roll");
+                played |= InAnimatorState(MannequinAnimatorStates.Roll);
                 if (step == rollSteps / 2) { halfway = animator.GetFloat("RollProgress"); }
             });
             Assert.That(played, Is.True, $"The 'Roll' state should play (the Animator is in '{CurrentAnimatorState()}').");
@@ -115,14 +121,14 @@ namespace CharacterShowcase.Tests
             {
                 StepAnimator(step);
                 if (rig.InState(CharacterState.Rolling)) { lastRollingStep = step; }
-                bool locomotion = InAnimatorState("Locomotion");
+                bool locomotion = InAnimatorState(MannequinAnimatorStates.Locomotion);
                 if (locomotion && inLocomotionAt < 0 && step > 2) { inLocomotionAt = step; }
-                if (step > 2 && !locomotion && !InAnimatorState("Roll")) { other ??= CurrentAnimatorState(); }
+                if (step > 2 && !locomotion && !InAnimatorState(MannequinAnimatorStates.Roll)) { other ??= CurrentAnimatorState(); }
             });
             Assert.That(other, Is.Null, $"Walking on out of a roll should go straight from the roll to walking, not through '{other}'.");
             Assert.That(inLocomotionAt, Is.GreaterThan(0), "The roll should hand over to walking.");
             Assert.That(inLocomotionAt, Is.LessThanOrEqualTo(lastRollingStep), "The blend into walking should start before the roll ends, not after.");
-            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Locomotion"), Is.True);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName(MannequinAnimatorStates.Locomotion), Is.True);
         }
 
         [UnityTest]
@@ -134,7 +140,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
             float speed = rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
             rig.Movement.OverrideVelocity(Vector3.forward * speed);
-            yield return ExpectState("Wall Run", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.WallRun, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
             Assert.That(rig.InState(CharacterState.WallRunning), Is.True, "Test setup: the character should still be wall-running.");
             Assert.That(animator.GetFloat("WallSide"), Is.EqualTo(side), "The Animator should be told which side the wall is on.");
@@ -166,7 +172,7 @@ namespace CharacterShowcase.Tests
             float face = rig.SideExtent + 0.1f;
             rig.Box("Wall", new Vector3(face + 0.5f, 10f, 0f), new Vector3(1f, 20f, 40f));
             rig.Movement.OverrideVelocity(Vector3.forward * rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale);
-            yield return ExpectState("Wall Run", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.WallRun, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             HumanBodyBones[] bones = { HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot, HumanBodyBones.LeftHand, HumanBodyBones.RightHand, HumanBodyBones.Hips, HumanBodyBones.Head };
             float deepest = float.NegativeInfinity;
             string deepestBone = "";
@@ -206,7 +212,7 @@ namespace CharacterShowcase.Tests
             rig.Body.position = new Vector3(0f, 3f, 0f);
             float top = 3f + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
-            yield return ExpectState("Hang", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Hang, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
 
             // The hands hold the ledge: the wrists on its top, just back from its edge, either side of the character, the
@@ -236,7 +242,7 @@ namespace CharacterShowcase.Tests
             Assert.That(face - hips.position.z, Is.LessThan(0.25f * size), "The body should hang against the wall, not a collider's width away from it.");
             Assert.That(face - hips.position.z, Is.GreaterThan(0.05f * size), "The body shouldn't be pushed into the wall.");
 
-            yield return ExpectState("Climb", 0.4f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Climb, 0.4f, step => step == 0 ? CharacterTestRig.Jump(0) : CharacterTestRig.Idle());
         }
 
         [UnityTest]
@@ -248,7 +254,7 @@ namespace CharacterShowcase.Tests
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
             float clearance = rig.StandingHeight * Mathf.Lerp(rig.Component<Crouching>().CrouchHeight, 1f, 0.5f);
             rig.Box("Low Ceiling", new Vector3(0f, top + clearance + 0.5f, face + 2f), new Vector3(10f, 1f, 4f));
-            yield return ExpectState("Hang", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Hang, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
 
             // Through the climb (crouched, as there's only room to crouch on top), the Animator stays in Climb.
             int climbingSteps = 0, outOfClimb = 0;
@@ -257,7 +263,7 @@ namespace CharacterShowcase.Tests
                 StepAnimator(step);
                 if (!rig.InState(CharacterState.LedgeClimbing) || step < 4) { return; }
                 climbingSteps++;
-                if (!InAnimatorState("Climb")) { outOfClimb++; }
+                if (!InAnimatorState(MannequinAnimatorStates.Climb)) { outOfClimb++; }
             });
             Assert.That(climbingSteps, Is.GreaterThan(10), "Test setup: the character should climb.");
             Assert.That(rig.Movement.crouch.IsCrouched, Is.True, "Test setup: the climb should be crouched.");
@@ -281,7 +287,7 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(0.8f, _ => CharacterTestRig.Sprint(Vector3.forward), step =>
             {
                 StepAnimator(step);
-                played |= InAnimatorState("Vault");
+                played |= InAnimatorState(MannequinAnimatorStates.Vault);
                 float progress = rig.Movement.vault.Progress;
                 if (rig.InState(CharacterState.Vaulting) && progress > 0.35f && progress < 0.55f)
                 {
@@ -364,7 +370,7 @@ namespace CharacterShowcase.Tests
             rig.Body.position = new Vector3(0f, 8f, 0f);
             float face = rig.FrontExtent + 0.1f;
             rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
-            yield return ExpectState("Wall Slide", 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.WallSlide, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
             Assert.That(rig.InState(CharacterState.WallSliding), Is.True, "Test setup: the character should still be sliding.");
 
@@ -407,7 +413,7 @@ namespace CharacterShowcase.Tests
                 StepAnimator(step);
                 highest = Mathf.Max(highest, rig.Position.y);
                 if (step > 14 && landedAt < 0 && rig.Grounded) { landedAt = step; }
-                bool inAir = InAnimatorState("Airborne") || animator.GetCurrentAnimatorStateInfo(0).IsName("Jump");
+                bool inAir = InAnimatorState(MannequinAnimatorStates.Airborne) || animator.GetCurrentAnimatorStateInfo(0).IsName(MannequinAnimatorStates.Jump);
                 // On the flight, that is: running off its top end falls, as it should.
                 bool onFlight = rig.Position.z < 2f + (steps - 1) * run;
                 if (landedAt >= 0 && step > landedAt + CharacterTestRig.StepsFor(0.3f) && onFlight && inAir) { airborneAfterLanding++; }
@@ -423,7 +429,7 @@ namespace CharacterShowcase.Tests
             yield return Spawn();
             float near = rig.Position.z + rig.FrontExtent + 0.1f;
             rig.PushableBox(new Vector3(0f, 0.75f, near + 0.75f), Vector3.one * 1.5f);
-            yield return ExpectState("Push", 1f, step => CharacterTestRig.Grab(step, Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Push, 1f, step => CharacterTestRig.Grab(step, Vector3.forward));
         }
 
         [UnityTest]
@@ -433,7 +439,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             float face = rig.Position.z + rig.FrontExtent + 0.3f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
-            yield return ExpectState("Wall Climb", 1.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.WallClimb, 1.5f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.InState(CharacterState.WallClimbing), Is.True, "Test setup: the character should be climbing.");
 
             // Climbing up, the hands reach up the wall and hold onto it: on its face (as the library's climbs are made,
@@ -467,10 +473,10 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             float face = rig.Position.z + rig.FrontExtent + 0.3f;
             rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
-            yield return ExpectState("Climb Enter", 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
-            yield return ExpectState("Wall Climb", 1f, _ => CharacterTestRig.Idle());
-            yield return ExpectState("Climb Exit", 0.4f, _ => CharacterTestRig.Move(Vector3.back));
-            yield return ExpectState("Locomotion", 1.2f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.ClimbEnter, 0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.WallClimb, 1f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.ClimbExit, 0.4f, _ => CharacterTestRig.Move(Vector3.back));
+            yield return ExpectState(MannequinAnimatorStates.Locomotion, 1.2f, _ => CharacterTestRig.Idle());
         }
 
         [UnityTest]
@@ -481,7 +487,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             rig.Body.position = new Vector3(0f, fall, 0f);
             yield return rig.Launch(Vector3.right * 5f, CharacterTestRig.Move(Vector3.right));
-            yield return ExpectState("Roll", 2f, _ => CharacterTestRig.Move(Vector3.right));
+            yield return ExpectState(MannequinAnimatorStates.Roll, 2f, _ => CharacterTestRig.Move(Vector3.right));
         }
 
         [UnityTest]
@@ -491,7 +497,7 @@ namespace CharacterShowcase.Tests
             rig.Floor();
             float face = rig.Position.z + rig.FrontExtent + 0.3f;
             Level.Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, 0f, face + 0.03f), 12f);
-            yield return ExpectState("Ladder", 2f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Ladder, 2f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.8f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
             // Holding still, every hand and foot on a rung.
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
@@ -536,7 +542,7 @@ namespace CharacterShowcase.Tests
             Level.Rope rope = rig.Rope(new Vector3(0f, 10f, 0f), 8f);
             float grip = rig.MovementSetting<float>("ropeGripHeight") * rig.StandingHeight;
             rig.Teleport(new Vector3(0f, 6f - grip, -0.2f));
-            yield return ExpectState("Rope Swing", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.RopeSwing, 0.6f, _ => CharacterTestRig.Idle());
             yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
             Assert.That(rig.InState(CharacterState.RopeSwinging), Is.True, "Test setup: the character should be on the rope.");
 
@@ -559,7 +565,7 @@ namespace CharacterShowcase.Tests
             Level.Zipline line = rig.Zipline(new Vector3(0f, 9f, 0f), new Vector3(0f, 5f, 40f));
             float hang = rig.MovementSetting<float>("ziplineHangHeight") * rig.StandingHeight;
             rig.Teleport(line.PointAt(2f) - Vector3.up * (hang - 0.15f));
-            yield return ExpectState("Zipline", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Zipline, 0.6f, _ => CharacterTestRig.Idle());
             yield return rig.Run(0.4f, _ => CharacterTestRig.Idle(), StepAnimator);
             Assert.That(rig.InState(CharacterState.Ziplining), Is.True, "Test setup: the character should be on the zipline.");
 
@@ -579,7 +585,7 @@ namespace CharacterShowcase.Tests
             Level.Water water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));
             float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
             rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth - 0.1f, 0f));
-            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Swim, 0.6f, _ => CharacterTestRig.Idle());
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), StepAnimator);
             Assert.That(rig.InState(CharacterState.Swimming), Is.True, "Test setup: the character should be swimming.");
 
@@ -589,7 +595,7 @@ namespace CharacterShowcase.Tests
             float head = animator.GetBoneTransform(HumanBodyBones.Head).position.y - water.SurfaceHeight;
             Assert.That(head, Is.InRange(0f, 0.35f * size), "Treading water, the swimmer's head should be just out of the water.");
 
-            yield return ExpectState("Swim", 1f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Swim, 1f, _ => CharacterTestRig.Move(Vector3.forward));
         }
 
         [UnityTest]
@@ -599,8 +605,8 @@ namespace CharacterShowcase.Tests
             Level.Water water = rig.Water(new Vector3(0f, 12f, 0f), new Vector3(40f, 10f, 40f));
             float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
             rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
-            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
-            yield return ExpectState("Swim Underwater", 0.6f, step => CharacterTestRig.Crouch(step));
+            yield return ExpectState(MannequinAnimatorStates.Swim, 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.SwimUnderwater, 0.6f, step => CharacterTestRig.Crouch(step));
             Assert.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
             // The swimming clips float the body the swim depth above the feet; underwater the body lies on them, and the
             // model is drawn lowered to it.
@@ -616,7 +622,7 @@ namespace CharacterShowcase.Tests
                 animator.GetBoneTransform(HumanBodyBones.RightFoot).position.y) - rig.Position.y;
             Assert.That(lowestFoot, Is.GreaterThan(-0.1f * rig.Controller.Scale.y), "Underwater, the swimmer's feet shouldn't hang below its lying body.");
             yield return rig.RunUntil(() => !rig.InState(CharacterState.Diving), step => CharacterTestRig.Jump(step), StepAnimator, timeoutSeconds: 5f);
-            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Swim, 0.6f, _ => CharacterTestRig.Idle());
         }
 
         [UnityTest]
@@ -626,7 +632,7 @@ namespace CharacterShowcase.Tests
             Level.Water water = rig.Water(new Vector3(0f, 12f, 0f), new Vector3(40f, 10f, 40f));
             float depth = rig.MovementSetting<float>("swimDepth") * rig.StandingHeight;
             rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
-            yield return ExpectState("Swim Underwater", 0.6f, step => CharacterTestRig.Crouch(step));
+            yield return ExpectState(MannequinAnimatorStates.SwimUnderwater, 0.6f, step => CharacterTestRig.Crouch(step));
             Assume.That(rig.InState(CharacterState.Diving), Is.True, "Test setup: the character should be underwater.");
             const float lookDown = 30f;
             Camera.main.transform.rotation = Quaternion.Euler(lookDown, 0f, 0f);
@@ -714,7 +720,7 @@ namespace CharacterShowcase.Tests
             rig.Body.position = new Vector3(0f, 3f, 0f);
             float top = 3f + rig.StandingHeight, face = rig.FrontExtent + 0.15f;
             rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
-            yield return ExpectState("Hang", 0.8f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return ExpectState(MannequinAnimatorStates.Hang, 0.8f, _ => CharacterTestRig.Move(Vector3.forward));
             Transform hips = animator.GetBoneTransform(HumanBodyBones.Hips), parent = rig.Models.ModelParent;
             bool climbed = false;
             int afterClimb = 0;
@@ -787,7 +793,7 @@ namespace CharacterShowcase.Tests
             float top = water.SurfaceHeight + edge;
             rig.Box("Pool Side", new Vector3(0f, (top + water.BottomHeight) / 2f, 18f), new Vector3(20f, top - water.BottomHeight, 30f));
             rig.Teleport(new Vector3(0f, water.SurfaceHeight - depth, 0f));
-            yield return ExpectState("Swim", 0.6f, _ => CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Swim, 0.6f, _ => CharacterTestRig.Idle());
 
             // Straight from swimming into the climb, the body rising with it: it once went through the air state first (a
             // step with neither swim nor climb), and the climb then started from its hang, below the swimmer's body, so
@@ -799,10 +805,10 @@ namespace CharacterShowcase.Tests
             yield return rig.Run(3f, _ => CharacterTestRig.Move(Vector3.forward), step =>
             {
                 StepAnimator(step);
-                climbed |= InAnimatorState("Climb");
-                vaulted |= InAnimatorState("Vault");
+                climbed |= InAnimatorState(MannequinAnimatorStates.Climb);
+                vaulted |= InAnimatorState(MannequinAnimatorStates.Vault);
                 bool outOfWater = rig.InState(CharacterState.Vaulting);
-                airborne |= outOfWater && InAnimatorState("Airborne");
+                airborne |= outOfWater && InAnimatorState(MannequinAnimatorStates.Airborne);
                 if (outOfWater) { biggestDrop = Mathf.Max(biggestDrop, lastHips - hips.position.y); }
                 lastHips = hips.position.y;
             });
@@ -818,20 +824,20 @@ namespace CharacterShowcase.Tests
         {
             yield return Spawn();
             rig.Floor();
-            yield return ExpectState("Crouch", 0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
+            yield return ExpectState(MannequinAnimatorStates.Crouch, 0.5f, step => step == 0 ? CharacterTestRig.Crouch(0) : CharacterTestRig.Idle());
             int rollSteps = CharacterTestRig.StepsFor(rig.Component<Rolling>().RollDuration * rig.Movement.DurationScale);
             bool rolled = false, stood = false;
             yield return rig.Run(rollSteps + CharacterTestRig.StepsFor(0.6f),
                 step => step == 0 ? CharacterTestRig.Roll(0, Vector3.forward) : CharacterTestRig.Move(Vector3.forward), step =>
                 {
                     StepAnimator(step);
-                    rolled |= InAnimatorState("Roll");
-                    stood |= InAnimatorState("Locomotion");
+                    rolled |= InAnimatorState(MannequinAnimatorStates.Roll);
+                    stood |= InAnimatorState(MannequinAnimatorStates.Locomotion);
                 });
             Assert.That(rolled, Is.True, "Test setup: the roll should play.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "Test setup: the roll should end crouched.");
             Assert.That(stood, Is.False, $"A roll from a crouch shouldn't stand up before crouching again (the Animator is in '{CurrentAnimatorState()}').");
-            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Crouch"), Is.True, "The roll should end in the crouch.");
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName(MannequinAnimatorStates.Crouch), Is.True, "The roll should end in the crouch.");
         }
     }
 }

@@ -117,10 +117,10 @@ namespace CharacterShowcase.EditorTools
             // No Foot IK on the states: on a model stretched along one axis, Unity's Foot IK puts the feet where it
             // reports their goals, which is off by the stretch (see CharacterUtilities.AnimatedIKGoalPosition). Foot
             // placement plants them at the goals, corrected, instead.
-            AnimatorState locomotion = stateMachine.AddState("Locomotion");
+            AnimatorState locomotion = stateMachine.AddState(MannequinAnimatorStates.Locomotion);
             locomotion.motion = locomotionTree;
             PlaysPastItsTop(controller, locomotion, LocomotionPlaybackParameter, (LocomotionTopSpeedParameter, loops[^1].speed));
-            AnimatorState airborne = stateMachine.AddState("Airborne");
+            AnimatorState airborne = stateMachine.AddState(MannequinAnimatorStates.Airborne);
             stateMachine.defaultState = locomotion;
 
             if (useLibrary)
@@ -136,10 +136,10 @@ namespace CharacterShowcase.EditorTools
                 {
                     takeOff = takeOffFrame / (jumpStart.length * jumpStart.frameRate);
                 }
-                AnimatorState jump = stateMachine.AddState("Jump");
+                AnimatorState jump = stateMachine.AddState(MannequinAnimatorStates.Jump);
                 jump.motion = jumpStart;
                 jump.cycleOffset = takeOff;
-                AnimatorState landing = stateMachine.AddState("Land");
+                AnimatorState landing = stateMachine.AddState(MannequinAnimatorStates.Land);
                 landing.motion = library["Jump_Land"];
 
                 // Any jump, from the ground or in the air, starts the jump over.
@@ -203,7 +203,7 @@ namespace CharacterShowcase.EditorTools
 
             // Dash: entered from anywhere almost instantly so it feels immediate, and left for whichever of
             // Locomotion / Airborne matches the character once the dash ends.
-            AnimatorState dash = stateMachine.AddState("Dash");
+            AnimatorState dash = stateMachine.AddState(MannequinAnimatorStates.Dash);
             dash.motion = clips["Dash"];
             AnimatorStateTransition startDash = stateMachine.AddAnyStateTransition(dash);
             startDash.hasExitTime = false;

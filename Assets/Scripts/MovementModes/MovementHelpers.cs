@@ -8,6 +8,32 @@ namespace Character
     /// </summary>
     public static class MovementHelpers
     {
+        /// <summary>
+        /// A vector flattened onto the ground plane (y dropped) and normalized: false, leaving it unnormalized, if it's
+        /// nearly vertical, with no direction across the ground to speak of.
+        /// </summary>
+        public static bool TryFlatten(Vector3 vector, out Vector3 flat)
+        {
+            flat = new Vector3(vector.x, 0f, vector.z);
+            if (flat.sqrMagnitude < 1e-6f) { return false; }
+            flat.Normalize();
+            return true;
+        }
+
+        /// <summary>
+        /// Sweeps the body from feet in direction, up to reach, for a wall: something upright (its normal within
+        /// maxTiltDegrees of level, either way), as a wall run or a slide down a wall needs. Gives the hit and the wall's
+        /// normal, flattened (pointing away from the wall: see TryFlatten). False if nothing upright is in reach.
+        /// </summary>
+        public static bool FindUprightWall(MovementController controller, Vector3 feet, Vector3 direction, float reach,
+            float maxTiltDegrees, out RaycastHit hit, out Vector3 normal)
+        {
+            normal = Vector3.zero;
+            if (!controller.SweepBody(feet, direction, reach, out hit)) { return false; }
+            if (Mathf.Abs(hit.normal.y) > Mathf.Sin(maxTiltDegrees * Mathf.Deg2Rad)) { return false; }
+            return TryFlatten(hit.normal, out normal);
+        }
+
         // How close (as a share of a physics step) a timer must come to its end to count as there: see CountDown.
         private const float TimerTolerance = 1e-3f;
 

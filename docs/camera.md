@@ -19,14 +19,14 @@ Everything is on the CameraRig component, grouped by feature in its inspector (e
 | Look | Mouse and stick sensitivity, the stick's response curve, smoothing |
 | Cursor | Locking the cursor during play, and the keys to release and re-lock it |
 | First Person | Eye height (or an eye anchor Transform), eye offset, near clip, hiding the target's own renderers |
-| Third Person | Pivot height, shoulder offset and swapping, follow smoothing, hiding the target up close |
+| Third Person | Pivot height, shoulder offset and swapping (and when it swaps by itself, away from a wall: the Auto Swap settings), follow smoothing, hiding the target up close |
 | Zoom | Distance range, zoom speed, and switching to first person at the closest |
 | Aim | Field of view, distance, shoulder and sensitivity while aiming, and how aiming is held or toggled |
 | Collision | The layers it collides with, the probe's size, the closest it may be pulled in |
 | Follow | Interpolating a physics-driven target, the teleport distance, and how far the follow may trail |
 | Speed FOV, Head Bob, Landing | Widening the view with speed, bobbing in first person, dipping on landing |
 | Shake | Trauma-based shake: how fast it fades and how strong it gets |
-| Recenter | Swinging behind the target after a while without look input |
+| Recenter | Swinging behind the target after a while without look input (not when it'd swing further round than Max Turn Angle) |
 | Debug | Drawing the pivot, shoulder point and collision probe in the Scene view |
 
 Distances and speeds are for a target of normal size, and scale with the Target Size Reference (see [Character Size](movement.md#character-size)).
@@ -39,7 +39,7 @@ How fast the target moves, when it lands and how it's scaled are worked out by w
 In the levels, the character and the camera are connected in the scene: Set Up Scene wires the CharacterSpawner's On Camera Target Spawned event to the rig's Follow, which then gets each spawned character, its eye point and its model parent as the size reference (see [Spawning the Character](spawning.md)).
 
 ## Camera zones
-A CameraZone is a volume (a trigger collider for its shape: a primitive or a convex mesh) that changes the camera while its target is inside: forcing first or third person (in a cramped vent, say), capping the third person distance (in a narrow corridor), or adding to or taking from the field of view. Where zones overlap, the one with the highest Priority wins. It checks whether the target is inside by itself, so the target needs no Rigidbody.
+A CameraZone is a volume (a trigger collider for its shape: a primitive or a convex mesh) that changes the camera while its target is inside: forcing first or third person (in a cramped vent, say), capping the third person distance (in a narrow corridor), or adding to or taking from the field of view (eased in and out over its Fov Blend Time). Where zones overlap, the one with the highest Priority wins. It checks whether the target is inside by itself, so the target needs no Rigidbody.
 
 ## Shake
 `CameraRig.AddTrauma(amount)` shakes one camera, and `CameraRig.ShakeAll(amount)` every camera rig, by adding trauma (0 to 1), which fades over time (the Shake section). Landings add some by themselves. A landing is a stop after falling fast (Landing's Min Impact Speed) for at least its Min Fall Time, judged from the target's height each physics step (not each frame, which at a low frame rate can average several steps' drops into what looks like a fall), so stepping down stairs, which drops the target onto each step in a physics step or two, doesn't dip or shake the camera at any frame rate.

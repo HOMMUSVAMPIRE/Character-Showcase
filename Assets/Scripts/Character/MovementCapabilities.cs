@@ -38,7 +38,7 @@ namespace Character
         public float WalkableSlopeAngle { get; internal set; } = float.NaN;
         /// <summary>How tall (m) the character stands: what it needs to stand under something.</summary>
         public float StandHeight { get; internal set; } = float.NaN;
-        /// <summary>How tall (m) its collider is crouched: what it needs to crouch under something (NaN without crouching).</summary>
+        /// <summary>How tall (m) its body is crouched: what it needs to crouch under something (NaN without crouching).</summary>
         public float CrouchHeight { get; internal set; } = float.NaN;
         /// <summary>How far (m) its body reaches to either side: half the width it needs to pass between things.</summary>
         public float HalfWidth { get; internal set; } = float.NaN;

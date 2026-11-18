@@ -13,7 +13,7 @@ namespace CameraSystem
             ? Mathf.Clamp(activeZone.maxDistance, zoom.minDistance, zoom.maxDistance)
             : zoom.maxDistance;
 
-        private void HandleZoomInput(CameraInputFrame frame)
+        private void HandleZoomInput(CameraInputFrame frame, float dt)
         {
             if (zoom.enabled && Mathf.Abs(frame.zoomDelta) > 1e-5f)
             {
@@ -39,7 +39,7 @@ namespace CameraSystem
 
             float goal = Mathf.Min(targetDistance, MaxDistance);
             distance = zoom.smoothTime > 0f
-                ? Mathf.SmoothDamp(distance, goal, ref distanceVelocity, zoom.smoothTime)
+                ? Mathf.SmoothDamp(distance, goal, ref distanceVelocity, zoom.smoothTime, Mathf.Infinity, dt)
                 : goal;
         }
 
@@ -123,7 +123,7 @@ namespace CameraSystem
                 }
 
                 // Don't spin the camera around when the target walks back toward it.
-                if (Mathf.Abs(Mathf.DeltaAngle(yaw, headingYaw)) > 135f) { active = false; }
+                if (Mathf.Abs(Mathf.DeltaAngle(yaw, headingYaw)) > recenter.maxTurnAngle) { active = false; }
             }
 
             if (!active)

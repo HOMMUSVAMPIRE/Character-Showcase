@@ -36,6 +36,11 @@ namespace CameraSystem
         [Header("Field of view")]
         [Tooltip("Degrees added to (or, if negative, removed from) the field of view while inside this zone.")]
         [Range(-40f, 40f)] public float fovOffset = 0f;
+        [Tooltip("Seconds the field of view takes to ease to this zone's offset as the target enters, and back as it leaves.")]
+        [Min(0f)] public float fovBlendTime = DefaultFovBlendTime;
+
+        /// <summary>How long a zone's field of view eases over unless it says (Fov Blend Time).</summary>
+        public const float DefaultFovBlendTime = 0.3f;
 
         private Collider zoneCollider;
 

@@ -25,7 +25,7 @@ namespace Character
                  "carries on once there is. 0 changes size at once, when there's room.")]
         [Min(0f)] [SerializeField] private float scaleChangeDuration = 0.25f;
 
-        // The smallest scale on any axis; anything smaller would make the collider degenerate.
+        // The smallest scale on any axis; anything smaller would make the body degenerate.
         private const float MinimumScale = 0.05f;
 
         // The size change in progress: from startScale to targetScale, progress 0 to 1, in log space so growing and
@@ -72,7 +72,7 @@ namespace Character
         /// Resizes the character to the given scale (x width, y height, z depth, relative to as authored; any mix of
         /// values works). The scale goes on the model parent, not on the character's own transform, so the character's
         /// physics and movement code never see a scaled transform; instead:
-        /// - the collider is resized: height with y, radius with the larger of x and z (capped at half the height)
+        /// - the body is resized with it (MovementController.ApplyScale), which collision and the abilities measure
         /// - movement scales with size as the MovementController's size setting says (speeds, jump, step height)
         /// - the mass scales with volume, and animation, foot placement, the eye point and the camera follow
         /// The change takes scaleChangeDuration, unless immediately is set. Growing waits while there isn't room.
@@ -134,7 +134,7 @@ namespace Character
             ScaleChanged?.Invoke(newScale);
         }
 
-        /// <summary>Whether the collider at the given scale reaches further than it does now, anywhere.</summary>
+        /// <summary>Whether the body at the given scale reaches further than it does now, anywhere.</summary>
         private bool Grows(Vector3 candidate) =>
             candidate.y > currentScale.y + 1e-5f || Mathf.Max(candidate.x, candidate.z) > Mathf.Max(currentScale.x, currentScale.z) + 1e-5f;
 
@@ -174,8 +174,6 @@ namespace Character
 
         private void Update()
         {
-            // TODO: collect inputs if not driven by the player
-
             // Visual-only smoothing runs at render rate. Doing it in FixedUpdate makes the model visibly step at the
             // physics rate, even with Rigidbody interpolation enabled.
             if (animationController != null)
@@ -199,25 +197,5 @@ namespace Character
                 movementController.MovementCleanup();
             }
         }
-
-        private void LateUpdate()
-        {
-            // TODO: do any end-of frame cleanup and store data to be referenced in future frames
-        }
-
-        /// <summary>A placeholder for setting up the character's subcomponents: it does nothing yet.</summary>
-        public void Setup()
-        {
-            // TODO: setup subcomponents as needed
-        }
-
-        /// <summary>
-        /// This should be called by a future game manager script at the start of the frame on all active character objects to cache data about the character such as the character's bounds
-        /// </summary>
-        public void UpdateCaches()
-        {
-            
-        }
-
     }
 }

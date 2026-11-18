@@ -169,6 +169,15 @@ namespace CameraSystem
         [Min(0f)] public float shoulderSwapTime = 0.2f;
         [Tooltip("Swap shoulders temporarily when the current side is blocked by a wall and the other is free.")]
         public bool autoSwapWhenBlocked = true;
+        [Tooltip("Auto swap: the share (0 to 1) of the way out to the shoulder that must be free of walls for it to count " +
+                 "as clear; less, and it's blocked enough to swap from, if the other side is freer (see below). Only " +
+                 "partly blocked is no good either: the camera's backward sweep grazes the wall and pulls it in close.")]
+        [Range(0f, 1f)] public float autoSwapBlockedFree = 0.9f;
+        [Tooltip("Auto swap: how much freer (as a share of the way out) the other shoulder must be to swap to it.")]
+        [Range(0f, 1f)] public float autoSwapFreerBy = 0.15f;
+        [Tooltip("Auto swap: the share of the way out to the preferred shoulder that must be free to swap back to it " +
+                 "(or no less free than the other). Above Auto Swap Blocked Free, so it doesn't swap back and forth.")]
+        [Range(0f, 1f)] public float autoSwapReturnFree = 0.95f;
         [Tooltip("Vertical field of view in third person, in degrees.")]
         [Range(20f, 120f)] public float fieldOfView = 60f;
         [Tooltip("How far up the camera can look in third person, in degrees (pitch is negative looking up).")]
@@ -370,6 +379,9 @@ namespace CameraSystem
         [Min(0.01f)] public float smoothTime = 0.6f;
         [Tooltip("Only recenter while the target is moving at least this fast (0 = always).")]
         [Min(0f)] public float minTargetSpeed = 1f;
+        [Tooltip("Don't recenter when the way to swing to is more than this many degrees round from the camera (the target " +
+                 "walking back toward it), so the camera doesn't spin round.")]
+        [Range(0f, 180f)] public float maxTurnAngle = 135f;
         [Tooltip("Also ease the pitch to the resting pitch below.")]
         public bool recenterPitch = false;
         [Tooltip("The pitch (degrees, positive looking down) recentering eases to, if it eases the pitch.")]

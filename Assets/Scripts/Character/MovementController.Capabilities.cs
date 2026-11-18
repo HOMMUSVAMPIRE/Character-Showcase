@@ -24,7 +24,7 @@ namespace Character
         /// rolls and wall-runs, what it steps up and fits under (see MovementCapabilities). Measured by running a copy of
         /// the character's own movement in a world of its own (MovementSimulation), so it can't drift from what the
         /// movement does; worked out the first time it's asked for, and again after the movement mode's settings, the
-        /// character's size or its collider change. Measuring takes a moment (a few hundred physics steps of movement,
+        /// character's size or its body change. Measuring takes a moment (a few hundred physics steps of movement,
         /// without rendering), so ask for it when it's needed rather than every frame.
         /// </summary>
         public MovementCapabilities Capabilities
