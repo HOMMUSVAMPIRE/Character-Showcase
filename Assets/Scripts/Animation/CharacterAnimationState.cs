@@ -38,6 +38,13 @@ namespace Character
         public float deltaTime;
 
         /// <summary>
+        /// The character's states this step, as the movement has them (see CharacterState): for an ability's own state
+        /// to show with no field of its own here (an Animator Parameter Translator's bool parameter can show any of them).
+        /// The bools below are the animation's view of them, worked out for how it should look.
+        /// </summary>
+        public CharacterState state;
+
+        /// <summary>
         /// Whether the character should be animated as on the ground. Stays true for a moment after leaving the ground
         /// without jumping, so stepping off small ledges and bumps doesn't flash the falling animation.
         /// </summary>

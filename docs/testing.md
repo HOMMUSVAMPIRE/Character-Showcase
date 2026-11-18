@@ -10,6 +10,7 @@ Tests of the package's own content (the mannequin and other prepared models, the
 Every character test runs on the test rig, `CharacterTestRig` (Assets/Tests/PlayMode). It spawns the character with real physics and drives it with scripted inputs, through its ACCharacterController (`StepMovement`, as the game steps it).
 
 - **`CharacterRigFixture`** is what a character fixture derives from: each test gets a new rig (`rig`), disposed after it. It also gives the fixture `[TestTiming]` (see [How long each test takes](#how-long-each-test-takes)). `AnimationTestsBase` derives from it for the tests that need the model's animation.
+- **`AbilityFixture<T>`** derives from it for a fixture of tests on one ability (T, its movement component): the fixture gets the checks every ability should pass as its own tests, named `Kit_…` (it starts from its inputs, raising its start event; turned off by its toggle and by its 0 setting it doesn't start; turned off while under way it lets go at once; its events come in pairs; saved partway and put back it steps on exactly as it did; at half and twice its size it still starts). It supplies how to set the ability up (`SetUpToStart`, spawning with the kit's `SpawnCharacter`), its inputs (`InputsFor`) and the setting whose 0 turns it off (`OffSetting`). See [Adding a Movement Ability](adding-an-ability.md#7-tests-and-docs). `DashTests` and `ZiplineTests` derive from it.
 - **Settings.** Each test's character moves with its own copy of its movement mode asset, so a test can change settings without changing the asset, and the asset can be retuned freely: the tests read the values they expect from the copy. `rig.SetMovementSetting("fieldName", value)` changes one, for that test only, and `rig.MovementSetting<T>("fieldName")` reads one (a field of the mode or of any of its components, by name). A setting the mode doesn't have ignores the test (it tests a behaviour that mode may not have); one asked for as the wrong type fails it, so a test can't quietly stop testing anything. The sizes, speeds and tolerances a test tries are in the test itself.
 - **Looking.** The rig creates no camera: the movement never reads one, and the scripted inputs carry their own look (`rig.Look`), which their move input is relative to. A test that needs a camera (the camera rig, the underwater view) makes its own.
 - **Running.** `rig.RunUntil` runs the character until something's true (or a timeout passes), so a test waits as long as the movement takes, however it's tuned; `rig.RunWithSource` runs it driven by an input source (an AI's, say), as its ACCharacterController steps it in the game.
@@ -33,7 +34,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | MovementCapabilitiesTests | Movement | Movement | the measured capabilities matching what the character does |
 | JumpHeightTests | Movement | Movement | tapped, held and released jump heights |
 | GroundMomentumTests | Movement | Movement | momentum on landing and hopping |
-| DashTests | Movement | Movement | the dash |
+| DashTests | Movement | Movement | the dash (and the ability kit's checks) |
 | MovingGroundTests | Movement | Movement | riding moving and teleporting ground |
 | BodyShapeTests | Movement | Movement | bodies of other shapes, lying down |
 | FoxTests | Movement | Movement | the fox's movement |
@@ -58,7 +59,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | WallClimbTests | Traversal | Traversal | climbing walls, painted ones too |
 | PushPullTests | Traversal | Traversal | pushing and pulling |
 | RopeSwingTests | Traversal | Traversal | swinging on ropes |
-| ZiplineTests | Traversal | Traversal | riding ziplines |
+| ZiplineTests | Traversal | Traversal | riding ziplines (and the ability kit's checks) |
 | SwimTests | Traversal | Traversal | swimming at the surface, getting out |
 | DiveTests | Traversal | Traversal | diving and swimming underwater |
 | WaterEffectsTests | Traversal | Traversal | splashes and ripples |
@@ -67,6 +68,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | AnimationTests | Animations | Animation | soles on the floor, planted feet, IK on stretched models |
 | SampleContentAnimationTests | Animations | Animation, SampleContent | every prepared model's feet and lean |
 | AnimationEventTests | Animations | Animation | movement events passed on by the AnimationController |
+| AnimatorParameterTranslatorTests | Animations | Animation | the translator's bool parameters, set in its inspector |
 | FootLockTests | Animations | Animation | planted feet staying put |
 | VisualRotationTests | Animations | Animation | the model turning and leaning |
 | AbilityAnimationTests | Animations | Animation, SampleContent | each ability's Animator state and IK |
@@ -116,8 +118,8 @@ Then look at what changed in the recorded paths (git diff) before committing the
 - **MovementCapabilitiesTests**: the character's capabilities matching what it does (a jump and a sprint jump carrying it as far as they say, its step, stand and jump heights), following its settings (a higher jump crossing further and reaching a ledge that much higher) and its size (twice the size jumping and sliding twice as far), leaving out what's turned off, adding double jumps with air jumps, and a measurement shared by the same tuning (asked again, or tuned back as it was) but made again for any change, even a tiny change of size.
 - **JumpHeightTests**: a tap rising the min jump height, Jump held rising the max, holding longer rising higher between them, letting go past the min height stopping the rise at once, and the heights following the settings.
 - **GroundMomentumTests**: landing from a jump not adding walking on top of the air speed; hopping again and again (walking or sprinting) never building up speed; landing faster than walking carrying the momentum and easing down to walking, never below it; jumping while walking or sprinting keeping its speed in the air, without air steering stacking on it.
-- **DashTests**: a dash lasting exactly its duration, distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, air dash limits, and jump and dash cancelling each other.
-- **MovingGroundTests**: a platform enabled late being where an early one is at the same tick (both going by the level's clock); riding sliding, rising and spinning platforms (one parented under a static object, as a level's are, too), not being dragged along by ground that teleports further in a step than the character is carried, staying where a short teleport puts it while standing, and keeping a platform's momentum when jumping off.
+- **DashTests**: a dash lasting exactly its duration, distance and direction, ignoring gravity, momentum afterwards, cooldown and input buffer, one dash per press, air dash limits, and jump and dash cancelling each other; and the ability kit's checks (`AbilityFixture`), from a dash pressed once on a floor.
+- **MovingGroundTests**: a platform enabled late being where an early one is at the same tick (both going by the level's clock; the test steps on until they're under way, as where they are depends on how far into the suite it runs); riding sliding, rising and spinning platforms (one parented under a static object, as a level's are, too), not being dragged along by ground that teleports further in a step than the character is carried, staying where a short teleport puts it while standing, and keeping a platform's momentum when jumping off.
 - **BodyShapeTests**:
   - bodies of the other primitive shapes in place of the capsule: a box, a sphere, and a capsule centred ahead of the feet each walking up to a wall and stopping with their front against it, and their proportions (how far each reaches ahead, behind and to the sides, and how tall a sphere stands);
   - a box crouching (lowered from the top, its bottom at the feet) and standing again;
@@ -209,7 +211,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - painted walls: climbing a painted patch only within the paint, and not taking hold of a wall's unpainted part; a box painted on one face not climbed round its corner until the face round it is painted too (paint being for the face painted, and erased as painted: ClimbablePaintTests).
 - **PushPullTests**: pushing and pulling at the push speed with the character keeping hold, slower for heavier objects, push-only objects staying put, stopping at walls without going into the object, letting go, objects falling off edges, objects just being obstacles without Interact, and not jumping while holding one.
 - **RopeSwingTests**: reaching one in mid-air catching hold and swinging on it about its anchor, the hands staying the grip distance from it, carried on past it and back; no input never swinging higher, pumping with the stick swinging higher, and never past the largest swing angle; a wall stopping the swing; jumping off keeping the swing's speed and jumping up, the rope swinging on by itself; Crouch letting go, the same rope not caught again before the regrab delay.
-- **ZiplineTests**: catching a cable in mid-air and riding it downhill to its end, letting go there at the ride's speed, with its events; hanging the hang height straight below it, facing the way it rides; speeding up downhill to no more than the zipline's top speed; a level cable carrying the rider at the slowest ride speed; jumping off up on top of the ride's speed; Crouch letting go.
+- **ZiplineTests**: catching a cable in mid-air and riding it downhill to its end, letting go there at the ride's speed, with its events; hanging the hang height straight below it, facing the way it rides; speeding up downhill to no more than the zipline's top speed; a level cable carrying the rider at the slowest ride speed; jumping off up on top of the ride's speed; Crouch letting go; and the ability kit's checks (`AbilityFixture`, its 0 setting the grab reach), from falling onto a downhill cable.
 - **SwimTests**:
   - falling into deep water plunging below the swim depth (not to the floor) and floating back up to it without bobbing past, with its events and no landing;
   - swimming the way the input points at the swim speed, faster sprinting, facing that way at the swim depth, and slowing to a stop without input;
@@ -237,6 +239,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - IK on stretched models: moving a hand or foot goal moving the hand or foot as far, and a knee hint on its own moving the foot no more than unstretched;
   - sample content (SampleContentAnimationTests, in the same file): every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor with its arms hanging down (the character's own model, when it's one of them, checked in AnimationTests' stand-on-the-ground case instead), and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up).
 - **AnimationEventTests**: the movement's events passed on by the AnimationController, with the animation state.
+- **AnimatorParameterTranslatorTests**: an Animator Parameter Translator's bool parameters: one showing a character's state (State: …) set while the state is, one showing the animation state's own bool set from it, an unknown source or a parameter the controller lacks skipped (the first with a warning), and a new translator's defaults naming the mannequin's parameters and sources that exist.
 - **FootLockTests**: turning on the spot, planted feet staying where they were put down (none of the slide they have without it); a model swapped in while standing carrying on the old one's foot placement (faded in as far, the pelvis as low) rather than fading back in; and standing on a rising and falling platform, frame by frame as drawn, the feet staying on it.
 - **VisualRotationTests**: the model turning after the character: the character turning at once and the model easing round after it without overshooting; turning slower at a run than standing (no faster than its moving limit); leaning into curves by the configured share of the balancing lean (either way); walking a curve leaning about half as much as sprinting it; walking a sharp corner leaning no more than walking speed allows; leaning forward speeding up and back stopping, and upright otherwise; facing a roll at once without leaning; turning with a spinning platform without lagging.
 - **AbilityAnimationTests** (sample content):
@@ -415,7 +418,23 @@ The markers are the project's (see Performance, above) and the engine's physics 
 
 ## Running them
 
-Run them from Window > General > Test Runner (the EditMode and PlayMode tabs), or from the command line with Unity closed:
+Run them from Window > General > Test Runner (the EditMode and PlayMode tabs), or from the command line with Unity closed. The easy way is the test runner script, which needs only Python 3:
+
+```
+python3 Tools/run_tests.py --changed                       # what your change can affect
+python3 Tools/run_tests.py --area Abilities Traversal      # one or more areas
+python3 Tools/run_tests.py --filter "LedgeTests|VaultTests"  # tests whose names match
+python3 Tools/run_tests.py --all                           # both suites in full
+```
+
+- **Finding Unity.** It runs the version in ProjectSettings/ProjectVersion.txt, from the Unity Hub's install folders (its default one, and the one chosen in its preferences), or from `--unity <path>` or the `UNITY_PATH` environment variable. If it finds none, it says what to install or set.
+- **The editor closed.** Unity can't open a project the editor already has open, so the script refuses while it does (it checks whether anything holds the editor's lock on the project, Temp/UnityLockfile, not just whether the file is there: a crash leaves it behind).
+- **What it runs.** `--changed` lists your changes from git (staged, unstaged and new files; add `--base main` for everything your branch changed) and maps them to areas as AGENTS.md's "How to verify your work" says, printing which file led to which area. A change to the tests' shared code, the packages, the project settings or anything under Assets/ it can't place runs everything; a change only to the docs or the Python tools runs nothing, and says so. Both platforms run by default (`--platform EditMode` or `PlayMode` for one), each only if it has fixtures in the chosen areas. `--exclude Performance` leaves a category out, and `--dry-run` prints the Unity commands without running them.
+- **What it prints.** For each platform, how many tests passed, failed, were inconclusive and were skipped, then each that didn't pass, with its message and the first line of its stack trace, and where the full results and Unity's log are (Logs/TestRuns/, a folder per run). If Unity stopped before running them (a compile error), it prints the errors from the log. It exits 0 when nothing failed: an inconclusive test is reported but fails the run only with `--strict`.
+
+Its own tests (Tools/Tests, run with `python3 -m unittest discover -s Tools/Tests`, as CI's hygiene job does) use a fake Unity and canned results, so they need no Unity.
+
+The commands it runs, by hand:
 
 ```
 /Applications/Unity/Hub/Editor/<version>/Unity.app/Contents/MacOS/Unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml

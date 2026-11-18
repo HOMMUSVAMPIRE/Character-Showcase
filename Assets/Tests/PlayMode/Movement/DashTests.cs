@@ -10,10 +10,25 @@ namespace CharacterShowcase.Tests.Movement
     /// Tests of the dash: its burst distance and direction, ignoring gravity, momentum afterwards, the cooldown, the
     /// input buffer, one dash per press, the air dash limit, and not wasting jumps mid-dash.
     /// Expected values are read from the movement mode's dash settings, so retuning the dash doesn't break the tests.
+    /// The checks every ability gets (turned off, letting go, its events, saved and put back, at another size) come from
+    /// AbilityFixture: a dash from standing on a floor, pressed once.
     /// </summary>
     [Category(TestArea.Movement)]
-    public class DashTests : CharacterRigFixture
+    public class DashTests : AbilityFixture<Dashing>
     {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+        }
+
+        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Idle();
+
+        protected override string OffSetting => "dashDuration";
+
+        // Dashing raises its own events (it declares no StateEvents).
+        protected override CharacterState AbilityState => CharacterState.Dashing;
+        protected override StateEvent AbilityEvents => new(CharacterState.Dashing, MovementEvents.DashStarted, MovementEvents.DashEnded);
 
         private float DashSpeed => rig.Component<Dashing>().DashSpeed;
         private float DashDuration => rig.Component<Dashing>().DashDuration;

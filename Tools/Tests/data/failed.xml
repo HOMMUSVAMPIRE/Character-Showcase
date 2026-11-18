@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="5" result="Failed(Child)" total="5" passed="1" failed="1" inconclusive="1" skipped="1" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-18 12:00:00Z" end-time="2026-11-18 12:00:05Z" duration="5.0">
+  <test-suite type="TestSuite" id="1000" name="Project" fullname="Project" runstate="Runnable" testcasecount="5" result="Failed" site="Child" total="5" passed="1" failed="1" inconclusive="1" skipped="1" asserts="0">
+    <test-suite type="TestFixture" id="1001" name="LedgeTests" fullname="CharacterShowcase.Tests.Abilities.LedgeTests" runstate="Runnable" testcasecount="4" result="Failed" site="Child" total="4" passed="1" failed="1" inconclusive="1" skipped="1" asserts="0">
+      <test-case id="1002" name="ALedge_IsGrabbed" fullname="CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_IsGrabbed" runstate="Runnable" result="Passed" duration="0.1" asserts="0" />
+      <test-case id="1003" name="ALedge_IsClimbed" fullname="CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_IsClimbed" runstate="Runnable" result="Failed" label="Error" duration="0.2" asserts="0">
+        <failure>
+          <message><![CDATA[The character didn't reach the top.
+  Expected: True
+  But was:  False]]></message>
+          <stack-trace><![CDATA[at CharacterShowcase.Tests.Abilities.LedgeTests+<ALedge_IsClimbed>d__3.MoveNext () [0x00120] in Assets/Tests/PlayMode/Abilities/LedgeTests.cs:42
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__6.MoveNext () [0x0003a]]]></stack-trace>
+        </failure>
+      </test-case>
+      <test-case id="1004" name="ALedge_OnAFox" fullname="CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_OnAFox" runstate="Runnable" result="Inconclusive" duration="0.0" asserts="0">
+        <reason>
+          <message><![CDATA[The character has no ledge hang.]]></message>
+        </reason>
+      </test-case>
+      <test-case id="1005" name="ALedge_Later" fullname="CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_Later" runstate="Ignored" result="Skipped" label="Ignored" duration="0.0" asserts="0">
+        <reason>
+          <message><![CDATA[Not written yet.]]></message>
+        </reason>
+      </test-case>
+    </test-suite>
+    <test-suite type="TestFixture" id="1006" name="VaultTests" fullname="CharacterShowcase.Tests.Abilities.VaultTests" runstate="Runnable" testcasecount="1" result="Failed" site="SetUp" total="1" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <failure>
+        <message><![CDATA[OneTimeSetUp: the course couldn't be built.]]></message>
+        <stack-trace><![CDATA[at CharacterShowcase.Tests.Abilities.VaultTests.BuildCourse () in Assets/Tests/PlayMode/Abilities/VaultTests.cs:20]]></stack-trace>
+      </failure>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -52,8 +52,8 @@ The state is saved and put back with the character's (`MovementController.SaveSt
 - In this project, saving the character's mode also writes the level checks' movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed (see [Tuning the Character](tuning.md#what-changes-when-you-save)).
 
 ## 5. Animation, if it has a look of its own
-1. Fields for it in `CharacterAnimationState`, filled by `AnimationController.BuildState`.
-2. A parameter on `AnimatorParameterTranslator`: its default name and its name setting (a serialized field, under Bool or Float parameters), and a row pairing that setting with what it shows, which looks it up and sets it each frame: in `BoolParameters` for a bool (the state's flag), in `FloatParameters` for a float (its value from the state, as the authored model would move, and whether it's smoothed). Only a float set some of the time (Wall Side) or worked out from others (the playback parameters) is set by hand, in `Driver.UpdateAnimation`.
+1. **A bool parameter showing its state needs no code.** The animation state carries the character's states (`CharacterAnimationState.state`), so in the Animator Parameter Translator's inspector (`Assets/Animation/Mannequin Animator Translator.asset`, and the fox's in Assets/Models/Creatures/Fox if it shows it), add an entry to Bool Parameters: Shows > Character State > your state, and the Animator parameter's name. The default name goes in a `Default…Parameter` constant on `AnimatorParameterTranslator`, which the generators use too.
+2. **A float, or a bool worked out for the look** (rather than the state as the movement has it: as Grounded keeps a grace period), needs code: fields in `CharacterAnimationState`, filled by `AnimationController.BuildState`. A worked-out bool is then a row in `AnimatorParameterTranslator.AnimationBools` (its name, shown in the inspector's Shows > Animation State menu). A float is a name setting (a serialized field, under Float parameters) and a row in `FloatParameters` (its value from the state, as the authored model would move, and whether it's smoothed). Only a float set some of the time (Wall Side) or worked out from others (the playback parameters) is set by hand, in `Driver.UpdateAnimation`.
 3. In `MannequinGenerator`: the parameter, the crouch state's exclusions, and a state in `MannequinGenerator.AbilityStates.cs`.
 4. A clip in `Tools/Mannequin/mannequin_animations.py`, if it needs one.
 5. An IK component added in `CharacterModelImporter.SaveModelPrefab`, if it needs one: a subclass of `AbilityIK`, which hooks it into CharacterIK and eases it in and out, so it only places the limbs (`Solve`).
@@ -75,13 +75,21 @@ For an ability used on something in the level (as ropes and ziplines are), in tw
 The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
 
 ## 7. Tests and docs
-- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/Tests/PlayMode/Abilities` or `Traversal`, namespace `CharacterShowcase.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
+- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `AbilityFixture<T>` (T your component: see The ability test kit, below), itself a `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/Tests/PlayMode/Abilities` or `Traversal`, namespace `CharacterShowcase.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
   - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.
   - Wait for what the movement does rather than a fixed time chosen for one tuning: `rig.RunUntil(condition, inputs)`, `rig.RunUntilLanded()` after a jump or fall, `rig.RunUntilBackOnTheGround(inputs)` for a whole jump. Use these rather than a loop of `rig.Run(1, …)`: each yield costs a frame, which in the editor is long.
   - The rig records the character's movement events from spawn (`rig.EventsRaised`, `rig.Count(event)`, `rig.StepOf(event)`; `rig.ClearEvents()` to record from a point), and has the common readings (`rig.Velocity`, `rig.Gravity`, `rig.HorizontalSpeed`, `rig.MeanSpeed`, `rig.StandOnFloor()`...): add to it rather than to one fixture.
-- **The turned-off cases.** Cover the component turned off with its toggle, and turned off by its 0 setting.
+- **The ability test kit.** Deriving `AbilityFixture<T>` gives the fixture the checks every ability should pass, as its own tests (named `Kit_…`):
+  - it starts from its inputs, raising its start event;
+  - turned off by its toggle, and by its 0 setting, it doesn't start;
+  - turned off while it's under way, it lets go at once, raising its end event;
+  - its states' start and end events come in pairs;
+  - saved partway through and put back, the character steps on exactly as it did;
+  - at half and twice its size, it still starts.
+
+  The fixture supplies three things: `SetUpToStart` (the world it needs, and the character spawned with the kit's `SpawnCharacter`, so it's at the size a check asks for), `InputsFor(step)` (the inputs that start it and keep it going) and `OffSetting` (the name of the setting whose 0 turns it off). `AbilityState`, `SecondsToStart`, `StepsBeforeSaving` and `StepsCompared` can be overridden. `DashTests` and `ZiplineTests` are examples. Then add the tests that are about the ability itself.
 - **Docs.**
   - Add a section for it in [abilities.md](abilities.md) or [traversal.md](traversal.md), and add it to the component list in [movement.md](movement.md#movement-components).
   - Name each setting by its inspector name and the component it's on, never by its value.

@@ -16,7 +16,7 @@ namespace Character
     {
         [Tooltip("How fast (m/s) the character moves while crouched, at its authored size (it scales with size, as the walk speed does)")]
         [SerializeField] private float crouchSpeed = 2f;
-        [Tooltip("The character's collider height while crouched, sliding or rolling (and climbing onto a ledge with only room " +
+        [Tooltip("The character's body height while crouched, sliding or rolling (and climbing onto a ledge with only room " +
                  "to crouch), as a share of its standing height. It stands back up only where there's room. Used for rolls " +
                  "even with Crouching turned off")]
         [Range(0.2f, 1f)] [SerializeField] private float crouchHeight = 0.55f;

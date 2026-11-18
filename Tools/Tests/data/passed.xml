@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="2" result="Passed" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-11-18 12:00:00Z" end-time="2026-11-18 12:00:05Z" duration="5.0">
+  <test-suite type="TestSuite" id="1000" name="Project" fullname="Project" runstate="Runnable" testcasecount="2" result="Passed" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <test-suite type="TestFixture" id="1001" name="DashTests" fullname="CharacterShowcase.Tests.Movement.DashTests" runstate="Runnable" testcasecount="2" result="Passed" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <test-case id="1002" name="ADash_GoesFurther" fullname="CharacterShowcase.Tests.Movement.DashTests.ADash_GoesFurther" runstate="Runnable" result="Passed" duration="0.1" asserts="0" />
+      <test-case id="1003" name="ADash_Ends" fullname="CharacterShowcase.Tests.Movement.DashTests.ADash_Ends" runstate="Runnable" result="Passed" duration="0.1" asserts="0" />
+    </test-suite>
+  </test-suite>
+</test-run>

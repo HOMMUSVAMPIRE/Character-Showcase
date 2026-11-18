@@ -29,12 +29,19 @@ namespace CharacterShowcase.Tests.Movement
             Level.LevelClock.TickSource = null;
             var top = new Vector3(0f, 1f, 0f);
             var size = new Vector3(2f, 0.2f, 2f);
-            Level.MovingPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            const float loopSeconds = 3f;
+            Level.MovingPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
             for (int i = 0; i < 37; i++) { yield return new WaitForFixedUpdate(); }
-            Level.MovingPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), 3f, new Vector3(0f, 30f, 0f));
+            Level.MovingPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
             for (int i = 0; i < 3; i++) { yield return new WaitForFixedUpdate(); }
             Rigidbody a = early.GetComponent<Rigidbody>(), b = late.GetComponent<Rigidbody>();
-            Assume.That(Vector3.Distance(b.position, top - Vector3.up * (size.y / 2f)), Is.GreaterThan(0.1f), "Test setup: the platforms should be under way.");
+            // Their pose is a function of Unity's tick, which depends on how far into the suite this test runs, so they can
+            // be back near their start just now (it's a loop): step on until they're under way, for up to more than one
+            // whole loop, then compare. Both stay on the same tick throughout.
+            Vector3 start = top - Vector3.up * (size.y / 2f);
+            float loopSteps = loopSeconds / Time.fixedDeltaTime;
+            for (int i = 0; i < loopSteps * 1.5f && Vector3.Distance(b.position, start) <= 0.1f; i++) { yield return new WaitForFixedUpdate(); }
+            Assert.That(Vector3.Distance(b.position, start), Is.GreaterThan(0.1f), "Test setup: the platforms should be under way.");
             Assert.That(b.position, Is.EqualTo(a.position), "A platform enabled late should be where an early one is, at the same tick.");
             Assert.That(b.rotation, Is.EqualTo(a.rotation), "And turned as far.");
         }

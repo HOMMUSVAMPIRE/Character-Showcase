@@ -25,8 +25,9 @@ namespace Character
         [SerializeField] private Avatar avatar;
 
         [Header("Placement")]
-        [Tooltip("Keep the model at its own size (times Scale), or scale it to Fit Height. Either way, the character warns " +
-                 "if the model is too tall or too short for its collider.")]
+        [Tooltip("Keep the model at its own size (times Scale), or scale it to Fit Height. Either way, a character whose " +
+                 "CharacterModelHost has Body Fit off warns if the model is too tall or too short for its body; with Body " +
+                 "Fit on, its body is fitted to the model instead.")]
         [SerializeField] private ModelHeight height = ModelHeight.KeepModelSize;
         [Tooltip("With Height set to Fit To Height, the model is scaled to stand this tall, in meters")]
         [Min(0.01f)] [SerializeField] private float fitHeight = 1.8f;
@@ -55,7 +56,7 @@ namespace Character
         [SerializeField] private float facingCorrection;
         [Tooltip("The model's height unscaled (m, from its meshes in its bind pose), measured when it was prepared (Prepare " +
                  "Character Models); 0 if it hasn't been. With its sizing above, how tall it stands (Measured Height), which " +
-                 "a character fitting its collider to its model takes as its standing height")]
+                 "a character fitting its body to its model (its CharacterModelHost's Body Fit) takes as its standing height")]
         [Min(0f)] [SerializeField] private float measuredOwnHeight;
 
         [Header("Body")]

@@ -46,6 +46,9 @@ jobs:
       # The levelspec tool (Tools/LevelSpec) needs only Python 3 too: its specs, formats, checks and schematics.
       - name: Test the level spec tool
         run: python3 -m unittest discover -s Tools/LevelSpec/tests
+      # So does the test runner (Tools/run_tests.py), tested with a fake Unity and canned results: no Unity needed.
+      - name: Test the test runner script
+        run: python3 -m unittest discover -s Tools/Tests
       # The Blender scripts (Tools/Mannequin, Tools/Fox, Tools/Animation) only run inside Blender, which CI hasn't got,
       # but their syntax can be checked without it (compiling them doesn't import bpy).
       - name: Check every Python script compiles

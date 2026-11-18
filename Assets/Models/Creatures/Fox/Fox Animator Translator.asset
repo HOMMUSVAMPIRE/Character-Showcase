@@ -35,25 +35,43 @@ MonoBehaviour:
   climbDownTopSpeedParameter: ClimbDownTopSpeed
   climbLeftTopSpeedParameter: ClimbLeftTopSpeed
   climbRightTopSpeedParameter: ClimbRightTopSpeed
-  groundedParameter: Grounded
-  jumpingParameter: 
-  dashingParameter: Dashing
-  movingParameter: 
-  crouchingParameter: Crouching
-  slidingParameter: Sliding
-  rollingParameter: Rolling
-  wallRunningParameter: WallRunning
-  wallSlidingParameter: WallSliding
-  wallClimbingParameter: WallClimbing
-  onLadderParameter: OnLadder
-  climbEnteringParameter: ClimbEntering
-  climbExitingParameter: ClimbExiting
-  hangingParameter: Hanging
-  climbingParameter: Climbing
-  vaultingParameter: Vaulting
-  grabbingParameter: Grabbing
-  ropeSwingingParameter: RopeSwinging
-  zipliningParameter: Ziplining
-  swimmingParameter: Swimming
-  divingParameter: Diving
+  boolParameters:
+  - source: Grounded
+    parameter: Grounded
+  - source: Dashing
+    parameter: Dashing
+  - source: Crouching
+    parameter: Crouching
+  - source: Sliding
+    parameter: Sliding
+  - source: Rolling
+    parameter: Rolling
+  - source: Wall Running
+    parameter: WallRunning
+  - source: Wall Sliding
+    parameter: WallSliding
+  - source: Wall Climbing
+    parameter: WallClimbing
+  - source: On Ladder
+    parameter: OnLadder
+  - source: Climb Entering
+    parameter: ClimbEntering
+  - source: Climb Exiting
+    parameter: ClimbExiting
+  - source: Hanging
+    parameter: Hanging
+  - source: Climbing
+    parameter: Climbing
+  - source: Vaulting
+    parameter: Vaulting
+  - source: Grabbing
+    parameter: Grabbing
+  - source: Rope Swinging
+    parameter: RopeSwinging
+  - source: Ziplining
+    parameter: Ziplining
+  - source: Swimming
+    parameter: Swimming
+  - source: Diving
+    parameter: Diving
   eventTriggers: []

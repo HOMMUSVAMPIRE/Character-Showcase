@@ -33,7 +33,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Editor` | The character's editor tools: `Models/` (CharacterModelImporter, HitboxFitter), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `Creatures/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures, and its `Levels/` is an assembly of its own, the level builders' and level checks' fixtures); what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
-| `Tools` | `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
+| `Tools` | `run_tests.py` (runs the Unity tests from the command line) and `Tests/` (its tests), `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
@@ -79,7 +79,11 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
    (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
    no longer exists (renamed without `[MovedFrom]`), and two `CharacterState` or `MovementEvents` members sharing a bit
    (or one that isn't a single bit).
-2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run:
+2. **EditMode and PlayMode tests** need the Unity Editor. With Unity installed locally, close the editor and run
+   `python3 Tools/run_tests.py --all` (or `--changed`, `--area`, `--filter`: see step 5). It finds the project's Unity
+   (from `ProjectVersion.txt`, the Hub's folders, `UNITY_PATH` or `--unity`), refuses while the editor has the project
+   open, runs both suites in batch mode and prints what failed, with the results and logs in `Logs/TestRuns/`
+   (docs/testing.md, Running them). The raw commands it runs:
    ```
    <Unity> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
    <Unity> -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults PlayModeResults.xml
@@ -88,7 +92,7 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
    both suites (a new push cancels the run in progress, so batch pushes; Markdown-only and `docs/` changes don't
    trigger it). The Unity suites run only when something they read changed (`Assets/`, `Packages/`, `ProjectSettings/`,
    the movement envelope or level spec schema, or the workflow): a change to the Python tools alone runs the hygiene
-   job, which also tests the levelspec tool and syntax-checks every Python script.
+   job, which also tests the levelspec tool and the test runner script and syntax-checks every Python script.
 3. **A refactor of the movement must leave `GoldenPathTests` passing:** it holds the character's movement, step by step,
    to recorded paths (docs/testing.md, Golden paths). Record them again (`CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1`)
    only when a change is meant to change the movement, and check the recorded paths' diff.
@@ -99,7 +103,9 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
    ability and scale fixtures; animation, IK and models reach the `Animation` and `Models` categories; the camera
    reaches `Camera`. `-testCategory` takes the category names (`TestArea`'s: `Animation`, `Camera`, ...), not the
    folders' (`Animations/`, `Cameras/`), and the fixtures in `InputAndDeterminism/` are in the `Movement` category.
-   Before committing, run both
+   The easy way: `python3 Tools/run_tests.py --changed` maps your git diff to areas by this rule and says which file led
+   to which (its `CHANGE_RULES`: keep them in step with this rule); `--area Abilities`, `--filter "LedgeTests|VaultTests"`
+   run what you name. Before committing, run both
    full suites and the hygiene check, and only commit on green.
 6. The tests don't cover the levels' looks: after changing a builder, rebuild the level and look at it.
 7. If you couldn't run the tests, say so plainly. Don't describe untested changes as working.

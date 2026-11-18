@@ -12,13 +12,27 @@ namespace CharacterShowcase.Tests.Traversal
     /// Tests of ziplines: reaching a cable in mid-air catches hold of it, and the character rides it downhill, hanging
     /// below it facing the way it rides, speeding up to no more than the zipline's top speed, to its end, where it lets go
     /// carrying on at the ride's speed; a level cable still carries it, at the slowest ride speed; Jump lets go with a jump
-    /// up; Crouch lets go; and a grab reach of 0 turns ziplines off. The test camera looks down +Z. Expected values are
-    /// read from the movement mode's settings and the ziplines'.
+    /// up; and Crouch lets go. The test camera looks down +Z. Expected values are
+    /// read from the movement mode's settings and the ziplines'. The checks every ability gets (turned off, letting go,
+    /// its events, saved and put back, at another size) come from AbilityFixture: falling onto a downhill cable.
     /// </summary>
     [Category(TestArea.Traversal)]
-    public class ZiplineTests : CharacterRigFixture
+    public class ZiplineTests : AbilityFixture<Ziplines>
     {
         private Zipline line;
+
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
+            // Its hang height depends on its size, known once it's spawned.
+            yield return SpawnCharacter(Vector3.zero, settleSeconds: 0f);
+            rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f * Scale));
+        }
+
+        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+
+        protected override string OffSetting => "ziplineGrabReach";
 
         private float SlowestSpeed => rig.MovementSetting<float>("ziplineMinSpeed") * rig.Movement.SpeedScale;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
@@ -109,19 +123,6 @@ namespace CharacterShowcase.Tests.Traversal
             yield return rig.Run(1, _ => CharacterTestRig.Crouch());
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Ziplining, Is.False, "Crouch should let go of the cable.");
-        }
-
-        [UnityTest]
-        public IEnumerator AGrabReachOfZero_TurnsZiplinesOff()
-        {
-            rig.Floor();
-            line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
-            yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
-            rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f));
-            rig.SetMovementSetting("ziplineGrabReach", 0f);
-            bool rode = false;
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle(), _ => rode |= rig.Ziplining);
-            Assert.That(rode, Is.False);
         }
     }
 }

@@ -12,9 +12,11 @@ Checks:
   4. The camera uses no character or level code, and the level elements and the level builders no character code:
      no `using Character` or the like (the level builders may use the level elements, `Level`).
   5. Every serialized field the tests read or set by name (rig.MovementSetting<T>("name"),
-     rig.SetMovementSetting("name", value)) still exists, and is of the type the test asks for it as (<T>).
+     rig.SetMovementSetting("name", value), an ability fixture's OffSetting => "name") still exists, and is of
+     the type the test asks for it as (<T>).
   6. No two movement settings share a name (the tests find a setting by its name alone).
-  7. Every test fixture has [TestTiming] and a test area ([Category(TestArea.…)]), itself or through a base class.
+  7. Every test fixture has [TestTiming] and a test area ([Category(TestArea.…)]), itself or through a base class (an
+     abstract base, such as AbilityFixture<T>, is checked through the fixtures deriving it).
   8. Every movement component a movement asset names ([SerializeReference]: "type: {class: X, ns: Y, asm: Z}")
      still exists by that name, or names it in a [MovedFrom]: renamed without one, it drops out of the asset.
   9. Every member of the flag enums abilities take bits of (CharacterState, MovementEvents) is a single bit of its own,
@@ -155,7 +157,10 @@ def check_reflected_settings():
     source = "\n".join(p.read_text(errors="replace") for p in sources)
     for test in (ASSETS / "Tests").rglob("*.cs"):
         text = test.read_text(errors="replace")
-        for name in set(re.findall(r'MovementSetting(?:<\w+>)?\("(\w+)"', text)):
+        # By the rig's MovementSetting/SetMovementSetting, and the setting an ability fixture turns its ability off by
+        # (AbilityFixture.OffSetting), which the kit sets by name.
+        names = set(re.findall(r'MovementSetting(?:<\w+>)?\("(\w+)"', text)) | set(re.findall(r'OffSetting\s*=>\s*"(\w+)"', text))
+        for name in names:
             # A field declaration: "<type> name;" or "<type> name = ..."
             declared = re.search(rf"\b(\w[\w<>\[\],]*)\s+{name}\s*(=|;)", source)
             if not declared:
@@ -196,24 +201,35 @@ def check_test_fixtures():
     # Every test fixture logs how long each test ran and where the time went (TestTimingAttribute), and is in an area
     # ([Category(TestArea.X)], so an area can be run on its own): each on the fixture or on a class it derives from
     # (CharacterRigFixture carries the timing).
-    classes = {}  # name -> (base, attributes, has tests, file)
+    # A class's name may have type parameters (AbilityFixture<T>), and so may its base (AbilityFixture<Dashing>): both are
+    # known by their names alone. An abstract class isn't run by itself (only the fixtures deriving it are), so it's
+    # checked through them.
+    classes = {}  # name -> (base, attributes, has tests, file, abstract)
     for path in sorted((ASSETS / "Tests").rglob("*.cs")):
         text = path.read_text(encoding="utf-8")
-        for match in re.finditer(r"((?:^[ \t]*\[[^\n]*\][ \t]*\n)*)^[ \t]*(?:public |internal )?(?:abstract |sealed )?class (\w+)(?:\s*:\s*(\w+))?", text, re.M):
+        for match in re.finditer(r"((?:^[ \t]*\[[^\n]*\][ \t]*\n)*)^[ \t]*(?:public |internal )?(abstract |sealed )?(?:partial )?class (\w+)(?:<[^>]*>)?(?:\s*:\s*(\w+))?", text, re.M):
             body_start = match.end()
-            next_class = re.search(r"^[ \t]*(?:public |internal )?(?:abstract |sealed )?class \w+", text[body_start:], re.M)
+            next_class = re.search(r"^[ \t]*(?:public |internal )?(?:abstract |sealed )?(?:partial )?class \w+", text[body_start:], re.M)
             body = text[body_start: body_start + next_class.start()] if next_class else text[body_start:]
-            classes[match.group(2)] = (match.group(3), match.group(1),
-                                       bool(re.search(r"^[ \t]*\[(Test|UnityTest|TestCase)\b", body, re.M)), path)
+            classes[match.group(3)] = (match.group(4), match.group(1),
+                                       bool(re.search(r"^[ \t]*\[(Test|UnityTest|TestCase)\b", body, re.M)), path,
+                                       match.group(2) == "abstract ")
 
     def has(name, attribute, seen=()):
         if name not in classes or name in seen:
             return False
-        base, attributes, _, _ = classes[name]
+        base, attributes, _, _, _ = classes[name]
         return attribute in attributes or has(base, attribute, seen + (name,))
 
-    for name, (_, _, has_tests, path) in classes.items():
-        if not has_tests:
+    def has_tests(name, seen=()):
+        # Its own tests, or a base class's (an ability fixture's kit tests are AbilityFixture's).
+        if name not in classes or name in seen:
+            return False
+        base, _, own, _, _ = classes[name]
+        return own or has_tests(base, seen + (name,))
+
+    for name, (_, _, _, path, abstract) in classes.items():
+        if abstract or not has_tests(name):
             continue
         if not has(name, "TestTiming"):
             problems.append(f"{path.relative_to(ROOT)}: test fixture {name} has no [TestTiming] (nor a base class with it)")

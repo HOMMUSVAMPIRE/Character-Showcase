@@ -315,6 +315,7 @@ namespace Character
             return new CharacterAnimationState
             {
                 deltaTime = deltaTime,
+                state = movementData.state,
                 velocity = velocity,
                 localVelocity = Quaternion.Inverse(facing) * velocity,
                 horizontalSpeed = horizontalSpeed,

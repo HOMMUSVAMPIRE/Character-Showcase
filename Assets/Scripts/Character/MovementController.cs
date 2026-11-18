@@ -73,8 +73,9 @@ namespace Character
         [UnityEngine.Serialization.FormerlySerializedAs("capsule")]
         private Collider bodyCollider;
         [SerializeField]
-        [Tooltip("The character's body as authored (see BodyDefinition): the Body Collider is shaped from it as the character " +
-                 "wakes (made a collider of its kind if it isn't one). Empty: the Body Collider as it's authored")]
+        [Tooltip("The character's body as authored (see BodyDefinition): the shape the movement moves and sweeps (the character " +
+                 "has no collider of its own for that). An optional Body Collider is shaped from it as the character wakes " +
+                 "(made a collider of its kind if it isn't one). Empty: the body is shaped as the Body Collider is authored")]
         private BodyDefinition bodyDefinition;
         [SerializeField]
         [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]

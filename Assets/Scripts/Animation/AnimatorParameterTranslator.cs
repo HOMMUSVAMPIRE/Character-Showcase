@@ -134,6 +134,36 @@ namespace Character
             }
         }
 
+        /// <summary>
+        /// A bool Animator parameter, and what it shows: one of the animation state's own bools (AnimationBools, by name),
+        /// or one of the character's states (StatePrefix and a CharacterState flag's name, as SourceOf gives it). Kept
+        /// as text, so a state's bit can change without it changing what it names.
+        /// </summary>
+        [Serializable]
+        public struct BoolParameter
+        {
+            [Tooltip("What the parameter shows: a value of the animation state, or one of the character's states (State: ...)")]
+            public string source;
+            [Tooltip("The name of the Animator bool parameter it sets")]
+            public string parameter;
+
+            /// <summary>A bool parameter, by name, showing the given source (see AnimatorParameterTranslator.SourceOf).</summary>
+            public BoolParameter(string source, string parameter)
+            {
+                this.source = source;
+                this.parameter = parameter;
+            }
+        }
+
+        /// <summary>What a bool parameter's source starts with when it's one of the character's states (State: WallRunning).</summary>
+        public const string StatePrefix = "State: ";
+
+        /// <summary>The source of a bool parameter showing the given state of the character (one flag).</summary>
+        public static string SourceOf(CharacterState state) => StatePrefix + state;
+
+        /// <summary>The translator's bool parameters (Bool Parameters, in its inspector), for code setting them up.</summary>
+        public BoolParameter[] BoolParameters { get => boolParameters; set => boolParameters = value ?? Array.Empty<BoolParameter>(); }
+
         [Header("Float parameters")]
         [Tooltip("Horizontal speed in m/s")]
         [SerializeField] private string speedParameter = DefaultSpeedParameter;
@@ -189,56 +219,18 @@ namespace Character
         [SerializeField] private string climbRightTopSpeedParameter = DefaultClimbRightTopSpeedParameter;
 
         [Header("Bool parameters")]
-        [Tooltip("Whether the character should be animated as on the ground")]
-        [SerializeField] private string groundedParameter = DefaultGroundedParameter;
-        [Tooltip("Rising from a jump (until it starts falling or is cut short)")]
-        [SerializeField] private string jumpingParameter = "";
-        [Tooltip("Dashing")]
-        [SerializeField] private string dashingParameter = DefaultDashingParameter;
-        [Tooltip("The character's own movement ran this step (walking on the ground, even standing still, or steering in the air) rather than an ability taking it over")]
-        [SerializeField] private string movingParameter = "";
-        [Tooltip("Crouched (not while sliding or rolling)")]
-        [SerializeField] private string crouchingParameter = DefaultCrouchingParameter;
-        [Tooltip("Sliding along the ground")]
-        [SerializeField] private string slidingParameter = DefaultSlidingParameter;
-        [Tooltip("Rolling")]
-        [SerializeField] private string rollingParameter = DefaultRollingParameter;
-        [Tooltip("Running along a wall")]
-        [SerializeField] private string wallRunningParameter = DefaultWallRunningParameter;
-        [Tooltip("Sliding down a wall")]
-        [SerializeField] private string wallSlidingParameter = DefaultWallSlidingParameter;
-        [Tooltip("Climbing a climbable surface (the Climb Right and Climb Up parameters give the climb's speed across and " +
-                 "up it)")]
-        [SerializeField] private string wallClimbingParameter = DefaultWallClimbingParameter;
-        [Tooltip("Climbing a ladder (WallClimbing is set too)")]
-        [SerializeField] private string onLadderParameter = DefaultOnLadderParameter;
-        [Tooltip("Stepping onto a climbable surface from standing on the ground")]
-        [SerializeField] private string climbEnteringParameter = DefaultClimbEnteringParameter;
-        [Tooltip("Stepping off the bottom of a climbable surface onto the ground")]
-        [SerializeField] private string climbExitingParameter = DefaultClimbExitingParameter;
-        [Tooltip("Hanging from a ledge")]
-        [SerializeField] private string hangingParameter = DefaultHangingParameter;
-        [Tooltip("Climbing up from a ledge onto it")]
-        [SerializeField] private string climbingParameter = DefaultClimbingParameter;
-        [Tooltip("Vaulting over something low")]
-        [SerializeField] private string vaultingParameter = DefaultVaultingParameter;
-        [Tooltip("Holding an object to push or pull")]
-        [SerializeField] private string grabbingParameter = DefaultGrabbingParameter;
-        [Tooltip("Swinging on a rope")]
-        [SerializeField] private string ropeSwingingParameter = DefaultRopeSwingingParameter;
-        [Tooltip("Riding a zipline")]
-        [SerializeField] private string zipliningParameter = DefaultZipliningParameter;
-        [Tooltip("Swimming at the surface of deep water")]
-        [SerializeField] private string swimmingParameter = DefaultSwimmingParameter;
-        [Tooltip("Swimming under the surface (Swimming is set too)")]
-        [SerializeField] private string divingParameter = DefaultDivingParameter;
+        [Tooltip("The bool parameters set each frame, each from what it shows: a value of the animation state (Grounded, " +
+                 "Crouching, ...: worked out from the movement as the animation should show it), or one of the character's " +
+                 "states as the movement has it (State: ..., for an ability's own state, with no code). Parameters the " +
+                 "controller doesn't have are skipped")]
+        [SerializeField] private BoolParameter[] boolParameters = DefaultBoolParameters();
 
         [Header("Triggers")]
         [Tooltip("Animator triggers fired by movement events, such as a landing or jump animation")]
         [SerializeField] private EventTrigger[] eventTriggers = Array.Empty<EventTrigger>();
 
         /// <summary>Reads a flag of the animation state (by reference: the state is large, and read 20-odd times a frame).</summary>
-        private delegate bool StateFlag(in CharacterAnimationState state);
+        public delegate bool StateFlag(in CharacterAnimationState state);
 
         /// <summary>Works out a float parameter's value from the animation state (by reference, as StateFlag).</summary>
         private delegate float StateValue(in CharacterAnimationState state);
@@ -276,33 +268,82 @@ namespace Character
         private static Vector3 ModelScale(in CharacterAnimationState state) => state.scale == Vector3.zero ? Vector3.one : state.scale;
 
         /// <summary>
-        /// The bool parameters: each one's name setting (above, under Bool parameters) and the flag of the animation
-        /// state it shows, set as they are each frame. A new one is a row here and its name setting.
+        /// The animation state's own bools a bool parameter can show, by name (its source): each worked out from the
+        /// movement as the animation should show it (grounded keeps a grace period over small step-offs, crouching counts a
+        /// roll that ends crouched, ...: see AnimationController.BuildState). A character's state as the movement has it is
+        /// a source too, with no row here (StatePrefix).
         /// </summary>
-        private static readonly (System.Func<AnimatorParameterTranslator, string> name, StateFlag value)[] BoolParameters =
+        public static readonly (string name, StateFlag value)[] AnimationBools =
         {
-            (t => t.groundedParameter, (in CharacterAnimationState s) => s.grounded),
-            (t => t.jumpingParameter, (in CharacterAnimationState s) => s.jumping),
-            (t => t.dashingParameter, (in CharacterAnimationState s) => s.dashing),
-            (t => t.movingParameter, (in CharacterAnimationState s) => s.moving),
-            (t => t.crouchingParameter, (in CharacterAnimationState s) => s.crouching),
-            (t => t.slidingParameter, (in CharacterAnimationState s) => s.sliding),
-            (t => t.rollingParameter, (in CharacterAnimationState s) => s.rolling),
-            (t => t.wallRunningParameter, (in CharacterAnimationState s) => s.wallRunning),
-            (t => t.wallSlidingParameter, (in CharacterAnimationState s) => s.wallSliding),
-            (t => t.wallClimbingParameter, (in CharacterAnimationState s) => s.wallClimbing),
-            (t => t.climbEnteringParameter, (in CharacterAnimationState s) => s.climbEntering),
-            (t => t.onLadderParameter, (in CharacterAnimationState s) => s.onLadder),
-            (t => t.climbExitingParameter, (in CharacterAnimationState s) => s.climbExiting),
-            (t => t.hangingParameter, (in CharacterAnimationState s) => s.hanging),
-            (t => t.climbingParameter, (in CharacterAnimationState s) => s.climbing),
-            (t => t.vaultingParameter, (in CharacterAnimationState s) => s.vaulting),
-            (t => t.grabbingParameter, (in CharacterAnimationState s) => s.grabbing),
-            (t => t.ropeSwingingParameter, (in CharacterAnimationState s) => s.swinging),
-            (t => t.zipliningParameter, (in CharacterAnimationState s) => s.ziplining),
-            (t => t.swimmingParameter, (in CharacterAnimationState s) => s.swimming),
-            (t => t.divingParameter, (in CharacterAnimationState s) => s.diving),
+            ("Grounded", (in CharacterAnimationState s) => s.grounded),
+            ("Jumping", (in CharacterAnimationState s) => s.jumping),
+            ("Dashing", (in CharacterAnimationState s) => s.dashing),
+            ("Moving", (in CharacterAnimationState s) => s.moving),
+            ("Crouching", (in CharacterAnimationState s) => s.crouching),
+            ("Sliding", (in CharacterAnimationState s) => s.sliding),
+            ("Rolling", (in CharacterAnimationState s) => s.rolling),
+            ("Wall Running", (in CharacterAnimationState s) => s.wallRunning),
+            ("Wall Sliding", (in CharacterAnimationState s) => s.wallSliding),
+            ("Wall Climbing", (in CharacterAnimationState s) => s.wallClimbing),
+            ("Climb Entering", (in CharacterAnimationState s) => s.climbEntering),
+            ("On Ladder", (in CharacterAnimationState s) => s.onLadder),
+            ("Climb Exiting", (in CharacterAnimationState s) => s.climbExiting),
+            ("Hanging", (in CharacterAnimationState s) => s.hanging),
+            ("Climbing", (in CharacterAnimationState s) => s.climbing),
+            ("Vaulting", (in CharacterAnimationState s) => s.vaulting),
+            ("Grabbing", (in CharacterAnimationState s) => s.grabbing),
+            ("Rope Swinging", (in CharacterAnimationState s) => s.swinging),
+            ("Ziplining", (in CharacterAnimationState s) => s.ziplining),
+            ("Swimming", (in CharacterAnimationState s) => s.swimming),
+            ("Diving", (in CharacterAnimationState s) => s.diving),
         };
+
+        /// <summary>
+        /// A new translator's bool parameters: the mannequin's Animator Controller's (each named its Default...Parameter),
+        /// each from the animation state's bool of that name.
+        /// </summary>
+        public static BoolParameter[] DefaultBoolParameters() => new[]
+        {
+            new BoolParameter("Grounded", DefaultGroundedParameter),
+            new BoolParameter("Dashing", DefaultDashingParameter),
+            new BoolParameter("Crouching", DefaultCrouchingParameter),
+            new BoolParameter("Sliding", DefaultSlidingParameter),
+            new BoolParameter("Rolling", DefaultRollingParameter),
+            new BoolParameter("Wall Running", DefaultWallRunningParameter),
+            new BoolParameter("Wall Sliding", DefaultWallSlidingParameter),
+            new BoolParameter("Wall Climbing", DefaultWallClimbingParameter),
+            new BoolParameter("On Ladder", DefaultOnLadderParameter),
+            new BoolParameter("Climb Entering", DefaultClimbEnteringParameter),
+            new BoolParameter("Climb Exiting", DefaultClimbExitingParameter),
+            new BoolParameter("Hanging", DefaultHangingParameter),
+            new BoolParameter("Climbing", DefaultClimbingParameter),
+            new BoolParameter("Vaulting", DefaultVaultingParameter),
+            new BoolParameter("Grabbing", DefaultGrabbingParameter),
+            new BoolParameter("Rope Swinging", DefaultRopeSwingingParameter),
+            new BoolParameter("Ziplining", DefaultZipliningParameter),
+            new BoolParameter("Swimming", DefaultSwimmingParameter),
+            new BoolParameter("Diving", DefaultDivingParameter),
+        };
+
+        /// <summary>
+        /// Where a bool parameter's source is found: the index of one of AnimationBools, or a CharacterState flag (index
+        /// -1), or neither (false: an unknown source, skipped).
+        /// </summary>
+        public static bool TryResolve(string source, out int animationBool, out CharacterState state)
+        {
+            animationBool = -1;
+            state = CharacterState.Idle;
+            if (string.IsNullOrEmpty(source)) { return false; }
+            if (source.StartsWith(StatePrefix, StringComparison.Ordinal))
+            {
+                return Enum.TryParse(source.Substring(StatePrefix.Length), out state) && state != CharacterState.Idle;
+            }
+            for (int i = 0; i < AnimationBools.Length; i++)
+            {
+                if (AnimationBools[i].name == source) { animationBool = i; return true; }
+            }
+            return false;
+        }
 
         public override ICharacterAnimationDriver CreateDriver(GameObject model, Animator animator) =>
             animator != null && animator.runtimeAnimatorController != null ? new Driver(this, animator) : null;
@@ -314,8 +355,9 @@ namespace Character
             private readonly int[] floatHashes = new int[FloatParameters.Length];
             // Those the playback parameters read back (also in floatHashes), and Wall Side, set by hand; 0 to skip one.
             private readonly int speed, climbRight, climbUp, wallSide;
-            // The bool parameters' hashes, in BoolParameters' order (0 to skip one).
-            private readonly int[] boolHashes = new int[BoolParameters.Length];
+            // The bool parameters, resolved: each one's hash, and its source (an AnimationBools index, else a state's flag).
+            // Those the controller doesn't have, or whose source is unknown, are left out.
+            private readonly (int hash, int animationBool, CharacterState state)[] bools;
             private readonly int locomotionPlayback, crouchPlayback, climbPlayback;
             // The speeds (m/s) the controller's fastest loops are made for (its parameters' defaults), or 0 if it has none.
             private readonly float locomotionTop, crouchTop, climbUpTop, climbDownTop, climbLeftTop, climbRightTop;
@@ -345,7 +387,21 @@ namespace Character
                 climbUp = Find(settings.climbUpParameter, AnimatorControllerParameterType.Float);
                 wallSide = Find(settings.wallSideParameter, AnimatorControllerParameterType.Float);
 
-                for (int i = 0; i < boolHashes.Length; i++) { boolHashes[i] = Find(BoolParameters[i].name(settings), AnimatorControllerParameterType.Bool); }
+                var resolved = new System.Collections.Generic.List<(int, int, CharacterState)>();
+                foreach (BoolParameter entry in settings.boolParameters)
+                {
+                    int hash = Find(entry.parameter, AnimatorControllerParameterType.Bool);
+                    if (hash == 0) { continue; }
+                    if (!TryResolve(entry.source, out int animationBool, out CharacterState state))
+                    {
+                        Debug.LogWarning($"[{nameof(AnimatorParameterTranslator)}] '{settings.name}': the bool parameter '{entry.parameter}' " +
+                                         $"shows '{entry.source}', which is neither a value of the animation state nor one of the " +
+                                         "character's states, so it isn't set.", settings);
+                        continue;
+                    }
+                    resolved.Add((hash, animationBool, state));
+                }
+                bools = resolved.ToArray();
 
                 locomotionPlayback = Find(settings.locomotionPlaybackParameter, AnimatorControllerParameterType.Float);
                 crouchPlayback = Find(settings.crouchPlaybackParameter, AnimatorControllerParameterType.Float);
@@ -388,9 +444,10 @@ namespace Character
                 if (wallSide != 0 && state.wallRunning && state.wallSide != 0f) { animator.SetFloat(wallSide, state.wallSide); }
                 // After the speeds they're worked out from (as the Animator shows them, smoothed).
                 SetPlayback(state);
-                for (int i = 0; i < boolHashes.Length; i++)
+                for (int i = 0; i < bools.Length; i++)
                 {
-                    if (boolHashes[i] != 0) { animator.SetBool(boolHashes[i], BoolParameters[i].value(state)); }
+                    (int hash, int animationBool, CharacterState flags) = bools[i];
+                    animator.SetBool(hash, animationBool >= 0 ? AnimationBools[animationBool].value(state) : (state.state & flags) != 0);
                 }
             }
 
