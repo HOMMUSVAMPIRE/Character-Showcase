@@ -1,4 +1,4 @@
-"""Makes the T-pose in the first frame of each motion-capture clip (Assets/Animation/CMU) its skeleton's rest pose.
+"""Makes the T-pose in the first frame of each motion-capture clip (Assets/Showcase/Animation/CMU) its skeleton's rest pose.
 
 The clips' first frame is a T-pose (arms out, legs straight down, spine up), but the skeleton stored in each file rests in
 another pose. A Humanoid avatar takes its reference pose from that stored skeleton, and every clip plays relative to it,

@@ -8,7 +8,7 @@
           <message><![CDATA[The character didn't reach the top.
   Expected: True
   But was:  False]]></message>
-          <stack-trace><![CDATA[at MeridianMotion.Tests.Abilities.LedgeTests+<ALedge_IsClimbed>d__3.MoveNext () [0x00120] in Assets/Tests/PlayMode/Abilities/LedgeTests.cs:42
+          <stack-trace><![CDATA[at MeridianMotion.Tests.Abilities.LedgeTests+<ALedge_IsClimbed>d__3.MoveNext () [0x00120] in Assets/MeridianMotion/Tests/PlayMode/Abilities/LedgeTests.cs:42
 at UnityEngine.TestTools.TestEnumerator+<Execute>d__6.MoveNext () [0x0003a]]]></stack-trace>
         </failure>
       </test-case>
@@ -26,7 +26,7 @@ at UnityEngine.TestTools.TestEnumerator+<Execute>d__6.MoveNext () [0x0003a]]]></
     <test-suite type="TestFixture" id="1006" name="VaultTests" fullname="MeridianMotion.Tests.Abilities.VaultTests" runstate="Runnable" testcasecount="1" result="Failed" site="SetUp" total="1" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0">
       <failure>
         <message><![CDATA[OneTimeSetUp: the course couldn't be built.]]></message>
-        <stack-trace><![CDATA[at MeridianMotion.Tests.Abilities.VaultTests.BuildCourse () in Assets/Tests/PlayMode/Abilities/VaultTests.cs:20]]></stack-trace>
+        <stack-trace><![CDATA[at MeridianMotion.Tests.Abilities.VaultTests.BuildCourse () in Assets/MeridianMotion/Tests/PlayMode/Abilities/VaultTests.cs:20]]></stack-trace>
       </failure>
     </test-suite>
   </test-suite>

@@ -3,8 +3,8 @@
 An example of writing a level spec with code, where a layout repeats (eight faces on each of five terrace rings) or is
 worked out from the movement's limits. Run it from the project folder:
 
-    python3 Tools/LevelSpec/examples/meridian_basin.py            # writes Assets/Levels/MeridianBasin.level.json
-    python3 Tools/LevelSpec/levelspec check Assets/Levels/MeridianBasin.level.json
+    python3 Tools/LevelSpec/examples/meridian_basin.py            # writes Assets/Showcase/Levels/MeridianBasin.level.json
+    python3 Tools/LevelSpec/levelspec check Assets/Showcase/Levels/MeridianBasin.level.json
 
 The layout (metres, +z north, the ground at 0), after the terraced basin schematic in ReferenceAssets:
 
@@ -274,7 +274,7 @@ def check_layout():
 
 def build():
     check_layout()
-    s = Spec("Meridian Basin", "Assets/Scenes/MeridianBasin/MeridianBasin.unity")
+    s = Spec("Meridian Basin", "Assets/Showcase/Scenes/MeridianBasin/MeridianBasin.unity")
     A = s.add
 
     def turned(parent, name, k):
@@ -677,7 +677,7 @@ FURNISH = {
 if __name__ == "__main__":
     spec = levelspec.normalize(build())
     levelspec.validate(spec)
-    out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(PROJECT, "Assets", "Levels", "MeridianBasin.level.json")
+    out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(PROJECT, "Assets", "Showcase", "Levels", "MeridianBasin.level.json")
     levelspec.write(spec, out)
     n = sum(len(p["pieces"]) for p in spec["parts"])
     print(f"Wrote '{os.path.relpath(out)}': {len(spec['parts'])} parts, {n} pieces.")

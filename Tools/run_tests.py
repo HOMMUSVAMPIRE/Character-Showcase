@@ -28,7 +28,7 @@ What it does:
 Exit codes: 0 when nothing failed; 1 when a test failed (or, with --strict, was inconclusive), or Unity couldn't run
 them (a compile error); 2 when it couldn't start (no Unity, the editor has the project open, a bad argument).
 
-The areas are TestArea's constants (Assets/Tests/Shared/TestArea.cs), read from that file, so a new area needs no
+The areas are TestArea's constants (Assets/MeridianMotion/Tests/Shared/TestArea.cs), read from that file, so a new area needs no
 change here unless --changed should map files to it (CHANGE_RULES). Standard library only, Python 3.9 or later.
 """
 import argparse
@@ -44,7 +44,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORMS = ("EditMode", "PlayMode")
-TEST_AREA_FILE = Path("Assets/Tests/Shared/TestArea.cs")
+TEST_AREA_FILE = Path("Assets/MeridianMotion/Tests/Shared/TestArea.cs")
+# Where the tests are: the package's, and the showcase's (the level builders' and checks').
+PACKAGE_TESTS = "Assets/MeridianMotion/Tests/"
+SHOWCASE_TESTS = "Assets/Showcase/Tests/"
 VERSION_FILE = Path("ProjectSettings/ProjectVersion.txt")
 LOCK_FILE = Path("Temp/UnityLockfile")
 RUNS_FOLDER = Path("Logs/TestRuns")
@@ -62,39 +65,46 @@ MOVEMENT = ("Movement", "Abilities", "Traversal")  # the movement reaches its ow
 ANIMATION = ("Animation", "Models")
 LEVELS = ("Levels", "Traversal")
 CHANGE_RULES = (
-    ("Assets/Scripts/CameraSystem/", ("Camera",), "the camera"),
-    ("Assets/Scripts/PhysicsQueries/", MOVEMENT + ("Camera",), "the query buffers the movement and the camera share"),
-    ("Assets/Scripts/Character/CharacterSpawner.cs", ("Spawning",), "spawning"),
-    ("Assets/Scripts/Character/", MOVEMENT, "the movement"),
-    ("Assets/Scripts/MovementModes/", MOVEMENT, "the movement"),
-    ("Assets/Scripts/Animation/", ANIMATION, "animation"),
-    ("Assets/Scripts/IK/", ANIMATION, "IK"),
-    ("Assets/Scripts/Models/", ANIMATION, "models"),
-    ("Assets/Scripts/Effects/", ("Traversal",), "the water effects, played from the movement's events"),
-    ("Assets/Scripts/Level/", LEVELS, "the level elements"),
-    ("Assets/Editor/Level/", LEVELS, "the level builders"),
-    ("Assets/Editor/LevelChecks/", ("Levels", "Movement"), "the level checks (the movement envelope)"),
-    ("Assets/Editor/Scene/", ("Spawning",), "Set Up Scene"),
-    ("Assets/Editor/Movement/", ("Movement",), "the movement's editor tools (tuning presets)"),
-    ("Assets/Editor/Models/", ANIMATION, "the model tools"),
-    ("Assets/Editor/Animation/", ANIMATION, "the animation editor tools (clip importers, the translator's drawers)"),
-    ("Assets/Editor/Pipeline/", ANIMATION, "the model pipeline"),
-    ("Assets/Editor/Effects/", ("Traversal",), "the water effects"),
-    ("Assets/ScriptableObjects/", MOVEMENT, "the movement's assets"),
-    ("Assets/InputSystem_Actions.inputactions", ("Movement",), "the input actions"),
-    ("Assets/Animation/", ANIMATION, "animation assets"),
-    ("Assets/Models/", ANIMATION, "models"),
-    ("Assets/Prefabs/Effects/", ("Traversal",), "the water effects"),
-    ("Assets/Levels/", LEVELS, "the level specs"),
-    ("Assets/Scenes/", LEVELS, "the level scenes"),
+    ("Assets/MeridianMotion/Runtime/Cameras/", ("Camera",), "the camera"),
+    ("Assets/MeridianMotion/Runtime/PhysicsQueries/", MOVEMENT + ("Camera",), "the query buffers the movement and the camera share"),
+    ("Assets/MeridianMotion/Runtime/Characters/Character/CharacterSpawner.cs", ("Spawning",), "spawning"),
+    ("Assets/MeridianMotion/Runtime/Characters/Character/", MOVEMENT, "the movement"),
+    ("Assets/MeridianMotion/Runtime/Characters/Motor/", MOVEMENT, "the movement"),
+    ("Assets/MeridianMotion/Runtime/Characters/Body/", MOVEMENT, "the character's body"),
+    ("Assets/MeridianMotion/Runtime/Characters/Input/", MOVEMENT, "the input"),
+    ("Assets/MeridianMotion/Runtime/Characters/Determinism/", MOVEMENT, "saving and restoring the movement"),
+    ("Assets/MeridianMotion/Runtime/Characters/MovementModes/", MOVEMENT, "the movement"),
+    ("Assets/MeridianMotion/Runtime/Characters/Animation/", ANIMATION, "animation"),
+    ("Assets/MeridianMotion/Runtime/Characters/IK/", ANIMATION, "IK"),
+    ("Assets/MeridianMotion/Runtime/Characters/Models/", ANIMATION, "models"),
+    ("Assets/MeridianMotion/Runtime/Characters/Effects/", ("Traversal",), "the water effects, played from the movement's events"),
+    ("Assets/MeridianMotion/Runtime/LevelElements/", LEVELS, "the level elements"),
+    ("Assets/Showcase/Editor/Levels/", LEVELS, "the level builders"),
+    ("Assets/Showcase/Editor/LevelChecks/", ("Levels", "Movement"), "the level checks (the movement envelope)"),
+    ("Assets/MeridianMotion/Editor/Scene/", ("Spawning",), "Set Up Scene"),
+    ("Assets/MeridianMotion/Editor/Movement/", ("Movement",), "the movement's editor tools (tuning presets)"),
+    ("Assets/MeridianMotion/Editor/Models/", ANIMATION, "the model tools"),
+    ("Assets/MeridianMotion/Editor/Animation/", ANIMATION, "the animation editor tools (clip importers, the translator's drawers)"),
+    ("Assets/Showcase/Editor/Pipeline/", ANIMATION, "the model pipeline"),
+    ("Assets/MeridianMotion/Editor/Effects/", ("Traversal",), "the water effects"),
+    ("Assets/MeridianMotion/Content/Movement/", MOVEMENT, "the movement's assets"),
+    ("Assets/MeridianMotion/Content/Input/InputSystem_Actions.inputactions", ("Movement",), "the input actions"),
+    ("Assets/MeridianMotion/Content/Animation/", ANIMATION, "animation assets"),
+    ("Assets/MeridianMotion/Content/Models/", ANIMATION, "models"),
+    ("Assets/Showcase/Models/", ANIMATION, "models"),
+    ("Assets/Showcase/Movement/", MOVEMENT, "the fox's movement"),
+    ("Assets/Showcase/Animation/", ANIMATION, "animation assets"),
+    ("Assets/MeridianMotion/Content/Prefabs/Effects/", ("Traversal",), "the water effects"),
+    ("Assets/Showcase/Levels/", LEVELS, "the level specs"),
+    ("Assets/Showcase/Scenes/", LEVELS, "the level scenes"),
     ("Assets/ClimbablePaint/", LEVELS, "climbable paint"),
-    ("Assets/Materials/Level/", ("Levels",), "the levels' materials"),
+    ("Assets/Showcase/Materials/Level/", ("Levels",), "the levels' materials"),
     ("Tools/LevelSpec/envelope.json", ("Levels", "Movement"), "the movement envelope"),
     ("Tools/LevelSpec/level-spec.schema.json", ("Levels",), "the level spec schema"),
 )
 # Folders whose files can affect every area: the shared test code, the packages and the project's settings.
 EVERYTHING_RULES = (
-    ("Assets/Tests/Shared/", "the tests' shared code"),
+    ("Assets/MeridianMotion/Tests/Shared/", "the tests' shared code"),
     ("Packages/", "the packages"),
     ("ProjectSettings/", "the project's settings"),
 )
@@ -149,7 +159,9 @@ def platform_areas(root, areas):
     found = {}
     for platform in PLATFORMS:
         found[platform] = set()
-        for path in (root / "Assets" / "Tests" / platform).rglob("*.cs"):
+        # The showcase's tests (the level builders' and checks') are EditMode tests.
+        folders = [root / PACKAGE_TESTS / platform] + ([root / SHOWCASE_TESTS] if platform == "EditMode" else [])
+        for path in (p for folder in folders for p in folder.rglob("*.cs")):
             found[platform] |= declared_areas(path.read_text(encoding="utf-8", errors="replace"), areas)
     return found
 
@@ -328,8 +340,11 @@ def test_file_areas(root, path, areas):
             return found
     except OSError:
         pass
-    # Assets/Tests/<Platform>/<Folder>/...: a file at a platform's root (the rig, the fixtures' bases) reaches them all.
-    if len(parts) > 4 and parts[3] in TEST_FOLDER_AREAS:
+    # Assets/MeridianMotion/Tests/<Platform>/<Folder>/...: a file at a platform's root (the rig, the fixtures' bases) reaches
+    # them all. The showcase's tests (Assets/Showcase/Tests/<Folder>/...) are the level builders' and checks'.
+    if path.startswith(PACKAGE_TESTS) and len(parts) > 5 and parts[4] in TEST_FOLDER_AREAS:
+        return {TEST_FOLDER_AREAS[parts[4]]}
+    if path.startswith(SHOWCASE_TESTS) and len(parts) > 4 and parts[3] in TEST_FOLDER_AREAS:
         return {TEST_FOLDER_AREAS[parts[3]]}
     return None
 
@@ -359,7 +374,7 @@ def classify(root, path, areas):
     for rule, why in EVERYTHING_RULES:
         if in_path(path, rule):
             return EVERYTHING, why
-    if path.startswith("Assets/Tests/"):
+    if path.startswith((PACKAGE_TESTS, SHOWCASE_TESTS)):
         found = test_file_areas(root, path, areas)
         if found:
             return found, "its own tests"

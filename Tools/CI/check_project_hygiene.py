@@ -22,7 +22,7 @@ Checks:
   9. Every member of the flag enums abilities take bits of (CharacterState, MovementEvents) is a single bit of its own,
      within the enum's width: no two share one.
  10-17. The ability conventions (docs/adding-an-ability.md), on every MovementComponent subclass in
-     Assets/Scripts/MovementModes/Components, each failure naming the fix and the guide's section:
+     Assets/MeridianMotion/Runtime/Characters/MovementModes/Components, each failure naming the fix and the guide's section:
      10. Every setting (public or [SerializeField], not static, const, readonly or [NonSerialized]) has a [Tooltip].
      11. Every setting is of a kind a tuning preset can copy: a primitive, an enum or an AnimationCurve (as
          MovementTuningPresetTests requires, and MovementSettings.Copy can).
@@ -35,13 +35,20 @@ Checks:
      15. docs/movement.md's component list, and abilities.md or traversal.md, name it by its inspector name (as
          MovementComponent.DisplayNameOf gives it).
      16. It's in StandardMovementMode.DefaultComponents.
-     17. No HasFlag on a CharacterState or MovementEvents anywhere in Assets/Scripts: it boxes the 64-bit enum, an
+     17. No HasFlag on a CharacterState or MovementEvents anywhere in Assets/MeridianMotion/Runtime: it boxes the 64-bit enum, an
          allocation every step.
      Where a component legitimately differs, it's in a named allow-list below (with why), and an entry that's no longer
      needed fails too, so it comes off.
- 18. Nothing that ships (AGENTS.md, The package line) names the model pipeline: Blender, its runner, the mannequin's and
+ 18. Nothing that ships (Assets/MeridianMotion: AGENTS.md, The package line) names the model pipeline: Blender, its runner, the mannequin's and
      the fox's generators or their menu items, the Blender scripts, or starting a program. Code, comments and messages,
      as a buyer reads all three; PIPELINE_NAMES_ALLOWED lists what may (notes on FBX files exported from Blender).
+ 20. No shipped code (Assets/MeridianMotion, outside its tests) writes an "Assets/..." path: it finds the package's assets
+     by their GUIDs (MeridianMotionAssets) and writes into the output folder (MeridianMotionSettings), so it works
+     wherever the package is installed. A GUID lookup's fallback (on a line with PathOf( or GUIDToAssetPath) is fine,
+     and ASSET_PATHS_ALLOWED lists the rest, each with why.
+ 19. Every command-line entry point the docs and tools name (Namespace.Class.SomethingFromCommandLine, run with
+     -executeMethod) is a static method of that class in that namespace: renamed without them, a command fails only
+     when someone runs it.
 """
 import json
 import os
@@ -51,6 +58,16 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "Assets"
+# The package (what ships) and the showcase (what doesn't): AGENTS.md, The package line.
+PACKAGE = ASSETS / "MeridianMotion"
+SHOWCASE = ASSETS / "Showcase"
+RUNTIME = PACKAGE / "Runtime"
+CHARACTERS = RUNTIME / "Characters"
+
+
+def test_sources():
+    """Every test source, the package's and the showcase's (each has a Tests folder)."""
+    return sorted(p for p in ASSETS.rglob("*.cs") if "/Tests/" in p.relative_to(ROOT).as_posix())
 problems = []
 
 
@@ -137,14 +154,14 @@ def check_assembly_references():
 
 
 # Folders whose code must know nothing of the character's: the namespaces they may not use. The camera uses nothing of the
-# character's or the level's; the level elements (Assets/Scripts/Level) and the level builders, which equip levels with
+# character's or the level's; the level elements (Assets/MeridianMotion/Runtime/LevelElements) and the level builders, which equip levels with
 # them, use the level elements (MeridianMotion.Levels) but nothing of the character's or the camera's.
 CHARACTER_AND_LEVEL = r"MeridianMotion\.(Characters|Levels|EditorTools|Showcase)\b"
 CHARACTER_ONLY = r"MeridianMotion\.(Characters|Cameras|EditorTools)\b"
 INDEPENDENT_FOLDERS = {
-    ASSETS / "Scripts" / "CameraSystem": ("the camera follows a plain Transform", CHARACTER_AND_LEVEL),
-    ASSETS / "Scripts" / "Level": ("the level elements are the level's, used by the character", CHARACTER_ONLY),
-    ASSETS / "Editor" / "Level": ("the level builders make geometry, lighting and the level elements only", CHARACTER_ONLY),
+    RUNTIME / "Cameras": ("the camera follows a plain Transform", CHARACTER_AND_LEVEL),
+    RUNTIME / "LevelElements": ("the level elements are the level's, used by the character", CHARACTER_ONLY),
+    SHOWCASE / "Editor" / "Levels": ("the level builders make geometry, lighting and the level elements only", CHARACTER_ONLY),
 }
 
 
@@ -161,7 +178,7 @@ def movement_setting_sources():
     # StandardMovementMode is a partial class: its fields are spread over StandardMovementMode.cs and
     # StandardMovementMode.<Ability>.cs. Its components (MovementModes/Components) hold the rest, and the base
     # classes (MovementComponent, AbilityMovementMode) a few more.
-    modes = ASSETS / "Scripts" / "MovementModes"
+    modes = CHARACTERS / "MovementModes"
     return (sorted(modes.glob("StandardMovementMode*.cs")) + sorted((modes / "Components").glob("*.cs"))
             + [modes / "MovementComponent.cs", modes / "AbilityMovementMode.cs"])
 
@@ -173,7 +190,7 @@ TYPE_ALIASES = {"Single": "float", "Int32": "int", "Boolean": "bool", "Double": 
 def check_reflected_settings():
     sources = movement_setting_sources()
     source = "\n".join(p.read_text(errors="replace") for p in sources)
-    for test in (ASSETS / "Tests").rglob("*.cs"):
+    for test in test_sources():
         text = test.read_text(errors="replace")
         # By the rig's MovementSetting/SetMovementSetting, and the setting an ability fixture turns its ability off by
         # (AbilityFixture.OffSetting), which the kit sets by name.
@@ -223,7 +240,7 @@ def check_test_fixtures():
     # known by their names alone. An abstract class isn't run by itself (only the fixtures deriving it are), so it's
     # checked through them.
     classes = {}  # name -> (base, attributes, has tests, file, abstract)
-    for path in sorted((ASSETS / "Tests").rglob("*.cs")):
+    for path in test_sources():
         text = path.read_text(encoding="utf-8")
         for match in re.finditer(r"((?:^[ \t]*\[[^\n]*\][ \t]*\n)*)^[ \t]*(?:public |internal )?(abstract |sealed )?(?:partial )?class (\w+)(?:<[^>]*>)?(?:\s*:\s*(\w+))?", text, re.M):
             body_start = match.end()
@@ -276,8 +293,8 @@ def check_serialized_components():
 
 
 FLAG_ENUMS = {  # The flag enums each ability takes bits of (see docs/adding-an-ability.md), and where they're declared.
-    "CharacterState": ASSETS / "Scripts" / "Character" / "CharacterState.cs",
-    "MovementEvents": ASSETS / "Scripts" / "Character" / "MovementEvents.cs",
+    "CharacterState": CHARACTERS / "Character" / "CharacterState.cs",
+    "MovementEvents": CHARACTERS / "Character" / "MovementEvents.cs",
 }
 
 
@@ -333,7 +350,7 @@ def check_flag_enums():
 
 # ---- The ability conventions (docs/adding-an-ability.md), checked on every MovementComponent ----
 
-COMPONENTS = ASSETS / "Scripts" / "MovementModes" / "Components"
+COMPONENTS = CHARACTERS / "MovementModes" / "Components"
 ABILITY_GUIDE = ROOT / "docs" / "adding-an-ability.md"
 # The guide's sections the failures link to, by its headings (check_ability_guide_sections fails if one is renamed).
 THE_COMPONENT = "1. The component"
@@ -390,7 +407,7 @@ NOT_YET_ON_THE_KIT = set()  # Every ability's fixture is on a kit now (tasks D18
 PRIMITIVE_TYPES = {"bool", "byte", "sbyte", "short", "ushort", "int", "uint", "long", "ulong", "char", "float", "double",
                    "Boolean", "Byte", "SByte", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64", "Char", "Single",
                    "Double"}
-# Unity's enums a setting may be of (the project's own are found in Assets/Scripts): add one here when a component uses it.
+# Unity's enums a setting may be of (the project's own are found in Assets/MeridianMotion/Runtime): add one here when a component uses it.
 UNITY_ENUMS = set()
 
 
@@ -549,9 +566,9 @@ def inspector_name(cls, attributes):
 
 
 def project_enums():
-    """The names of the enums declared in Assets/Scripts."""
+    """The names of the enums declared in Assets/MeridianMotion/Runtime."""
     names = set()
-    for source in (ASSETS / "Scripts").rglob("*.cs"):
+    for source in (RUNTIME).rglob("*.cs"):
         names.update(re.findall(r"\benum\s+(\w+)", blank_code(source.read_text(errors="replace"))))
     return names
 
@@ -631,8 +648,8 @@ def check_component_states(components):
     # in the movement code (Crouching's is set by StandardMovementMode, which holds the posture). And each state a component
     # sets that's its own (not one the movement as a whole sets: SHARED_STATES) is in its StateEvents, so the mode raises
     # its events, unless its events are of a moment (OneOffEvents: Jumping's state is a jump's rise, its events the jump).
-    movement_code = sorted((ASSETS / "Scripts" / "MovementModes").rglob("*.cs")) + \
-        sorted((ASSETS / "Scripts" / "Character").glob("MMotionMotor*.cs"))
+    movement_code = sorted((CHARACTERS / "MovementModes").rglob("*.cs")) + \
+        sorted((CHARACTERS / "Motor").glob("MMotionMotor*.cs"))
     set_anywhere = set()
     for source in movement_code:
         for rhs in re.findall(STATE_SET, blank_code(source.read_text(encoding="utf-8"))):
@@ -643,7 +660,7 @@ def check_component_states(components):
         for state in sorted(listed - set_anywhere):
             problems.append(f"{where(path)}: {cls}'s StateEvents names CharacterState.{state}, which nothing sets, so its "
                             f"events are never raised: set it on the steps it's under way "
-                            f"(`movementData.state |= CharacterState.{state};`, in {cls}'s TakeOver or the hook it acts at): "
+                            f"(`step.state |= CharacterState.{state};`, in {cls}'s TakeOver or the hook it acts at): "
                             f"{see(ITS_STATE_FLAG)}")
         own = set()
         for rhs in re.findall(STATE_SET, body):
@@ -675,7 +692,7 @@ def check_component_states(components):
 def playmode_fixtures():
     """The PlayMode test files with tests in them (the rig and its helpers apart): path -> text."""
     found = {}
-    for path in sorted((ASSETS / "Tests" / "PlayMode").rglob("*.cs")):
+    for path in sorted((PACKAGE / "Tests" / "PlayMode").rglob("*.cs")):
         text = path.read_text(encoding="utf-8")
         if re.search(r"^[ \t]*\[(Test|UnityTest|TestCase)\b", text, re.M):
             found[path] = blank_code(text)
@@ -693,7 +710,7 @@ def check_component_tests(components):
         is_named = any(re.search(named, code) for code in fixtures.values())
         if not is_named and cls not in NOT_NAMED_BY_A_FIXTURE:
             problems.append(f"{where(path)}: no PlayMode test fixture names {cls}: give it a fixture deriving "
-                            f"AbilityFixture<{cls}> (or reach it with rig.Component<{cls}>()) in Assets/Tests/PlayMode/"
+                            f"AbilityFixture<{cls}> (or reach it with rig.Component<{cls}>()) in Assets/MeridianMotion/Tests/PlayMode/"
                             f"<Area>: {see(TESTS_AND_DOCS)}")
         elif is_named and cls in NOT_NAMED_BY_A_FIXTURE:
             problems.append(f"{where(path)}: a PlayMode fixture names {cls} now: take it off NOT_NAMED_BY_A_FIXTURE in {this}")
@@ -764,7 +781,7 @@ def check_component_docs(components):
 def check_default_components(components):
     # A new mode starts with every component (StandardMovementMode.DefaultComponents), and the inspector offers what a
     # mode lacks from that list.
-    path = ASSETS / "Scripts" / "MovementModes" / "StandardMovementMode.cs"
+    path = CHARACTERS / "MovementModes" / "StandardMovementMode.cs"
     code = blank_code(path.read_text(encoding="utf-8"))
     match = re.search(r"\bDefaultComponents\s*\(\s*\)\s*\{", code)
     if not match:
@@ -785,7 +802,7 @@ def check_no_has_flag():
     # Enum.HasFlag boxes its argument (and, in Unity's Mono, a 64-bit enum's value too): an allocation per call, every
     # step. Test the bit instead: (state & CharacterState.X) != 0. Found by its argument (HasFlag(CharacterState.X)), or
     # by its receiver, a name something of these types is declared as (state.HasFlag(...)).
-    sources = {path: blank_code(path.read_text(errors="replace")) for path in sorted((ASSETS / "Scripts").rglob("*.cs"))}
+    sources = {path: blank_code(path.read_text(errors="replace")) for path in sorted((RUNTIME).rglob("*.cs"))}
     types = "|".join(BOXED_FLAG_ENUMS)
     names = set()
     for code in sources.values():
@@ -820,8 +837,6 @@ def check_ability_conventions():
 # fox's generators and their menu items, the Blender scripts) and starting programs (what running Blender needs).
 PIPELINE_NAMES = re.compile(r"\bBlender\b|\bBlenderRunner\b|\bMannequinGenerator\b|\bFoxGenerator\b|Generate Mannequin|Generate Fox"
                             r"|Tools/(?:Mannequin|Fox|Blender|Animation)/|System\.Diagnostics\.Process|\bProcess\.Start\b")
-# The folders that don't ship (AGENTS.md, The package line): everything else under these roots does.
-UNSHIPPED_FOLDERS = ("Editor/Pipeline/", "Editor/LevelChecks/", "Editor/Level/", "Tests/EditMode/Levels/")
 # Mentions that ship on purpose: how FBX files exported from Blender are put right (a buyer's model may be one), which
 # require nothing of Blender. Each is (the file, a phrase on its line).
 PIPELINE_NAMES_ALLOWED = (
@@ -836,10 +851,9 @@ def check_no_pipeline_in_package():
     # code, comments or messages, since a buyer reads all three, and a message sending them to Generate Mannequin would
     # send them to a menu item they haven't got.
     used = set()
-    for path in sorted(ASSETS.rglob("*.cs")):
-        relative = path.relative_to(ASSETS).as_posix()
-        if not relative.startswith(("Scripts/", "Editor/", "Tests/")) or relative.startswith(UNSHIPPED_FOLDERS):
-            continue
+    # Everything in the package folder ships (AGENTS.md, The package line); the showcase's folder doesn't.
+    for path in sorted(PACKAGE.rglob("*.cs")):
+        relative = path.relative_to(PACKAGE).as_posix()
         for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
             match = PIPELINE_NAMES.search(line)
             if not match:
@@ -853,6 +867,73 @@ def check_no_pipeline_in_package():
     for allowed in PIPELINE_NAMES_ALLOWED:
         if allowed not in used:
             problems.append(f"Tools/CI/check_project_hygiene.py: PIPELINE_NAMES_ALLOWED's {allowed} matches nothing now: take it off")
+
+
+# Paths shipped code may name (check 20): (the file, under Assets/MeridianMotion; a phrase on its line), each with why.
+ASSET_PATHS_ALLOWED = (
+    # The showcase's levels and motion-capture clips: listed and imported when they're there, skipped when not.
+    ("Editor/StartHereWindow.cs", '"Assets/Showcase/Scenes"'),
+    ("Editor/Animation/MotionCaptureClipImporter.cs", '"Assets/Showcase/Animation/CMU"'),
+    # The climbable paint tool's output, a folder of the project's (as the output folder is), and the mask's fallback:
+    # its assembly can't reference MeridianMotionAssets (it finds the mask by its GUID itself, on the line before).
+    ("Editor/LevelElements/ClimbablePaintAssets.cs", '"Assets/ClimbablePaint"'),
+    ("Editor/LevelElements/ClimbablePaintAssets.cs", "ClimbableMask_None.png"),
+    # New Ability writes into the package's own source (task F7 is to make it write into the user's).
+    ("Editor/Movement/AbilityScaffold.cs", '"Assets/MeridianMotion/'),
+    ("Editor/Movement/NewAbilityWindow.cs", '"Assets/MeridianMotion/Editor/Movement/"'),
+    # What an output folder may be: Assets, or a folder in it.
+    ("Editor/Settings/MeridianMotionSettings.cs", 'folder.StartsWith("Assets/")'),
+)
+ASSET_PATH = re.compile(r'"Assets/')
+
+
+def check_no_asset_paths_in_package():
+    used = set()
+    for path in sorted(PACKAGE.rglob("*.cs")):
+        relative = path.relative_to(PACKAGE).as_posix()
+        if relative.startswith("Tests/"):
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            code = line.split("//")[0]
+            if not ASSET_PATH.search(code) or "PathOf(" in code or "GUIDToAssetPath" in code:
+                continue
+            allowed = [a for a in ASSET_PATHS_ALLOWED if a[0] == relative and a[1] in code]
+            if allowed:
+                used.update(allowed)
+                continue
+            problems.append(f"{path.relative_to(ROOT)}:{number}: names an asset path, which won't be there when the package is "
+                            f"installed elsewhere: find the asset by its GUID (MeridianMotionAssets), or write into the output "
+                            f"folder (MeridianMotionSettings.OutputFolder)")
+    for allowed in ASSET_PATHS_ALLOWED:
+        if allowed not in used:
+            problems.append(f"Tools/CI/check_project_hygiene.py: ASSET_PATHS_ALLOWED's {allowed} matches nothing now: take it off")
+
+
+COMMAND_LINE_NAME = re.compile(r"\b((?:MeridianMotion|CharacterShowcase)(?:\.\w+)+)\.(\w+FromCommandLine)\b")
+
+
+def check_command_line_entry_points():
+    # What the code declares: namespace.Class -> its static methods (a file's classes, in the namespace it declares).
+    declared = {}
+    for path in ASSETS.rglob("*.cs"):
+        text = path.read_text(encoding="utf-8")
+        namespace = re.search(r"^namespace\s+([\w.]+)", text, re.M)
+        if not namespace:
+            continue
+        methods = set(re.findall(r"\bstatic\s+(?:void|bool|int)\s+(\w+)\s*\(", text))
+        for cls in re.findall(r"\b(?:class|struct)\s+(\w+)", text):
+            declared.setdefault(f"{namespace.group(1)}.{cls}", set()).update(methods)
+    sources = [ROOT / "AGENTS.md", ROOT / "README.md"] + sorted((ROOT / "docs").rglob("*.md")) + sorted((ROOT / "Tools").rglob("*.py"))
+    sources += sorted((ROOT / ".github").rglob("*.yml")) if (ROOT / ".github").is_dir() else []
+    for path in sources:
+        if path.name == "check_project_hygiene.py":
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            for match in COMMAND_LINE_NAME.finditer(line):
+                owner, method = match.groups()
+                if method not in declared.get(owner, ()):
+                    problems.append(f"{path.relative_to(ROOT)}:{number}: names {owner}.{method}, which isn't a static method "
+                                    f"of a class of that name and namespace (renamed or moved?): name it as it's declared now")
 
 
 def main():
@@ -870,6 +951,8 @@ def main():
     check_flag_enums()
     check_no_pipeline_in_package()
     check_ability_conventions()
+    check_command_line_entry_points()
+    check_no_asset_paths_in_package()
     if problems:
         print(f"{len(problems)} problem(s) found:")
         for problem in problems:

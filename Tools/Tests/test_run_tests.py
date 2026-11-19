@@ -34,13 +34,15 @@ def make_project(folder):
     root = Path(folder)
     (root / "ProjectSettings").mkdir(parents=True)
     (root / "ProjectSettings" / "ProjectVersion.txt").write_text("m_EditorVersion: 1234.5.6f1\n")
-    shared = root / "Assets" / "Tests" / "Shared"
+    shared = root / run_tests.TEST_AREA_FILE.parent
     shared.mkdir(parents=True)
     shutil.copyfile(run_tests.ROOT / run_tests.TEST_AREA_FILE, shared / "TestArea.cs")
     for platform, folder_name, area in (("EditMode", "Movement", "Movement"), ("PlayMode", "Movement", "Movement"),
                                         ("PlayMode", "Abilities", "Abilities"), ("PlayMode", "Cameras", "Camera"),
                                         ("EditMode", "Levels", "Movement")):
-        path = root / "Assets" / "Tests" / platform / folder_name
+        # The showcase's level tests are in its own folder (Assets/Showcase/Tests/Levels), the rest in the package's.
+        path = (root / run_tests.SHOWCASE_TESTS / folder_name if folder_name == "Levels"
+                else root / run_tests.PACKAGE_TESTS / platform / folder_name)
         path.mkdir(parents=True, exist_ok=True)
         (path / f"{folder_name}{platform}Fixture.cs").write_text(
             f"[TestTiming, Category(TestArea.{area})]\npublic class {folder_name}{platform}Fixture {{ }}\n")
@@ -183,48 +185,48 @@ class WhatAChangeReaches(ProjectCase):
 
     def test_the_movement_reaches_movement_abilities_and_traversal(self):
         self.assertEqual({"Movement", "Abilities", "Traversal"},
-                         self.reach("Assets/Scripts/Character/MMotionMotor.cs")[0])
+                         self.reach("Assets/MeridianMotion/Runtime/Characters/Motor/MMotionMotor.cs")[0])
         self.assertEqual({"Movement", "Abilities", "Traversal"},
-                         self.reach("Assets/Scripts/MovementModes/Components/Crouching.cs")[0])
+                         self.reach("Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/Crouching.cs")[0])
 
     def test_animation_ik_and_models_reach_animation_and_models(self):
-        for path in ("Assets/Scripts/Animation/MMotionAnimator.cs", "Assets/Scripts/IK/HumanoidIK.cs",
-                     "Assets/Scripts/Models/CharacterModelSlot.cs", "Assets/Editor/Models/HitboxFitter.cs"):
+        for path in ("Assets/MeridianMotion/Runtime/Characters/Animation/MMotionAnimator.cs", "Assets/MeridianMotion/Runtime/Characters/IK/HumanoidIK.cs",
+                     "Assets/MeridianMotion/Runtime/Characters/Models/CharacterModelSlot.cs", "Assets/MeridianMotion/Editor/Models/HitboxFitter.cs"):
             with self.subTest(path):
                 self.assertEqual({"Animation", "Models"}, self.reach(path)[0])
 
     def test_the_camera_reaches_camera(self):
-        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs")[0])
+        self.assertEqual({"Camera"}, self.reach("Assets/MeridianMotion/Runtime/Cameras/MMotionCameraRig.cs")[0])
 
     def test_the_levels_reach_levels_and_traversal(self):
-        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Scripts/Level/SwingRope.cs")[0])
-        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Editor/Level/Graybox/Graybox.cs")[0])
+        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/MeridianMotion/Runtime/LevelElements/SwingRope.cs")[0])
+        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Showcase/Editor/Levels/Graybox/Graybox.cs")[0])
 
     def test_spawning_reaches_spawning(self):
-        self.assertEqual({"Spawning"}, self.reach("Assets/Scripts/Character/CharacterSpawner.cs")[0])
-        self.assertEqual({"Spawning"}, self.reach("Assets/Editor/Scene/CharacterSceneSetup.cs")[0])
+        self.assertEqual({"Spawning"}, self.reach("Assets/MeridianMotion/Runtime/Characters/Character/CharacterSpawner.cs")[0])
+        self.assertEqual({"Spawning"}, self.reach("Assets/MeridianMotion/Editor/Scene/CharacterSceneSetup.cs")[0])
 
     def test_a_meta_file_reaches_what_its_asset_does(self):
-        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs.meta")[0])
-        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem.meta")[0])
+        self.assertEqual({"Camera"}, self.reach("Assets/MeridianMotion/Runtime/Cameras/MMotionCameraRig.cs.meta")[0])
+        self.assertEqual({"Camera"}, self.reach("Assets/MeridianMotion/Runtime/Cameras.meta")[0])
 
     def test_a_test_file_reaches_the_areas_it_declares(self):
         # In the Levels folder but in the Movement category, as MovementEnvelopeTests is.
-        self.assertEqual({"Movement"}, self.reach("Assets/Tests/EditMode/Levels/LevelsEditModeFixture.cs",
+        self.assertEqual({"Movement"}, self.reach("Assets/Showcase/Tests/Levels/LevelsEditModeFixture.cs",
                                                   root=self.root)[0])
 
     def test_a_deleted_test_file_reaches_its_folders_area(self):
         for folder, area in (("InputAndDeterminism", "Movement"), ("Animations", "Animation"), ("Cameras", "Camera"),
                              ("LevelElements", "Levels"), ("Abilities", "Abilities")):
             with self.subTest(folder):
-                self.assertEqual({area}, self.reach(f"Assets/Tests/PlayMode/{folder}/Gone.cs", root=self.root)[0])
+                self.assertEqual({area}, self.reach(f"Assets/MeridianMotion/Tests/PlayMode/{folder}/Gone.cs", root=self.root)[0])
 
     def test_the_tests_shared_code_reaches_everything(self):
-        self.assertEqual(EVERYTHING, self.reach("Assets/Tests/PlayMode/CharacterTestRig.cs", root=self.root)[0])
-        self.assertEqual(EVERYTHING, self.reach("Assets/Tests/Shared/TestArea.cs", root=self.root)[0])
+        self.assertEqual(EVERYTHING, self.reach("Assets/MeridianMotion/Tests/PlayMode/CharacterTestRig.cs", root=self.root)[0])
+        self.assertEqual(EVERYTHING, self.reach("Assets/MeridianMotion/Tests/Shared/TestArea.cs", root=self.root)[0])
 
     def test_anything_unmapped_under_assets_reaches_everything(self):
-        chosen, reasons = self.reach("Assets/Scripts/Character/MMotionMotor.cs", "Assets/Prefabs/Character.prefab")
+        chosen, reasons = self.reach("Assets/MeridianMotion/Runtime/Characters/Motor/MMotionMotor.cs", "Assets/MeridianMotion/Content/Prefabs/Character.prefab")
         self.assertEqual(EVERYTHING, chosen)
         self.assertEqual(EVERYTHING, reasons[1][1])
         self.assertEqual(EVERYTHING, self.reach("ProjectSettings/DynamicsManager.asset")[0])
@@ -240,8 +242,8 @@ class WhatAChangeReaches(ProjectCase):
         self.assertIn("hygiene check", run_tests.nothing_to_run(reasons))
 
     def test_each_file_says_why(self):
-        _, reasons = self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs")
-        self.assertEqual([("Assets/Scripts/CameraSystem/MMotionCameraRig.cs", {"Camera"}, "the camera")], reasons)
+        _, reasons = self.reach("Assets/MeridianMotion/Runtime/Cameras/MMotionCameraRig.cs")
+        self.assertEqual([("Assets/MeridianMotion/Runtime/Cameras/MMotionCameraRig.cs", {"Camera"}, "the camera")], reasons)
 
     def test_every_rule_names_a_real_area(self):
         areas = set(run_tests.read_test_areas(run_tests.ROOT).values())

@@ -1,5 +1,5 @@
 # Adding a Movement Ability
-The steps for adding a new part to the character's movement: a new `MovementComponent` in the StandardMovementMode's list (see [Movement Components](movement.md#movement-components)). `RopeSwinging` and `Ziplines` (Assets/Scripts/MovementModes/Components) are good examples to copy.
+The steps for adding a new part to the character's movement: a new `MovementComponent` in the StandardMovementMode's list (see [Movement Components](movement.md#movement-components)). `RopeSwinging` and `Ziplines` (Assets/MeridianMotion/Runtime/Characters/MovementModes/Components) are good examples to copy.
 
 The inspector (its toggle, moving it up and down, removing it, Add Component), tuning presets and letting go when it's turned off mid-use come with being a component: they all work from the class and its fields, with nothing to add.
 
@@ -8,7 +8,7 @@ The inspector (its toggle, moving it up and down, removing it, Add Component), t
 New to this? The short path, which [Your First Ability](tutorial-first-ability.md) walks through with a real ability (Ground Pound), step by step:
 
 1. **Make it:** Tools > Meridian Motion > New Ability…, answer its questions, press Make It. It makes a small ability that already works, with its tests and docs (see [The quick way](#the-quick-way-new-ability)).
-2. **Write what it does:** in its file (`Assets/Scripts/MovementModes/Components/<Name>.cs`), change its settings and replace what its `TakeOver` does (or `AfterLocomotion`, for one on top of walking).
+2. **Write what it does:** in its file (`Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/<Name>.cs`), change its settings and replace what its `TakeOver` does (or `AfterLocomotion`, for one on top of walking).
 3. **Press Play** and try it; tune it on the movement mode asset's Components list.
 4. **Run its tests:** close Unity, then `python3 Tools/run_tests.py --changed` (see [Automated Tests](testing.md)), and the hygiene check, `python3 Tools/CI/check_project_hygiene.py`.
 
@@ -31,14 +31,14 @@ Make It writes:
 - **Its place in the order** (section 4): `StandardMovementMode.DefaultComponents` and the composition test's copy. Once Unity has compiled it, it's added to every movement mode asset, turned on for the default character's and off for the others' (`MovementModeSync`).
 - **Its tests** (section 7), on the ability test kit, which pass as it's made.
 - **Its docs**: a section in abilities.md or traversal.md to write, and its name in movement.md's component list.
-- **With At A Level Element:** a level element in Assets/Scripts/Level (`<Name>Point`) that it starts within reach of (section 6).
+- **With At A Level Element:** a level element in Assets/MeridianMotion/Runtime/LevelElements (`<Name>Point`) that it starts within reach of (section 6).
 
 Then make it yours: replace what its `TakeOver` or `AfterLocomotion` does, change its settings, write its docs section and add tests of what it does. Run its tests as you go: `python3 Tools/run_tests.py --changed`. A look of its own (section 5) is still to add. Unity's command line can make one too: `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.MakeFromCommandLine -abilityName Gliding -kind TakesOver -button Interact -after Rolling -area Abilities` (and `-levelElement`), then `MovementModeSync.AddToAllModesFromCommandLine` once it's compiled.
 
 The sections below are the full reference: what each part is for, and what to do by hand.
 
 ## 1. The component
-A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementModes/Components/<Ability>.cs`.
+A `[Serializable]` subclass of `MovementComponent` in `Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/<Ability>.cs`.
 
 **Settings.** Each has a `[Tooltip]` written for a designer, grouped with `[Header]` where that helps. Field names must be unique across the mode and all its components (the hygiene check enforces it): tests and tuning presets find settings by name. Settings are numbers, toggles, enums or curves; `MovementTuningPresetTests` fails on any other kind, which presets couldn't copy. A value of 0 that turns the ability off (a duration, a reach) is the convention.
 
@@ -51,7 +51,7 @@ A `[Serializable]` subclass of `MovementComponent` in `Assets/Scripts/MovementMo
 - For what isn't a takeover: `BeforeAbilities` (forces, like gravity), `BeforeLocomotion` (changing how the character walks, like crouching), `Locomotion` (how it moves by itself), `AfterLocomotion` (acting on top of walking, like dashing and jumping) and `FinishStep` (limits, like the fall speed).
 - `Posture`: how it holds the character's body this step (a `BodyPosture`: low at the crouch height, or lying), or null; the first component in list order to hold it has its way.
 - `AfterMovementResolved`: for moving something along with the character, by however far it actually moved.
-- `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities` (the character's [Capabilities](movement.md#capabilities)). The showcase's level checks are a separate, optional export of them (`MovementEnvelopeWriter`, in Assets/Editor/LevelChecks): add it there too if the levelspec tool's checks should use it.
+- `MeasureCapabilities`: if how far it carries the character matters to levels. Add a value for it to `MovementCapabilities` (the character's [Capabilities](movement.md#capabilities)). The showcase's level checks are a separate, optional export of them (`MovementEnvelopeWriter`, in Assets/Showcase/Editor/LevelChecks): add it there too if the levelspec tool's checks should use it.
 
 **Working with the rest of the movement.**
 
@@ -78,29 +78,29 @@ The state is saved and put back with the character's (`MMotionMotor.SaveState`, 
 - `MovementEvents` for it starting and ending (a 64-bit flags enum: take the next unused bits).
 - The hygiene check fails if two members of either share a bit (two abilities written at once, say), or one isn't a single bit.
 - The component's `StateEvents`: a static array of `StateEventPair(flag, started, ended)`, from which the mode raises the events as the flag comes and goes (`AbilityMovementMode.DetectStateEvents`). A component with several states (Crouching's crouch and slide) lists each.
-- An event of a moment, with no state that starts and ends (a jump, a bounce, a jump off a wall), goes in the component's `OneOffEvents` (flags of `MovementEvents`), and the component raises it itself (`movementData.events |= …`, or through `MovementRules.JumpOff`). Several components may raise the same one (Jumped is raised jumping from the ground, and off a rope). The hygiene check fails on a component raising an event it doesn't declare, and `MovementCompositionTests` on an event declared as both kinds, or by nothing.
+- An event of a moment, with no state that starts and ends (a jump, a bounce, a jump off a wall), goes in the component's `OneOffEvents` (flags of `MovementEvents`), and the component raises it itself (`step.events |= …`, or through `MovementRules.JumpOff`). Several components may raise the same one (Jumped is raised jumping from the ground, and off a rope). The hygiene check fails on a component raising an event it doesn't declare, and `MovementCompositionTests` on an event declared as both kinds, or by nothing.
 - A state's end is raised on the first step without its state, as its start is on the first with it, so an ability's end event comes the step after its last.
 
 ## 4. Putting it in the mode
 - Add it to `StandardMovementMode.DefaultComponents` at its place in the order: most committed first among the takeovers, and in step order among the others that act at the same point.
-- Update the expected list in `MovementCompositionTests.ANewBasicMovementMode_StartsWithItsComponents_InOrder`: the order is a deliberate choice, so the test holds it.
-- Add it to every movement mode asset. Select `Assets/ScriptableObjects/StandardMovementMode.asset`: its inspector warns that it lacks the new component, and **Add Missing Components, Turned On** adds it at its place in the list (just after the nearest component above it in `DefaultComponents` that the mode has), with Undo. Do the same on the fox's mode, `Assets/ScriptableObjects/Fox Movement.asset` (a StandardMovementMode of its own, hand-tuned), with **Add Them Turned Off** unless the fox's body and animations suit it (as several of its components are off). Outside the editor, `-executeMethod MeridianMotion.EditorTools.MovementModeSync.AddToAllModesFromCommandLine` does both: turned on for the Character prefab's mode, off for every other. A mode left without it can't be given it by a tuning preset, so `MovementCompositionTests.EveryMovementModeAsset_HasEveryDefaultComponent` fails until every mode has it.
+- Update the expected list in `MovementCompositionTests.ANewStandardMovementMode_StartsWithItsComponents_InOrder`: the order is a deliberate choice, so the test holds it.
+- Add it to every movement mode asset. Select `Assets/MeridianMotion/Content/Movement/StandardMovementMode.asset`: its inspector warns that it lacks the new component, and **Add Missing Components, Turned On** adds it at its place in the list (just after the nearest component above it in `DefaultComponents` that the mode has), with Undo. Do the same on the fox's mode, `Assets/Showcase/Movement/Fox Movement.asset` (a StandardMovementMode of its own, hand-tuned), with **Add Them Turned Off** unless the fox's body and animations suit it (as several of its components are off). Outside the editor, `-executeMethod MeridianMotion.EditorTools.MovementModeSync.AddToAllModesFromCommandLine` does both: turned on for the Character prefab's mode, off for every other. A mode left without it can't be given it by a tuning preset, so `MovementCompositionTests.EveryMovementModeAsset_HasEveryDefaultComponent` fails until every mode has it.
 - In this project, saving the character's mode also writes the level checks' movement envelope again (`MovementEnvelopeAutoWriter`), and the Console says what changed (see [Tuning the Character](tuning.md#what-changes-when-you-save)).
 
 ## 5. Animation, if it has a look of its own
-1. **A bool parameter showing its state needs no code.** The animation state carries the character's states (`CharacterAnimationState.state`), so in the Animator Parameter Translator's inspector (`Assets/Animation/Mannequin Animator Translator.asset`, and the fox's in Assets/Models/Generic/Fox if it shows it), add an entry to Bool Parameters: Shows > Character State > your state, and the Animator parameter's name. The default name goes in a `Default…Parameter` constant on `AnimatorParameterTranslator`, which the generators use too.
+1. **A bool parameter showing its state needs no code.** The animation state carries the character's states (`CharacterAnimationState.state`), so in the Animator Parameter Translator's inspector (`Assets/MeridianMotion/Content/Animation/Mannequin Animator Translator.asset`, and the fox's in Assets/Showcase/Models/Generic/Fox if it shows it), add an entry to Bool Parameters: Shows > Character State > your state, and the Animator parameter's name. The default name goes in a `Default…Parameter` constant on `AnimatorParameterTranslator`, which the generators use too.
 2. **A float it shows needs no animation code either:** the component publishes it as an ability value during its step (`controller.AbilityValues.Set(id, value)`, its id an `AbilityValueId` made once from its name) and names it in its `AbilityValueNames`, and the translator's Float Parameters gets an entry: Shows > Ability Value > its name. New Ability's abilities publish their progress this way. Only a value worked out for the look, from more than the movement has (as Vault Progress is paced by the MMotionAnimator), is code: a field in `CharacterAnimationState`, filled by `MMotionAnimator.BuildState`, and a row in `AnimatorParameterTranslator.AnimationFloats` (or `AnimationBools`, for a bool).
-3. **Its state in the Animator Controller:** in the mannequin's layout (`Assets/Animation/Mannequin Layout.asset`), its parameter, a clip slot for its clip, a state with its motion, and its transitions in and out; add its bool to the crouch's exclusions too. Then build it (Tools > Meridian Motion > Build Animator Controllers). See [Animator layouts](animation.md#animator-layouts).
+3. **Its state in the Animator Controller:** in the mannequin's layout (`Assets/MeridianMotion/Content/Animation/Mannequin Layout.asset`), its parameter, a clip slot for its clip, a state with its motion, and its transitions in and out; add its bool to the crouch's exclusions too. Then build it (Tools > Meridian Motion > Prepare > Build Animator Controllers). See [Animator layouts](animation.md#animator-layouts).
 4. **A clip:** a library's (the Quaternius libraries have many unused ones: see [Quaternius animations](animation.md#quaternius-animations)), or one of the mannequin's own, keyed in `Tools/Mannequin/mannequin_animations.py` (the model pipeline, then Generate Mannequin).
 5. **An IK component, if it places limbs:** a subclass of `AbilityIK` marked `[HumanoidIK]`, which Prepare Humanoid Models then adds to every humanoid model (New Ability's Needs IK makes one). See [IK for your own model](animation.md#ik-for-your-own-model).
-6. **The fox** has its own layout (`Assets/Models/Generic/Fox/Fox Layout.asset`) and translator: it shows the new state only if its layout gets the state too (with clips of the fox's), and plays whatever its other parameters show until then. See [Generic rigs](generic-rigs.md).
+6. **The fox** has its own layout (`Assets/Showcase/Models/Generic/Fox/Fox Layout.asset`) and translator: it shows the new state only if its layout gets the state too (with clips of the fox's), and plays whatever its other parameters show until then. See [Generic rigs](generic-rigs.md).
 
 ## 6. Level side, if it uses something in the level
 For an ability used on something in the level (as ropes and ziplines are), in two parts.
 
 **The level element** (ships with the character):
-1. A runtime component for it in `Assets/Scripts/Level` (the level elements' assembly, namespace `MeridianMotion.Levels`), knowing nothing about the character. The rules it keeps (the level's clock, moving before the characters, `StableId`) are in [Adding Level Content](adding-level-content.md#a-new-level-mechanic-a-fixture).
-2. If levels should get it from a named marker, a set-up step in `LevelFixtureSetup` (Assets/Scripts/Level/Editor) for its name's prefix, with a `LevelFixtureSetupTests` case.
+1. A runtime component for it in `Assets/MeridianMotion/Runtime/LevelElements` (the level elements' assembly, namespace `MeridianMotion.Levels`), knowing nothing about the character. The rules it keeps (the level's clock, moving before the characters, `StableId`) are in [Adding Level Content](adding-level-content.md#a-new-level-mechanic-a-fixture).
+2. If levels should get it from a named marker, a set-up step in `LevelFixtureSetup` (Assets/MeridianMotion/Editor/LevelElements) for its name's prefix, with a `LevelFixtureSetupTests` case.
 
 **The showcase levels** (the builders: optional, and not part of the character):
 1. A graybox piece in `Graybox.Mechanics.cs`, naming its geometry "Name | key=value | ..." by `LevelFixtureSetup`'s prefix (the build runs the fixture setup, so it works once built).
@@ -110,7 +110,7 @@ For an ability used on something in the level (as ropes and ziplines are), in tw
 The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
 
 ## 7. Tests and docs
-- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `AbilityFixture<T>` (T your component: see The ability test kit, below), itself a `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/Tests/PlayMode/Abilities` or `Traversal`, namespace `MeridianMotion.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
+- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `AbilityFixture<T>` (T your component: see The ability test kit, below), itself a `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/MeridianMotion/Tests/PlayMode/Abilities` or `Traversal`, namespace `MeridianMotion.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
   - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.

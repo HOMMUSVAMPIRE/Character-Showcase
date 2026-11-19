@@ -1,9 +1,9 @@
 """Extracts Quaternius's male mannequin from an animation library FBX into a model file of its own.
 
-The Universal Animation Libraries (Assets/Animation/Quaternius) are the libraries' mannequin with every animation on it;
+The Universal Animation Libraries (Assets/MeridianMotion/Content/Animation/Quaternius) are the libraries' mannequin with every animation on it;
 the pack ships the female mannequin as a model file of its own, but not this one. This keeps the armature and its mesh,
 drops the animations, and writes an FBX like the female one's (the same objects, rig and orientation), for
-Assets/Models/Humanoid/Quaternius, where Prepare Humanoid Models sets it up as a character model. The file is
+Assets/Showcase/Models/Humanoid/Quaternius, where Prepare Humanoid Models sets it up as a character model. The file is
 read back and checked: every bone where it rests in the library, the mesh the same, and no animations.
 
 Run with Blender (4.x):

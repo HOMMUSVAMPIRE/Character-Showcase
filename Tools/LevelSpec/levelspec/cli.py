@@ -81,9 +81,9 @@ def cmd_schematic(args):
 
 
 def default_spec_path(spec):
-    """Where a spec is kept in the project: Assets/Levels/[scene file name].level.json (as Unity exports them)."""
+    """Where a spec is kept in the project: Assets/Showcase/Levels/[scene file name].level.json (as Unity exports them)."""
     scene = os.path.splitext(os.path.basename(spec["scene"]))[0]
-    return os.path.join(PROJECT, "Assets", "Levels", f"{scene}.level.json")
+    return os.path.join(PROJECT, "Assets", "Showcase", "Levels", f"{scene}.level.json")
 
 
 def cmd_build(args):
@@ -147,13 +147,13 @@ def run_unity(spec_path, spec, args):
     logs = os.path.join(PROJECT, "Logs")
     os.makedirs(logs, exist_ok=True)
     rel = os.path.relpath(spec_path, PROJECT)
-    code = _run(editor, "CharacterShowcase.EditorTools.Level.LevelSpecTools.BuildFromCommandLine", ["-spec", rel],
+    code = _run(editor, "MeridianMotion.Showcase.Levels.LevelSpecTools.BuildFromCommandLine", ["-spec", rel],
                 os.path.join(logs, "levelspec-build.log"))
     if code != 0:
         print(f"Unity exited with {code}: see the log. (Is the project open in Unity? Close it first.)")
         return code
     if not args.no_set_up:
-        code = _run(editor, "CharacterShowcase.EditorTools.SceneSetup.SetUpFromCommandLine", ["-scene", spec["scene"]],
+        code = _run(editor, "MeridianMotion.EditorTools.CharacterSceneSetup.SetUpFromCommandLine", ["-scene", spec["scene"]],
                     os.path.join(logs, "levelspec-setup.log"))
     return code
 
@@ -216,9 +216,9 @@ def main(argv=None):
     sp.add_argument("output", nargs="?", help="the file to write (default: beside the input, .schematic.html)")
     sp.set_defaults(run=cmd_schematic)
 
-    sp = sub.add_parser("build", help="write a spec for Unity (Assets/Levels) and its schematic, and optionally build it")
+    sp = sub.add_parser("build", help="write a spec for Unity (Assets/Showcase/Levels) and its schematic, and optionally build it")
     reader(sp)
-    sp.add_argument("-o", "--output", help="the spec to write (default: Assets/Levels/[scene].level.json)")
+    sp.add_argument("-o", "--output", help="the spec to write (default: Assets/Showcase/Levels/[scene].level.json)")
     sp.add_argument("--schematic", help="the schematic to write (default: Schematics/[scene].schematic.html; '' for none)")
     sp.add_argument("--unity", action="store_true", help="then build the scene in Unity (which must be closed) and set it up for play")
     sp.add_argument("--no-set-up", action="store_true", help="with --unity: don't run Set Up Scene after building")

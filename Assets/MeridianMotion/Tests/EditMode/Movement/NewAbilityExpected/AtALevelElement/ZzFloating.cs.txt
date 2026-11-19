@@ -1,0 +1,113 @@
+using System;
+using MeridianMotion.Levels;
+using UnityEngine;
+
+namespace MeridianMotion.Characters
+{
+    /// <summary>
+    /// Zz Floating: made by New Ability (Tools > Meridian Motion > New Ability…). As made, it's a small working
+    /// ability to build on:
+    /// it takes the character over and holds it where it is, hovering, for Zz Floating Duration, then lets go.
+    /// It starts within Zz Floating Reach of a ZzFloatingPoint in the level (see Level.ZzFloatingPoint).
+    /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
+    /// </summary>
+    [Serializable]
+    public class ZzFloating : MovementComponent
+    {
+        [Tooltip("How long (s) Zz Floating lasts once it starts, at the character's authored size. 0 turns it off")]
+        [Min(0f)] [SerializeField] private float zzFloatingDuration = 0.5f;
+        [Tooltip("How far (m) from a ZzFloatingPoint the character can be, at its authored size, for Zz Floating to start")]
+        [Min(0f)] [SerializeField] private float zzFloatingReach = 1.5f;
+
+        public override bool IsActive(MMotionMotor motor) => motor.zzFloating.IsActive;
+        /// <summary>Under way, it holds the character up (it isn't falling).</summary>
+        public override AbilityTraits Traits => AbilityTraits.Supported;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Floating Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Floating Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
+        /// <summary>The events of ZzFloating starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
+        {
+            new(CharacterState.ZzFloating, MovementEvents.ZzFloatingStarted, MovementEvents.ZzFloatingEnded),
+        };
+
+        public override void AdvanceTimers(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            motor.zzFloating.timeLeft = MovementRules.CountDown(motor.zzFloating.timeLeft, step.deltaTime);
+        }
+
+        /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
+        public override void Interrupt(MovementStep step, MMotionMotor motor) => motor.zzFloating.timeLeft = 0f;
+
+        /// <summary>Carries on while it lasts, or starts if it can, holding the character where it is.</summary>
+        public override bool TakeOver(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            ZzFloatingState state = motor.zzFloating;
+            if (!state.IsActive)
+            {
+                if (!CanStart(inputs, motor)) { return false; }
+                state.timeLeft = zzFloatingDuration * motor.DurationScale;
+                Mode.InterruptOthers(step, motor, this);
+            }
+            // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
+            step.velocityOverride = Vector3.zero;
+            step.state |= CharacterState.ZzFloating;
+            PublishProgress(motor);
+            return true;
+        }
+
+        private void PublishProgress(MMotionMotor motor)
+        {
+            float duration = zzFloatingDuration * motor.DurationScale;
+            motor.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - motor.zzFloating.timeLeft / duration : 1f);
+        }
+
+        /// <summary>Whether Zz Floating can start this step: turned on by a duration, and what starts it.</summary>
+        private bool CanStart(StepInputs inputs, MMotionMotor motor)
+        {
+            if (zzFloatingDuration <= 0f) { return false; }
+            if (!WithinZzFloatingReach(motor)) { return false; }
+            return true;
+        }
+
+        /// <summary>
+        /// Whether a ZzFloatingPoint is within reach of the character (from its physics pose). Which one doesn't matter here;
+        /// an ability that chooses one breaks ties with StableOrder, so it chooses alike on every machine.
+        /// </summary>
+        private bool WithinZzFloatingReach(MMotionMotor motor)
+        {
+            float reach = zzFloatingReach * motor.HeightScale;
+            Vector3 position = motor.PhysicsPosition;
+            // By index: a foreach over the list (an interface) would allocate every step.
+            var elements = ZzFloatingPoint.All;
+            for (int i = 0; i < elements.Count; i++)
+            {
+                if ((elements[i].transform.position - position).sqrMagnitude <= reach * reach) { return true; }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>What each character is doing with Zz Floating (modes are shared assets, so it lives on the character).</summary>
+    public class ZzFloatingState
+    {
+        /// <summary>Seconds left of Zz Floating (0 when it isn't under way).</summary>
+        public float timeLeft;
+
+        /// <summary>Whether Zz Floating is under way.</summary>
+        public bool IsActive => timeLeft > 0f;
+    }
+
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability.
+    public partial class MMotionMotor
+    {
+        /// <summary>The character's Zz Floating state (ZzFloating).</summary>
+        public ZzFloatingState zzFloating { get; } = new ZzFloatingState();
+    }
+}

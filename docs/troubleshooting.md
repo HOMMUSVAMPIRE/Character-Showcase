@@ -49,7 +49,7 @@ Start with the **Character Doctor** (Tools > Meridian Motion > Character Doctor,
 What can go wrong adding a model or a character (see [Adding a Character](adding-a-character.md)). Prepare Humanoid Models reports each model in the Console (a line from `[HumanoidModelImporter]`, a warning if any model failed), or in a window when it's run from the menu: "not prepared" and the reason, or "ready", with notes.
 
 **A model is skipped: "Unity couldn't map its skeleton to a Humanoid."**
-Unity couldn't match the model's bones to a person's. Select the model, open the Rig tab in the Inspector and press Configure: the bones it couldn't match are shown in red. Assign them, press Done, then run Tools > Meridian Motion > Prepare > Humanoid Models again. A model that isn't a humanoid can't be prepared here: move it out of Assets/Models/Humanoid (see [A generic rig (not a humanoid)](adding-a-character.md#a-generic-rig-not-a-humanoid)). While it's there, `PreparedModelTests` fails, since every model file in the folder must have a prepared source.
+Unity couldn't match the model's bones to a person's. Select the model, open the Rig tab in the Inspector and press Configure: the bones it couldn't match are shown in red. Assign them, press Done, then run Tools > Meridian Motion > Prepare > Humanoid Models again. A model that isn't a humanoid can't be prepared here: move it out of `Models/Humanoid` (see [A generic rig (not a humanoid)](adding-a-character.md#a-generic-rig-not-a-humanoid)). While it's there, `PreparedModelTests` fails, since every model file in the folder must have a prepared source.
 
 **A model is skipped: "It has no skinned mesh, so it isn't rigged."**
 The file has no mesh bound to a skeleton. Rig it (Mixamo can), and export it with its skeleton and skin.
@@ -58,7 +58,7 @@ The file has no mesh bound to a skeleton. Rig it (Mixamo can), and export it wit
 The Animator Controller and translator every model shares (`HumanoidModelImporter.ControllerPath` and `TranslatorPath`) are missing or empty. Check Git LFS fetched the project's files (README.md, How to open this Project), then run Tools > Meridian Motion > Prepare > Animations, which builds the controller from its layout (see [Animator layouts](animation.md#animator-layouts)). The translator is an asset of its own: restore it from version control if it's gone.
 
 **A model isn't in Set Up Scene's list.**
-Set Up Scene lists the models prepared in Assets/Models/Humanoid. A model that isn't ready is listed under "Not available", with the reason: "not prepared yet" (press Prepare Humanoid Models, then Refresh) or the problem its source has. A model source somewhere else (a generic-rig character's) isn't listed: give it to a character prefab and choose that.
+Set Up Scene lists the models prepared in the `Models/Humanoid` folders (the package's, the mannequin's, and [the output folder](getting-started.md#the-output-folder)'s). A model that isn't ready is listed under "Not available", with the reason: "not prepared yet" (press Prepare Humanoid Models, then Refresh) or the problem its source has. A model source somewhere else (a generic-rig character's) isn't listed: give it to a character prefab and choose that.
 
 **A character prefab isn't in Set Up Scene's Choose list.**
 Only prefabs with an MMotionCharacter on their top object are listed. Make the character a prefab variant of Character.prefab (see [A new character of your own](adding-a-character.md#a-new-character-of-your-own)), then press Refresh.
@@ -86,7 +86,7 @@ The scene's Character Spawner has its own Model Source or Movement Mode set, whi
 What can go wrong preparing a generic-rig character (see [A generic rig (not a humanoid)](adding-a-character.md#a-generic-rig-not-a-humanoid) and [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own)). Prepare Generic Rig Models reports each generic-rig character in the Console (a line from `[Prepare Generic Rig Models]`), and its setup's inspector lists what it couldn't find.
 
 **A generic-rig character is skipped: "Unity couldn't map its skeleton to a Humanoid."**
-It's in `Assets/Models/Humanoid`, the humanoids' folder. Move it (with its folder) to `Assets/Models/Generic`, then select it, set its Rig tab's Animation Type to Generic and press Apply (it was first imported as a Humanoid).
+It's in `Models/Humanoid`, the humanoids' folder. Move it (with its folder) to `Models/Generic` beside it (in the output folder), then select it, set its Rig tab's Animation Type to Generic and press Apply (it was first imported as a Humanoid).
 
 **Its setup's inspector warns that preparing couldn't find something.**
 Guessing couldn't tell from the names, or a bone named there isn't in the model (renamed in the model file, say). Set each one listed by the bone's name as it is under the model in the Hierarchy: the warning goes once it's prepared again (by itself, after the change).
@@ -173,7 +173,7 @@ Its body sits above its feet (a Body Definition whose parts' bottoms are above t
 Hovering, a long body meets the next step ahead of its feet, and steps up onto it only if it's no more than a step above the ground in front of it (each step of a flight is). A taller first step, or a gap before the flight, stops it as a wall would.
 
 **Something passes through the character, or isn't reported hitting it.**
-What meets the character meets its model's hitboxes (see [Hitboxes](animation.md#hitboxes)). As made, they detect (triggers): things pass through, and only what has a Rigidbody is reported (Report Static Contacts reports the rest). Set Response to Collide for them to be solid. A model with none hasn't been fitted: run Tools > Meridian Motion > Fit Hitboxes.
+What meets the character meets its model's hitboxes (see [Hitboxes](animation.md#hitboxes)). As made, they detect (triggers): things pass through, and only what has a Rigidbody is reported (Report Static Contacts reports the rest). Set Response to Collide for them to be solid. A model with none hasn't been fitted: run Tools > Meridian Motion > Prepare > Fit Hitboxes.
 
 **The feet's IK, the movement or another character stands on the character's own limbs.**
 The CharacterHitbox layer has crept into a layer mask (the MMotionMotor's, a foot placement's Ground Layers, a camera's): hitboxes must stay out of them (an EditMode check, `PreparedModelTests`, holds the Character prefab and the models to it).

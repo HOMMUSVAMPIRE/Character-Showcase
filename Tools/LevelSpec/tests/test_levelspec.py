@@ -1,6 +1,6 @@
 """Tests of the levelspec package: run with  python3 -m unittest discover -s Tools/LevelSpec/tests  (CI does).
 
-They check the exported levels (Assets/Levels) are valid; every format converts to every other and back to the same
+They check the exported levels (Assets/Showcase/Levels) are valid; every format converts to every other and back to the same
 spec; XML and CSV written by hand read as meant (groups, text values, defaults); mistakes are reported where they are;
 groups' placement carries to what's in them; the movement checks grade gaps and climbs by the moves that cross and
 reach them (made-up moves, and the character's own from envelope.json, whatever it's tuned to);
@@ -22,12 +22,12 @@ import levelspec  # noqa: E402
 from levelspec import SpecError, checks, formats, geometry  # noqa: E402
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
-LEVELS = os.path.join(PROJECT, "Assets", "Levels")
+LEVELS = os.path.join(PROJECT, "Assets", "Showcase", "Levels")
 EXAMPLES = os.path.join(os.path.dirname(HERE), "examples")
 EXPORTED = sorted(f for f in os.listdir(LEVELS) if f.endswith(".level.json")) if os.path.isdir(LEVELS) else []
 
 
-def spec_with(*pieces, name="Test", scene="Assets/Scenes/Test/Test.unity"):
+def spec_with(*pieces, name="Test", scene="Assets/Showcase/Scenes/Test/Test.unity"):
     return levelspec.normalize({"name": name, "scene": scene, "parts": [{"name": "Part", "pieces": list(pieces)}]})
 
 
@@ -56,7 +56,7 @@ class ExportedLevels(unittest.TestCase):
 
 class Authoring(unittest.TestCase):
     def test_xml_groups_text_values_and_defaults(self):
-        spec = levelspec.loads("""<level name="L" scene="Assets/Scenes/L/L.unity">
+        spec = levelspec.loads("""<level name="L" scene="Assets/Showcase/Scenes/L/L.unity">
           <part name="P">
             <Group name="Zone">
               <Platform name="Deck" x0="0" x1="10" z0="0" z1="4" y0="0" top="4"/>
@@ -82,7 +82,7 @@ class Authoring(unittest.TestCase):
         self.assertEqual(p[5]["portals"], [[-4, 0, 0, 1]])
 
     def test_nested_groups_have_paths(self):
-        spec = levelspec.loads("""<level name="L" scene="Assets/Scenes/L/L.unity"><part name="P">
+        spec = levelspec.loads("""<level name="L" scene="Assets/Showcase/Scenes/L/L.unity"><part name="P">
             <Group name="A"><Group name="B"><Marker name="M" at="0,0" height="0"/></Group></Group>
             <Group name="A"><Marker name="N" at="0,0" height="0"/></Group></part></level>""", "xml")
         p = spec["parts"][0]["pieces"]
@@ -92,7 +92,7 @@ class Authoring(unittest.TestCase):
     def test_csv_with_a_level_row_and_carried_parts(self):
         spec = levelspec.loads(
             "part,piece,parent,name,x0,x1,z0,z1,y0,y1,scene\n"
-            ",Level,,My Level,,,,,,,Assets/Scenes/My/My.unity\n"
+            ",Level,,My Level,,,,,,,Assets/Showcase/Scenes/My/My.unity\n"
             "One,Block,,A,0,1,0,1,0,1,\n"
             ",Block,,B,2,3,0,1,0,1,\n"
             "Two,Block,,C,0,1,0,1,0,1,\n", "csv")

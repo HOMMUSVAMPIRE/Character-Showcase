@@ -8,7 +8,7 @@ automatic (heat) weights. Animation clips come from mannequin_animations.py. The
 Usually run from Unity with Tools > Meridian Motion > Showcase > Generate Mannequin, which then sets up its animations.
 By hand (Blender 4.x, from the repo root):
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
-        -P Tools/Mannequin/generate_mannequin.py -- Assets/Models/Humanoid/Mannequin/Mannequin.fbx [--preview <dir>]
+        -P Tools/Mannequin/generate_mannequin.py -- Assets/MeridianMotion/Content/Models/Humanoid/Mannequin/Mannequin.fbx [--preview <dir>]
 
 All measurements are in meters. Total height is ~1.8 m, matching the 2 m character capsule.
 """

@@ -12,7 +12,7 @@ values are text, read by what each setting is (see `parse_value`):
 
 XML::
 
-    <level name="Gap Test" scene="Assets/Scenes/GapTest/GapTest.unity">
+    <level name="Gap Test" scene="Assets/Showcase/Scenes/GapTest/GapTest.unity">
       <part name="Run">
         <Group name="Run">                          <!-- pieces inside a group default to it as their parent -->
           <Platform name="A" x0="0" x1="12" z0="0" z1="16" y0="0" top="4" coping="Accent"/>

@@ -2,19 +2,20 @@
 How the project fits together: what happens in one physics step, which code may know about which, and where each kind of thing lives. The rules for changing it are in AGENTS.md; this page is the map. Terms used here are in the [Glossary](glossary.md).
 
 ## The parts
-- **The character** (Assets/Scripts/Character):
+The package is one folder, `Assets/MeridianMotion` (its code in Runtime/ and Editor/, its assets in Content/, its tests in Tests/); the showcase, which doesn't ship, is `Assets/Showcase`.
+- **The character** (Assets/MeridianMotion/Runtime/Characters: Character/, Motor/, Body/):
   - `MMotionCharacter` drives it, and `CharacterSpawner` spawns it, and NPCs.
   - `MMotionMotor` moves it, resolving collision itself, with sweeps of its body rather than the physics solver.
   - Its body is a `CharacterBody`: a shape, not a collider (`PrimitiveBody`, shaped as one of Unity's primitive colliders is), held standing, low or lying.
   - The character has no collider: what meets it meets its model's hitboxes (`CharacterHitboxes`).
-- **Input** (Assets/Scripts/Character, InputSources/): each physics step the character is given one input frame (`CharacterInputFrame`) by its input source: the player's device for the local player (`PlayerInputReader`, latching it into one frame a step with `InputLatch`), a script or an NPC's route for others. An `CharacterInputRecorder` records the frames, to be replayed (`InputRecording`). See [Input](movement.md#input) and [NPCs and input sources](spawning.md#npcs-and-input-sources).
-- **The movement** (Assets/Scripts/MovementModes): a movement mode (`StandardMovementMode`, a ScriptableObject asset) made of movement components (walking and running, falling and air handling, and each ability), which the `MMotionMotor` runs every physics step. See [Movement](movement.md).
-- **Animation, IK and models** (Assets/Scripts/Animation, IK, Models): `MMotionAnimator` turns what the movement did into an animation state for the model; `CharacterModelSlot` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
-- **Effects** (Assets/Scripts/Effects): `WaterEffects` plays splashes and ripples from the movement's events and state, as prefabs anyone can replace (see [Climbing and Traversal](traversal.md#splashes-and-ripples)).
-- **The camera** (Assets/Scripts/CameraSystem): `MMotionCameraRig`, which follows any Transform. See [Camera System](camera.md).
-- **The level elements** (Assets/Scripts/Level, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
-- **The level builders** (Assets/Editor/Level): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](levels.md) and [Level Specs](level-specs.md).
-- **The pipeline and the level checks** (Assets/Editor/Pipeline, Assets/Editor/LevelChecks): the mannequin's and the fox's generators, which run Blender (and only that: the fox is then prepared as any generic-rig character, by the shipped `GenericRigModelImporter`), and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
+- **Input** (Assets/MeridianMotion/Runtime/Characters/Input, and its InputSources/): each physics step the character is given one input frame (`CharacterInputFrame`) by its input source: the player's device for the local player (`PlayerInputReader`, latching it into one frame a step with `InputLatch`), a script or an NPC's route for others. An `CharacterInputRecorder` records the frames, to be replayed (`InputRecording`). See [Input](movement.md#input) and [NPCs and input sources](spawning.md#npcs-and-input-sources).
+- **The movement** (Assets/MeridianMotion/Runtime/Characters/MovementModes): a movement mode (`StandardMovementMode`, a ScriptableObject asset) made of movement components (walking and running, falling and air handling, and each ability), which the `MMotionMotor` runs every physics step. See [Movement](movement.md).
+- **Animation, IK and models** (Assets/MeridianMotion/Runtime/Characters/Animation, IK, Models): `MMotionAnimator` turns what the movement did into an animation state for the model; `CharacterModelSlot` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
+- **Effects** (Assets/MeridianMotion/Runtime/Characters/Effects): `WaterEffects` plays splashes and ripples from the movement's events and state, as prefabs anyone can replace (see [Climbing and Traversal](traversal.md#splashes-and-ripples)).
+- **The camera** (Assets/MeridianMotion/Runtime/Cameras): `MMotionCameraRig`, which follows any Transform. See [Camera System](camera.md).
+- **The level elements** (Assets/MeridianMotion/Runtime/LevelElements, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
+- **The level builders** (Assets/Showcase/Editor/Levels): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](levels.md) and [Level Specs](level-specs.md).
+- **The pipeline and the level checks** (Assets/Showcase/Editor/Pipeline, Assets/Showcase/Editor/LevelChecks): the mannequin's and the fox's generators, which run Blender (and only that: the fox is then prepared as any generic-rig character, by the shipped `GenericRigModelImporter`), and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
 
 ## One physics step
 Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, animation) runs in `Update`, from the last finished step.
@@ -129,18 +130,20 @@ The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#archit
 ## Where things live
 | What | Where |
 | --- | --- |
-| The character, its controller, input and spawner | Assets/Scripts/Character (`MMotionMotor` split by area: `.Body`, `.Ground`, `.Collision`, `.Hover`, `.Queries`, `.Capabilities`, `.State`); the body (`CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`); input (`CharacterInputFrame`, `InputState`, `InputLatch`, `InputRecording`, `CharacterInputRecorder`) and InputSources/ (the input sources); saved state (`WorldStateSnapshot`, `StateSerializer`, `StableOrder`) |
-| The movement mode and its components | Assets/Scripts/MovementModes, and Components/ (each component with its state class) |
-| The movement assets and the character's body | Assets/ScriptableObjects: StandardMovementMode.asset (the character's), Fox Movement.asset (the fox's), Character Body.asset (the Character prefab's Body Definition) |
-| The growing physics query buffers | Assets/Scripts/PhysicsQueries (its own assembly) |
-| Animation and its translators; IK; model sources and hitboxes | Assets/Scripts/Animation, IK, Models |
-| The camera rig | Assets/Scripts/CameraSystem |
-| The level elements | Assets/Scripts/Level (its own assembly), and Editor/ (`LevelFixtureSetup` and the fixtures' names, the climbable paint tool) |
-| Importers, Set Up Scene, inspectors | Assets/Editor (Models/, Animation/, Scene/, Effects/, Movement/) |
-| The mannequin's and the fox's generators, and running Blender | Assets/Editor/Pipeline (its own assembly: Mannequin/, Generic-rig characters/, Blender/) |
-| The movement envelope's writer | Assets/Editor/LevelChecks (its own assembly) |
-| The level builders, pieces and Level Editor | Assets/Editor/Level |
-| Tests | Assets/Tests/EditMode (its Levels/ an assembly of its own), PlayMode (see [Automated Tests](testing.md)) |
+| The character, its controller, input and spawner | Assets/MeridianMotion/Runtime/Characters: Character/ (`MMotionCharacter`, `CharacterSpawner`, the states and events), Motor/ (`MMotionMotor` split by area: `.Body`, `.Ground`, `.Collision`, `.Hover`, `.Queries`, `.Capabilities`, `.State`; the step), Body/ (`CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`), Input/ (`CharacterInputFrame`, `InputState`, `InputLatch`, `InputRecording`, `CharacterInputRecorder`, and InputSources/), Determinism/ (`WorldStateSnapshot`, `StateSerializer`, `StableOrder`) |
+| The movement mode and its components | Assets/MeridianMotion/Runtime/Characters/MovementModes, and Components/ (each component with its state class) |
+| The movement assets and the character's body | Assets/MeridianMotion/Content/Movement: StandardMovementMode.asset (the character's), Character Body.asset (the Character prefab's Body Definition); the fox's, Assets/Showcase/Movement/Fox Movement.asset |
+| The growing physics query buffers | Assets/MeridianMotion/Runtime/PhysicsQueries (its own assembly) |
+| Animation and its translators; IK; model sources and hitboxes | Assets/MeridianMotion/Runtime/Characters/Animation, IK, Models |
+| The camera rig | Assets/MeridianMotion/Runtime/Cameras |
+| The level elements | Assets/MeridianMotion/Runtime/LevelElements (its own assembly), and Assets/MeridianMotion/Editor/LevelElements (`LevelFixtureSetup` and the fixtures' names, the climbable paint tool) |
+| Importers, Set Up Scene, inspectors, finding the package's assets | Assets/MeridianMotion/Editor (Models/, Animation/, Scene/, Effects/, Movement/, Settings/) |
+| The assets that ship (the prefabs, the mannequin, its animation, the water shaders) | Assets/MeridianMotion/Content |
+| The showcase's content (levels, scenes, the fox, sample models, the CMU clips) | Assets/Showcase |
+| The mannequin's and the fox's generators, and running Blender | Assets/Showcase/Editor/Pipeline (its own assembly: Mannequin/, GenericRigs/, Blender/) |
+| The movement envelope's writer | Assets/Showcase/Editor/LevelChecks (its own assembly) |
+| The level builders, pieces and Level Editor | Assets/Showcase/Editor/Levels |
+| Tests | Assets/MeridianMotion/Tests/EditMode, PlayMode; the showcase's, Assets/Showcase/Tests/Levels (see [Automated Tests](testing.md)) |
 | The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Blender, Tools/Animation |
 
 Why it's built this way is in [Design Decisions](decisions.md).

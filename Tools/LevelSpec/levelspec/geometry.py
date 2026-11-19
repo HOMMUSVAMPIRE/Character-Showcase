@@ -13,7 +13,7 @@ import re
 from .model import GROUP_PIECES, PathCounter, child_path
 
 SETTINGS_ASSET = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-                              "Assets", "Editor", "Level", "LevelBuilderSettings.asset")
+                              "Assets", "Showcase", "Levels", "LevelBuilderSettings.asset")
 
 #: What each layer of a schematic holds.
 LAYERS = {

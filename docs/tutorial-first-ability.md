@@ -21,13 +21,13 @@ Open **Tools > Meridian Motion > New Ability…** and answer:
 | Needs IK | off | It doesn't place hands or feet on anything. |
 
 The window lists every file it will make or change. Press **Make It**, and wait for Unity to finish compiling. It made:
-- `Assets/Scripts/MovementModes/Components/GroundPound.cs`: the ability. As made, it already works: a press of Crouch makes the character hover where it is for a moment.
-- `Assets/Tests/PlayMode/Abilities/GroundPoundTests.cs`: its tests, which pass as made.
+- `Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/GroundPound.cs`: the ability. As made, it already works: a press of Crouch makes the character hover where it is for a moment.
+- `Assets/MeridianMotion/Tests/PlayMode/Abilities/GroundPoundTests.cs`: its tests, which pass as made.
 - Its state flag (`CharacterState.GroundPound`) and events (`GroundPoundStarted`, `GroundPoundEnded`), its place in the movement's order, a section for it in docs/abilities.md, and its name in docs/movement.md.
 
 Once compiled, it's added to every movement mode: turned on for the default character, off for the fox.
 
-**Try it now.** Open `Assets/Scenes/LevelPlayground/LevelPlayground.unity`, press Play, and press Crouch: the character hovers for a moment. Everything from here on changes what it does.
+**Try it now.** Open `Assets/Showcase/Scenes/LevelPlayground/LevelPlayground.unity`, press Play, and press Crouch: the character hovers for a moment. Everything from here on changes what it does.
 
 ## 2. Its settings
 
@@ -85,10 +85,10 @@ public class GroundPoundState
 <!-- tutorial: GroundPound.cs, replace "void Interrupt(" .. "void Interrupt(" -->
 ```csharp
 /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
-public override void Interrupt(MovementStep movementData, MMotionMotor controller)
+public override void Interrupt(MovementStep step, MMotionMotor motor)
 {
-    controller.groundPound.timeLeft = 0f;
-    controller.groundPound.slamming = false;
+    motor.groundPound.timeLeft = 0f;
+    motor.groundPound.slamming = false;
 }
 ```
 
@@ -100,40 +100,40 @@ public override void Interrupt(MovementStep movementData, MMotionMotor controlle
 /// Carries on while it lasts, or starts if it can: the character hangs where it is for its hang time, then slams
 /// straight down until it lands.
 /// </summary>
-public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
+public override bool TakeOver(MovementStep step, StepInputs inputs, MMotionMotor motor)
 {
-    GroundPoundState state = controller.groundPound;
+    GroundPoundState state = motor.groundPound;
     if (!state.IsActive)
     {
-        if (!CanStart(movementData, inputs, controller)) { return false; }
-        state.timeLeft = groundPoundHangTime * controller.DurationScale;
+        if (!CanStart(step, inputs, motor)) { return false; }
+        state.timeLeft = groundPoundHangTime * motor.DurationScale;
         state.slamming = true;
-        Mode.InterruptOthers(movementData, controller, this);
+        Mode.InterruptOthers(step, motor, this);
     }
-    else if (state.timeLeft <= 0f && movementData.initialGrounded)
+    else if (state.timeLeft <= 0f && step.initialGrounded)
     {
         // It's landed: it lets go, and the rest of the movement has the character this step.
         state.slamming = false;
         return false;
     }
     // Hanging, it holds still; then it slams straight down at its speed.
-    movementData.velocityOverride = state.timeLeft > 0f ? Vector3.zero : Vector3.down * (groundPoundSpeed * controller.SpeedScale);
-    movementData.state |= CharacterState.GroundPound;
-    PublishProgress(controller);
+    step.velocityOverride = state.timeLeft > 0f ? Vector3.zero : Vector3.down * (groundPoundSpeed * motor.SpeedScale);
+    step.state |= CharacterState.GroundPound;
+    PublishProgress(motor);
     return true;
 }
 
-private void PublishProgress(MMotionMotor controller)
+private void PublishProgress(MMotionMotor motor)
 {
-    float hang = groundPoundHangTime * controller.DurationScale;
-    controller.AbilityValues.Set(ProgressValue, hang > 0f ? 1f - controller.groundPound.timeLeft / hang : 1f);
+    float hang = groundPoundHangTime * motor.DurationScale;
+    motor.AbilityValues.Set(ProgressValue, hang > 0f ? 1f - motor.groundPound.timeLeft / hang : 1f);
 }
 
 /// <summary>Whether Ground Pound can start this step: turned on by its speed, in the air, on a press of Crouch.</summary>
-private bool CanStart(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
+private bool CanStart(MovementStep step, StepInputs inputs, MMotionMotor motor)
 {
-    if (groundPoundSpeed <= 0f || movementData.initialGrounded) { return false; }
-    return controller.groundPound.press.Consume(inputs.crouch, groundPoundInputBuffer);
+    if (groundPoundSpeed <= 0f || step.initialGrounded) { return false; }
+    return motor.groundPound.press.Consume(inputs.crouch, groundPoundInputBuffer);
 }
 ```
 
@@ -141,13 +141,13 @@ What each part does:
 - **Starting.** `CanStart` says no if the speed is 0 (turned off) or the character is on the ground (`initialGrounded`: where it was at the start of this step); otherwise it starts on a press of Crouch (`Consume` uses up the press, so one press starts it once). Starting sets the hang's time and tells the other abilities to let go (`InterruptOthers`).
 - **Hanging, then slamming.** `velocityOverride` sets the character's velocity for this step outright: nothing at all while it hangs, then straight down at its speed. The movement still sweeps the character's body, so it stops at the floor rather than going through it.
 - **Landing.** Once it's slamming and on the ground, it lets go: it returns false, and walking has the character.
-- **Its state flag.** `movementData.state |= CharacterState.GroundPound` says it's under way this step. The animation and the tests read it, and its events (`GroundPoundStarted`, `GroundPoundEnded`) are raised when it starts and stops being set.
+- **Its state flag.** `step.state |= CharacterState.GroundPound` says it's under way this step. The animation and the tests read it, and its events (`GroundPoundStarted`, `GroundPoundEnded`) are raised when it starts and stops being set.
 - **Its progress.** `PublishProgress` publishes how far through the hang it is, which an Animator parameter can show (step 5).
 - **Timing.** The hang counts down in `AdvanceTimers` (as made), one physics step at a time: abilities never read the clock (see [Determinism](movement.md#determinism-and-state)).
 
 ## 4. Press Play
 
-Save the file and let Unity compile. Open LevelPlayground, press Play, jump, and press Crouch in the air: the character hangs for a moment, then slams down. To tune it, select `Assets/ScriptableObjects/StandardMovementMode.asset` and find Ground Pound in its Components list: change its Ground Pound Hang Time and Ground Pound Speed there (in Play mode too, to feel the difference; changes made in Play mode stay).
+Save the file and let Unity compile. Open LevelPlayground, press Play, jump, and press Crouch in the air: the character hangs for a moment, then slams down. To tune it, select `Assets/MeridianMotion/Content/Movement/StandardMovementMode.asset` and find Ground Pound in its Components list: change its Ground Pound Hang Time and Ground Pound Speed there (in Play mode too, to feel the difference; changes made in Play mode stay).
 
 Nothing happens? Check Ground Pound is ticked in that list, and look in the Console for a compile error: it names the file and the line.
 
@@ -155,17 +155,17 @@ Nothing happens? Check Ground Pound is ticked in that list, and look in the Cons
 
 As it is, the character plays its falling animation while it slams. To give the slam a pose of its own (the tucked crouch, say), the animation reads its state flag; no animation code is needed. The steps, each explained in [Animator layouts](animation.md#animator-layouts):
 
-1. **A parameter for it.** Select `Assets/Animation/Mannequin Layout.asset`. Under Parameters, add a Bool named `GroundPounding`.
+1. **A parameter for it.** Select `Assets/MeridianMotion/Content/Animation/Mannequin Layout.asset`. Under Parameters, add a Bool named `GroundPounding`.
 2. **A state.** Under States, add one named `Ground Pound`, with one motion: the clip slot `Crouch Idle` (any clip slot works; add a slot of its own for a clip made for it).
 3. **Transitions.** Under Transitions, add one from `Any State` to `Ground Pound` on the condition `GroundPounding` true, and one from `Ground Pound` to `Locomotion` on `GroundPounding` false. The crouch's transition in from Any State excludes every other ability's bool: add `GroundPounding` false to its conditions too, or the two keep swapping.
-4. **Drive it.** Select `Assets/Animation/Mannequin Animator Translator.asset`. Under Bool Parameters, add one: its Parameter `GroundPounding`, its Shows `State: GroundPound` (the list offers every state flag).
-5. **Build.** Tools > Meridian Motion > Build Animator Controllers, then press Play.
+4. **Drive it.** Select `Assets/MeridianMotion/Content/Animation/Mannequin Animator Translator.asset`. Under Bool Parameters, add one: its Parameter `GroundPounding`, its Shows `State: GroundPound` (the list offers every state flag).
+5. **Build.** Tools > Meridian Motion > Prepare > Build Animator Controllers, then press Play.
 
 The hang's progress (Ground Pound Progress) can drive a float parameter the same way (Float Parameters, Shows `Ability: Ground Pound Progress`), to wind up a pose through the hang.
 
 ## 6. Its tests
 
-`GroundPoundTests.cs` (in `Assets/Tests/PlayMode/Abilities`) is built on the ability test kit (`AbilityFixture<GroundPound>`), which gives it the checks every ability needs: it starts; with its 0 setting it doesn't; it lets go when interrupted; its events are raised; it can be saved and put back; it works at another size. The kit needs three things from you: how to set the ability up, the inputs that start it, and the setting whose 0 turns it off. As made, they start it standing on the floor, but a ground pound starts in the air. Replace them (`SetUpToStart`, `InputsFor` and `OffSetting`) with:
+`GroundPoundTests.cs` (in `Assets/MeridianMotion/Tests/PlayMode/Abilities`) is built on the ability test kit (`AbilityFixture<GroundPound>`), which gives it the checks every ability needs: it starts; with its 0 setting it doesn't; it lets go when interrupted; its events are raised; it can be saved and put back; it works at another size. The kit needs three things from you: how to set the ability up, the inputs that start it, and the setting whose 0 turns it off. As made, they start it standing on the floor, but a ground pound starts in the air. Replace them (`SetUpToStart`, `InputsFor` and `OffSetting`) with:
 
 <!-- tutorial: GroundPoundTests.cs, replace "IEnumerator SetUpToStart()" .. "string OffSetting" -->
 ```csharp
@@ -235,4 +235,4 @@ A ground pound doesn't place hands or feet on anything. An ability that does (ha
 - [Movement Abilities](abilities.md) and [Climbing and Traversal](traversal.md): the abilities there are, to read and copy from (`Dashing` and `Rolling` are short).
 - [Tuning the Character](tuning.md): tuning abilities, and saving tunings as presets.
 
-<!-- This page is kept true by TutorialTests (Assets/Tests/EditMode/Movement): it runs New Ability with the answers above, applies each code block where its marker says, and compiles the result. Change a block, and the test says whether it still compiles. -->
+<!-- This page is kept true by TutorialTests (Assets/MeridianMotion/Tests/EditMode/Movement): it runs New Ability with the answers above, applies each code block where its marker says, and compiles the result. Change a block, and the test says whether it still compiles. -->

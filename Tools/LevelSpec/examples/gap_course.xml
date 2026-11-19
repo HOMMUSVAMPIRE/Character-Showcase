@@ -7,7 +7,7 @@
   Try:  python3 Tools/LevelSpec/levelspec check Tools/LevelSpec/examples/gap_course.xml
   and the build command (see the README, Level Specs) to have Unity build it.
 -->
-<level name="Gap Course" scene="Assets/Scenes/GapCourse/GapCourse.unity">
+<level name="Gap Course" scene="Assets/Showcase/Scenes/GapCourse/GapCourse.unity">
   <part name="Start">
     <Group name="Start">
       <Prism name="Pad" shape="6, 0; 0, 6; -6, 0; 0, -6" y0="-0.5" y1="0.05"/>

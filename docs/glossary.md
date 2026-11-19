@@ -13,7 +13,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Animator layout.** An asset describing a character's Animator Controller as data (clip slots, parameters, blend trees, states, transitions, with measured numbers and notes), which Build Animator Controllers builds it from. See [Animator layouts](animation.md#animator-layouts).
 
-**Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MMotionMotor's Body Definition; the Character prefab's is Assets/ScriptableObjects/Character Body.asset, and Prepare Humanoid Models writes one beside each model's source. See [Collision](movement.md#collision).
+**Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MMotionMotor's Body Definition; the Character prefab's is Assets/MeridianMotion/Content/Movement/Character Body.asset, and Prepare Humanoid Models writes one beside each model's source. See [Collision](movement.md#collision).
 
 **Body Fit.** The CharacterModelSlot setting that fits the character's body to its model (by height, or the model's own Body Definition). The body its source was prepared with is fitted in `Start`, before the first step, so the character moves the same body before its model arrives, or without one (`LoadModelOnStart` off). See [Replacing the model](animation.md#replacing-the-model).
 
@@ -35,7 +35,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Generated asset.** An asset written by an editor tool (the mannequin, the level scenes, the envelope, ...), changed by changing its generator and running it again, never by hand. The table in AGENTS.md lists them.
 
-**Generic Rig Setup.** What a generic-rig character (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`GenericRigSetup`, beside its model in Assets/Models/Generic). Made by Prepare Generic Rig Models with its bones guessed from their names, then checked; Prepare Generic Rig Models makes the generic-rig character from it. See [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own).
+**Generic Rig Setup.** What a generic-rig character (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`GenericRigSetup`, beside its model in Assets/Showcase/Models/Generic). Made by Prepare Generic Rig Models with its bones guessed from their names, then checked; Prepare Generic Rig Models makes the generic-rig character from it. See [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own).
 
 **Graybox.** *(showcase levels)* The untextured blockout style of the levels, and the library of pieces they're built from (`Graybox`).
 
@@ -59,7 +59,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Level clock.** The tick the level's moving mechanics (platforms, pushables, ropes) go by (`MeridianMotion.Levels.LevelClock`): Unity's fixed steps, unless something sets it (a networked game's tick, the test rig's). The test rig owns it while it's in use (`LevelClock.TickSource`) and resets it when it's disposed; a test that sets it without the rig must set it back to null.
 
-**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/Scripts/Level, the `MeridianMotion.Levels` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
+**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/MeridianMotion/Runtime/LevelElements, the `MeridianMotion.Levels` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
 
 **Level spec.** *(showcase levels)* A level recorded as data: the list of pieces its builder called, with their settings, which builds the same level again. Edited in the Level Editor or by the levelspec tool. See [Level Specs](level-specs.md).
 
@@ -71,7 +71,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Movement events.** One-off happenings in a physics step (jumped, landed, a ledge grabbed): `MovementEvents`, which animation and other systems listen for.
 
-**Movement mode.** The ScriptableObject asset that defines how characters move, made of movement components (`StandardMovementMode`, at Assets/ScriptableObjects/StandardMovementMode.asset). Shared by every character using it.
+**Movement mode.** The ScriptableObject asset that defines how characters move, made of movement components (`StandardMovementMode`, at Assets/MeridianMotion/Content/Movement/StandardMovementMode.asset). Shared by every character using it.
 
 **Movement simulation.** A copy of the character stepped faster than real time in a world of its own, far below everything else (`MovementSimulation`), used to measure its capabilities.
 

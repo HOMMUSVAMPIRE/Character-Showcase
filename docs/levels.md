@@ -1,7 +1,7 @@
 # Test Levels
 The generated graybox levels, their mechanics, and how they are built. Level specs, the format the levels are recorded in, are in [level-specs.md](level-specs.md).
 
-The exact dimensions of every layout are in its builder (Assets/Editor/Level), or for the [Meridian Basin](#the-meridian-basin), which has none, in the script that writes its spec, and for the Meridian Complex also in each area's notes (the *_Blockout_Notes.md files in Assets/Scenes/MeridianComplex), which say how its diagram was read and what was chosen where it was ambiguous. This page describes the layouts in words.
+The exact dimensions of every layout are in its builder (Assets/Showcase/Editor/Levels), or for the [Meridian Basin](#the-meridian-basin), which has none, in the script that writes its spec, and for the Meridian Complex also in each area's notes (the *_Blockout_Notes.md files in Assets/Showcase/Scenes/MeridianComplex), which say how its diagram was read and what was chosen where it was ambiguous. This page describes the layouts in words.
 
 ## Test Level: The Meridian Complex
 The Meridian Complex is a large graybox level for putting the character through its paces: terraces, stairs, ramps, bridges, towers, tunnels and measured test courses, in connected areas round a central hub. It's built from blockout diagrams (the MeridianComplex-*.png sheets in ReferenceAssets/, which git ignores, so they're only on the machine that has them, not in a clone).
@@ -28,7 +28,7 @@ Every area can be reached on foot, by stairs and ramps that keep to the characte
 Mechanics the character doesn't have yet (sliding doors, shutters, ceiling climbing, crawl spaces, hidden routes, a higher route over the Suspension Yard) have markers named "(future)", under Future Mechanics.
 
 ### Building it
-The whole scene is generated: Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex rebuilds it (also `-executeMethod MeridianMotion.Showcase.Levels.MeridianComplexBuilder.BuildFromCommandLine`), replacing it and its environment assets. Rebuilding replaces the scene, so change the builders (Assets/Editor/Level, one per area) rather than the scene.
+The whole scene is generated: Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex rebuilds it (also `-executeMethod MeridianMotion.Showcase.Levels.MeridianComplexBuilder.BuildFromCommandLine`), replacing it and its environment assets. Rebuilding replaces the scene, so change the builders (Assets/Showcase/Editor/Levels, one per area) rather than the scene.
 
 From the menu it builds in the background, one area at a time, and bakes the lighting in the background too, with a window showing its progress (also under the editor's Background Tasks), so the editor keeps responding. The whole build takes a few seconds. The level's pieces aren't marked Contribute GI (it has no baked or realtime GI to use it), which used to make the bake pack lightmaps for every piece, taking minutes.
 
@@ -80,12 +80,12 @@ Polish after the concept art and the icons and decals sheet (MeridianComplexConc
 Pads, marks, lawns and trees find the floor under them once the whole level's built (the build's "finishing touches" step). Trees, planters and the crane have box colliders; the rest is to see only. The trees are seeded (the foliage's Seed), so every build grows the same ones.
 
 ### Culling
-Cameras skip what's out of view (each railing run, stair, lawn chunk and so on is its own object) and, with each level's baked occlusion culling data, what's hidden behind walls, terraces and the ground. Building a level bakes it after the lighting (a few seconds; Assets/Scenes/[Level]/[Level]/OcclusionCullingData.asset), with only the solid pieces (blocks, solids, stairs, columns) as occluders.
+Cameras skip what's out of view (each railing run, stair, lawn chunk and so on is its own object) and, with each level's baked occlusion culling data, what's hidden behind walls, terraces and the ground. Building a level bakes it after the lighting (a few seconds; Assets/Showcase/Scenes/[Level]/[Level]/OcclusionCullingData.asset), with only the solid pieces (blocks, solids, stairs, columns) as occluders.
 
 Grass tufts cast no shadows and aren't drawn beyond the foliage's Tuft Draw Distance (the lawn under them still is). The game camera needs Occlusion Culling ticked, as the demo's Main Camera has. To see the culling at work, open Window > Rendering > Occlusion Culling, select a camera, and use the Visualization tab.
 
 ### Generation settings
-The numbers the shared pieces are made with are in one asset, Assets/Editor/Level/LevelBuilderSettings.asset (Tools > Meridian Motion > Showcase > Levels > Generation Settings selects it). Each section of its inspector covers a family of pieces:
+The numbers the shared pieces are made with are in one asset, Assets/Showcase/Levels/LevelBuilderSettings.asset (Tools > Meridian Motion > Showcase > Levels > Generation Settings selects it). Each section of its inspector covers a family of pieces:
 - stair profile and nosings;
 - deck thickness, bridge length, walkway columns and trusses;
 - guardrail height, posts and rails;
@@ -105,7 +105,7 @@ The numbers the shared pieces are made with are in one asset, Assets/Editor/Leve
 Change a value and rebuild a level to see it (the Level Playground builds in a couple of seconds). It's made with its defaults the first time a level's built, if it's missing. Where the areas put things (their layouts, a stair's width) stays in each area's builder, and how the surfaces look in the materials themselves.
 
 ### Materials
-The levels share a palette of materials, after the style reference's colours (graphite, concrete, steel grey and an orange accent), all made with the noise-built concrete Shader Graph (Assets/Materials/NoiseConcrete.shadergraph: world-space noise, no textures, with recessed panel seams, metallic and emission settings):
+The levels share a palette of materials, after the style reference's colours (graphite, concrete, steel grey and an orange accent), all made with the noise-built concrete Shader Graph (Assets/Showcase/Materials/NoiseConcrete.shadergraph: world-space noise, no textures, with recessed panel seams, metallic and emission settings):
 - Concrete (decks, floors, steps);
 - Panel (walls and large masses, in panels with recessed seams, each panel a shade lighter or darker);
 - Ground (darker, in larger paving slabs);
@@ -116,18 +116,18 @@ The levels share a palette of materials, after the style reference's colours (gr
 - Foliage (the trees' and shrubs' leaves), Soil (trunks and planters' soil) and Grass (lawns);
 - and Water, made with its own shader instead (see [The water's look](#the-waters-look)).
 
-The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.GrayboxMaterial`). The materials (Assets/Materials/Level) are made the first time a level's built (from the looks in `LevelDefinition`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
+The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.GrayboxMaterial`). The materials (Assets/Showcase/Materials/Level) are made the first time a level's built (from the looks in `LevelDefinition`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
 
 ### Environment
 It's lit as a sunny midday for URP: a high sun with soft shadows, a procedural sky that lights the ambient and reflections, light haze, and a global post-processing volume (ACES tonemapping, light bloom, a little contrast). The sun and haze are the generation settings' Environment section. The PC render pipeline asset (Assets/Settings/PC_RPAsset.asset) has its shadow Max Distance raised well above URP's default, so the terraces' shadows reach across the hub.
 
 ## The Meridian Basin
-The Meridian Basin (Assets/Scenes/MeridianBasin) is a variant of the Meridian Complex sunk into a terraced octagonal pit: a park on the floor and terrace rings stepping up from it to the rim (each part of its spec is a level, L0 Central Park to L5 Operations Ring), with interiors set into the terraces, the Ascension Spire standing in the park with bridges out to the terraces, and the Service Lift as the one tunnel, a shortcut. It's compact and vertical: the walls between the terraces are too high to climb, and besides a stair up each, the ways up are platforming (jumps to ledges, double jumps, lifts, and halls and hatches with a way up inside). It's built from the same pieces, materials and lighting as the complex, after a reference sheet in ReferenceAssets/ (MeridianBasinRef.png).
+The Meridian Basin (Assets/Showcase/Scenes/MeridianBasin) is a variant of the Meridian Complex sunk into a terraced octagonal pit: a park on the floor and terrace rings stepping up from it to the rim (each part of its spec is a level, L0 Central Park to L5 Operations Ring), with interiors set into the terraces, the Ascension Spire standing in the park with bridges out to the terraces, and the Service Lift as the one tunnel, a shortcut. It's compact and vertical: the walls between the terraces are too high to climb, and besides a stair up each, the ways up are platforming (jumps to ledges, double jumps, lifts, and halls and hatches with a way up inside). It's built from the same pieces, materials and lighting as the complex, after a reference sheet in ReferenceAssets/ (MeridianBasinRef.png).
 
-It has no builder. Its spec, Assets/Levels/MeridianBasin.level.json, is written by a Python script, Tools/LevelSpec/examples/meridian_basin.py, which works the layout out (eight faces on each ring, the climbs graded to the movement's limits); the script's notes describe it, and its dimensions are in the script. To change it, edit the script, run it (`python3 Tools/LevelSpec/examples/meridian_basin.py`), check the spec (`levelspec check`), and build the scene from the spec: Build Level from Spec… in Unity, then Set Up Scene, or `levelspec build Assets/Levels/MeridianBasin.level.json --unity` with Unity closed, which does both (see [Level Specs](level-specs.md)). Export Level Specs doesn't touch it, as only levels with builders are exported. The scene is set up to play (its Meridian Motion Setup: the spawner at its spawn markers, the camera, its moving platforms, crates and timing gates) and is in the build's scenes, after the Level Playground.
+It has no builder. Its spec, Assets/Showcase/Levels/MeridianBasin.level.json, is written by a Python script, Tools/LevelSpec/examples/meridian_basin.py, which works the layout out (eight faces on each ring, the climbs graded to the movement's limits); the script's notes describe it, and its dimensions are in the script. To change it, edit the script, run it (`python3 Tools/LevelSpec/examples/meridian_basin.py`), check the spec (`levelspec check`), and build the scene from the spec: Build Level from Spec… in Unity, then Set Up Scene, or `levelspec build Assets/Showcase/Levels/MeridianBasin.level.json --unity` with Unity closed, which does both (see [Level Specs](level-specs.md)). Export Level Specs doesn't touch it, as only levels with builders are exported. The scene is set up to play (its Meridian Motion Setup: the spawner at its spawn markers, the camera, its moving platforms, crates and timing gates) and is in the build's scenes, after the Level Playground.
 
 ## The Level Playground
-The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with one of each piece the complex is built from, made by the same builders' pieces in the same material and lighting:
+The Level Playground (Assets/Showcase/Scenes/LevelPlayground) is a small test scene with one of each piece the complex is built from, made by the same builders' pieces in the same material and lighting:
 - an octagonal dais and a turned column at the spawn point;
 - a terrace cut at 45° up a ramp, with guardrails;
 - a stair to a walkway on columns, two octagonal towers joined by a suspended walkway, a jump gap and a diagonal bridge out to a connection marker;
@@ -142,7 +142,7 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Meridian Motion > Showcase > Levels > Build Level Playground, or `-executeMethod MeridianMotion.Showcase.Levels.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
 ## Level mechanics
-The level builders reference no character code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. `LevelFixtureSetup` (in the level elements' editor assembly, Assets/Scripts/Level/Editor) turns each into the level element it stands for (see [Climbing and Traversal](traversal.md)). Every build runs it before saving the scene, so a built level's mechanics work as it is; Set Up Scene runs it again, leaving what's set up as it is, for a scene built some other way. The names are the level elements' convention, which any scene can use:
+The level builders reference no character code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. `LevelFixtureSetup` (in the level elements' editor assembly, Assets/MeridianMotion/Editor/LevelElements) turns each into the level element it stands for (see [Climbing and Traversal](traversal.md)). Every build runs it before saving the scene, so a built level's mechanics work as it is; Set Up Scene runs it again, leaving what's set up as it is, for a scene built some other way. The names are the level elements' convention, which any scene can use:
 - "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a TickedPlatform with those settings;
 - "Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableBlock (Can Be Pulled, Speed Multiplier);
 - "Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder with those settings, which keeps the level's mesh ("Ladder (future): …" markers aren't ladders);
@@ -167,10 +167,10 @@ Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose g
 ### Climbable paint on the levels' materials
 The levels' concrete shader (NoiseConcrete) shows painted climbable areas (see [Painting climbable areas](traversal.md#painting-climbable-areas)): it has the Climbable Mask texture and a second set of its look's settings for climbable areas (Climbable Tint, Climbable Grain, Climbable Panels and the rest of them; by default an ochre, rougher concrete in finer panels), blended in where the mask is white. The level materials made with it are given ClimbableMask_None as their own mask when they're made, so unpainted objects show none.
 
-The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale; the grass tufts, which nothing's painted on, are left out), and the levels' boxes use Graybox Cube (Assets/Models/Level), Unity's cube with a UV2.
+The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale; the grass tufts, which nothing's painted on, are left out), and the levels' boxes use Graybox Cube (Assets/Showcase/Models/Level), Unity's cube with a UV2.
 
 ### The water's look
-The levels' water is drawn with its own shader, Assets/Materials/Water.shader (the Level_Water material, made the first time a level's built), whose whole look is built from noise in world space with no textures, as the other surfaces' is:
+The levels' water is drawn with its own shader, Assets/MeridianMotion/Content/Materials/Water.shader (the Level_Water material, made the first time a level's built), whose whole look is built from noise in world space with no textures, as the other surfaces' is:
 - layers of drifting noise make the ripples, which bend the surface's normal (Ripple Size, Ripple Speed, Ripple Strength) and lift and lower it a little (Wave Height);
 - the sky reflects in it, more at a glancing look, and the sun glints off the ripples (Smoothness, Sky Reflection, Sun Glints);
 - how much water is under each point (from the camera's depth texture) tints it from Shallow Colour to Deep Colour, from see-through to nearly opaque (Depth To Deep, Shallow Opacity, Deep Opacity);

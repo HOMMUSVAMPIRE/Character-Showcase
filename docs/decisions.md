@@ -129,7 +129,7 @@ Choices about how the project is built, why they were made, and what was decided
 
 ## The level elements are their own assembly, and the builders attach them (November 2026)
 **Decided:**
-- The level elements (Assets/Scripts/Level: water, ropes, ladders, platforms and the rest) are an assembly of their own, `MeridianMotion.Levels`, which references only `MeridianMotion.PhysicsQueries`. The character uses it for traversal, and the level builders use it to equip their levels.
+- The level elements (Assets/MeridianMotion/Runtime/LevelElements: water, ropes, ladders, platforms and the rest) are an assembly of their own, `MeridianMotion.Levels`, which references only `MeridianMotion.PhysicsQueries`. The character uses it for traversal, and the level builders use it to equip their levels.
 - Its editor assembly holds the climbable paint tool and `LevelFixtureSetup`, which turns named fixtures into level elements and holds their names. Each level build runs it before saving, so a level comes out of its build with its mechanics working. Set Up Scene keeps the character's jobs (the spawner, the camera, the input manager, who's racing the course timers) and runs it again, finding what's set up, for a scene built some other way.
 - The mannequin and fox generators with their Blender runner (`MeridianMotion.Showcase.Pipeline`), the movement envelope's writer (`MeridianMotion.Showcase.LevelChecks`) and the level builders' tests (`MeridianMotion.Showcase.Tests.Levels`) are assemblies of their own, as the level builders already were.
 

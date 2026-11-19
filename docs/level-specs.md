@@ -1,11 +1,11 @@
 # Level Specs
 
-Each level can also be kept as data: a level spec (Assets/Levels/[scene].level.json), listing the pieces it's built from in order, with their settings. A spec can be exported from a level's builder, edited in the Level Editor, written by hand or by other tools as JSON, XML or CSV, checked against what the character can do, drawn as a schematic, and built into a scene like any level.
+Each level can also be kept as data: a level spec (Assets/Showcase/Levels/[scene].level.json), listing the pieces it's built from in order, with their settings. A spec can be exported from a level's builder, edited in the Level Editor, written by hand or by other tools as JSON, XML or CSV, checked against what the character can do, drawn as a schematic, and built into a scene like any level.
 
 **The format.** A spec is JSON, one line per piece:
 
 ```
-{"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/Scenes/LevelPlayground/LevelPlayground.unity",
+{"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/Showcase/Scenes/LevelPlayground/LevelPlayground.unity",
  "parts": [{"name": "Movement Tests", "pieces": [
    {"piece": "Group", "parent": "", "name": "Movement Tests"},
    {"piece": "Platform", "parent": "Movement Tests", "name": "Beam Start (+4)", "x0": -38, "x1": -34, "z0": -40, "z1": -36, "y0": 0, "top": 4},
@@ -18,7 +18,7 @@ Points are `[x, z]` (or `[x, y, z]`), areas `[xMin, zMin, xMax, zMax]`, surfaces
 
 The whole format, every piece and its settings and defaults, is described by a JSON Schema, Tools/LevelSpec/level-spec.schema.json, written by Unity from the pieces themselves (Tools > Meridian Motion > Showcase > Levels > Specs > Write Spec Schema, or `-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.WriteSchemaFromCommandLine`, and every export).
 
-**The specs in Assets/Levels:**
+**The specs in Assets/Showcase/Levels:**
 - MeridianComplex.level.json and LevelPlayground.level.json are exported from those levels' builders.
 - MeridianBasin.level.json has no builder: it's written by a script, Tools/LevelSpec/examples/meridian_basin.py, an example of a spec made with code (see [The Meridian Basin](levels.md#the-meridian-basin)), and its scene is built from it.
 
@@ -27,7 +27,7 @@ The levelspec tool's tests check every spec there (valid, and converting to ever
 **In Unity** (Tools > Meridian Motion > Showcase > Levels > Specs):
 - **Export Level Specs** records each level's builder as it builds and writes its spec, then builds the level again from the spec and checks it's the same, object for object (the Meridian Complex and Level Playground both are). A spec that's been changed since it was exported (in the Level Editor, say) is only replaced if you say so.
 - **Build Level from Spec…** builds a level from a spec as its builder would: the scene the spec names, with its environment and bakes, and its mechanics set up on their markers (`LevelFixtureSetup`, as every build does), ready for Set Up Scene to add the character and camera.
-- From the command line: `-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.ExportFromCommandLine` (optionally `-level "Level Playground"`, and `-force` to replace specs changed since they were exported; it exits with 1 if a spec doesn't build its level or was kept) and `...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/LevelPlayground.level.json`.
+- From the command line: `-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.ExportFromCommandLine` (optionally `-level "Level Playground"`, and `-force` to replace specs changed since they were exported; it exits with 1 if a spec doesn't build its level or was kept) and `...LevelSpecTools.BuildFromCommandLine -spec Assets/Showcase/Levels/LevelPlayground.level.json`.
 
 **The Level Editor** (Tools > Meridian Motion > Showcase > Levels > Level Editor) edits a spec and shows it as it changes. Open a spec (or start a new level), then Preview builds it in an unsaved scene, without bakes.
 
@@ -52,7 +52,7 @@ python3 Tools/LevelSpec/levelspec validate my_level.xml          # against the s
 python3 Tools/LevelSpec/levelspec check my_level.xml             # against what the character can do
 python3 Tools/LevelSpec/levelspec schematic my_level.xml plan.html   # or plan.svg
 python3 Tools/LevelSpec/levelspec convert my_level.xml my_level.csv  # any format to any other
-python3 Tools/LevelSpec/levelspec build my_level.xml --unity     # write Assets/Levels/[scene].level.json and its schematic, then have Unity build and set up the scene
+python3 Tools/LevelSpec/levelspec build my_level.xml --unity     # write Assets/Showcase/Levels/[scene].level.json and its schematic, then have Unity build and set up the scene
 python3 Tools/LevelSpec/levelspec pieces [Platform]              # the pieces, or one piece's settings
 ```
 
@@ -60,7 +60,7 @@ python3 Tools/LevelSpec/levelspec pieces [Platform]              # the pieces, o
 
 See Tools/LevelSpec/examples for a level written in each, and the notes in Tools/LevelSpec/levelspec/formats.py. Converting a spec to XML or CSV and back gives the same spec, byte for byte.
 
-**Movement checks** hold a level to what the character can do: Tools/LevelSpec/envelope.json, written from the default character's [capabilities](movement.md#capabilities) (the Character prefab with its model, measured by running its movement) by Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope (or `-executeMethod MeridianMotion.Showcase.LevelChecks.MovementEnvelopeWriter.WriteFromCommandLine`). The writer is in Assets/Editor/LevelChecks, the level checks' own editor assembly (`MeridianMotion.Showcase.LevelChecks`), which isn't part of the package. Don't edit envelope.json. Saving a change to the tuning, the character or its model in the editor writes it again (`MovementEnvelopeAutoWriter`), and the Console logs what changed (a jump that reaches further, a move added or gone); `MovementEnvelopeTests` fails if it's out of date anyway (after a change made outside the editor, say). Its `maxRampGradient` is the levels' own rule, LevelBuilderSettings' Max Ramp Gradient under Stairs, gentler than the character's walkable slope (`walkableSlope`). The checks report stairs with steps over its `stepHeight`, ramps steeper than its `maxRampGradient`, and low beams lower than its `crouchHeight`.
+**Movement checks** hold a level to what the character can do: Tools/LevelSpec/envelope.json, written from the default character's [capabilities](movement.md#capabilities) (the Character prefab with its model, measured by running its movement) by Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope (or `-executeMethod MeridianMotion.Showcase.LevelChecks.MovementEnvelopeWriter.WriteFromCommandLine`). The writer is in Assets/Showcase/Editor/LevelChecks, the level checks' own editor assembly (`MeridianMotion.Showcase.LevelChecks`), which isn't part of the package. Don't edit envelope.json. Saving a change to the tuning, the character or its model in the editor writes it again (`MovementEnvelopeAutoWriter`), and the Console logs what changed (a jump that reaches further, a move added or gone); `MovementEnvelopeTests` fails if it's out of date anyway (after a change made outside the editor, say). Its `maxRampGradient` is the levels' own rule, LevelBuilderSettings' Max Ramp Gradient under Stairs, gentler than the character's walkable slope (`walkableSlope`). The checks report stairs with steps over its `stepHeight`, ramps steeper than its `maxRampGradient`, and low beams lower than its `crouchHeight`.
 
 Between the level's blocks and platforms, they report each gap at the same height and each climb to a neighbour, with the move it takes (the first of the envelope's `jumps` or `climbs` that reaches: a sprint jump across a gap, say, or a double jump up to a ledge) or that it's out of reach. Walls (Panel blocks) aren't counted as somewhere to stand. The checks are reports, not errors: a pit too wide to jump may have stairs out of it.
 

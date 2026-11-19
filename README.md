@@ -16,6 +16,8 @@ In the editor, **Tools > Meridian Motion > Start Here** opens a window with ever
 - **Add a character:** a new look for the humanoid, a character of your own, or a generic-rig character ([Adding a Character](docs/adding-a-character.md)).
 - **Add an ability:** a new move for the character. New to it? Build one step by step in [Your First Ability](docs/tutorial-first-ability.md); the full reference is [Adding a Movement Ability](docs/adding-an-ability.md).
 
+- **Use it in your own project:** what it needs, copying the package in, and a character in your own scene ([Getting Started in Your Project](docs/getting-started.md)).
+
 New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the docs use.
 
 ## How to open this Project
@@ -26,27 +28,34 @@ New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the 
 5. Navigate to Add => Add project from disk
 6. Select the location of the cloned repo from step 1
 7. Open the project
-8. Open Assets/Scenes/LevelPlayground/LevelPlayground.unity (the graybox level with every mechanic) and click "Play"
+8. Open Assets/Showcase/Scenes/LevelPlayground/LevelPlayground.unity (the graybox level with every mechanic) and click "Play"
 
-The test levels are in Assets/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/level-specs.md](docs/level-specs.md)).
+The test levels are in Assets/Showcase/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Showcase/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/level-specs.md](docs/level-specs.md)).
 
 ## How to see the code in this project
-All of the runtime code is in the Assets/Scripts folder:
-- Character: the character's controller, input (the per-step input frames, and their recording and replay), spawner, and the MMotionMotor with the data it works on (MovementStep, Inputs, CharacterState, MovementEvents) and its saved state (snapshots, and writing them to bytes); InputSources/: what drives a character (the player's device, a script, an NPC's route)
-- MovementModes: the movement modes, StandardMovementMode and its movement components (Components/: one file per part of the movement, walking and falling included)
-- Animation: the MMotionAnimator, the animation state it builds, and the translators that drive an Animator from it
-- IK: HumanoidIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
-- Models: the character's model host, the sources it gets models from, and the hitboxes on its models' bones
-- Effects: the water's splashes and ripples, played from the movement's events
-- Level: the level elements, an assembly of their own that the character and the level builders both use (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates); Editor/: turning a level's named fixtures into them, and painting climbable surfaces
-- CameraSystem: the camera rig (`MeridianMotion.Cameras`), which knows nothing about the character
-- PhysicsQueries: the growing physics query buffers the character and the camera share (`MeridianMotion.PhysicsQueries`)
+The project is two folders. **Assets/MeridianMotion** is the package, what would ship: its code (Runtime/, Editor/), the assets it comes with (Content/: the prefabs, the mannequin and its animation, the water shaders) and its tests (Tests/). **Assets/Showcase** is everything else: the levels and their builders, the Blender pipeline, the fox and the sample models.
 
-The editor tools are in Assets/Editor: the character's (importing models and animations, Set Up Scene, the movement's inspectors), and, each in an assembly of its own that a package of the character would leave out, Pipeline/ (generating the mannequin and the fox in Blender), LevelChecks/ (the movement envelope the levels are checked against) and Level/ (the level builders and the Level Editor). The tests are in Assets/Tests.
+The runtime code is in Assets/MeridianMotion/Runtime:
+- Characters/: the character, in folders by part:
+  - Character: its controller (MMotionCharacter), spawner, and the states and events the movement and animation share
+  - Motor: the MMotionMotor and the data it works on (MovementStep, its capabilities and simulation)
+  - Body: the character's body, a shape of its own rather than a collider
+  - Input: the per-step input frames, the player's input reader, recording and replay; InputSources/: what drives a character (the player's device, a script, an NPC's route)
+  - Determinism: saving and restoring its state, and writing it to bytes
+  - MovementModes: the movement modes, StandardMovementMode and its movement components (Components/: one file per part of the movement, walking and falling included)
+  - Animation: the MMotionAnimator, the animation state it builds, and the translators that drive an Animator from it
+  - IK: HumanoidIK and the IK components on every model (foot placement, hands on ledges, walls, ladders and lines)
+  - Models: the character's model slot, the sources it gets models from, and the hitboxes on its models' bones
+  - Effects: the water's splashes and ripples, played from the movement's events
+- LevelElements/: the level elements, an assembly of their own that the character and the level builders both use (moving platforms, ladders, climbable surfaces, ropes, ziplines, bounce pads, water, crates, timing gates)
+- Cameras/: the camera rig (`MeridianMotion.Cameras`), which knows nothing about the character
+- PhysicsQueries/: the growing physics query buffers the character and the camera share (`MeridianMotion.PhysicsQueries`)
 
-If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/Scripts/Character/MMotionMotor.cs and the movement components in Assets/Scripts/MovementModes/Components
+The editor tools are in Assets/MeridianMotion/Editor (importing models and animations, Set Up Scene, New Character and New Ability, the Character Doctor, the movement's inspectors; LevelElements/: turning a level's named fixtures into level elements, and painting climbable surfaces). The showcase's own are in Assets/Showcase/Editor, each in an assembly of its own: Pipeline/ (generating the mannequin and the fox in Blender), LevelChecks/ (the movement envelope the levels are checked against) and Levels/ (the level builders and the Level Editor). The tests are in Assets/MeridianMotion/Tests, and the showcase's in Assets/Showcase/Tests.
 
-If you intend to get a full understanding of the project, start with Character/MMotionCharacter.cs, then go through Character/MMotionMotor.cs, MovementModes/AbilityMovementMode.cs and MovementComponent.cs, and MovementModes/StandardMovementMode.cs and its components, and from there, read through anything you like.
+If you intend to get an idea of my coding style, how I write code, and how I solve problems etc. read through Assets/MeridianMotion/Runtime/Characters/Motor/MMotionMotor.cs and the movement components in Assets/MeridianMotion/Runtime/Characters/MovementModes/Components
+
+If you intend to get a full understanding of the project, start with Characters/Character/MMotionCharacter.cs, then go through Characters/Motor/MMotionMotor.cs, MovementModes/AbilityMovementMode.cs and MovementComponent.cs, and MovementModes/StandardMovementMode.cs and its components, and from there, read through anything you like.
 
 ## Controls
 | Action | Keyboard & Mouse | Gamepad |
@@ -66,6 +75,7 @@ If you intend to get a full understanding of the project, start with Character/M
 | Release cursor | Escape (click to re-lock) | |
 
 ## Documentation
+- [Getting started in your project](docs/getting-started.md): what the package needs, installing it, the hitbox layer, the output folder, a character in your own scene
 - [Architecture](docs/architecture.md): how the parts fit together, one physics step, what may reference what
 - [Movement](docs/movement.md): walking and sprinting, jumping, dashing, turning and leaning, collision, character size, moving ground
 - [Movement abilities](docs/abilities.md): crouching, sliding and rolling, wall running, wall sliding, ledges, vaulting
@@ -87,7 +97,7 @@ If you intend to get a full understanding of the project, start with Character/M
 - [Glossary](docs/glossary.md)
 - [Unity basics](docs/unity-basics.md): the Unity terms the docs use, for newcomers to Unity
 
-Every tunable value is a setting in the inspector: the movement assets in Assets/ScriptableObjects for the movement and its abilities (StandardMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Editor/Level/LevelBuilderSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
+Every tunable value is a setting in the inspector: the movement assets in Assets/MeridianMotion/Content/Movement for the movement and its abilities (StandardMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Showcase/Editor/Levels/LevelBuilderSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 
 ## Future Changes:
 ### Medium Priority Changes

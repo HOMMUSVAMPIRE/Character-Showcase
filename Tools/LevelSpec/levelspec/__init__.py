@@ -9,7 +9,7 @@ piece added in Unity is known here once the schema's rewritten.
     spec = levelspec.read("my_level.csv")            # or .json / .xml
     levelspec.validate(spec)                          # raises SpecError listing every problem
     for finding in levelspec.check(spec): print(finding)
-    levelspec.write(spec, "Assets/Levels/MyLevel.level.json")
+    levelspec.write(spec, "Assets/Showcase/Levels/MyLevel.level.json")
     levelspec.write_schematic(spec, "MyLevel.html")
 
 Or from the command line: python3 Tools/LevelSpec/levelspec --help

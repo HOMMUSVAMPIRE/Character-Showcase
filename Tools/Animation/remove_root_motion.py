@@ -1,4 +1,4 @@
-"""Removes root motion from motion-capture clips (Assets/Animation/CMU), in place or into another folder.
+"""Removes root motion from motion-capture clips (Assets/Showcase/Animation/CMU), in place or into another folder.
 
 Each clip's hips stop travelling across the ground: at each frame, a straight line fitted to the hips' path over the
 window around it is taken out, so steady travel goes while the sway within each step stays, and the hips keep their
@@ -9,7 +9,7 @@ Run with Blender (4.x):
     Blender -b --factory-startup --python Tools/Animation/remove_root_motion.py -- <out folder, or - to overwrite> <window seconds> <clip.fbx>...
 For example, to redo every clip in place with a one-second window (clips that stop or change speed suddenly may need
 half a second):
-    find Assets/Animation/CMU -name "*.fbx" -print0 | xargs -0 Blender -b --factory-startup --python Tools/Animation/remove_root_motion.py -- - 1.0
+    find Assets/Showcase/Animation/CMU -name "*.fbx" -print0 | xargs -0 Blender -b --factory-startup --python Tools/Animation/remove_root_motion.py -- - 1.0
 """
 import bpy, sys, os, json
 from mathutils import Vector

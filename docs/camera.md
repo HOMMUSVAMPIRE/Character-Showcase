@@ -1,6 +1,6 @@
 # Camera System
 
-The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a MMotionCameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the MMotionCameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
+The camera lives in Assets/MeridianMotion/Runtime/Cameras, in its own assembly with no dependency on the character code. Add a MMotionCameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the MMotionCameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
 
 Features: first person (at a fixed eye height, or following an eye anchor Transform such as a character's eye point) and over-the-shoulder third person (scaled with an optional target size reference, so resized targets are framed alike) with smooth blending between them, zoom (zooming all the way in switches to first person), shoulder swapping (automatic when a wall blocks the current side), aiming, camera collision, follow damping, target interpolation for physics-driven targets, speed-based FOV, head bob, landing dips, trauma-based camera shake, optional auto-recentering, hiding the character up close, and CameraZone volumes that override camera behaviour in an area.
 

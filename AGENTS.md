@@ -26,68 +26,85 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 **Unity version:** `ProjectSettings/ProjectVersion.txt` is authoritative. Never change it, and never edit
 `Packages/manifest.json` or `Packages/packages-lock.json` unless the task explicitly asks for a package change.
 
+The project is two folders: **`Assets/MeridianMotion`**, the package (com.meridianmotion.charactercontroller: what ships, with its
+`package.json`), and **`Assets/Showcase`**, what doesn't (the levels, the model pipeline, the fox and the sample models).
+`Assets/ClimbablePaint` is the climbable paint tool's output (the showcase's masks), `Assets/Settings` the project's URP
+settings, and `Assets/TextMesh Pro` Unity's; none of them ship.
+
 | Folder | What's there |
 | --- | --- |
-| `Assets/Scripts/Character` | `MMotionCharacter`, `PlayerInputReader`, `CharacterSpawner`, `MMotionMotor` and the types it works on (`MovementStep`, `StepInputs`, `CharacterState`, `MovementEvents`, `MovementSizeScaling`) |
-| `Assets/Scripts/MovementModes` | `MovementMode`, `AbilityMovementMode` and `MovementComponent`, `StandardMovementMode` (posture and the presses its components share; its capability measurements), `PressBuffer`, `MovementRules` (shared rules: jumps, wall jumps), `FreeSteering` (3D steering off the ground: underwater, and later flying), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
-| `Assets/Scripts/Animation` | `MMotionAnimator`, `CharacterAnimationState`, the animation translators |
-| `Assets/Scripts/IK` | `HumanoidIK`, the IK components on every model, and `HumanoidIKGoals` (IK goal helpers) |
-| `Assets/Scripts/Models` | `CharacterModelSlot`, the model sources, `CharacterHitboxes` (the hitboxes on a model's bones), `BodyFitting` and `GenericRigSetup` (what a generic-rig character is made of, for Prepare Generic Rig Models) |
-| `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
-| `Assets/Scripts/Level` | The level elements, their own assembly: water (and `UnderwaterView`, the camera's fog under it), climbable and painted climbable surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock and stable IDs; `Editor/` (their editor assembly: the climbable paint tool, and `LevelFixtureSetup`, which turns a level's named fixtures into level elements and holds the names) |
-| `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | The character's editor tools: `Models/` (HumanoidModelImporter, GenericRigModelImporter, HitboxFitter, the Character Doctor), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `GenericRigs/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
-| `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
-| `Assets/Characters` | Characters made with New Character (`NewCharacter`), each in a folder of its own: its prefab (a variant of Character.prefab), its movement copy, and its own model source with an animation set. Not there until one is made |
-| `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures, and its `Levels/` is an assembly of its own, the level builders' and level checks' fixtures); what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
+| `Assets/MeridianMotion/Runtime/Characters/Character` | `MMotionCharacter`, `CharacterSpawner`, and what the movement and animation share: `CharacterState`, `MovementEvents`, `AbilityValues` |
+| `Assets/MeridianMotion/Runtime/Characters/Motor` | `MMotionMotor` (partial, a file per area) and the types it works on: `MovementStep`, `StepResolution`, `MovementSizeScaling`, `MovementCapabilities`, `MovementSimulation` |
+| `Assets/MeridianMotion/Runtime/Characters/Body` | The character's body: `CharacterBody`, `PrimitiveBody`, `BodyShape`, `BodyDefinition`, `BodyPosture` |
+| `Assets/MeridianMotion/Runtime/Characters/Input` | `CharacterInputFrame`, `InputState`, `StepInputs`, `InputLatch`, `PlayerInputReader`, `ControlledBy`, recording (`InputRecording`, `CharacterInputRecorder`), `InputSources/` |
+| `Assets/MeridianMotion/Runtime/Characters/Determinism` | Saving and restoring the movement: `ObjectGraphSnapshot`, `WorldStateSnapshot`, `StateSerializer`, `StableOrder` |
+| `Assets/MeridianMotion/Runtime/Characters/MovementModes` | `MovementMode`, `AbilityMovementMode` and `MovementComponent`, `StandardMovementMode` (posture and the presses its components share; its capability measurements), `PressBuffer`, `MovementRules` (shared rules: jumps, wall jumps), `FreeSteering` (3D steering off the ground: underwater, and later flying), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
+| `Assets/MeridianMotion/Runtime/Characters/Animation` | `MMotionAnimator`, `CharacterAnimationState`, the animation translators |
+| `Assets/MeridianMotion/Runtime/Characters/IK` | `HumanoidIK`, the IK components on every model, and `HumanoidIKGoals` (IK goal helpers) |
+| `Assets/MeridianMotion/Runtime/Characters/Models` | `CharacterModelSlot`, the model sources, `CharacterHitboxes` (the hitboxes on a model's bones), `BodyFitting` and `GenericRigSetup` (what a generic-rig character is made of, for Prepare Generic Rig Models) |
+| `Assets/MeridianMotion/Runtime/Characters/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
+| `Assets/MeridianMotion/Runtime/LevelElements` | The level elements, their own assembly: water (and `UnderwaterView`, the camera's fog under it), climbable and painted climbable surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock and stable IDs |
+| `Assets/MeridianMotion/Runtime/Cameras` | The camera rig (its own assembly) |
+| `Assets/MeridianMotion/Runtime/PhysicsQueries` | The growing query buffers (its own assembly) |
+| `Assets/MeridianMotion/Editor` | The editor tools: `Models/` (HumanoidModelImporter, GenericRigModelImporter, HitboxFitter, HitboxLayerSetup, the Character Doctor), `Animation/` (clip importers), `Scene/` (Set Up Scene, New Character), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets, New Ability), `Settings/` (`MeridianMotionAssets`, finding the package's assets by GUID; `MeridianMotionSettings`, Project Settings > Meridian Motion); `LevelElements/` (the level elements' editor assembly: the climbable paint tool, and `LevelFixtureSetup`, which turns a level's named fixtures into level elements and holds the names) |
+| `Assets/MeridianMotion/Content` | The assets that ship: `Prefabs/` (Character, Camera Rig, Input Manager, the water effects), `Movement/` (StandardMovementMode, Character Body), `Animation/` (the mannequin's controller, layouts and translator, the generic rig layout, and the Quaternius clip libraries it plays), `Models/Humanoid/Mannequin`, `Materials/` (the water shaders and effects, the unpainted climbable mask), `Input/` (the input actions) |
+| `Assets/MeridianMotion/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures); `Shared/`; what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
+| `Assets/Showcase/Editor` | `Levels/` (the level builders, one per area; `Graybox/`, the shared pieces and the build; `Specs/`, level specs and the Level Editor), `Pipeline/` (`Mannequin/`: MannequinGenerator; `GenericRigs/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`), each an assembly of its own |
+| `Assets/Showcase/Tests/Levels` | The level builders' and level checks' EditMode fixtures (an assembly of their own) |
+| `Assets/Showcase` (the rest) | `Levels/` (the level specs and `LevelBuilderSettings.asset`), `Scenes/`, `Materials/` (the levels' and NoiseConcrete), `Models/` (`Generic/Fox`, the sample humanoids in `Humanoid/`, `Level/`), `Prefabs/Fox.prefab`, `Movement/Fox Movement.asset`, `Animation/CMU` (motion capture, which can't ship: its license forbids selling it as animation). It's the project's output folder (Project Settings > Meridian Motion), so what the tools make goes here: prepared models, and `Characters/` (made with New Character, each in a folder of its own: its prefab, a variant of Character.prefab, its movement copy, and its own model source with an animation set; not there until one is made) |
 | `Tools` | `run_tests.py` (runs the Unity tests from the command line) and `Tests/` (its tests), `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
 | Assembly | Folder | Namespace | May reference |
 | --- | --- | --- | --- |
-| `MeridianMotion.PhysicsQueries` | `Assets/Scripts/PhysicsQueries` | `MeridianMotion.PhysicsQueries` | nothing (the growing query buffers, `QueryBuffer`: shared by the character and the camera, so it knows neither) |
-| `MeridianMotion.Levels` | `Assets/Scripts/Level` (except `Editor/`) | `MeridianMotion.Levels` | MeridianMotion.PhysicsQueries **only** (the level elements: used by the character and the level builders, so they know neither) |
-| `MeridianMotion.Levels.EditorTools` | `Assets/Scripts/Level/Editor` | `MeridianMotion.Levels.EditorTools` | MeridianMotion.Levels **only** (the climbable paint tool, `LevelFixtureSetup`) |
-| `MeridianMotion.Characters` | `Assets/Scripts` (except `CameraSystem/`, `PhysicsQueries/`, `Level/`) | `MeridianMotion.Characters` | Unity.InputSystem, MeridianMotion.PhysicsQueries, MeridianMotion.Levels |
-| `MeridianMotion.Cameras` | `Assets/Scripts/CameraSystem` | `MeridianMotion.Cameras` | Unity.InputSystem, MeridianMotion.PhysicsQueries **only** |
-| `MeridianMotion.EditorTools` | `Assets/Editor` (except `Level/`, `Pipeline/`, `LevelChecks/`) | `MeridianMotion.EditorTools` | MeridianMotion.Characters, MeridianMotion.Cameras, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools |
-| `MeridianMotion.Showcase.Pipeline` | `Assets/Editor/Pipeline` | `MeridianMotion.Showcase.Pipeline` | MeridianMotion.Characters, MeridianMotion.EditorTools (the generators and `BlenderRunner`; its internals through `InternalsVisibleTo`, in `Assets/Editor/AssemblyInfo.cs`) |
-| `MeridianMotion.Showcase.LevelChecks` | `Assets/Editor/LevelChecks` | `MeridianMotion.Showcase.LevelChecks` | MeridianMotion.Characters, MeridianMotion.EditorTools (the movement envelope; its internals as the pipeline does) |
-| `MeridianMotion.Showcase.Levels` | `Assets/Editor/Level` | `MeridianMotion.Showcase.Levels` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools **only** |
-| `MeridianMotion.Tests.EditMode` | `Assets/Tests/EditMode` (except `Levels/`) | `MeridianMotion.Tests.EditMode`, a fixture in `.EditMode.<Area>` (its folder) | MeridianMotion.Characters, MeridianMotion.EditorTools, MeridianMotion.Tests.Shared, MeridianMotion.PhysicsQueries, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools |
-| `MeridianMotion.Showcase.Tests.Levels` | `Assets/Tests/EditMode/Levels` | `MeridianMotion.Showcase.Tests.Levels` | MeridianMotion.Characters, MeridianMotion.EditorTools, MeridianMotion.Tests.Shared, MeridianMotion.Showcase.Levels, MeridianMotion.Showcase.LevelChecks, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools (`LevelEditorTests`, `LevelSpecTests`, `MovementEnvelopeTests`, `GrayboxUV2Tests`) |
-| `MeridianMotion.Tests.PlayMode` | `Assets/Tests/PlayMode` | `MeridianMotion.Tests` (shared), a fixture in `.<Area>` (its folder) | MeridianMotion.Characters, MeridianMotion.Cameras, MeridianMotion.Tests.Shared, MeridianMotion.PhysicsQueries, MeridianMotion.Levels |
-| `MeridianMotion.Tests.Shared` | `Assets/Tests/Shared` | `MeridianMotion.Tests` | MeridianMotion.Characters (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
+| `MeridianMotion.PhysicsQueries` | `Assets/MeridianMotion/Runtime/PhysicsQueries` | `MeridianMotion.PhysicsQueries` | nothing (the growing query buffers, `QueryBuffer`: shared by the character and the camera, so it knows neither) |
+| `MeridianMotion.Levels` | `Assets/MeridianMotion/Runtime/LevelElements` | `MeridianMotion.Levels` | MeridianMotion.PhysicsQueries **only** (the level elements: used by the character and the level builders, so they know neither) |
+| `MeridianMotion.Levels.EditorTools` | `Assets/MeridianMotion/Editor/LevelElements` | `MeridianMotion.Levels.EditorTools` | MeridianMotion.Levels **only** (the climbable paint tool, `LevelFixtureSetup`) |
+| `MeridianMotion.Characters` | `Assets/MeridianMotion/Runtime/Characters` | `MeridianMotion.Characters` | Unity.InputSystem, MeridianMotion.PhysicsQueries, MeridianMotion.Levels |
+| `MeridianMotion.Cameras` | `Assets/MeridianMotion/Runtime/Cameras` | `MeridianMotion.Cameras` | Unity.InputSystem, MeridianMotion.PhysicsQueries **only** |
+| `MeridianMotion.EditorTools` | `Assets/MeridianMotion/Editor` (except `LevelElements/`) | `MeridianMotion.EditorTools` | MeridianMotion.Characters, MeridianMotion.Cameras, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools |
+| `MeridianMotion.Showcase.Pipeline` | `Assets/Showcase/Editor/Pipeline` | `MeridianMotion.Showcase.Pipeline` | MeridianMotion.Characters, MeridianMotion.EditorTools (the generators and `BlenderRunner`; its internals through `InternalsVisibleTo`, in `Assets/MeridianMotion/Editor/AssemblyInfo.cs`) |
+| `MeridianMotion.Showcase.LevelChecks` | `Assets/Showcase/Editor/LevelChecks` | `MeridianMotion.Showcase.LevelChecks` | MeridianMotion.Characters, MeridianMotion.EditorTools (the movement envelope; its internals as the pipeline does) |
+| `MeridianMotion.Showcase.Levels` | `Assets/Showcase/Editor/Levels` | `MeridianMotion.Showcase.Levels` | Unity.RenderPipelines.Core.Runtime, Unity.RenderPipelines.Universal.Runtime, Unity.TextMeshPro, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools **only** |
+| `MeridianMotion.Tests.EditMode` | `Assets/MeridianMotion/Tests/EditMode` | `MeridianMotion.Tests.EditMode`, a fixture in `.EditMode.<Area>` (its folder) | MeridianMotion.Characters, MeridianMotion.EditorTools, MeridianMotion.Tests.Shared, MeridianMotion.PhysicsQueries, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools |
+| `MeridianMotion.Showcase.Tests.Levels` | `Assets/Showcase/Tests/Levels` | `MeridianMotion.Showcase.Tests.Levels` | MeridianMotion.Characters, MeridianMotion.EditorTools, MeridianMotion.Tests.Shared, MeridianMotion.Showcase.Levels, MeridianMotion.Showcase.LevelChecks, MeridianMotion.Levels, MeridianMotion.Levels.EditorTools (`LevelEditorTests`, `LevelSpecTests`, `MovementEnvelopeTests`, `GrayboxUV2Tests`) |
+| `MeridianMotion.Tests.PlayMode` | `Assets/MeridianMotion/Tests/PlayMode` | `MeridianMotion.Tests` (shared), a fixture in `.<Area>` (its folder) | MeridianMotion.Characters, MeridianMotion.Cameras, MeridianMotion.Tests.Shared, MeridianMotion.PhysicsQueries, MeridianMotion.Levels |
+| `MeridianMotion.Tests.Shared` | `Assets/MeridianMotion/Tests/Shared` | `MeridianMotion.Tests` | MeridianMotion.Characters (what both test assemblies use: `TestTimingAttribute`, `TestArea`) |
 
 **Names.** The package is Meridian Motion: every namespace and assembly starts `MeridianMotion.` (the showcase's own, which doesn't
 ship, `MeridianMotion.Showcase.`); every component has `[AddComponentMenu("Meridian Motion/<Area>/...")]` and every asset type a
 Create menu under "Meridian Motion/<Area>/"; the tools are under Tools > Meridian Motion (the showcase's under its Showcase
 submenu). No namespace may be named as a Unity type it would hide inside `MeridianMotion` (`.Cameras`, not `.Camera`;
-`.PhysicsQueries`, not `.Physics`; `.EditorTools`, not `.Editor`). The folders keep their names (`Assets/Scripts/CameraSystem`
-holds `MeridianMotion.Cameras`). A component's class name must be one other packages are unlikely to use, since Add
+`.PhysicsQueries`, not `.Physics`; `.EditorTools`, not `.Editor`). Folders are named for their assemblies
+(`Runtime/Cameras` holds `MeridianMotion.Cameras`, `Runtime/LevelElements` `MeridianMotion.Levels`). A component's class name must be one other packages are unlikely to use, since Add
 Component's search shows bare class names (ReferenceAssets/OpenTasks.md, category E).
 
 The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its
 `ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both, kept in step.
 
 **The package line.** The character is meant to ship as an Asset Store package without the showcase's levels or its
-Blender pipeline, and the assemblies are split along that line:
-- *Ships:* `MeridianMotion.Characters`, `MeridianMotion.PhysicsQueries`, `MeridianMotion.Levels` and its `.Editor`,
+Blender pipeline: what ships is `Assets/MeridianMotion`, and nothing else, so cutting the package is taking that folder. The
+assemblies are split along that line:
+- *Ships:* `MeridianMotion.Characters`, `MeridianMotion.PhysicsQueries`, `MeridianMotion.Levels` and its `.EditorTools`,
   `MeridianMotion.EditorTools`, and the test assemblies (`Tests.Shared`, `Tests.EditMode`, `Tests.PlayMode`).
   `MeridianMotion.Cameras` is undecided: it knows nothing of the character, so it can ship or be left out (and the PlayMode
   tests that reference it, `Cameras/`, with it).
-- *Doesn't ship:* the level builders (`MeridianMotion.Showcase.Levels`), the pipeline (`MeridianMotion.Showcase.Pipeline`),
-  the level checks (`MeridianMotion.Showcase.LevelChecks`), their tests (`MeridianMotion.Showcase.Tests.Levels`), and
-  `Tools/`.
+- *Doesn't ship* (`Assets/Showcase`): the level builders (`MeridianMotion.Showcase.Levels`), the pipeline
+  (`MeridianMotion.Showcase.Pipeline`), the level checks (`MeridianMotion.Showcase.LevelChecks`), their tests
+  (`MeridianMotion.Showcase.Tests.Levels`), and their content; and `Tools/`.
 
 So nothing that ships may reference what doesn't. Shipped code reaches the pipeline only through a hook the pipeline
 registers with (`HumanoidModelPostprocessor.BeforePreparing`, which `MannequinRegeneration` uses); the mannequin's paths
 are the character side's (`HumanoidModelImporter.MannequinModelPath`, `.MannequinPrefabPath`), which
 `MannequinGenerator` reads; and the tuning presets' inspector finds the Character prefab by Set Up Scene's path
-(`CharacterSceneSetup.CharacterPrefabPath`), not the level checks'. What makes the animation ready ships: the Animator
+(`CharacterSceneSetup.CharacterPrefabPath`), not the level checks'. Shipped tools find the package's own assets by
+their GUIDs (`MeridianMotionAssets`), never a path written in the code, and write what they make into the output folder
+(`MeridianMotionSettings`), never into the package (which may be read-only, installed under `Packages/`). The shipped
+tests that need the showcase's content (the fox, the levels' materials) skip without it (`CharacterTestRig.FoxPrefab`,
+`NoFox`). What makes the animation ready ships: the Animator
 layouts and their builder (`AnimatorControllerBuilder`), and the clips' preparation (`AnimationPreparation`, Prepare
 Animations), which the generators call after their Blender step. So does setting up a generic-rig character from a model someone
 already has: `GenericRigModelImporter` (Prepare Generic Rig Models), `GenericRigSetup` and its bone guessing, paw placement's set-up,
-the hitbox bones, the generic-rig character body fit (`BodyFitting.GenericRig`), the generic rig layout (`Assets/Animation/Generic-rig character
+the hitbox bones, the generic-rig body fit (`BodyFitting.GenericRig`), the generic rig layout (`Assets/MeridianMotion/Content/Animation/Generic Rig
 Layout.asset`) and making a generic-rig character's prefab (`NewCharacter.SaveVariant`): `FoxGenerator` writes the fox's setup and
 calls them. The generators keep only their Blender step (and the data only their model knows: the fox's setup, written
 where it's missing), and nothing that ships names Blender or the generators (the hygiene check, check 18).
@@ -100,7 +117,7 @@ where it's missing), and nothing that ships names Blender or the generators (the
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
    (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
    no longer exists (renamed without `[MovedFrom]`), two `CharacterState` or `MovementEvents` members sharing a bit
-   (or one that isn't a single bit), and `HasFlag` on either (it boxes, every step). And it holds every movement component
+   (or one that isn't a single bit), `HasFlag` on either (it boxes, every step), a `...FromCommandLine` entry point the docs or tools name that the code doesn't declare, and an `"Assets/..."` path in shipped code (find the asset by its GUID, `MeridianMotionAssets`, or write into the output folder). And it holds every movement component
    to docs/adding-an-ability.md: a `[Tooltip]` on each setting, settings of kinds presets copy (numbers, bools, enums,
    curves), `Traits` and `StateEvents` on a takeover, its states set, a PlayMode fixture naming it (on the ability test
    kit, `AbilityFixture<T>`, unless the script's `NOT_YET_ON_THE_KIT` lists it), its inspector name in movement.md's
@@ -121,7 +138,7 @@ where it's missing), and nothing that ships names Blender or the generators (the
    the movement envelope or level spec schema, or the workflow): a change to the Python tools alone runs the hygiene
    job, which also tests the levelspec tool and the test runner script and syntax-checks every Python script.
 3. **A refactor of the movement must leave `GoldenPathTests` passing:** it holds the character's movement, step by step,
-   to recorded paths (docs/testing.md, Golden paths). Record them again (`CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1`)
+   to recorded paths (docs/testing.md, Golden paths). Record them again (`MERIDIAN_MOTION_RECORD_GOLDEN_PATHS=1`)
    only when a change is meant to change the movement, and check the recorded paths' diff.
 4. **A change to collision or the ground** (the body, the probes, `MMotionMotor.Collision`/`.Ground`/`.Hover`)
    must keep `GroundContactTests` passing: compare its step traces before and after (Logs/StepTraces, docs/testing.md).
@@ -155,16 +172,16 @@ where it's missing), and nothing that ships names Blender or the generators (the
 
 These are the canonical rules; docs/architecture.md summarises them for readers and links here. Keep the two in step.
 
-- **The camera knows nothing about the character.** Nothing in `Assets/Scripts/CameraSystem` may reference the
+- **The camera knows nothing about the character.** Nothing in `Assets/MeridianMotion/Runtime/Cameras` may reference the
   `MeridianMotion.Characters` or `MeridianMotion.Levels` namespaces or assemblies; it follows a plain Transform. A camera feature
   that needs character information exposes a generic hook (an interface, an event, a settable value) connected from
   character code.
 - **Models come from a `CharacterModelSource`.** `CharacterModelSlot` asks its source for a model (`CreateModelAsync`)
   and gives it back (`ReleaseModel`); it never instantiates or destroys one itself. New ways of getting a model are new
   subclasses.
-- **The level knows nothing about the character or the camera.** The level elements (`Assets/Scripts/Level`, the
+- **The level knows nothing about the character or the camera.** The level elements (`Assets/MeridianMotion/Runtime/LevelElements`, the
   `MeridianMotion.Levels` assembly) are the level's: the character uses them (its abilities find them, as with
-  `MeridianMotion.Levels.SwingRope.All`), never the reverse. The builders in `Assets/Editor/Level` make geometry, lighting and named fixtures
+  `MeridianMotion.Levels.SwingRope.All`), never the reverse. The builders in `Assets/Showcase/Editor/Levels` make geometry, lighting and named fixtures
   and markers, and each build attaches the level elements to its fixtures (`LevelFixtureSetup.SetUp`, a step of
   `LevelDefinition`'s build, before saving); their assembly references the level elements and nothing of the character's
   or the camera's. The fixture and marker names are `LevelFixtureSetup`'s constants, the one source both sides use
@@ -247,7 +264,7 @@ shows it as a missing component. Unity silently drops enum fields wider than 32 
   never copy a GUID. Move or delete a file's `.meta` with it (`git mv` both, which keeps references working).
 - Avoid hand-editing `.prefab`, `.unity` and `.asset` YAML. Prefer, in order: code that needs no asset change
   (defaults in field initializers, `GetComponent` fallbacks); an editor script run with `-executeMethod`; a minimal
-  edit of a value you understand (a tuning number in `Assets/ScriptableObjects/StandardMovementMode.asset` is fine). If
+  edit of a value you understand (a tuning number in `Assets/MeridianMotion/Content/Movement/StandardMovementMode.asset` is fine). If
   a task needs inspector wiring you can't do safely, describe the exact change for a person to make.
 - The level scenes are generated (see Generated assets) and stored with Git LFS, as are the models and their textures: a
   scene's diff isn't readable, so rebuild a level and look at it rather than reviewing its YAML.
@@ -259,25 +276,25 @@ change and say regeneration is still needed.
 
 | Generated | Generator |
 | --- | --- |
-| `Mannequin.fbx` (mesh, rig, clips), the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender, then Prepare Animations |
-| Every Animator Controller (`Assets/Animation/Mannequin.controller`, `Fox.controller`), and the libraries' clips' floor and swim offsets | `AnimationPreparation` (Prepare Animations), building each from its Animator Layout (`AnimatorControllerBuilder`). The layouts (`Mannequin Layout.asset`, `Fox Layout.asset`) are hand-edited sources |
-| `Fox.fbx` (mesh, rig, clips), its clips' import settings, and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender, then preparing the fox as any generic-rig character (`GenericRigModelImporter`) and saving Fox.prefab (`NewCharacter.SaveVariant`). It makes `Fox Setup.asset`, `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-edited |
-| A generic-rig character's `[name] Model.prefab`, `[name].asset` and its animation set's controller in `Assets/Models/Generic/[name]`; where they're missing, its `[name] Setup.asset` (guessed), `[name] Animation Set.asset` (guessed), translator and `[name] Body.asset` (fitted), which are then hand-edited | `GenericRigModelImporter` (Prepare Generic Rig Models, which runs by itself when a generic-rig character's model, setup or set changes) |
-| Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/Humanoid` | `HumanoidModelImporter` (Prepare Humanoid Models) |
+| `Mannequin.fbx` (mesh, rig, clips), the model setup on `Assets/MeridianMotion/Content/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender, then Prepare Animations |
+| Every Animator Controller (`Assets/MeridianMotion/Content/Animation/Mannequin.controller`, `Fox.controller`), and the libraries' clips' floor and swim offsets | `AnimationPreparation` (Prepare Animations), building each from its Animator Layout (`AnimatorControllerBuilder`). The layouts (`Mannequin Layout.asset`, `Fox Layout.asset`) are hand-edited sources |
+| `Fox.fbx` (mesh, rig, clips), its clips' import settings, and `Assets/Showcase/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender, then preparing the fox as any generic-rig character (`GenericRigModelImporter`) and saving Fox.prefab (`NewCharacter.SaveVariant`). It makes `Fox Setup.asset`, `Fox Body.asset` and `Assets/Showcase/Movement/Fox Movement.asset` only where they're missing: those are hand-edited |
+| A generic-rig character's `[name] Model.prefab`, `[name].asset` and its animation set's controller in `Assets/Showcase/Models/Generic/[name]`; where they're missing, its `[name] Setup.asset` (guessed), `[name] Animation Set.asset` (guessed), translator and `[name] Body.asset` (fitted), which are then hand-edited | `GenericRigModelImporter` (Prepare Generic Rig Models, which runs by itself when a generic-rig character's model, setup or set changes) |
+| Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in each `Models/Humanoid` folder (the package's, the mannequin's; the output folder's, the rest) | `HumanoidModelImporter` (Prepare Humanoid Models) |
 | Every model prefab's hitboxes (`BoneHitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Humanoid Models and Prepare Generic Rig Models also run on each model they save, keeping its settings |
 | A scene's Meridian Motion Setup object (spawner, spawn points, input manager, camera) and its course timers' racer | `CharacterSceneSetup` (Set Up Scene), which also runs `LevelFixtureSetup`, for a scene whose fixtures aren't set up yet |
-| The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data, and their level elements (attached to the fixtures, their course timers in a "Course Timers" group) | Their builders in `Assets/Editor/Level`, whose build runs `LevelFixtureSetup` before saving |
-| The `MeridianBasin` scene, its `Environment/` assets and baked data, and its level elements (as the builders' are) | Built from its spec, `Assets/Levels/MeridianBasin.level.json` (which `Tools/LevelSpec/examples/meridian_basin.py` writes), by `LevelSpecTools` (Build Level from Spec) |
-| `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |
+| The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data, and their level elements (attached to the fixtures, their course timers in a "Course Timers" group) | Their builders in `Assets/Showcase/Editor/Levels`, whose build runs `LevelFixtureSetup` before saving |
+| The `MeridianBasin` scene, its `Environment/` assets and baked data, and its level elements (as the builders' are) | Built from its spec, `Assets/Showcase/Levels/MeridianBasin.level.json` (which `Tools/LevelSpec/examples/meridian_basin.py` writes), by `LevelSpecTools` (Build Level from Spec) |
+| `Tools/LevelSpec/level-spec.schema.json`, and `Assets/Showcase/Levels/[scene].level.json` for levels with builders | `LevelSpecTools` (Export Level Specs). Specs can also hold Level Editor or levelspec-tool edits: don't re-export over those without asking |
 | Climbable paint masks (`Assets/ClimbablePaint`) | A `PaintedClimbableSurface`'s Repaint Masks |
-| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor: `MovementEnvelopeAutoWriter`), in the level checks (`Assets/Editor/LevelChecks`), from the default character's capabilities |
+| `Tools/LevelSpec/envelope.json` (the movement checks' limits) | `MovementEnvelopeWriter` (Write Movement Envelope, and on saving the tuning in the editor: `MovementEnvelopeAutoWriter`), in the level checks (`Assets/Showcase/Editor/LevelChecks`), from the default character's capabilities |
 | A model source's measured height, and its body (`[name] Body.asset`, unless its Refit On Prepare is off) | `HumanoidModelImporter` (Prepare Humanoid Models) |
 
-The tools keep the IK settings on model prefabs and edits to `Assets/Animation/Mannequin Animator Translator.asset`.
+The tools keep the IK settings on model prefabs and edits to `Assets/MeridianMotion/Content/Animation/Mannequin Animator Translator.asset`.
 New Animator parameters, states and transitions belong in a layout (`Mannequin Layout.asset`, `Fox Layout.asset`: docs/animation.md, Animator layouts), with the reason in its note; new clips of the mannequin's own in the Blender scripts. The levels'
-materials (`Assets/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph`, `SwimmableWater.shader` and
-`WaterEffect.shader` are hand-edited: nothing regenerates them. So are the default water effects (`Assets/Prefabs/Effects`,
-`Assets/Materials/Effects`), which Create Water Effects (`WaterEffectAssets`) makes only where they're missing.
+materials (`Assets/Showcase/Materials/Level/Level_[Surface].mat`), `NoiseConcrete.shadergraph`, `SwimmableWater.shader` and
+`WaterEffect.shader` are hand-edited: nothing regenerates them. So are the default water effects (`Assets/MeridianMotion/Content/Prefabs/Effects`,
+`Assets/MeridianMotion/Content/Materials/Effects`), which Create Water Effects (`WaterEffectAssets`) makes only where they're missing.
 
 ## Recipes
 
