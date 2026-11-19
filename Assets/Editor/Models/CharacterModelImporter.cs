@@ -48,8 +48,8 @@ namespace CharacterShowcase.EditorTools
 
         // Models outside this height range (in meters) get their definition's Scale set to bring them to TypicalHeight,
         // since that usually means the file's units were lost (a 180 m or 1.8 cm character).
-        private const float MinHeight = 1f;
-        private const float MaxHeight = 2.5f;
+        internal const float MinHeight = 1f;
+        internal const float MaxHeight = 2.5f;
         private const float TypicalHeight = 1.8f;
 
         /// <summary>The outcome of preparing one model file.</summary>

@@ -51,6 +51,11 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.vault.IsActive;
         /// <summary>Vaulting, the character's hands are on the obstacle, which holds it up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        /// <summary>
+        /// Stepping up shows as the walk carried on, the model eased up after the character and the feet tucked onto the top
+        /// (see the AnimationController's Stepping Up settings): no animation state of its own is needed.
+        /// </summary>
+        public override CharacterState ShownByLocomotion => CharacterState.SteppingUp;
         /// <summary>The events of Vaulting and SteppingUp starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

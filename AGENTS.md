@@ -32,6 +32,7 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
 | `Assets/Editor` | The character's editor tools: `Models/` (CharacterModelImporter, HitboxFitter), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `Creatures/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
+| `Assets/Characters` | Characters made with New Character (`NewCharacter`), each in a folder of its own: its prefab (a variant of Character.prefab), its movement copy, and its own model source with an animation set. Not there until one is made |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures, and its `Levels/` is an assembly of its own, the level builders' and level checks' fixtures); what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
 | `Tools` | `run_tests.py` (runs the Unity tests from the command line) and `Tests/` (its tests), `CI/` (hygiene check), `LevelSpec/` (levelspec tool), `Mannequin/` and `Fox/` (Blender scripts), `Blender/` (what they share: `blender_common.py`, the FBX export and posing helpers), `Animation/` (Blender scripts for clip libraries: root motion, rest pose, and taking Quaternius's male mannequin out of its library) |
 
@@ -268,8 +269,9 @@ and events, its place in the mode, animation, level fixtures, tests and docs). K
 `CharacterState.cs` and `MovementEvents.cs`.
 
 **A new character or model:** follow [docs/adding-a-character.md](docs/adding-a-character.md) (a new look for the
-humanoid, a character of its own as a prefab variant, or a creature); its failures are in docs/troubleshooting.md's New
-characters.
+humanoid, a character of its own, which New Character makes, or a creature); check it with the Character Doctor
+(`CharacterChecks`, `CharacterDoctorWindow.CheckFromCommandLine`); its failures are in docs/troubleshooting.md's New
+characters. Every character prefab in the project is spawned and walked by `EveryCharacterTests`.
 
 **A new level mechanic, a new level piece, or a change to a builder:** follow
 [docs/adding-level-content.md](docs/adding-level-content.md).

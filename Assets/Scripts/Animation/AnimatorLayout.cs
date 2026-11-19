@@ -60,6 +60,8 @@ namespace Character
         public string name;
         [Tooltip("Its clips in order of preference (a library's, then a fallback): the first that's there is used")]
         public AnimationClip[] candidates;
+        [Tooltip("Another slot whose clip it uses when none of its own is there (a run with no clip of its own uses the walk's)")]
+        public string fallbackSlot;
     }
 
     /// <summary>What must be there, and what mustn't, for part of a layout to be built.</summary>

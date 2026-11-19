@@ -85,6 +85,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | UnderwaterViewTests | Levels | Levels | the camera's underwater view |
 | CameraRigTests | Cameras | Camera | the camera rig |
 | SpawnerTests | Spawning | Spawning | the character spawner |
+| EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
 
 ### Movement (the Movement category; see [Movement](movement.md))
 
@@ -305,6 +306,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - following a new target with `Follow`: snapping to it and looking the way it faces, and taking its eye anchor and size reference in place of the old target's.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
+- **EveryCharacterTests**: every character prefab in the project (one with an ACCharacterController: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.
 - **SpawnerTests**: the character spawner:
   - spawning at a spawn point and facing its way, at a chosen point or one chosen at random from all of them, on Start or only when asked; treating an all-zero rotation as none;
   - telling listeners through both events; handing only the local player's character to the camera (an AI's spawned beside it isn't), each told who it's for;
@@ -325,11 +327,14 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 | MovementTuningPresetTests | Movement | Movement | tuning presets |
 | QueryBufferTests | Movement | Movement | the physics query buffers growing |
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
+| AnimationSetTests | Animations | Animation | animation sets and fallback clip slots |
 | LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
 | MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |
+| CharacterDoctorTests | Models | Models | the Character Doctor's checks |
 | PreparedModelTests | Models | Models (some tests SampleContent) | Prepare Character Models |
 | LevelFixtureSetupTests | LevelElements | Levels | setting up a level's mechanics from its markers |
 | ClimbablePaintTests | LevelElements | Levels | the climbable paint tools and shader |
+| NewCharacterTests | Spawning | Spawning | New Character |
 | SceneGameSetupTests | Spawning | Spawning, SampleContent | Set Up Scene |
 | LevelEditorTests | Levels (own assembly) | Levels | the Level Editor |
 | LevelSpecTests | Levels (own assembly) | Levels | level specs building their levels |
@@ -351,11 +356,13 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
   - a recording keeping the latest frames, and reading back from its file exactly (and refusing what isn't one).
 
 ### Animations (the Animation category; see [Character Model and Animations](animation.md))
+- **AnimationSetTests**: an animation set's controller being its layout's with its clips in the roles it fills and the layout's in the rest (the mannequin's, with an idle of the set's own, differing from the shared controller in that clip alone), made beside the set the first time it's built; and a clip slot with no clip of its own playing its fallback slot's.
 - **AbilityValuesTests**: the values abilities publish for their look (`AbilityValues`): kept by their names' hashes, the same in every process; set and read back, a name never set not found; a table holding its capacity and saying so past it; and setting and reading allocating nothing.
 - **LocomotionBlendTests** (sample content): the shared Animator Controller's Locomotion blend tree lines up every loop to land its left foot at the same moment, and each loop shown at its own strides' speed (the walks, the jog and the sprint) keeps its feet in step with the ground there.
 - **MotionCaptureClipTests** (sample content): every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame; played on the mannequin, every clip that moves about on its feet stays on the spot and faces forward; each check lists every clip that fails it.
 
 ### Models (the Models category; see [Character models](animation.md#character-models))
+- **CharacterDoctorTests**: every character prefab in the project failing none of the Character Doctor's checks, and one with no model source failing that check, saying what to do.
 - **PreparedModelTests**:
   - every model file has a source; every prepared model having a hitbox on each of its body's bones, on the CharacterHitbox layer, which the character's movement and foot placement leave out;
   - straightening nodes above the skeleton keeping everything under them where it was, unevenly scaled ones included, and leaving what can't be straightened; facing corrections rounding to the nearest quarter turn;
@@ -377,6 +384,7 @@ The level elements' editor tools (Assets/Scripts/Level/Editor), which are part o
 The level builders take their marker names and the unpainted mask's path from the level elements (`LevelFixtureSetup`'s constants, spawn markers' too, and `ClimbablePaintAssets.NoMaskPath`), so each has one source, and there's nothing for a test to check they agree on.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
+- **NewCharacterTests**: New Character making a variant of Character.prefab wearing the chosen model in its own folder, with its own copy of the default movement or the default itself shared; with an animation set, a model source of its own playing the set's controller, the shared one left as it was; and answers it can't make refused, saying why.
 - **SceneGameSetupTests** (sample content): setting up a scene:
   - replacing a placed character with a spawn point where it stood (or keeping it, when asked), spawning at the scene's spawn markers;
   - set up again, keeping its spawn points and its spawner's NPC routes and replacing its old setup;

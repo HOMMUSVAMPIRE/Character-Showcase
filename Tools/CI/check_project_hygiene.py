@@ -375,11 +375,13 @@ DOCUMENTED_IN_MOVEMENT_MD = {
     "Jumping": "movement.md's Jumping",
     "Dashing": "movement.md's Dash",
 }
-# Components that aren't abilities a player starts, so the ability test kit (AbilityFixture<X>: starting from its inputs,
-# turned off mid-use, ...) has nothing to check.
+# Components that aren't abilities a player starts, so they needn't be on the ability test kit (AbilityFixture<X>), nor
+# have a setting whose 0 turns them off. A fixture may still use the kit for the checks that apply (WadeTests does).
 NOT_AN_ABILITY = {
     "WalkingAndRunning": "walking is the movement when no ability has the character: nothing starts or ends",
     "FallAndAirHandling": "gravity, the fall speed limit, air steering and friction act every step: nothing starts or ends",
+    "Wading": "it's where the character stands (water too shallow to swim in), not something it does: it never takes the "
+              "character over, and how deep wading starts is no on-off switch",
 }
 # Components whose PlayMode fixture doesn't derive from the ability test kit (AbilityFixture<X>) yet. Every new ability
 # starts on the kit (the check fails without it); each of these comes off the list as its fixture moves to the kit (the

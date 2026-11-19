@@ -39,8 +39,9 @@ namespace CharacterShowcase.Tests.Traversal
 
         protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
-        // Neither of its settings turns it off: a Wade Start Depth of 0 wades in any water, and a Wade Speed Multiplier
-        // (at least 0.05) of 1 still wades, only without slowing.
+        // Wading isn't an ability (the hygiene check's NOT_AN_ABILITY: it's where the character stands), so it has no
+        // setting whose 0 turns it off: a Wade Start Depth of 0 wades in any water, and a Wade Speed Multiplier of 1 still
+        // wades, only without slowing. The kit's other checks apply, and are kept.
         protected override string OffSetting => null;
 
         /// <summary>The character standing on a floor with water this far over its feet (worked out from its size, so spawned first).</summary>

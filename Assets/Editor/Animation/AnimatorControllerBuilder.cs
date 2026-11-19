@@ -24,37 +24,70 @@ namespace CharacterShowcase.EditorTools
         /// Builds the layout's controller, returning it, or null (with an error in the Console) if it can't: no controller
         /// to build into, a state the default names isn't built, a transition between states that aren't there.
         /// </summary>
-        public static AnimatorController Build(AnimatorLayout layout)
+        public static AnimatorController Build(AnimatorLayout layout) => Build(layout, null, layout.controller as AnimatorController, layout);
+
+        /// <summary>
+        /// Builds an animation set's controller: its layout, with the set's clips in the slots it fills (see
+        /// CharacterAnimationSet). Its controller is made beside it the first time ("[set] Controller.controller").
+        /// </summary>
+        public static AnimatorController Build(CharacterAnimationSet set)
         {
-            var controller = layout.controller as AnimatorController;
+            if (set.layout == null)
+            {
+                Debug.LogError($"[{LogName}] '{set.name}' names no Animator Layout to start from (its Layout).", set);
+                return null;
+            }
+            var controller = set.controller as AnimatorController;
+            if (controller == null)
+            {
+                string folder = System.IO.Path.GetDirectoryName(AssetDatabase.GetAssetPath(set));
+                controller = AnimatorController.CreateAnimatorControllerAtPath(AssetDatabase.GenerateUniqueAssetPath($"{folder}/{set.name} Controller.controller"));
+                set.controller = controller;
+                EditorUtility.SetDirty(set);
+            }
+            return Build(set.layout, set, controller, set);
+        }
+
+        private static AnimatorController Build(AnimatorLayout layout, CharacterAnimationSet set, AnimatorController controller, Object context)
+        {
             if (controller == null)
             {
                 Debug.LogError($"[{LogName}] '{layout.name}' names no Animator Controller to build into (its Controller).", layout);
                 return null;
             }
-            var build = new Construction(layout);
+            var build = new Construction(layout, set);
             if (!build.Plan(out string problem))
             {
-                Debug.LogError($"[{LogName}] '{layout.name}': {problem} Nothing was changed.", layout);
+                Debug.LogError($"[{LogName}] '{context.name}': {problem} Nothing was changed.", context);
                 return null;
             }
             build.Into(controller);
             AssetDatabase.SaveAssets();
-            Debug.Log($"[{LogName}] Built '{AssetDatabase.GetAssetPath(controller)}' from '{layout.name}':\n{build.Report}", layout);
+            Debug.Log($"[{LogName}] Built '{AssetDatabase.GetAssetPath(controller)}' from '{context.name}':\n{build.Report}", context);
             return controller;
         }
 
-        /// <summary>Builds every Animator Layout in the project into its controller. Returns how many it built.</summary>
         [MenuItem("Tools/Character Showcase/Build Animator Controllers", priority = 5)]
-        public static int BuildAll()
+        private static void BuildAllFromMenu() => BuildAll();
+
+        /// <summary>
+        /// Builds every Animator Layout in the project into its controller, then every animation set into its own (after
+        /// the layouts they start from). Returns whether every one built.
+        /// </summary>
+        public static bool BuildAll()
         {
-            int built = 0;
+            bool all = true;
             foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(AnimatorLayout)))
             {
                 var layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(AssetDatabase.GUIDToAssetPath(guid));
-                if (layout != null && Build(layout) != null) { built++; }
+                all &= layout != null && Build(layout) != null;
             }
-            return built;
+            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(CharacterAnimationSet)))
+            {
+                var set = AssetDatabase.LoadAssetAtPath<CharacterAnimationSet>(AssetDatabase.GUIDToAssetPath(guid));
+                all &= set != null && Build(set) != null;
+            }
+            return all;
         }
 
         /// <summary>For -executeMethod: builds every layout (or only -layout [path]), then exits (code 1 if one failed).</summary>
@@ -68,11 +101,7 @@ namespace CharacterShowcase.EditorTools
                 succeeded = layout != null && Build(layout) != null;
                 if (layout == null) { Debug.LogError($"[{LogName}] No Animator Layout at '{path}'."); }
             }
-            else
-            {
-                int layouts = AssetDatabase.FindAssets("t:" + nameof(AnimatorLayout)).Length;
-                succeeded = BuildAll() == layouts;
-            }
+            else { succeeded = BuildAll(); }
             CommandLine.Finish(succeeded);
         }
 
@@ -80,13 +109,18 @@ namespace CharacterShowcase.EditorTools
         private sealed class Construction
         {
             private readonly AnimatorLayout layout;
+            private readonly CharacterAnimationSet set;
             private readonly Dictionary<string, AnimationClip> clips = new();
             private readonly Dictionary<(LayoutValueKind, string, Vector2), (bool, float)> measured = new();
             private readonly HashSet<string> builtStates = new();
             private readonly Dictionary<string, LayoutMotion> chosenMotion = new();
             private readonly StringBuilder report = new();
 
-            public Construction(AnimatorLayout layout) => this.layout = layout;
+            public Construction(AnimatorLayout layout, CharacterAnimationSet set)
+            {
+                this.layout = layout;
+                this.set = set;
+            }
 
             public string Report => report.ToString();
 
@@ -95,10 +129,27 @@ namespace CharacterShowcase.EditorTools
             public bool Plan(out string problem)
             {
                 problem = null;
+                // Each slot's clip: the set's for it, else its first candidate that's there; then, for a slot with neither,
+                // its fallback slot's (followed as far as it goes).
                 foreach (ClipSlot slot in layout.clips)
                 {
-                    AnimationClip clip = slot.candidates?.FirstOrDefault(c => c != null);
+                    AnimationClip clip = set != null ? set.ClipFor(slot.name) : null;
+                    if (clip == null) { clip = slot.candidates?.FirstOrDefault(c => c != null); }
+                    else { report.Append($"  {slot.name}: the set's {clip.name}\n"); }
                     if (clip != null) { clips[slot.name] = clip; }
+                }
+                foreach (ClipSlot slot in layout.clips)
+                {
+                    string fallback = slot.fallbackSlot;
+                    for (int hops = 0; !clips.ContainsKey(slot.name) && !string.IsNullOrEmpty(fallback) && hops < layout.clips.Length; hops++)
+                    {
+                        if (clips.TryGetValue(fallback, out AnimationClip theirs))
+                        {
+                            clips[slot.name] = theirs;
+                            report.Append($"  {slot.name}: no clip of its own, so {fallback}'s ({theirs.name})\n");
+                        }
+                        fallback = layout.clips.FirstOrDefault(s => s.name == fallback).fallbackSlot;
+                    }
                 }
                 // States can require other states: built until nothing more can be.
                 bool more = true;

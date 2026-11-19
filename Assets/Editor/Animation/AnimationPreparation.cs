@@ -66,8 +66,7 @@ namespace CharacterShowcase.EditorTools
                     FloatSwimsAtTheSwimDepth(mannequin);
                 }
                 Progress(showProgress, "Building the Animator Controllers from their layouts", 0.75f);
-                int layouts = AssetDatabase.FindAssets("t:" + nameof(AnimatorLayout)).Length;
-                return AnimatorControllerBuilder.BuildAll() == layouts;
+                return AnimatorControllerBuilder.BuildAll();
             }
             finally
             {

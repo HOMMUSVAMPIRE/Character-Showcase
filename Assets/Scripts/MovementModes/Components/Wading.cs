@@ -13,6 +13,8 @@ namespace Character
     [Serializable]
     public class Wading : MovementComponent
     {
+        /// <summary>Wading looks like walking, slowed: no animation state of its own is needed.</summary>
+        public override CharacterState ShownByLocomotion => CharacterState.Wading;
         /// <summary>The events of Wading starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

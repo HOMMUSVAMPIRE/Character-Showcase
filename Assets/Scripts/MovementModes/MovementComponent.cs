@@ -137,6 +137,18 @@ namespace Character
         public virtual MovementEvents OneOffEvents => MovementEvents.None;
 
         /// <summary>
+        /// Those of its states whose look is the character's walking (wading, slowed in shallow water), so a model needs no
+        /// animation state of its own for them: the Character Doctor doesn't ask for one.
+        /// </summary>
+        public virtual CharacterState ShownByLocomotion => CharacterState.Idle;
+
+        /// <summary>
+        /// Whether, as it's tuned, it can be in the given one of its states (Crouching slides only with Sliding Enabled on):
+        /// the Character Doctor asks a model to show only the states its movement can be in.
+        /// </summary>
+        public virtual bool Enters(CharacterState state) => true;
+
+        /// <summary>
         /// The names of the values this component publishes for its look (AbilityValues, set during its step), so an
         /// Animator Parameter Translator's inspector can offer them (Shows > Ability Value). Empty for none.
         /// </summary>

@@ -81,6 +81,8 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
         /// <summary>Swimming, the water holds the character up.</summary>
         public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        /// <summary>It dives only with a Swim Dive Speed (0 turns diving off).</summary>
+        public override bool Enters(CharacterState state) => state != CharacterState.Diving || swimDiveSpeed > 0f;
         /// <summary>The events of Swimming and Diving starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

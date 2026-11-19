@@ -37,9 +37,7 @@ namespace CharacterShowcase.Tests.Traversal
 
         protected override Inputs InputsFor(int step) => CharacterTestRig.Grab(Vector3.forward);
 
-        // Neither of its settings turns it off at 0: a Grab Reach of 0 still takes hold of an object the character is
-        // touching (the reach is the body's sweep, a skin further), and a Push Pull Speed of 0 holds the object still.
-        protected override string OffSetting => null;
+        protected override string OffSetting => "grabReach";
 
         /// <summary>The character on a floor (at floorTop), facing +Z, with a box just in front of it.</summary>
         private IEnumerator SetUpBox(float speedMultiplier = 1f, bool canBePulled = true, float floorTop = 0f, float floorWidth = 100f)

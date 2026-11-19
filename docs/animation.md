@@ -228,7 +228,7 @@ Each character's Animator Controller is built from a layout: an **Animator Layou
 
 A layout holds:
 
-- **Clip slots:** each a name the rest of the layout uses, and its clips in order of preference. The first that's there is used, so a clip from a library that isn't installed falls back to one that is (the mannequin's slots list the Quaternius clip first, then the mannequin's own).
+- **Clip slots:** each a name the rest of the layout uses, and its clips in order of preference. The first that's there is used, so a clip from a library that isn't installed falls back to one that is (the mannequin's slots list the Quaternius clip first, then the mannequin's own). A slot with none of its own there can name a Fallback Slot whose clip it plays instead (a run with no clip of its own plays the walk's).
 - **Parameters:** the controller's, and their defaults.
 - **Blend trees:** by name, each blending clip slots (or other trees: the fox's Locomotion holds its Standing tree) by one parameter or two. A motion names one as `tree:` and its name, and states naming the same tree share it.
 - **States:** each with its motions in order of preference. The first whose clips are all there (and whose measured numbers can be measured) is used, with its own speed, speed parameter, time parameter (a progress driving how far through it plays), cycle offset, and parameters whose defaults it sets (a playback parameter's top speeds: see [Replacing the model](#replacing-the-model), the translator's Playback).
@@ -240,6 +240,16 @@ A layout holds:
 **Building.** Tools > Character Showcase > Build Animator Controllers builds every layout in the project (or `-executeMethod CharacterShowcase.EditorTools.AnimatorControllerBuilder.BuildFromCommandLine`, with `-layout <path>` for one), and says in the Console what it chose and measured. An Animator Controller's structure can be written out as text to compare two (`AnimatorControllerDescription`: parameters, states, motions, transitions, in an order that doesn't depend on how they were made).
 
 **A new ability's state.** Add its clip slot, a state for it with its motion, and its transitions (typically: in from Any State while its bool is set, out to Locomotion or Airborne when it isn't), with the bool on the translator (see [Replacing the model](#replacing-the-model)), then build. The crouch's transition in excludes every other ability's bool, so add the new one there too, or the two Any State transitions keep swapping the states.
+
+### Animation sets
+
+A character can play clips of its own in some roles (its own idle, a run of its own) over a layout's, with no Animator Controller made by hand: an **Animation Set** (Create > Character Showcase > Animation > Animation Set). Its inspector:
+
+- **Layout:** the layout it starts from (the mannequin's, for a humanoid);
+- **Roles:** every clip slot of the layout, each with the clip the layout plays there; drop a clip on a role to play it there instead, and leave the rest;
+- **Build Its Animator Controller:** builds the layout with the set's clips into a controller of its own (made beside it the first time, "[set] Controller.controller"). Build Animator Controllers and Prepare Animations build every set too, after the layouts.
+
+The set's clips are measured as the layout's are (a walk of its own gets the speed its strides are made for, as its Locomotion threshold), so they fit without tuning. To play it, set its controller as a model source's Animator Controller: New Character does it for a character of your own, with a model source of its own, so the shared one stays as it is (see [Adding a Character](adding-a-character.md)).
 
 ### Prepare Animations
 

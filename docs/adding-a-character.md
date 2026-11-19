@@ -9,7 +9,7 @@ Before you start, open the project as the README says ([How to open this Project
 | You have | Follow |
 | --- | --- |
 | A rigged humanoid model (a person-shaped model with a skeleton, usually an FBX file), and you want the existing character to wear it | [A new look for the humanoid](#a-new-look-for-the-humanoid) |
-| A humanoid model, and you want a character of your own: its own prefab, movement, body and tuning, leaving the default character as it is | [A new character of your own](#a-new-character-of-your-own) |
+| A humanoid model, and you want a character of your own: its own prefab, movement, body and tuning, leaving the default character as it is (New Character makes it) | [A new character of your own](#a-new-character-of-your-own) |
 | A rigged creature that isn't a humanoid (on four legs, say) | [A creature that isn't a humanoid](#a-creature-that-isnt-a-humanoid) |
 
 Not sure whether your model counts as a humanoid? Unity calls a model a Humanoid when it can match its bones to a person's: hips, a spine, a head, two arms and two legs. If yours has those, try the first path: Unity tells you if it can't match them.
@@ -47,24 +47,23 @@ The details: [Character models](animation.md#character-models) (what Prepare Cha
 
 ## A new character of your own
 
-A character of your own is a prefab of its own, so its model, its movement and its body can be changed without changing the default character. There's no tool for this yet: it's done by hand, as `Assets/Prefabs/Fox.prefab` was (a prefab variant of `Character.prefab` with its own model source, body and movement mode).
+A character of your own is a prefab of its own, so its model, its movement and its body can be changed without changing the default character. **Tools > Character Showcase > New Character…** makes it:
 
-1. **Prepare its model:** steps 1 to 3 of [A new look for the humanoid](#a-new-look-for-the-humanoid). You now have its model source, `MyHero.asset`.
-2. **Make the prefab.** In the Project window, open `Assets/Prefabs`, right-click `Character.prefab` and choose Create > Prefab Variant. Name the new prefab (`MyHero`). A variant starts as a copy of Character.prefab and keeps only what you change on it, so improvements to Character.prefab reach it too.
-3. **Make its movement mode.** Open `Assets/ScriptableObjects`, select `BasicMovementMode.asset` and choose Edit > Duplicate. Name the copy (`MyHero Movement`). Its tuning is its own: changing it changes only the characters that use it. (To start from the fox's tuning instead, duplicate `Fox Movement.asset`.)
-4. **Set the prefab up.** Double-click your prefab to open it, and select its top object in the Hierarchy. In the Inspector:
-   - on the **MovementController**, set Movement Handler to your movement mode (drag it from the Project window onto the field);
-   - on the **CharacterModelHost**, set Model Source to your model's source (`MyHero.asset`);
-   - on the **CharacterModelHost**, choose its Body Fit, which says where the character's body comes from:
-     - **Model's Body** (what Character.prefab has, and the usual choice for a humanoid): the body Prepare Character Models fitted to the model, `MyHero Body.asset`. To shape it by hand, open it, untick Refit On Prepare (or preparing the model again refits it), and change its settings.
-     - **Height**: the prefab's own body (the MovementController's Body Definition), scaled to be as tall as the model.
-     - **Off** (what the fox has): the prefab's own body as it is. Give the prefab a body of its own first: duplicate `Assets/ScriptableObjects/Character Body.asset` (or Create > Character Showcase > Body Definition), set it as the MovementController's Body Definition, and shape it in its inspector.
+1. Give it a **Name**: its folder (`Assets/Characters/<name>`) and assets are named after it.
+2. Choose its **Prepared Model**: any model Prepare Character Models has made ready. Or leave that on "(a model file to prepare)" and drop a rigged humanoid FBX on **Model File**: it's copied into a folder of its own under `Assets/Models/CharacterModels` and prepared on the spot.
+3. Choose its **Movement**. **Copy The Default** gives it its own copy of the default character's movement mode to tune (its tuning is its own). **Share The Default** uses the same asset (tuning it tunes both). **Copy The Fox's** starts from the fox's.
+4. Optionally, give it an **Animation Set**: clips of its own in some roles (its own idle or run, say), over the shared animation (see [Animation sets](animation.md#animation-sets)).
+5. Leave **Set Up The Open Scene** ticked to have the open scene spawn it, and press **Make It**.
 
-   Save the prefab (File > Save) and go back to the scene with the arrow at the top of the Hierarchy.
-5. **Tune it** in your movement mode's inspector: each part of the movement is a component in its list, with its own settings and a toggle to turn it off (Fox Movement turns off what a fox can't do). See [Tuning the Character](tuning.md).
-6. **Put it in a scene.** Open the scene and **Tools > Character Showcase > Set Up Scene…**. Press Choose beside Character Prefab and pick your prefab; Model then says "The prefab's own (MyHero)" and Movement Mode "The prefab's own." Press Set Up, save the scene and press Play.
+It makes its prefab (a variant of `Character.prefab`, so improvements to that reach yours too, wearing your model, its body fitted to it), its movement copy, and, with an animation set, a model source of its own playing the set's controller. Then it opens the **Character Doctor** on it (below). To undo it, delete its folder. From the command line: `-executeMethod CharacterShowcase.EditorTools.NewCharacter.MakeFromCommandLine -characterName <name> -model <prepared model's name> -movement CopyTheDefault`.
 
-   To change a scene that's already set up without setting it up again, select its Game Setup > Character Spawner and set its Character Prefab. The spawner's Model Source and Movement Mode, when set, replace the prefab's own, so empty them to use your prefab's.
+**Tune it** in its movement mode's inspector: each part of the movement is a component in its list, with its own settings and a toggle to turn it off (Fox Movement turns off what a fox can't do). See [Tuning the Character](tuning.md).
+
+**Check it** with the **Character Doctor** (Tools > Character Showcase > Character Doctor, or the button on its CharacterModelHost or its model source): each check of its model, rig, measurements, hitboxes, body, eye point and animation, with a light (pass, warn, fail), what it found and why it matters, and a button for the fix where a tool makes it. A warning about an ability with no animation state of its own means it plays the character's walking for that ability: give it a state in its layout, or turn the ability off on its movement mode.
+
+**By hand,** the same is: a prefab variant of `Character.prefab` (right-click it, Create > Prefab Variant); a duplicate of its movement mode (`Assets/ScriptableObjects/BasicMovementMode.asset`, Edit > Duplicate) set as the variant's MovementController's Movement Handler; and the model's source set as its CharacterModelHost's Model Source. Its CharacterModelHost's Body Fit says where its body comes from: **Model's Body** (as Character.prefab has: the body Prepare Character Models fitted to the model, `[name] Body.asset`; untick its Refit On Prepare to shape it by hand), **Height** (its own body, scaled to the model's height) or **Off** (its own body as it is, as the fox has: give it a Body Definition of its own first).
+
+**Put it in another scene:** open the scene and **Tools > Character Showcase > Set Up Scene…**, press Choose beside Character Prefab and pick it, then Set Up. In a scene already set up, its Game Setup > Character Spawner's Character Prefab is it; the spawner's Model Source and Movement Mode, when set, replace the prefab's own, so empty them to use your prefab's.
 
 **What success looks like.** Your prefab is in Set Up Scene's Choose list; in Play mode the character is your model, moving with your tuning; and the default character, in other scenes, is as it was.
 

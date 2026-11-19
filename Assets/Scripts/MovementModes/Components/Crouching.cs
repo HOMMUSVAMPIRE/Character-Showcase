@@ -61,6 +61,8 @@ namespace Character
         public override bool IsActive(MovementController controller) => controller.slide.IsSliding;
         /// <summary>A slide is on the ground: the character is neither held up nor holding on.</summary>
         public override AbilityTraits Traits => AbilityTraits.None;
+        /// <summary>It slides only with Sliding Enabled on (and a Slide Max Duration).</summary>
+        public override bool Enters(CharacterState state) => state != CharacterState.Sliding || (slidingEnabled && slideMaxDuration > 0f);
         /// <summary>The events of Crouching and Sliding starting and ending (see MovementComponent.StateEvents).</summary>
         public override StateEvent[] StateEvents => stateEvents;
         private static readonly StateEvent[] stateEvents =

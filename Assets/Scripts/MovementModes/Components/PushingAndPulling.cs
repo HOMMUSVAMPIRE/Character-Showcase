@@ -15,7 +15,8 @@ namespace Character
         [Tooltip("How fast (m/s) the character pushes or pulls an object, at its authored size, before the object's own " +
                  "speed multiplier (lower for heavier objects)")]
         [SerializeField] private float pushPullSpeed = 1.8f;
-        [Tooltip("How far (m) in front of the character an object can be to take hold of it, at its authored size")]
+        [Tooltip("How far (m) in front of the character an object can be to take hold of it, at its authored size. 0 turns " +
+                 "pushing and pulling off")]
         [SerializeField] private float grabReach = 0.25f;
         [Tooltip("How far (degrees) from facing an object's side head-on the character can be and still take hold of it")]
         [Range(0f, 90f)] [SerializeField] private float grabMaxAngle = 50f;
@@ -111,6 +112,8 @@ namespace Character
         private bool TryGrab(MovementData movementData, bool held, MovementController controller)
         {
             if (!held || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
+            // A reach of 0 turns it off, as every ability's 0 does (the sweep's skin would otherwise still find a touching object).
+            if (grabReach <= 0f) { return false; }
             Vector3 feet = movementData.initialPosition;
             Vector3 facing = Facing(movementData);
             if (!controller.SweepBody(feet, facing, grabReach * controller.HeightScale + controller.Skin, out RaycastHit hit)) { return false; }

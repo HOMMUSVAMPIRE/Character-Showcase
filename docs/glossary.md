@@ -7,6 +7,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Ability value.** A number an ability publishes for its look during its step (`AbilityValues`, named in the component's `AbilityValueNames`), which an Animator Parameter Translator's float parameter can show with no animation code. See [Character Model and Animations](animation.md#replacing-the-model).
 
+**Animation set.** A character's own clips in some roles (its idle, its run), over an Animator layout's, built into a controller of its own (`CharacterAnimationSet`). See [Animation sets](animation.md#animation-sets).
+
 **Animation translator.** What turns the character's animation state into a particular model's Animator parameters (`CharacterAnimationTranslator`), so movement never needs to know which model it's animating. See [Character Model and Animations](animation.md).
 
 **Animator layout.** An asset describing a character's Animator Controller as data (clip slots, parameters, blend trees, states, transitions, with measured numbers and notes), which Build Animator Controllers builds it from. See [Animator layouts](animation.md#animator-layouts).
@@ -18,6 +20,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 **Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](levels.md).
 
 **Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MovementController.Capabilities`). See [Capabilities](movement.md#capabilities).
+
+**Character Doctor.** The editor window that checks a character prefab (its model, rig, measurements, hitboxes, body, eye point and animation) and fixes what it can (`CharacterChecks`). See [Adding a Character](adding-a-character.md).
 
 **Character state.** The flags saying what the character is doing in a physics step (grounded, jumping, wall running, ...): `CharacterState`. Changes in them raise movement events.
 

@@ -44,6 +44,8 @@ Unity can't open a project that's open in the editor, so a batch-mode run quits 
 - *A movement asset names a class that no longer exists:* a movement component was renamed or moved. Give the class `[UnityEngine.Scripting.APIUpdating.MovedFrom(... sourceClassName: "OldName")]`, or the asset shows it as a missing component, its settings lost.
 
 ## New characters
+Start with the **Character Doctor** (Tools > Character Showcase > Character Doctor, or the button on a CharacterModelHost or a model source): it checks a character's model source and prefab, rig, measurements, hitboxes, body, eye point, translator and abilities' animation, says why each matters, and fixes what a tool can. What follows is what it, or play, can show.
+
 What can go wrong adding a model or a character (see [Adding a Character](adding-a-character.md)). Prepare Character Models reports each model in the Console (a line from `[CharacterModelImporter]`, a warning if any model failed), or in a window when it's run from the menu: "not prepared" and the reason, or "ready", with notes.
 
 **A model is skipped: "Unity couldn't map its skeleton to a Humanoid."**

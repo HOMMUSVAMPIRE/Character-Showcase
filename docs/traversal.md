@@ -72,7 +72,7 @@ Large objects with a PushableObject component (a kinematic Rigidbody with a BoxC
 
 **Moving it.** An object's moves are swept against the world, so it stops at walls, and the character stops with it. Pushed off an edge, an object falls (it has simple gravity of its own: the PushableObject's Gravity and Max Fall Speed) and the character lets go. Letting go of Interact or leaving the ground lets go too. Holding an object, the character faces it and can't jump, dash, crouch or roll. Without Interact held, an object is just an obstacle.
 
-The BasicMovementMode asset's Pushing And Pulling component tunes the speed and reach.
+The BasicMovementMode asset's Pushing And Pulling component tunes the speed and reach; a Grab Reach of 0 turns pushing and pulling off.
 
 ## Ropes
 A Rope component makes a rope to swing on: it hangs from its object's position (its anchor), Length metres long, and with Build Mesh on it draws itself (Add Component > Rope on an empty object where the rope is tied; give it a Material). Nothing collides with a rope: characters find it by where it is.
