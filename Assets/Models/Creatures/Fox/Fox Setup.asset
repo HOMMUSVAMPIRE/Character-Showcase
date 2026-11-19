@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33cd8b23fdd647b7ba3bc162292b2ef3, type: 3}
+  m_Name: Fox Setup
+  m_EditorClassIdentifier: CharacterShowcase::Character.CreatureSetup
+  model: {fileID: 919132149155446097, guid: 1abe7c4cac75547e5994c309bd7e503d, type: 3}
+  rootBone: Hips
+  legs:
+  - upper: FrontUpperLeg_L
+    lower: FrontLowerLeg_L
+    foot: FrontPaw_L
+    bendDirection: {x: 0, y: 0, z: -1}
+    contact: {x: -0.08999988, y: 0, z: 0.38}
+    wallClearance: 0.015
+  - upper: FrontUpperLeg_R
+    lower: FrontLowerLeg_R
+    foot: FrontPaw_R
+    bendDirection: {x: 0, y: 0, z: -1}
+    contact: {x: 0.090000145, y: 0, z: 0.38}
+    wallClearance: 0.015
+  - upper: HindUpperLeg_L
+    lower: HindLowerLeg_L
+    foot: HindFoot_L
+    bendDirection: {x: 0, y: 0, z: 1}
+    contact: {x: -0.089999996, y: 0, z: -0.34}
+    wallClearance: 0.045
+  - upper: HindUpperLeg_R
+    lower: HindLowerLeg_R
+    foot: HindFoot_R
+    bendDirection: {x: 0, y: 0, z: 1}
+    contact: {x: 0.09, y: 0, z: -0.34}
+    wallClearance: 0.045
+  eyesBone: Head
+  eyesPosition: {x: 0, y: 0.98, z: 0.64}
+  counterPitchBones:
+  - bone: Tail1
+    noseUpShare: 0.8
+    noseDownShare: 0
+    groundClearance: 0.12
+  - bone: Neck
+    noseUpShare: 0.5
+    noseDownShare: 0.5
+    groundClearance: 0
+  turnBendBones:
+  - bone: Spine1
+    share: 0.25
+  - bone: Spine2
+    share: 0.3
+  - bone: Neck
+    share: 0.25
+  - bone: Head
+    share: 0.2
+  - bone: Tail1
+    share: -0.4
+  - bone: Tail2
+    share: -0.3
+  hitboxBones:
+  - Hips
+  - Spine1
+  - Spine2
+  - Neck
+  - Head
+  - Tail1
+  - Tail2
+  - Tail3
+  - Tail4
+  - FrontUpperLeg_L
+  - FrontLowerLeg_L
+  - FrontPaw_L
+  - FrontUpperLeg_R
+  - FrontLowerLeg_R
+  - FrontPaw_R
+  - HindUpperLeg_L
+  - HindLowerLeg_L
+  - HindFoot_L
+  - HindUpperLeg_R
+  - HindLowerLeg_R
+  - HindFoot_R
+  animationSet: {fileID: 0}
+  layout: {fileID: 11400000, guid: 86f7d46fa3f1c4f6fb8192ea02a491e0, type: 2}
+  unfound: []
+  notes: 'The fox''s, written by Generate Fox where it was missing: its bones are generate_fox.py''s, its paws'' contacts at its toe joints (ftoe, htoe), which its bones don''t record.'

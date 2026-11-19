@@ -27,6 +27,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Component.** See movement component.
 
+**Creature Setup.** What a creature (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`CreatureSetup`, beside its model in Assets/Models/Creatures). Made by Prepare Creatures with its bones guessed from their names, then checked; Prepare Creatures makes the creature from it. See [A creature of your own](creatures.md#a-creature-of-your-own).
+
 **Envelope.** *(showcase levels)* The default character's capabilities written to a file (Tools/LevelSpec/envelope.json) for the levelspec tool, which checks levels against it. Written again whenever the tuning is saved in the editor. See [Tuning the Character](tuning.md#what-changes-when-you-save).
 
 **Extra parts.** More primitives beside a body's shape, together one body (a Body Definition's Extra Parts): the fox's back and head. See [Collision](movement.md#collision).

@@ -24,7 +24,15 @@ namespace CharacterShowcase.EditorTools
         /// Builds the layout's controller, returning it, or null (with an error in the Console) if it can't: no controller
         /// to build into, a state the default names isn't built, a transition between states that aren't there.
         /// </summary>
-        public static AnimatorController Build(AnimatorLayout layout) => Build(layout, null, layout.controller as AnimatorController, layout);
+        public static AnimatorController Build(AnimatorLayout layout)
+        {
+            if (layout.onlyForSets)
+            {
+                Debug.LogError($"[{LogName}] '{layout.name}' is only for animation sets (its Only For Sets): build a set that starts from it.", layout);
+                return null;
+            }
+            return Build(layout, null, layout.controller as AnimatorController, layout);
+        }
 
         /// <summary>
         /// Builds an animation set's controller: its layout, with the set's clips in the slots it fills (see
@@ -80,6 +88,7 @@ namespace CharacterShowcase.EditorTools
             foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(AnimatorLayout)))
             {
                 var layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(AssetDatabase.GUIDToAssetPath(guid));
+                if (layout != null && layout.onlyForSets) { continue; } // Built only into the sets that start from it.
                 all &= layout != null && Build(layout) != null;
             }
             foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(CharacterAnimationSet)))

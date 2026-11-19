@@ -16,7 +16,9 @@ namespace CharacterShowcase.EditorTools
     /// - with an animation set, a model source of its own, the model's playing the set's controller (the shared model
     ///   source is left as it is, for every other character wearing it).
     /// A model file from outside Assets/Models/CharacterModels is copied into a folder of its own there and prepared first
-    /// (Prepare Character Models). Undone by deleting its folder. See docs/adding-a-character.md.
+    /// (Prepare Character Models); a creature's, into one in Assets/Models/Creatures (Prepare Creatures, guessing its setup).
+    /// A creature's prefab has its body as its model source defines it (see SaveVariant). Undone by deleting its folder
+    /// (and a copied model's). See docs/adding-a-character.md and docs/creatures.md.
     /// </summary>
     public static class NewCharacter
     {
@@ -32,8 +34,10 @@ namespace CharacterShowcase.EditorTools
             public string name = "";
             /// <summary>A model source Prepare Character Models has made, or null to prepare modelFile.</summary>
             public CharacterModelSource modelSource;
-            /// <summary>A rigged humanoid model file in the project, prepared on the spot, when there's no model source.</summary>
+            /// <summary>A rigged model file in the project, prepared on the spot, when there's no model source.</summary>
             public GameObject modelFile;
+            /// <summary>Whether modelFile is a creature's (not a humanoid: prepared by the Creature Model Importer).</summary>
+            public bool creature;
             public Movement movement = Movement.CopyTheDefault;
             /// <summary>An animation set its model plays (optional).</summary>
             public CharacterAnimationSet animationSet;
@@ -66,7 +70,8 @@ namespace CharacterShowcase.EditorTools
             AssetDatabase.CreateFolder(CharactersFolder, name);
             made.Add(folder);
 
-            CharacterModelSource source = answers.modelSource != null ? answers.modelSource : PrepareModel(answers.modelFile, name, made);
+            CharacterModelSource source = answers.modelSource != null ? answers.modelSource
+                : answers.creature ? PrepareCreature(answers.modelFile, name, made) : PrepareModel(answers.modelFile, name, made);
             if (source == null) { return null; }
             if (answers.animationSet != null)
             {
@@ -91,21 +96,48 @@ namespace CharacterShowcase.EditorTools
                 made.Add($"{to} (its movement, a copy of {Path.GetFileNameWithoutExtension(from)})");
             }
 
-            // The prefab: a variant of Character.prefab, wearing its model, moving by its mode.
+            string prefabPath = $"{folder}/{name}.prefab";
+            GameObject prefab = SaveVariant(name, prefabPath, source, mode);
+            made.Add($"{prefabPath} (its prefab, a variant of Character.prefab)");
+            AssetDatabase.SaveAssets();
+            return prefab;
+        }
+
+        /// <summary>
+        /// Saves a character prefab at the path: a variant of Character.prefab named name, wearing the model source, moving
+        /// by the mode (null: Character.prefab's). A creature's (its source a creature's: see CreatureModelImporter) also
+        /// has its body as its source defines it (its Body Definition, not fitted to the model, held above its legs over
+        /// steps: Hover Over Steps) and, while its model loads, its eye height. Like the Character prefab, it has no
+        /// collider of its own: its body is a shape, and its model's hitboxes are what meets it.
+        /// </summary>
+        public static GameObject SaveVariant(string name, string prefabPath, CharacterModelSource source, MovementMode mode)
+        {
             var basePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(basePrefab);
             try
             {
                 instance.name = name;
+                var movementController = instance.GetComponent<MovementController>();
+                if (mode != null) { movementController.movementHandler = mode; }
+                bool creature = CreatureModelImporter.IsCreature(source);
+                if (creature)
+                {
+                    var moved = new SerializedObject(movementController);
+                    moved.FindProperty("bodyCollider").objectReferenceValue = null;
+                    // A long body held above its legs, over steps, so it never rests on a step's edge or its corners.
+                    moved.FindProperty("hoverOverSteps").boolValue = true;
+                    moved.FindProperty("bodyDefinition").objectReferenceValue = source.BodyDefinition;
+                    moved.ApplyModifiedPropertiesWithoutUndo();
+                }
                 var host = new SerializedObject(instance.GetComponent<CharacterModelHost>());
                 host.FindProperty("modelSource").objectReferenceValue = source;
+                if (creature)
+                {
+                    host.FindProperty("bodyFit").enumValueIndex = (int)BodyFit.Off;
+                    host.FindProperty("defaultEyeHeight").floatValue = CreatureModelImporter.EyeHeightOf(source);
+                }
                 host.ApplyModifiedPropertiesWithoutUndo();
-                if (mode != null) { instance.GetComponent<MovementController>().movementHandler = mode; }
-                string prefabPath = $"{folder}/{name}.prefab";
-                GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
-                made.Add($"{prefabPath} (its prefab, a variant of Character.prefab)");
-                AssetDatabase.SaveAssets();
-                return prefab;
+                return PrefabUtility.SaveAsPrefabAsset(instance, prefabPath);
             }
             finally { Object.DestroyImmediate(instance); }
         }
@@ -134,14 +166,42 @@ namespace CharacterShowcase.EditorTools
             return result.definition;
         }
 
+        /// <summary>
+        /// Copies a creature's model file into Assets/Models/Creatures/[name] (unless it's in a creature's folder already) and
+        /// prepares it (Prepare Creatures), making its setup, its bones and clips guessed from their names.
+        /// </summary>
+        private static CharacterModelSource PrepareCreature(GameObject modelFile, string name, List<string> made)
+        {
+            string path = AssetDatabase.GetAssetPath(modelFile);
+            if (!CreatureModelImporter.InCreaturesFolder(path))
+            {
+                string folder = $"{CreatureModelImporter.CreaturesFolder}/{name}";
+                if (!AssetDatabase.IsValidFolder(CreatureModelImporter.CreaturesFolder)) { AssetDatabase.CreateFolder("Assets/Models", "Creatures"); }
+                if (!AssetDatabase.IsValidFolder(folder)) { AssetDatabase.CreateFolder(CreatureModelImporter.CreaturesFolder, name); }
+                string copied = $"{folder}/{Path.GetFileName(path)}";
+                AssetDatabase.CopyAsset(path, copied);
+                made.Add($"{copied} (its model file, copied in to be prepared)");
+                path = copied;
+            }
+            CreatureModelImporter.Result result = CreatureModelImporter.Prepare(path);
+            made.AddRange(result.notes.Select(note => $"  ({note})"));
+            if (!result.Succeeded)
+            {
+                Debug.LogError($"[New Character] Couldn't prepare {path}: {result.problem}");
+                return null;
+            }
+            made.Add($"{AssetDatabase.GetAssetPath(result.source)} (its model, prepared as a creature: its setup is '{CreatureModelImporter.SetupPathFor(path)}')");
+            return result.source;
+        }
+
         /// <summary>Sets up the open scene to spawn the character (Set Up Scene), with Undo.</summary>
         public static bool SetUpOpenScene(GameObject prefab) =>
             SceneGameSetup.SetUp(EditorSceneManager.GetActiveScene(), new SceneGameSetup.Settings { characterPrefab = prefab }, withUndo: true);
 
         /// <summary>
         /// For -executeMethod: makes the character -characterName [name] wearing -model [a prepared model's name or source
-        /// path, or a model file's path], with -movement [ShareTheDefault|CopyTheDefault|CopyTheFoxs] and optionally
-        /// -animationSet [path], then exits (code 1 if it can't).
+        /// path, or a model file's path, with -creature for a creature's], with -movement [ShareTheDefault|CopyTheDefault|
+        /// CopyTheFoxs] and optionally -animationSet [path], then exits (code 1 if it can't).
         /// </summary>
         public static void MakeFromCommandLine()
         {
@@ -150,9 +210,13 @@ namespace CharacterShowcase.EditorTools
             if (model != null)
             {
                 answers.modelSource = AssetDatabase.LoadAssetAtPath<CharacterModelSource>(model);
-                if (answers.modelSource == null) { answers.modelSource = CharacterModelImporter.FindReadyDefinitions().FirstOrDefault(d => d.name == model); }
+                if (answers.modelSource == null)
+                {
+                    answers.modelSource = CharacterModelImporter.FindReadyDefinitions().Concat(CreatureModelImporter.FindPrepared()).FirstOrDefault(d => d.name == model);
+                }
                 if (answers.modelSource == null) { answers.modelFile = AssetDatabase.LoadAssetAtPath<GameObject>(model); }
             }
+            answers.creature = System.Environment.GetCommandLineArgs().Contains("-creature");
             string movement = CommandLine.Argument("-movement");
             if (movement != null && System.Enum.TryParse(movement, true, out Movement parsed)) { answers.movement = parsed; }
             string set = CommandLine.Argument("-animationSet");

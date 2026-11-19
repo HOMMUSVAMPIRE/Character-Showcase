@@ -26,11 +26,11 @@ mannequin with animations and IK, a pipeline for other rigged humanoid models, a
 | `Assets/Scripts/MovementModes` | `MovementMode`, `ComposedMovementMode` and `MovementComponent`, `BasicMovementMode` (posture and the presses its components share; its capability measurements), `ButtonPress`, `MovementHelpers` (shared rules: jumps, wall jumps), `FreeSteering` (3D steering off the ground: underwater, and later flying), `MovementSettings` and `MovementTuningPreset` (saved tunings, applied by setting name); `Components/` (every part of the movement, as a component) |
 | `Assets/Scripts/Animation` | `AnimationController`, `CharacterAnimationState`, the animation translators |
 | `Assets/Scripts/IK` | `CharacterIK`, the IK components on every model, and `CharacterUtilities` (IK goal helpers) |
-| `Assets/Scripts/Models` | `CharacterModelHost`, the model sources, and `CharacterHitboxes` (the hitboxes on a model's bones) |
+| `Assets/Scripts/Models` | `CharacterModelHost`, the model sources, `CharacterHitboxes` (the hitboxes on a model's bones), `BodyFitting` and `CreatureSetup` (what a creature is made of, for Prepare Creatures) |
 | `Assets/Scripts/Effects` | `WaterEffects` (splashes and ripples, played from the movement's events) and `IWaterEffect` |
 | `Assets/Scripts/Level` | The level elements, their own assembly: water (and `UnderwaterView`, the camera's fog under it), climbable and painted climbable surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock and stable IDs; `Editor/` (their editor assembly: the climbable paint tool, and `LevelFixtureSetup`, which turns a level's named fixtures into level elements and holds the names) |
 | `Assets/Scripts/CameraSystem` | The camera rig (its own assembly) |
-| `Assets/Editor` | The character's editor tools: `Models/` (CharacterModelImporter, HitboxFitter), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `Creatures/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
+| `Assets/Editor` | The character's editor tools: `Models/` (CharacterModelImporter, CreatureModelImporter, HitboxFitter, the Character Doctor), `Animation/` (clip importers), `Scene/` (Set Up Scene), `Effects/` (the default water effects), `Movement/` (the movement mode's inspector, tuning presets). Two folders are assemblies of their own, which don't ship: `Pipeline/` (`Mannequin/`: MannequinGenerator; `Creatures/`: FoxGenerator; `Blender/`: `BlenderRunner`, finding Blender and running the generators' scripts) and `LevelChecks/` (the movement envelope: `MovementEnvelopeWriter`, `MovementEnvelopeAutoWriter`) |
 | `Assets/Editor/Level` | The level builders (one per area), `Graybox/` (the shared pieces and the build), `Specs/` (level specs and the Level Editor) |
 | `Assets/Characters` | Characters made with New Character (`NewCharacter`), each in a folder of its own: its prefab (a variant of Character.prefab), its movement copy, and its own model source with an animation set. Not there until one is made |
 | `Assets/Tests` | `EditMode/` and `PlayMode/` tests, each fixture in a folder (and namespace) for its area: `Movement/`, `InputAndDeterminism/`, `Abilities/`, `Traversal/`, `Animations/`, `Models/`, `Levels/`, `Cameras/` (PlayMode only), `Spawning/` (EditMode has only the areas it has fixtures in; its `LevelElements/` holds the level elements' fixtures, and its `Levels/` is an assembly of its own, the level builders' and level checks' fixtures); what fixtures share (the rig, `CharacterRigFixture`, `AnimationTestsBase`) at each mode's root |
@@ -71,8 +71,12 @@ are the character side's (`CharacterModelImporter.MannequinModelPath`, `.Mannequ
 `MannequinGenerator` reads; and the tuning presets' inspector finds the Character prefab by Set Up Scene's path
 (`SceneGameSetup.CharacterPrefabPath`), not the level checks'. What makes the animation ready ships: the Animator
 layouts and their builder (`AnimatorControllerBuilder`), and the clips' preparation (`AnimationPreparation`, Prepare
-Animations), which the generators call after their Blender step. The generators keep only that step, and nothing that
-ships names Blender or the generators (the hygiene check, check 18).
+Animations), which the generators call after their Blender step. So does setting up a creature from a model someone
+already has: `CreatureModelImporter` (Prepare Creatures), `CreatureSetup` and its bone guessing, paw placement's set-up,
+the hitbox bones, the creature body fit (`BodyFitting.Creature`), the creature layout (`Assets/Animation/Creature
+Layout.asset`) and making a creature's prefab (`NewCharacter.SaveVariant`): `FoxGenerator` writes the fox's setup and
+calls them. The generators keep only their Blender step (and the data only their model knows: the fox's setup, written
+where it's missing), and nothing that ships names Blender or the generators (the hygiene check, check 18).
 
 ## How to verify your work
 
@@ -243,9 +247,10 @@ change and say regeneration is still needed.
 | --- | --- |
 | `Mannequin.fbx` (mesh, rig, clips), the model setup on `Assets/Prefabs/Character.prefab` | `MannequinGenerator` (Generate Mannequin), running `Tools/Mannequin/*.py` in Blender, then Prepare Animations |
 | Every Animator Controller (`Assets/Animation/Mannequin.controller`, `Fox.controller`), and the libraries' clips' floor and swim offsets | `AnimationPreparation` (Prepare Animations), building each from its Animator Layout (`AnimatorControllerBuilder`). The layouts (`Mannequin Layout.asset`, `Fox Layout.asset`) are hand-edited sources |
-| `Fox.fbx` (mesh, rig, clips), and in `Assets/Models/Creatures/Fox` its `Fox Model.prefab`, translator and `Fox.asset`; and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender. It makes `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-tuned |
+| `Fox.fbx` (mesh, rig, clips), its clips' import settings, and `Assets/Prefabs/Fox.prefab` | `FoxGenerator` (Generate Fox), running `Tools/Fox/*.py` in Blender, then preparing the fox as any creature (`CreatureModelImporter`) and saving Fox.prefab (`NewCharacter.SaveVariant`). It makes `Fox Setup.asset`, `Fox Body.asset` and `Assets/ScriptableObjects/Fox Movement.asset` only where they're missing: those are hand-edited |
+| A creature's `[name] Model.prefab`, `[name].asset` and its animation set's controller in `Assets/Models/Creatures/[name]`; where they're missing, its `[name] Setup.asset` (guessed), `[name] Animation Set.asset` (guessed), translator and `[name] Body.asset` (fitted), which are then hand-edited | `CreatureModelImporter` (Prepare Creatures, which runs by itself when a creature's model, setup or set changes) |
 | Every model's `[name] Model.prefab`, `[name].asset` and avatar/T-pose import settings in `Assets/Models/CharacterModels` | `CharacterModelImporter` (Prepare Character Models) |
-| Every model prefab's hitboxes (`Hitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Character Models and Generate Fox also run on each model they save, keeping its settings |
+| Every model prefab's hitboxes (`Hitbox (bone)` objects on its bones, and its `CharacterHitboxes`' list of them) | `HitboxFitter` (Fit Hitboxes), which Prepare Character Models and Prepare Creatures also run on each model they save, keeping its settings |
 | A scene's Game Setup object (spawner, spawn points, input manager, camera) and its course timers' racer | `SceneGameSetup` (Set Up Scene), which also runs `LevelFixtureSetup`, for a scene whose fixtures aren't set up yet |
 | The level scenes (`MeridianComplex`, `LevelPlayground`), their `Environment/` assets and baked data, and their level elements (attached to the fixtures, their course timers in a "Course Timers" group) | Their builders in `Assets/Editor/Level`, whose build runs `LevelFixtureSetup` before saving |
 | The `MeridianBasin` scene, its `Environment/` assets and baked data, and its level elements (as the builders' are) | Built from its spec, `Assets/Levels/MeridianBasin.level.json` (which `Tools/LevelSpec/examples/meridian_basin.py` writes), by `LevelSpecTools` (Build Level from Spec) |
@@ -271,7 +276,8 @@ and events, its place in the mode, animation, level fixtures, tests and docs). K
 **A new character or model:** follow [docs/adding-a-character.md](docs/adding-a-character.md) (a new look for the
 humanoid, a character of its own, which New Character makes, or a creature); check it with the Character Doctor
 (`CharacterChecks`, `CharacterDoctorWindow.CheckFromCommandLine`); its failures are in docs/troubleshooting.md's New
-characters. Every character prefab in the project is spawned and walked by `EveryCharacterTests`.
+characters (a creature's in its Creatures). A creature is prepared from its `CreatureSetup` (docs/creatures.md, A creature of
+your own). Every character prefab in the project is spawned and walked by `EveryCharacterTests`.
 
 **A new level mechanic, a new level piece, or a change to a builder:** follow
 [docs/adding-level-content.md](docs/adding-level-content.md).

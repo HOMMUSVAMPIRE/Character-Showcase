@@ -30,6 +30,9 @@ namespace Character
         public GameObject measuringModel;
         [Tooltip("Whether the base layer runs IK (OnAnimatorIK), which humanoid IK (CharacterIK) needs")]
         public bool ikPass = true;
+        [Tooltip("A starting point for animation sets only (the creature layout: its slots have no clips of their own): " +
+                 "never built by itself, only into the sets that start from it, with their clips")]
+        public bool onlyForSets;
         [Tooltip("The state the controller starts in")]
         public string defaultState = "Locomotion";
         [Tooltip("Why the layout is as it is, as a whole: for whoever changes it next")]

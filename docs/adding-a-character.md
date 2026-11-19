@@ -10,7 +10,7 @@ Before you start, open the project as the README says ([How to open this Project
 | --- | --- |
 | A rigged humanoid model (a person-shaped model with a skeleton, usually an FBX file), and you want the existing character to wear it | [A new look for the humanoid](#a-new-look-for-the-humanoid) |
 | A humanoid model, and you want a character of your own: its own prefab, movement, body and tuning, leaving the default character as it is (New Character makes it) | [A new character of your own](#a-new-character-of-your-own) |
-| A rigged creature that isn't a humanoid (on four legs, say) | [A creature that isn't a humanoid](#a-creature-that-isnt-a-humanoid) |
+| A rigged creature that isn't a humanoid (on four legs, say), with its own animations | [A creature that isn't a humanoid](#a-creature-that-isnt-a-humanoid) |
 
 Not sure whether your model counts as a humanoid? Unity calls a model a Humanoid when it can match its bones to a person's: hips, a spine, a head, two arms and two legs. If yours has those, try the first path: Unity tells you if it can't match them.
 
@@ -76,24 +76,35 @@ It makes its prefab (a variant of `Character.prefab`, so improvements to that re
 
 ## A creature that isn't a humanoid
 
-There's no general way to add one yet. Prepare Character Models only prepares Humanoids: a creature put in `Assets/Models/CharacterModels` is imported as a Humanoid, then skipped, with "Unity couldn't map its skeleton to a Humanoid" in the Console. Keep creatures out of that folder (the fox's files are in `Assets/Models/Creatures/Fox`). A general creature importer is planned.
+A creature (on four legs, two, or more; anything Unity can't match to a person's skeleton) is prepared much as a humanoid is, by Prepare Creatures, from a folder of its own in `Assets/Models/Creatures`. You need a model file with a skinned mesh and its skeleton (a Generic rig), and its own animations: a creature can't play the mannequin's. Only an idle is needed to start; each animation it has is used, and the rest borrow one it has (see [A creature's animations](creatures.md#a-creatures-animations)).
 
-The one creature, the fox, is built by a generator of its own, `FoxGenerator` (**Tools > Character Showcase > Generate Fox**), which also makes the fox's mesh in Blender. It's part of the model pipeline, not of the package, and it only makes the fox, but it's the worked example of everything a creature needs.
+1. In the Project window, open `Assets/Models/Creatures` and make a folder there for your creature: right-click, Create > Folder, and name it (`MyWolf`, say). Keep creatures out of `Assets/Models/CharacterModels`, which is for humanoids only.
+2. Drag your model file (and its textures, and any files holding only its animations) into that folder.
+3. Wait for Unity to finish importing. Prepare Creatures then runs by itself: it imports the model as a Generic rig, makes its **Creature Setup** (`MyWolf Setup.asset`) and an **Animation Set** (`MyWolf Animation Set.asset`), guessing its bones and clips from their names, and saves beside the model:
+   - `MyWolf Model.prefab`: the model, ready to animate, with its paw placement, hitboxes and eyes;
+   - `MyWolf.asset`: its model source, the asset a character wears;
+   - `MyWolf Body.asset`: a body fitted to its mesh (capsules along its back and a sphere for its head), the shape the movement moves;
+   - `MyWolf Animator Translator.asset`, and its Animator Controller (beside its animation set).
 
-**To play the fox:** open a scene, **Tools > Character Showcase > Set Up Scene…**, press Choose beside Character Prefab and pick Fox. See [Playing the fox](creatures.md#playing-the-fox).
+   If nothing seems to happen, run **Tools > Character Showcase > Prepare Creatures**.
+4. **Check its setup.** Select `MyWolf Setup.asset`. At the top of its inspector, a warning lists anything preparing couldn't find (a leg it couldn't tell apart, say). Fill in what's missing, using the bone names you see under the model in the Hierarchy or the Project window: its Root Bone (the hips), each leg's Upper, Lower and Foot bones, and its Eyes Bone (its head). Then check its animation set: select `MyWolf Animation Set.asset` and drop a clip on any role it guessed wrong or left empty (Idle, Walk, Run, Sprint, Jump Rise, ...). Each change prepares the creature again by itself. What each setting means: [A creature of your own](creatures.md#a-creature-of-your-own).
+5. Make it a character: **Tools > Character Showcase > New Character…**, give it a name, choose `MyWolf (a creature)` as its Prepared Model, leave Movement as Copy The Fox's (a creature moves as the fox does, not as a person: what a fox can't do is turned off) and press Make It. Its prefab keeps the body Prepare Creatures fitted, held above its legs over steps.
 
-**To set up a creature of your own by hand,** make what FoxGenerator makes for the fox (each of the fox's is in `Assets/Models/Creatures/Fox`, to compare with):
-1. Import the model outside `Assets/Models/CharacterModels`, and in its Rig tab (select the model, then the Inspector) set Animation Type to Generic and press Apply.
-2. An Animator Controller for its animations (Create > Animator Controller), driven by Animator parameters: the fox's is `Fox.controller` (see [What the fox is](creatures.md#what-the-fox-is)).
-3. An Animator Parameter Translator (Create > Character Showcase > Animation > Animator Parameter Translator), naming the controller's parameters, as `Fox Animator Translator.asset` does.
-4. A model prefab: the model with an Animator using the controller, a child object named `Eyes` on its head (where the camera's first-person view goes: `CharacterModelHost.EyesName`), and PawPlacementIK set up for its legs, as the "On another creature" paragraph of [Paw placement](creatures.md#paw-placement) says.
-5. A model source (Create > Character Showcase > Character Model (Direct Reference)), with the model prefab as its Model Prefab and the translator as its Translator. A source made by hand has Measure Ground On Load ticked, so it measures where its feet are when it loads.
-6. Its hitboxes: **Tools > Character Showcase > Fit Hitboxes** fits them to every model a model source names (see [Hitboxes](animation.md#hitboxes)).
-7. A character prefab: [A new character of your own](#a-new-character-of-your-own) from step 2, with the source from step 5, Body Fit Off and a Body Definition shaped for the creature (the fox's is `Fox Body.asset`), and a movement mode with what it can't do turned off.
+   (Or, in step 1, skip making the folder: give New Character the model file, tick It's A Creature, and it copies the model into a folder of its own in `Assets/Models/Creatures` and prepares it.)
+6. Check it with the Character Doctor (New Character opens it), and press Play in the scene it set up.
+
+**What success looks like.**
+- After step 3, the files are beside your model, and the Console has a line from `[Prepare Creatures]` saying it's prepared, with anything it couldn't find.
+- After step 4, the setup's inspector shows no warning.
+- In Play mode, the creature walks and runs with its own animations, its paws on the ground on slopes and stairs.
+
+**If something's wrong**, see [Creatures](troubleshooting.md#creatures) in Troubleshooting.
+
+**The fox** is a creature prepared the same way: its setup (`Assets/Models/Creatures/Fox/Fox Setup.asset`) and everything Prepare Creatures made from it are in its folder, to compare yours with. **To play the fox:** open a scene, **Tools > Character Showcase > Set Up Scene…**, press Choose beside Character Prefab and pick Fox. See [Playing the fox](creatures.md#playing-the-fox).
 
 ## Where to go next
 - [Spawning the Character](spawning.md): spawn points, NPCs, spawning from code.
 - [Tuning the Character](tuning.md): where the settings are, and saving tunings as presets.
 - [Character Model and Animations](animation.md): models, animations and IK in full.
-- [Creatures](creatures.md): the fox, and its paw placement.
+- [Creatures](creatures.md): creatures of your own, the fox, and paw placement.
 - [Troubleshooting](troubleshooting.md#new-characters): when something's wrong.

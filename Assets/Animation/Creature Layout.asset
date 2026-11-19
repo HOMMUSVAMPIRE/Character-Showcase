@@ -1,0 +1,1535 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: baa6d5b3ec5140868a275394ef40cc1a, type: 3}
+  m_Name: Creature Layout
+  m_EditorClassIdentifier: CharacterShowcase::Character.AnimatorLayout
+  controller: {fileID: 0}
+  measuringModel: {fileID: 0}
+  ikPass: 0
+  onlyForSets: 1
+  defaultState: Locomotion
+  notes: 'The starting point for a creature''s animation set (a creature''s own clips in its roles: see docs/creatures.md). Its states and transitions are the fox''s (Fox Layout.asset), its slots empty: an animation set that starts from it fills them with the creature''s clips. Only Idle is needed: a role left empty plays its fallback''s clip (Run plays the Walk, Sprint the Run, the crouches, swims and jumps the Idle or Walk), and with no Turn Step the creature stands still turning. Its Speed thresholds (Walk, Run, Sprint, Swim) are the fox''s speeds: for a creature whose clips are made for other speeds, copy this layout, set them to those speeds (as fast as each clip''s feet keep to the ground) and start its set from the copy. No IK pass: paw placement (PawPlacementIK) runs after the Animator. Only For Sets: it''s never built by itself.'
+  clips:
+  - name: Turn Step
+    candidates: []
+    fallbackSlot: 
+  - name: Idle
+    candidates: []
+    fallbackSlot: 
+  - name: Walk
+    candidates: []
+    fallbackSlot: Idle
+  - name: Run
+    candidates: []
+    fallbackSlot: Walk
+  - name: Sprint
+    candidates: []
+    fallbackSlot: Run
+  - name: Crouch Idle
+    candidates: []
+    fallbackSlot: Idle
+  - name: Crouch Walk
+    candidates: []
+    fallbackSlot: Walk
+  - name: Jump Fall
+    candidates: []
+    fallbackSlot: Jump Rise
+  - name: Jump Rise
+    candidates: []
+    fallbackSlot: Idle
+  - name: Swim Idle
+    candidates: []
+    fallbackSlot: Idle
+  - name: Swim
+    candidates: []
+    fallbackSlot: Walk
+  parameters:
+  - name: Speed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: VerticalSpeed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Grounded
+    note: 
+    type: 4
+    defaultBool: 1
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Crouching
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: TurnSpeed
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Swimming
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallRunning
+    note: 
+    type: 4
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: WallSide
+    note: 
+    type: 1
+    defaultBool: 0
+    defaultFloat:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  blendTrees:
+  - name: Standing
+    note: 'Standing: Idle, stepping round (Turn Step) as it turns either way, fully at these turn speeds (degrees a second).'
+    type: 0
+    parameter: TurnSpeed
+    parameterY: 
+    children:
+    - motion: Turn Step
+      note: 
+      threshold:
+        kind: 0
+        constant: -90
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips:
+        - Turn Step
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Turn Step
+      note: 
+      threshold:
+        kind: 0
+        constant: 90
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips:
+        - Turn Step
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Locomotion
+    note: 'Each gait at the speed (m/s, at its authored size) its clip is made for, so its paws keep to the ground: the fox''s speeds here (see the layout''s notes).'
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: tree:Standing
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Walk
+      note: 
+      threshold:
+        kind: 0
+        constant: 1.3
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Run
+      note: 
+      threshold:
+        kind: 0
+        constant: 3.5
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Sprint
+      note: 
+      threshold:
+        kind: 0
+        constant: 10
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Crouch
+    note: 
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Crouch Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Crouch Walk
+      note: 
+      threshold:
+        kind: 0
+        constant: 1
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Airborne
+    note: Falling this fast (m/s) shows the fall; rising this fast, the rise.
+    type: 0
+    parameter: VerticalSpeed
+    parameterY: 
+    children:
+    - motion: Jump Fall
+      note: 
+      threshold:
+        kind: 0
+        constant: -4
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Jump Rise
+      note: 
+      threshold:
+        kind: 0
+        constant: 2
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  - name: Swim
+    note: 'Treading water (Swim Idle) to paddling (Swim) by Speed: the paddle at the speed it''s made for (the fox''s paddle: see the layout''s notes).'
+    type: 0
+    parameter: Speed
+    parameterY: 
+    children:
+    - motion: Swim Idle
+      note: 
+      threshold:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - motion: Swim
+      note: 
+      threshold:
+        kind: 0
+        constant: 2.5
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      position: {x: 0, y: 0}
+      positionScale:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      timeScale: 1
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+  states:
+  - name: Locomotion
+    note: 
+    motions:
+    - motion: tree:Locomotion
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Crouch
+    note: 
+    motions:
+    - motion: tree:Crouch
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Airborne
+    note: 
+    motions:
+    - motion: tree:Airborne
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Swim
+    note: 
+    motions:
+    - motion: tree:Swim
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - name: Wall Run
+    note: 'Running along a wall: the gaits, by Speed (the fox''s body rolled toward the wall by PawPlacementIK).'
+    motions:
+    - motion: tree:Locomotion
+      note: 
+      speed:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      speedParameter: 
+      timeParameter: 
+      cycleOffset:
+        kind: 0
+        constant: 0
+        clip: 
+        direction: {x: 0, y: 0}
+        multiply: 0
+        reciprocal: 0
+        lerp: 0
+        lerpTo: 0
+        hasFallback: 0
+        fallback: 0
+        minimum: 0
+      parameters: []
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  transitions:
+  - from: Any State
+    to: Swim
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Wall Run
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Any State
+    to: Airborne
+    note: 'Swimming and wall-running aren''t on the ground either: in the air is only when neither.'
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Swim
+    to: Crouch
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Swimming
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Run
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Wall Run
+    to: Crouch
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: WallRunning
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Airborne
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Airborne
+    to: Crouch
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.12
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Grounded
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Locomotion
+    to: Crouch
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 0
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []
+  - from: Crouch
+    to: Locomotion
+    note: 
+    hasExitTime: 0
+    exitTime:
+      kind: 0
+      constant: 0
+      clip: 
+      direction: {x: 0, y: 0}
+      multiply: 0
+      reciprocal: 0
+      lerp: 0
+      lerpTo: 0
+      hasFallback: 0
+      fallback: 0
+      minimum: 0
+    duration: 0.15
+    durationIsShare: 0
+    canTransitionToSelf: 0
+    conditions:
+    - mode: 1
+      parameter: Crouching
+      note: 
+      threshold: 0
+      requires:
+        clips: []
+        missingClips: []
+        states: []
+        missingStates: []
+    requires:
+      clips: []
+      missingClips: []
+      states: []
+      missingStates: []

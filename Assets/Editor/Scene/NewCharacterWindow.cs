@@ -24,7 +24,7 @@ namespace CharacterShowcase.EditorTools
 
         private void OnGUI()
         {
-            prepared ??= CharacterModelImporter.FindReadyDefinitions().ToList();
+            prepared ??= CharacterModelImporter.FindReadyDefinitions().Concat(CreatureModelImporter.FindPrepared()).ToList();
             scroll = EditorGUILayout.BeginScrollView(scroll);
             EditorGUILayout.HelpBox("Makes a character of your own: its prefab (a variant of Character.prefab, so improvements to it reach " +
                                     "yours), wearing your model, moving by its own copy of the movement to tune. Nothing is changed " +
@@ -33,16 +33,24 @@ namespace CharacterShowcase.EditorTools
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Its model", EditorStyles.boldLabel);
-            string[] names = new[] { "(a model file to prepare)" }.Concat(prepared.Select(p => p.name)).ToArray();
+            string[] names = new[] { "(a model file to prepare)" }.Concat(prepared.Select(p => CreatureModelImporter.IsCreature(p) ? $"{p.name} (a creature)" : p.name)).ToArray();
             int index = answers.modelSource == null ? 0 : prepared.IndexOf(answers.modelSource as DirectCharacterModelSource) + 1;
-            index = EditorGUILayout.Popup(new GUIContent("Prepared Model", "A model Prepare Character Models has made ready (each rigged humanoid in " +
-                "Assets/Models/CharacterModels)"), Mathf.Max(0, index), names);
+            index = EditorGUILayout.Popup(new GUIContent("Prepared Model", "A model made ready: a rigged humanoid in Assets/Models/CharacterModels " +
+                "(Prepare Character Models), or a creature in Assets/Models/Creatures (Prepare Creatures)"), Mathf.Max(0, index), names);
             answers.modelSource = index == 0 ? null : prepared[index - 1];
             if (answers.modelSource == null)
             {
-                answers.modelFile = (GameObject)EditorGUILayout.ObjectField(new GUIContent("Model File", "A rigged humanoid model (an .fbx) in the " +
-                    "project: copied into Assets/Models/CharacterModels/[name] and prepared"), answers.modelFile, typeof(GameObject), false);
-                EditorGUILayout.HelpBox("A creature that isn't a humanoid can't be made here yet: see docs/creatures.md.", MessageType.None);
+                answers.modelFile = (GameObject)EditorGUILayout.ObjectField(new GUIContent("Model File", "A rigged model (an .fbx) in the project: " +
+                    "copied into Assets/Models/CharacterModels/[name] (a humanoid) or Assets/Models/Creatures/[name] (a creature) and prepared"),
+                    answers.modelFile, typeof(GameObject), false);
+                bool creature = EditorGUILayout.Toggle(new GUIContent("It's A Creature", "Not a humanoid (on four legs, say): prepared as a creature, " +
+                    "its bones and clips guessed from their names into its Creature Setup, to check (see docs/creatures.md)"), answers.creature);
+                if (creature != answers.creature)
+                {
+                    answers.creature = creature;
+                    // A creature moves as the fox does, not as a person: its movement starts from the fox's.
+                    answers.movement = creature ? NewCharacter.Movement.CopyTheFoxs : NewCharacter.Movement.CopyTheDefault;
+                }
             }
 
             EditorGUILayout.Space();

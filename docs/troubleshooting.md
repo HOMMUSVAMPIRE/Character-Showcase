@@ -81,6 +81,31 @@ The change was made to Character.prefab, BasicMovementMode.asset or Character Bo
 **A scene doesn't use the prefab's model or movement.**
 The scene's Character Spawner has its own Model Source or Movement Mode set, which replace the prefab's. Empty them, or set the scene up again choosing the prefab's own.
 
+
+## Creatures
+What can go wrong preparing a creature (see [A creature that isn't a humanoid](adding-a-character.md#a-creature-that-isnt-a-humanoid) and [A creature of your own](creatures.md#a-creature-of-your-own)). Prepare Creatures reports each creature in the Console (a line from `[Prepare Creatures]`), and its setup's inspector lists what it couldn't find.
+
+**A creature is skipped: "Unity couldn't map its skeleton to a Humanoid."**
+It's in `Assets/Models/CharacterModels`, the humanoids' folder. Move it (with its folder) to `Assets/Models/Creatures`, then select it, set its Rig tab's Animation Type to Generic and press Apply (it was first imported as a Humanoid).
+
+**Its setup's inspector warns that preparing couldn't find something.**
+Guessing couldn't tell from the names, or a bone named there isn't in the model (renamed in the model file, say). Set each one listed by the bone's name as it is under the model in the Hierarchy: the warning goes once it's prepared again (by itself, after the change).
+
+**It has no paw placement: its paws float over slopes and steps.**
+Its setup needs its Root Bone and every bone of every leg: with any missing it has none (the Console says which). Set them, or remove a leg it hasn't got.
+
+**A leg bends the wrong way, or its paw goes through the ground.**
+Its leg's Bend Direction is the wrong way (forward for a joint that points forward, back for one that points back), or its Contact is off its paw (where it touches the ground, in the model's space as it stands).
+
+**It slides over the ground as it walks or runs.**
+Its clips are made for other speeds than the creature layout's thresholds: see [A creature's animations](creatures.md#a-creatures-animations).
+
+**It plays the wrong clip for something, or stands still where it should move.**
+Its animation set's roles were guessed from its clips' names: select the set and drop the right clip on each role. A role it leaves empty plays its fallback's.
+
+**Its body is too big, too small or in the wrong place.**
+Its body is fitted from its mesh only when it has none: tune `[name] Body.asset`, or delete it and prepare the creature again (its setup's Prepare It Now) to fit a new one.
+
 ## Generated assets
 **A change to an Animator Controller disappeared.**
 The controllers are built from their Animator Layouts (Mannequin Layout.asset, Fox Layout.asset), which replace what's in them each build: make the change in the layout, then Build Animator Controllers (see [Animator layouts](animation.md#animator-layouts)).
