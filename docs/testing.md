@@ -324,6 +324,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 | MovementCompositionTests | Movement | Movement | movement modes made of components, as assets |
 | MovementDataTests | Movement | Movement | `MovementData.Reset` |
 | NewAbilityTests | Movement | Movement | what New Ability makes |
+| TutorialTests | Movement | Movement | the first-ability tutorial still compiling |
 | MovementTuningPresetTests | Movement | Movement | tuning presets |
 | QueryBufferTests | Movement | Movement | the physics query buffers growing |
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
@@ -331,6 +332,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 | LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
 | MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |
 | CharacterDoctorTests | Models | Models | the Character Doctor's checks |
+| CreatureImporterTests | Models | Models | Prepare Creatures |
 | PreparedModelTests | Models | Models (some tests SampleContent) | Prepare Character Models |
 | LevelFixtureSetupTests | LevelElements | Levels | setting up a level's mechanics from its markers |
 | ClimbablePaintTests | LevelElements | Levels | the climbable paint tools and shader |
@@ -345,6 +347,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 - **MovementCompositionTests**: movement modes made of components, as assets: a new BasicMovementMode starting with its default components, one of each, in order; a component's inspector name being its own (`[MovementComponentName]`) or its class name spaced out; the movement mode asset having no missing or doubled components; each ability's state declared once, by the component that sets it, with its events (on the asset and on a new mode's defaults); every movement event declared by what raises it, as a state's or a moment's (`OneOffEvents`) and never both; a mode's JSON holding its components' settings (which the capabilities rely on to know when to measure again); and components added, removed and found.
 - **MovementDataTests**: `MovementData.Reset`, which lets a character reuse its movement data step after step without allocating, putting every field (backing fields too) back as a new one's, so no step's value carries into the next.
 - **NewAbilityTests**: what New Ability (`AbilityScaffold`) makes, worked out against the project's own files without writing any. For each kind of answer, the files it makes are as recorded (NewAbilityExpected: record them again with `CHARACTER_SHOWCASE_RECORD_SCAFFOLDS=1` after changing a template, and check the diff). Its state and events take the next unused bits at the enums' New Ability lines; it goes just after the component chosen, in the mode's order and the composition test's; its docs are added; answers it can't make are refused, saying why; and a template's blocks are kept or left out by the answers.
+- **TutorialTests**: [Your First Ability](tutorial-first-ability.md) still works as written. New Ability is run (writing nothing into the project) with the answers in the page's table, each code block is applied where the hidden marker before it says (the file, and the members it replaces), and the result is compiled in a throwaway assembly in Temp/TutorialCheck: the character's code with the ability, its flag and events, then the PlayMode tests with its fixture. So a change to New Ability's templates, to the code the tutorial uses, or to the page itself that would break the tutorial fails here, naming the block or the compile error. Only compiling is checked: the tutorial's ability isn't one of the project's, so what it does isn't run.
 - **MovementTuningPresetTests**: a preset saved from a mode gives the same tuning back, curves and on/off switches included; one of a few settings changes only those; a preset never changes a mode's components or their order, and reports what it couldn't set; and a component's settings are the fields Unity saves, of kinds a preset can copy.
 - **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
 
@@ -362,6 +365,7 @@ They're in two assemblies. The main one, `CharacterShowcase.Tests.EditMode`, tes
 - **MotionCaptureClipTests** (sample content): every motion-capture clip is a Humanoid animation with a valid avatar, mapped by the CMU bone names and starting after its T-pose frame; played on the mannequin, every clip that moves about on its feet stays on the spot and faces forward; each check lists every clip that fails it.
 
 ### Models (the Models category; see [Character models](animation.md#character-models))
+- **CreatureImporterTests**: Prepare Creatures (`CreatureModelImporter`): guessing a setup from the fox's bone names finds the bones its own setup names; a creature with a differently named rig (the fox's bones and clips renamed in the Rigify style) is guessed with nothing unfound and prepared, with paw placement on its four legs, hitboxes, eyes on its head, its animation set's controller and a body fitted from its mesh, and its prefab (`NewCharacter.SaveVariant`) has that body, held over steps; and the creature body fit's shapes (stacked or side by side, a step above the feet, the head a sphere).
 - **CharacterDoctorTests**: every character prefab in the project failing none of the Character Doctor's checks, and one with no model source failing that check, saying what to do.
 - **PreparedModelTests**:
   - every model file has a source; every prepared model having a hitbox on each of its body's bones, on the CharacterHitbox layer, which the character's movement and foot placement leave out;

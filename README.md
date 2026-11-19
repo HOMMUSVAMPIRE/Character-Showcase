@@ -8,9 +8,11 @@ This project is still a work in progress. I will be adding to it in my free time
 Once the project meets my standards for completion, I may release it as a Unity Asset Store package for others to use in their games.
 
 ## Start here
+In the editor, **Tools > Character Showcase > Start Here** opens a window with every everyday tool, each with a line saying what it does (it opens by itself the first time you open the project).
+
 - **Play it:** open the project and a level, and press Play ([How to open this Project](#how-to-open-this-project)).
 - **Add a character:** a new look for the humanoid, a character of your own, or a creature ([Adding a Character](docs/adding-a-character.md)).
-- **Add an ability:** a new move for the character ([Adding a Movement Ability](docs/adding-an-ability.md)).
+- **Add an ability:** a new move for the character. New to it? Build one step by step in [Your First Ability](docs/tutorial-first-ability.md); the full reference is [Adding a Movement Ability](docs/adding-an-ability.md).
 
 New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the docs use.
 
@@ -75,6 +77,7 @@ If you intend to get a full understanding of the project, start with Character/A
 - [Automated tests](docs/testing.md)
 - [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
 - [Adding a character](docs/adding-a-character.md): a new look for the humanoid, a character of your own, or a creature; the place to start
+- [Your first ability](docs/tutorial-first-ability.md): a tutorial building one small ability (Ground Pound) end to end
 - [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs
 - [Adding level content](docs/adding-level-content.md): a new level mechanic, a new piece, changing a builder
 - [Troubleshooting](docs/troubleshooting.md)

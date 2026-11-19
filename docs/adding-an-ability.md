@@ -3,6 +3,17 @@ The steps for adding a new part to the character's movement: a new `MovementComp
 
 The inspector (its toggle, moving it up and down, removing it, Add Component), tuning presets and letting go when it's turned off mid-use come with being a component: they all work from the class and its fields, with nothing to add.
 
+## Your first ability
+
+New to this? The short path, which [Your First Ability](tutorial-first-ability.md) walks through with a real ability (Ground Pound), step by step:
+
+1. **Make it:** Tools > Character Showcase > New Ability…, answer its questions, press Make It. It makes a small ability that already works, with its tests and docs (see [The quick way](#the-quick-way-new-ability)).
+2. **Write what it does:** in its file (`Assets/Scripts/MovementModes/Components/<Name>.cs`), change its settings and replace what its `TakeOver` does (or `AfterWalking`, for one on top of walking).
+3. **Press Play** and try it; tune it on the movement mode asset's Components list.
+4. **Run its tests:** close Unity, then `python3 Tools/run_tests.py --changed` (see [Automated Tests](testing.md)), and the hygiene check, `python3 Tools/CI/check_project_hygiene.py`.
+
+The rest of this page is the full reference: what each part is for, and what to do by hand.
+
 ## The quick way: New Ability
 **Tools > Character Showcase > New Ability…** makes the start of an ability, with everything below that isn't its logic already done, and shows each file it will make or change before it does. Its questions:
 
