@@ -140,7 +140,7 @@ namespace MeridianMotion.Characters
         public override void AfterMovementResolved(MovementStep step, MMotionMotor motor)
         {
             RopeSwingState swing = motor.ropeSwing;
-            if (!swing.IsSwinging || swing.rope == null || ((step.state & CharacterState.RopeSwinging) == 0)) { return; }
+            if (!swing.IsSwinging || swing.rope == null || !step.state.HasAny(CharacterState.RopeSwinging)) { return; }
             Vector3 feet = step.initialPosition + step.finalMovementVector;
             Vector3 reached = feet + Vector3.up * (ropeGripHeight * motor.Body.StandingHeight) - swing.rope.Anchor;
             if (reached.sqrMagnitude < 1e-8f) { return; }

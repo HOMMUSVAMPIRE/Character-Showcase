@@ -219,11 +219,11 @@ namespace MeridianMotion.Characters
                 StepInputs inputs = MovementSimulation.Move(Vector3.forward, sprint);
                 inputs.jump = secondJumpAt < 0 || i < secondJumpAt - 1 ? MovementSimulation.Held(i)
                     : i == secondJumpAt - 1 ? MovementSimulation.Held(-1) : MovementSimulation.Held(i - secondJumpAt);
-                if (climbPressAt < 0 && (simulation.State & CharacterState.LedgeHanging) != 0) { climbPressAt = i + 1; }
+                if (climbPressAt < 0 && simulation.State.HasAny(CharacterState.LedgeHanging)) { climbPressAt = i + 1; }
                 if (climbPressAt >= 0) { inputs.jump = MovementSimulation.Held(i - climbPressAt); }
                 simulation.Step(inputs);
                 if (!simulation.Grounded) { airborne = true; }
-                bool busy = (simulation.State & (CharacterState.LedgeHanging | CharacterState.LedgeClimbing)) != 0;
+                bool busy = simulation.State.HasAny((CharacterState.LedgeHanging | CharacterState.LedgeClimbing));
                 if (!simulation.Grounded || busy) { continue; }
                 // Standing on the top past its face: reached. Back on the floor after leaving it: not.
                 if (simulation.Position.y > height - 0.05f && simulation.Position.z > face) { simulation.ClearObstacles(); return true; }

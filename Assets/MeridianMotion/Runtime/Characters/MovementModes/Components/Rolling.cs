@@ -145,7 +145,7 @@ namespace MeridianMotion.Characters
         {
             RollState roll = motor.roll;
             float y = step.initialPosition.y;
-            bool landed = step.initialGrounded && ((step.previousState & CharacterState.Grounded) == 0);
+            bool landed = step.initialGrounded && !step.previousState.HasAny(CharacterState.Grounded);
             roll.landingFall = landed && roll.hasFallTop ? Mathf.Max(0f, roll.fallTop - y) : 0f;
             // Whatever holds the character up (see AbilityTraits.Supported): a ride down a sloped zipline, say, isn't a fall.
             bool held = step.initialGrounded || Mode.AbilityInProgressWith(AbilityTraits.Supported, motor);
@@ -198,7 +198,7 @@ namespace MeridianMotion.Characters
                 StepInputs inputs = MovementSimulation.Move(Vector3.forward);
                 inputs.roll = MovementSimulation.Held(i);
                 simulation.Step(inputs);
-                bool rolling = (simulation.State & CharacterState.Rolling) != 0;
+                bool rolling = simulation.State.HasAny(CharacterState.Rolling);
                 if (rolling && float.IsNaN(start)) { start = before; }
                 if (!rolling && !float.IsNaN(start)) { return simulation.Position.z - start; }
             }

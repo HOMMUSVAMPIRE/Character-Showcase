@@ -45,7 +45,7 @@ namespace MeridianMotion.Showcase.Pipeline
         // Fired by the translator on every jump, from the ground, in the air, off a wall or a rope or a zipline, and on
         // every launch off a bounce pad (with the Quaternius libraries' jump).
         private const string JumpTrigger = "Jump";
-        private const MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped | MovementEvents.Bounced;
+        private static readonly MovementEvents JumpEvents = MovementEvents.Jumped | MovementEvents.AirJumped | MovementEvents.WallJumped | MovementEvents.Bounced;
 
         // The take Tools/Mannequin/mannequin_animations.py exports first so the file's default pose is the rest pose
         private const string BindPoseTake = "!BindPose";
@@ -135,20 +135,19 @@ namespace MeridianMotion.Showcase.Pipeline
             {
                 SerializedProperty existing = triggers.GetArrayElementAtIndex(i);
                 if (existing.FindPropertyRelative("trigger").stringValue != JumpTrigger) { continue; }
-                // Bound by an earlier version, before wall jumps or bounce pads: they're jumps too. (Saved as a long: see
-                // AnimatorParameterTranslator.EventTrigger.)
+                // Bound by an earlier version, before wall jumps or bounce pads: they're jumps too.
                 SerializedProperty events = existing.FindPropertyRelative("events");
-                var bound = (MovementEvents)events.longValue;
-                if ((bound & MovementEvents.Jumped) != 0 && (bound & JumpEvents) != JumpEvents)
+                var bound = (MovementEvents)events.boxedValue;
+                if (bound.HasAny(MovementEvents.Jumped) && !bound.HasAll(JumpEvents))
                 {
-                    events.longValue = (long)(bound | JumpEvents);
+                    events.boxedValue = bound | JumpEvents;
                     settings.ApplyModifiedPropertiesWithoutUndo();
                 }
                 return;
             }
             triggers.arraySize++;
             SerializedProperty binding = triggers.GetArrayElementAtIndex(triggers.arraySize - 1);
-            binding.FindPropertyRelative("events").longValue = (long)JumpEvents;
+            binding.FindPropertyRelative("events").boxedValue = JumpEvents;
             binding.FindPropertyRelative("trigger").stringValue = JumpTrigger;
             settings.ApplyModifiedPropertiesWithoutUndo();
         }

@@ -44,7 +44,7 @@ namespace MeridianMotion.Characters
         /// </summary>
         public override void AfterLocomotion(MovementStep step, StepInputs inputs, MMotionMotor motor)
         {
-            if ((step.state & CharacterState.Dashing) != 0 || motor.crouch.IsCrouched) { return; }
+            if (step.state.HasAny(CharacterState.Dashing) || motor.crouch.IsCrouched) { return; }
             Jump(step, inputs, motor);
         }
 
@@ -63,7 +63,7 @@ namespace MeridianMotion.Characters
             // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
             // jumps available to us. Not if we left the ground by jumping, though: a quick tap jump would otherwise land
             // back inside the coyote window and get its jump refunded.
-            if ((step.previousState & CharacterState.Jumping) == 0 && (step.timeSinceGrounded <= coyoteTime)
+            if (!step.previousState.HasAny(CharacterState.Jumping) && (step.timeSinceGrounded <= coyoteTime)
                 && (step.initialGrounded || !motor.HasJumpedSinceGrounded))
             {
                 MovementRules.GiveBackJumps(motor);
@@ -90,7 +90,7 @@ namespace MeridianMotion.Characters
             }
 
             // Still rising from a jump (not stopped by a ceiling): it carries on, under gravity (applied already).
-            bool rising = ((step.previousState & CharacterState.Jumping) != 0) && inertia.y > 0f
+            bool rising = step.previousState.HasAny(CharacterState.Jumping) && inertia.y > 0f
                           && !step.previousCollisions.HasFlag(CollisionFlags.Above);
             if (!rising) { return; }
             step.state |= CharacterState.Jumping;

@@ -729,7 +729,7 @@ namespace MeridianMotion.Tests.Models
             serialized.FindProperty("speedDampTime").floatValue = 0f;
             UnityEditor.SerializedProperty triggers = serialized.FindProperty("eventTriggers");
             triggers.arraySize = 1;
-            triggers.GetArrayElementAtIndex(0).FindPropertyRelative("events").longValue = (long)MovementEvents.Landed;
+            triggers.GetArrayElementAtIndex(0).FindPropertyRelative("events").boxedValue = MovementEvents.Landed;
             triggers.GetArrayElementAtIndex(0).FindPropertyRelative("trigger").stringValue = "Land";
             serialized.ApplyModifiedPropertiesWithoutUndo();
             yield return null;

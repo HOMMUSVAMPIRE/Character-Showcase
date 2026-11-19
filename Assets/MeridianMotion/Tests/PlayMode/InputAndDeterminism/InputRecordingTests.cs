@@ -55,7 +55,7 @@ namespace MeridianMotion.Tests.InputAndDeterminism
                 did |= rig.Movement.lastStep.state;
             });
             rig.Recording = null;
-            Assume.That((did & CharacterState.Jumping) != 0 && ((did & CharacterState.Dashing) != 0) && ((did & CharacterState.Crouching) != 0), Is.True,
+            Assume.That(did.HasAny(CharacterState.Jumping) && (did.HasAny(CharacterState.Dashing)) && (did.HasAny(CharacterState.Crouching)), Is.True,
                 $"Test setup: the run should jump, dash and crouch (it did: {did}).");
             Assert.That(recording.Count, Is.EqualTo(Steps), "Every step's frame should be recorded.");
 

@@ -13,7 +13,7 @@ namespace MeridianMotion.Tests.EditMode.Movement
     /// Tests of New Ability (AbilityScaffold), worked out against the project's own files without writing any: what it
     /// makes for each kind of answer is as recorded (NewAbilityExpected: record again with
     /// MERIDIAN_MOTION_RECORD_SCAFFOLDS=1 after changing a template, and check the diff); its state and events take the
-    /// next unused bits at the enums' New Ability lines; it goes just after the component chosen, in the mode's order and
+    /// next unused bits at the flags' New Ability lines; it goes just after the component chosen, in the mode's order and
     /// in the composition test's; its docs are added; and answers it can't make are refused, saying why.
     /// </summary>
     [Category(TestArea.Movement)]
@@ -78,12 +78,14 @@ namespace MeridianMotion.Tests.EditMode.Movement
             int eventBit = AbilityScaffold.HighestBit(events.Substring(0, events.IndexOf(AbilityScaffold.EnumAnchor, StringComparison.Ordinal))) + 1;
 
             string newStates = Changed(changes, AbilityScaffold.StatePath).text;
-            Assert.That(newStates, Does.Contain($"ZzHovering = 1L << {stateBit},"));
-            Assert.That(newStates.IndexOf("ZzHovering =", StringComparison.Ordinal), Is.LessThan(newStates.IndexOf(AbilityScaffold.EnumAnchor, StringComparison.Ordinal)),
+            Assert.That(newStates, Does.Contain($"public const int ZzHoveringBit = {stateBit};"));
+            Assert.That(newStates, Does.Contain("public static readonly CharacterState ZzHovering = Bit(ZzHoveringBit);"));
+            Assert.That(newStates.IndexOf("ZzHoveringBit =", StringComparison.Ordinal), Is.LessThan(newStates.IndexOf(AbilityScaffold.EnumAnchor, StringComparison.Ordinal)),
                 "New members go above the New Ability line, so the next ability's go after them.");
             string newEvents = Changed(changes, AbilityScaffold.EventsPath).text;
-            Assert.That(newEvents, Does.Contain($"ZzHoveringStarted = 1L << {eventBit},"));
-            Assert.That(newEvents, Does.Contain($"ZzHoveringEnded = 1L << {eventBit + 1},"));
+            Assert.That(newEvents, Does.Contain($"public const int ZzHoveringStartedBit = {eventBit};"));
+            Assert.That(newEvents, Does.Contain($"public const int ZzHoveringEndedBit = {eventBit + 1};"));
+            Assert.That(newEvents, Does.Contain("public static readonly MovementEvents ZzHoveringEnded = Bit(ZzHoveringEndedBit);"));
         }
 
         [Test]
@@ -120,7 +122,7 @@ namespace MeridianMotion.Tests.EditMode.Movement
             Assert.That(Problem(new AbilityScaffold.Answers { name = "Dashing" }), Does.Contain("already"), "A name that's taken.");
             Assert.That(Problem(new AbilityScaffold.Answers { name = "ZzNothing", button = AbilityScaffold.StartButton.None }), Does.Contain("what starts it"));
             Assert.That(Problem(new AbilityScaffold.Answers { name = "ZzNowhere", after = "NoSuchComponent" }), Does.Contain("isn't one of the default components"));
-            string NoAnchor(string path) => path == AbilityScaffold.StatePath ? "public enum CharacterState : long { Idle = 0, }" : NewAbilityWindow.ReadProjectFile(path);
+            string NoAnchor(string path) => path == AbilityScaffold.StatePath ? "public partial struct CharacterState { }" : NewAbilityWindow.ReadProjectFile(path);
             Assert.That(AbilityScaffold.Problem(new AbilityScaffold.Answers { name = "ZzAnchorless" }, NoAnchor), Does.Contain("New Ability line"));
         }
 

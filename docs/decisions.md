@@ -137,7 +137,21 @@ Choices about how the project is built, why they were made, and what was decided
 
 **Against:** the level elements staying in the character's assembly, with only Set Up Scene turning a level's markers into them. The builders, which couldn't reference the character's code, then named the markers by constants of their own that had to match Set Up Scene's: a names contract duplicated across two assemblies, held by a test, and a level that didn't work until Set Up Scene had been run on it.
 
-## Ability states and events stay global flag enums, 64 bits wide (November 2026)
+## Ability states and events are 256-bit flags, the package's and a project's apart (November 2026)
+**Decided:** `CharacterState` and `MovementEvents` are structs of 256 flags (`Flags256`: four `ulong`s), not enums. The package's flags are bits 0 to 127; a project's own abilities' are 128 to 255. Each flag is a bit number (`public const int JumpedBit = 0;`) and its value (`public static readonly MovementEvents Jumped = Bit(JumpedBit);`), keeping the bit it had as an enum. Code tests them with `HasAny`, and a switch on one flag is on its bit number (`switch (e.SingleBit)`). Their names (for `ToString`, `TryParse` and the inspectors) are their fields', found by reflection.
+
+**Why:**
+- `MovementEvents` had 22 of its 64 bits left, two an ability: about eleven abilities before it ran out, and none for a buyer's own.
+- A struct can be any width and stays blittable: cheap to copy, compare and send (32 bytes a set), and kept in `MovementStateSummary`, which stays unmanaged. Unity saves it, where it drops an enum wider than 32 bits (which had made a saved set of events a bare `long`).
+- The width lives in one struct, so a project that wants another changes only it.
+- With the package's and a project's bits apart, a package upgrade adding flags can't take one a project's ability uses.
+
+**Against:**
+- Staying 64-bit enums: `const` members, `switch` on them and `Enum` for names, but too few bits, and the drop on saving.
+- `when` guards for switches on flags (`case var e when e == MovementEvents.Jumped:`): readable, but an `if` chain the compiler can't check for duplicates. A switch on the bit number keeps real `case`s.
+- Bits handed out as the mode is built: no hand-picked bits, but bits that change with the mode, which recorded golden paths, replays and the network would have to map.
+
+## Ability states and events stay global flag enums, 64 bits wide (November 2026, replaced by the one above)
 **Decided:** `CharacterState` is 64 bits wide (`long`), as `MovementEvents` already was. Each ability still takes bits of both by hand, and the hygiene check fails if two members share a bit or one isn't a single bit. No field of either is serialized by Unity (which drops enum fields wider than 32 bits): `MovementStep`'s are `[NonSerialized]`, and a saved set of events is a `long`.
 
 **Why:** with 22 of its 32 bits taken, `CharacterState` would have run out about ten abilities on. One flags value per step stays cheap to copy, compare and keep in `MovementStateSummary` (which stays unmanaged), and every reader (animation, effects, AIs, tests) keeps testing bits as before.

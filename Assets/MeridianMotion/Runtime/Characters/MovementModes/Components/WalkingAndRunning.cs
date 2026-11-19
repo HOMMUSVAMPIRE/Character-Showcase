@@ -27,7 +27,7 @@ namespace MeridianMotion.Characters
 
         // The abilities that hand the character back to walking on the ground slower than it walks, which it then picks
         // up speed from (see speedRecoveryTime).
-        private const CharacterState SlowHandOvers = CharacterState.Vaulting | CharacterState.LedgeClimbing;
+        private static readonly CharacterState SlowHandOvers = CharacterState.Vaulting | CharacterState.LedgeClimbing;
 
         /// <summary>How fast (m/s) the character walks at full movement input, at its authored size.</summary>
         public float WalkSpeed { get => walkSpeed; set => walkSpeed = value; }
@@ -66,7 +66,7 @@ namespace MeridianMotion.Characters
             // keeps speed beyond walking. Every short touch of the ground then added walking speed again, and hopping or
             // clipping ledges built up to several times it.
             bool steering = inputs.movementVector.sqrMagnitude > 0.001f && steeringEffectiveness > 0;
-            if (!steering && (step.previousState & SlowHandOvers) == 0) { motor.walk.pickingUp = false; }
+            if (!steering && !step.previousState.HasAny(SlowHandOvers)) { motor.walk.pickingUp = false; }
             if (steering)
             {
                 Vector3 steer = step.lookFlat * inputs.movementVector;
@@ -97,7 +97,7 @@ namespace MeridianMotion.Characters
         private float PickingUp(MovementStep step, MMotionMotor motor, Vector3 direction, float walking)
         {
             WalkState walk = motor.walk;
-            if ((step.previousState & SlowHandOvers) != 0) { walk.pickingUp = speedRecoveryTime > 0f; }
+            if (step.previousState.HasAny(SlowHandOvers)) { walk.pickingUp = speedRecoveryTime > 0f; }
             if (!walk.pickingUp) { return walking; }
             Vector3 was = step.initialVelocity;
             float wasAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(was.x, 0f, was.z), direction));

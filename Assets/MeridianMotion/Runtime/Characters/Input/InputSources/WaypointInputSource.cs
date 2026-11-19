@@ -100,10 +100,10 @@ namespace MeridianMotion.Characters
             // Held while rising from its jump (for the jump's full height), then let go.
             if (rising)
             {
-                rising = last.finalVelocity.y > 0f && (last.state & CharacterState.Grounded) == 0;
+                rising = last.finalVelocity.y > 0f && !last.state.HasAny(CharacterState.Grounded);
                 if (rising) { return true; }
             }
-            if ((last.state & CharacterState.Grounded) == 0) { return false; }
+            if (!last.state.HasAny(CharacterState.Grounded)) { return false; }
 
             float step = character.MaxStepHeight * scale;
             float speed = Across(last.finalVelocity).magnitude;

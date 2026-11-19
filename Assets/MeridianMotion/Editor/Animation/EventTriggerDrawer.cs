@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using MeridianMotion.Characters;
 using UnityEditor;
@@ -7,9 +6,8 @@ using UnityEngine;
 namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// Shows an AnimatorParameterTranslator's event trigger with its events as a menu of movement events to tick. The
-    /// events are saved as a long (MovementEvents is 64 bits wide, which Unity doesn't save as an enum, and its own
-    /// flags field only goes to 32 bits), so without this they'd show as a bare number.
+    /// Shows an AnimatorParameterTranslator's event trigger with its events as a menu of movement events to tick, by name
+    /// (MovementEvents.Named): MovementEvents is a set of 256 flags, so without this it'd show as its four words.
     /// </summary>
     [CustomPropertyDrawer(typeof(AnimatorParameterTranslator.EventTrigger))]
     public class EventTriggerDrawer : PropertyDrawer
@@ -24,21 +22,20 @@ namespace MeridianMotion.EditorTools
             EditorGUI.BeginProperty(position, label, property);
             var line = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
             Rect field = EditorGUI.PrefixLabel(line, new GUIContent("Events", "The movement events that fire the trigger"));
-            var mask = (MovementEvents)events.longValue;
+            var mask = (MovementEvents)events.boxedValue;
             if (EditorGUI.DropdownButton(field, new GUIContent(Describe(mask)), FocusType.Keyboard))
             {
                 // The menu outlives this call: it changes the property found again by its path.
                 SerializedObject owner = events.serializedObject;
                 string path = events.propertyPath;
                 var menu = new GenericMenu();
-                foreach (MovementEvents movementEvent in Enum.GetValues(typeof(MovementEvents)))
+                foreach ((string name, MovementEvents movementEvent) in MovementEvents.Named)
                 {
-                    if (movementEvent == MovementEvents.None) { continue; }
-                    menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(movementEvent.ToString())), (mask & movementEvent) != 0, () =>
+                    menu.AddItem(new GUIContent(ObjectNames.NicifyVariableName(name)), mask.HasAny(movementEvent), () =>
                     {
                         owner.Update();
                         SerializedProperty toggled = owner.FindProperty(path);
-                        toggled.longValue ^= (long)movementEvent;
+                        toggled.boxedValue = (MovementEvents)toggled.boxedValue ^ movementEvent;
                         owner.ApplyModifiedProperties();
                     });
                 }
@@ -53,9 +50,9 @@ namespace MeridianMotion.EditorTools
         {
             if (mask == MovementEvents.None) { return "Nothing"; }
             var names = new List<string>();
-            foreach (MovementEvents movementEvent in Enum.GetValues(typeof(MovementEvents)))
+            foreach ((string name, MovementEvents movementEvent) in MovementEvents.Named)
             {
-                if (movementEvent != MovementEvents.None && (mask & movementEvent) != 0) { names.Add(ObjectNames.NicifyVariableName(movementEvent.ToString())); }
+                if (mask.HasAny(movementEvent)) { names.Add(ObjectNames.NicifyVariableName(name)); }
             }
             return string.Join(", ", names);
         }

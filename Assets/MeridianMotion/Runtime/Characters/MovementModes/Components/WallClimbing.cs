@@ -527,7 +527,7 @@ namespace MeridianMotion.Characters
         public override void AfterMovementResolved(MovementStep step, MMotionMotor motor)
         {
             WallClimbState climb = motor.wallClimb;
-            if (!climb.IsClimbing || climb.surface == null || ((step.state & CharacterState.WallClimbing) == 0))
+            if (!climb.IsClimbing || climb.surface == null || !step.state.HasAny(CharacterState.WallClimbing))
             {
                 climb.hasLocalFeet = false;
                 return;

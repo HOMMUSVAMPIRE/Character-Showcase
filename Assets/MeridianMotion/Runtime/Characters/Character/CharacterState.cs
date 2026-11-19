@@ -2,50 +2,72 @@ namespace MeridianMotion.Characters
 {
     /// <summary>
     /// What the character is doing during a physics step, as flags: one for each ability's state, which its component
-    /// sets and its StateEvents turn into movement events (see MovementComponent.StateEvents). 64 bits wide, so there's
-    /// room for abilities to come; each member is one bit of its own (the hygiene check makes sure), and a new one takes
-    /// the next unused bit. Unity doesn't save fields of enums wider than 32 bits (it drops them silently), so a field of
-    /// this type is never serialized (MovementStep's are [NonSerialized]: they're only the step's).
+    /// sets and its StateEvents turn into movement events (see MovementComponent.StateEvents). 256 flags (a Flags256: see
+    /// CharacterState.Flags.cs for how they combine): the package's in bits 0 to 127, a project's own abilities' from 128.
+    /// Each flag is a bit number (XBit, a constant, for a switch) and its value (X); each has a bit of its own (the hygiene
+    /// check makes sure), and a new one takes the next unused bit. MovementStep's are [NonSerialized]: they're only the step's.
     /// </summary>
-    [System.Flags]
-    public enum CharacterState : long
+    public partial struct CharacterState
     {
-        None = 0,
-        Moving = 1,
-        Grounded = 2,
-        Jumping = 4,
-        Dashing = 8,
-        Running = 16,
-        Dead = 32,
+        /// <summary>No state.</summary>
+        public static readonly CharacterState None = default;
+        public const int MovingBit = 0;
+        public static readonly CharacterState Moving = Bit(MovingBit);
+        public const int GroundedBit = 1;
+        public static readonly CharacterState Grounded = Bit(GroundedBit);
+        public const int JumpingBit = 2;
+        public static readonly CharacterState Jumping = Bit(JumpingBit);
+        public const int DashingBit = 3;
+        public static readonly CharacterState Dashing = Bit(DashingBit);
+        public const int RunningBit = 4;
+        public static readonly CharacterState Running = Bit(RunningBit);
+        public const int DeadBit = 5;
+        public static readonly CharacterState Dead = Bit(DeadBit);
         // Crouched (low and slow), not counting the low stance of a slide or roll
-        Crouching = 64,
-        Sliding = 128,
-        Rolling = 256,
-        WallRunning = 512,
+        public const int CrouchingBit = 6;
+        public static readonly CharacterState Crouching = Bit(CrouchingBit);
+        public const int SlidingBit = 7;
+        public static readonly CharacterState Sliding = Bit(SlidingBit);
+        public const int RollingBit = 8;
+        public static readonly CharacterState Rolling = Bit(RollingBit);
+        public const int WallRunningBit = 9;
+        public static readonly CharacterState WallRunning = Bit(WallRunningBit);
         // Hanging from a ledge
-        LedgeHanging = 1024,
+        public const int LedgeHangingBit = 10;
+        public static readonly CharacterState LedgeHanging = Bit(LedgeHangingBit);
         // Climbing up from a ledge onto it
-        LedgeClimbing = 2048,
+        public const int LedgeClimbingBit = 11;
+        public static readonly CharacterState LedgeClimbing = Bit(LedgeClimbingBit);
         // Holding a large object to push or pull it
-        Grabbing = 4096,
+        public const int GrabbingBit = 12;
+        public static readonly CharacterState Grabbing = Bit(GrabbingBit);
         // Sliding slowly down a wall it ran into head-on
-        WallSliding = 8192,
+        public const int WallSlidingBit = 13;
+        public static readonly CharacterState WallSliding = Bit(WallSlidingBit);
         // Vaulting over something too low to grab and too high to step onto, caught in mid-air
-        Vaulting = 16384,
+        public const int VaultingBit = 14;
+        public static readonly CharacterState Vaulting = Bit(VaultingBit);
         // Stepping up onto the top of something low and deep, reached from mid-air or sprinting (see Vaulting)
-        SteppingUp = 32768,
+        public const int SteppingUpBit = 15;
+        public static readonly CharacterState SteppingUp = Bit(SteppingUpBit);
         // Climbing a climbable surface (see MeridianMotion.Levels.ClimbableSurface), moving over it in any direction
-        WallClimbing = 65536,
+        public const int WallClimbingBit = 16;
+        public static readonly CharacterState WallClimbing = Bit(WallClimbingBit);
         // Hanging from a rope (see MeridianMotion.Levels.SwingRope) and swinging on it
-        RopeSwinging = 131072,
+        public const int RopeSwingingBit = 17;
+        public static readonly CharacterState RopeSwinging = Bit(RopeSwingingBit);
         // Hanging from a zipline's cable (see MeridianMotion.Levels.ZiplineCable) and riding down it
-        Ziplining = 262144,
+        public const int ZipliningBit = 18;
+        public static readonly CharacterState Ziplining = Bit(ZipliningBit);
         // Swimming at the surface of deep water (see MeridianMotion.Levels.SwimmableWater)
-        Swimming = 524288,
+        public const int SwimmingBit = 19;
+        public static readonly CharacterState Swimming = Bit(SwimmingBit);
         // Walking through water too shallow to swim in, slowed by it (see Wading)
-        Wading = 1048576,
+        public const int WadingBit = 20;
+        public static readonly CharacterState Wading = Bit(WadingBit);
         // Swimming under the surface (Swimming is set too: see Swimming)
-        Diving = 2097152,
+        public const int DivingBit = 21;
+        public static readonly CharacterState Diving = Bit(DivingBit);
         // New Ability (NewAbilityWindow) adds new abilities' states above this line, each the next unused bit.
     }
 }

@@ -241,7 +241,7 @@ namespace MeridianMotion.Characters
                 StepInputs inputs = MovementSimulation.Move(Vector3.forward, true);
                 inputs.crouch = MovementSimulation.Held(i);
                 simulation.Step(inputs);
-                bool sliding = (simulation.State & CharacterState.Sliding) != 0;
+                bool sliding = simulation.State.HasAny(CharacterState.Sliding);
                 if (sliding && float.IsNaN(start)) { start = before; }
                 if (!sliding && !float.IsNaN(start)) { return simulation.Position.z - start; }
             }

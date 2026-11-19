@@ -401,8 +401,8 @@ namespace MeridianMotion.Tests.Movement
             if (scenario.launch != null) { rig.Movement.OverrideVelocity(scenario.launch(rig)); }
 
             var trace = new List<string> { Header };
-            CharacterState visited = 0;
-            MovementEvents raised = 0;
+            CharacterState visited = CharacterState.None;
+            MovementEvents raised = MovementEvents.None;
             int[] phaseStarts = PhaseStarts(scenario, out int steps);
             yield return rig.Run(steps, step => InputsAt(scenario, phaseStarts, step), step =>
             {
@@ -456,7 +456,7 @@ namespace MeridianMotion.Tests.Movement
             Vector3 p = rig.Position, v = data.finalVelocity;
             float yaw = rig.Body.rotation.eulerAngles.y;
             return string.Join(",", step.ToString(CultureInfo.InvariantCulture), F(p.x), F(p.y), F(p.z), F(yaw), F(v.x), F(v.y), F(v.z),
-                ((long)data.state).ToString(CultureInfo.InvariantCulture), ((long)data.events).ToString(CultureInfo.InvariantCulture),
+                data.state.Bits.ToHex(), data.events.Bits.ToHex(),
                 F(rig.CurrentHeight / rig.StandingHeight));
         }
 
@@ -488,14 +488,17 @@ namespace MeridianMotion.Tests.Movement
             return expected.Length != actual.Count ? $"it has {actual.Count - 1} steps; {expected.Length - 1} were recorded." : null;
         }
 
+        // The state and events, as recorded: their bits in hexadecimal (Flags256.ToHex).
+        private static Flags256 Hex(string text) => Flags256.TryParseHex(text, out Flags256 flags) ? flags : default;
+
         private static string DifferentField(string[] e, string[] a)
         {
             float N(string[] s, int i) => float.Parse(s[i], CultureInfo.InvariantCulture);
             for (int i = 1; i <= 3; i++) { if (Mathf.Abs(N(e, i) - N(a, i)) > PositionTolerance) { return "the position"; } }
             if (Mathf.Abs(Mathf.DeltaAngle(N(e, 4), N(a, 4))) > YawTolerance) { return "the facing"; }
             for (int i = 5; i <= 7; i++) { if (Mathf.Abs(N(e, i) - N(a, i)) > VelocityTolerance) { return "the velocity"; } }
-            if (e[8] != a[8]) { return $"the state ({(CharacterState)long.Parse(e[8])} recorded, {(CharacterState)long.Parse(a[8])} now)"; }
-            if (e[9] != a[9]) { return $"the events ({(MovementEvents)long.Parse(e[9])} recorded, {(MovementEvents)long.Parse(a[9])} now)"; }
+            if (e[8] != a[8]) { return $"the state ({CharacterState.FromBits(Hex(e[8]))} recorded, {CharacterState.FromBits(Hex(a[8]))} now)"; }
+            if (e[9] != a[9]) { return $"the events ({MovementEvents.FromBits(Hex(e[9]))} recorded, {MovementEvents.FromBits(Hex(a[9]))} now)"; }
             if (Mathf.Abs(N(e, 10) - N(a, 10)) > HeightTolerance) { return "the collider's height"; }
             return null;
         }

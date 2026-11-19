@@ -115,21 +115,21 @@ namespace MeridianMotion.Characters
         [Serializable]
         public struct EventTrigger
         {
-            // The events, as a long: MovementEvents is 64 bits wide, and Unity doesn't save enum fields that wide (it drops
-            // them, silently). Shown in the inspector as the events, by EventTriggerDrawer. Saved as an int before it
-            // outgrew 32 bits, under the same name, which loads as is.
+            // Shown in the inspector as a choice of the events by name, by EventTriggerDrawer. Saved as a long (and before
+            // that an int) while MovementEvents was an enum, under the same name: the translator assets were written again
+            // as a MovementEvents when it became one.
             [Tooltip("The movement events that fire the trigger")]
-            [SerializeField] private long events;
+            [SerializeField] private MovementEvents events;
             [Tooltip("The name of the Animator trigger parameter to fire")]
             public string trigger;
 
             /// <summary>The movement events that fire the trigger.</summary>
-            public MovementEvents Events { get => (MovementEvents)events; set => events = (long)value; }
+            public MovementEvents Events { get => events; set => events = value; }
 
             /// <summary>A trigger parameter, by name, fired by any of the given events.</summary>
             public EventTrigger(MovementEvents events, string trigger)
             {
-                this.events = (long)events;
+                this.events = events;
                 this.trigger = trigger;
             }
         }
@@ -427,7 +427,7 @@ namespace MeridianMotion.Characters
             if (string.IsNullOrEmpty(source)) { return false; }
             if (source.StartsWith(StatePrefix, StringComparison.Ordinal))
             {
-                return Enum.TryParse(source.Substring(StatePrefix.Length), out state) && state != CharacterState.None;
+                return CharacterState.TryParse(source.Substring(StatePrefix.Length), out state) && state != CharacterState.None;
             }
             for (int i = 0; i < AnimationBools.Length; i++)
             {
@@ -544,7 +544,7 @@ namespace MeridianMotion.Characters
                 for (int i = 0; i < bools.Length; i++)
                 {
                     (int hash, int animationBool, CharacterState flags) = bools[i];
-                    animator.SetBool(hash, animationBool >= 0 ? AnimationBools[animationBool].value(state) : (state.state & flags) != 0);
+                    animator.SetBool(hash, animationBool >= 0 ? AnimationBools[animationBool].value(state) : state.state.HasAny(flags));
                 }
             }
 
@@ -577,7 +577,7 @@ namespace MeridianMotion.Characters
             {
                 foreach (var (events, trigger) in triggers)
                 {
-                    if (trigger != 0 && (events & movementEvent) != 0) { animator.SetTrigger(trigger); }
+                    if (trigger != 0 && events.HasAny(movementEvent)) { animator.SetTrigger(trigger); }
                 }
             }
 

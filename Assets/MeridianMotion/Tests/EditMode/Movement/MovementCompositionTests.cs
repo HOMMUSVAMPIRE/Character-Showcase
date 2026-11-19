@@ -178,7 +178,7 @@ namespace MeridianMotion.Tests.EditMode.Movement
         [Test]
         public void EveryMovementEvent_IsDeclared_AsAStatesOrAMoments()
         {
-            const MovementEvents ControllersOwn = MovementEvents.Landed | MovementEvents.LeftGround | MovementEvents.HitCeiling | MovementEvents.HitWall;
+            MovementEvents controllersOwn = MovementEvents.Landed | MovementEvents.LeftGround | MovementEvents.HitCeiling | MovementEvents.HitWall;
             MovementEvents states = MovementEvents.None, moments = MovementEvents.None;
             foreach (MovementComponent component in NewMode().Components)
             {
@@ -186,10 +186,10 @@ namespace MeridianMotion.Tests.EditMode.Movement
                 moments |= component.OneOffEvents;
             }
             Assert.That(states & moments, Is.EqualTo(MovementEvents.None), "An event is declared both as a state's and as a moment's.");
-            foreach (MovementEvents movementEvent in System.Enum.GetValues(typeof(MovementEvents)))
+            foreach ((string _, MovementEvents movementEvent) in MovementEvents.Named)
             {
-                if (movementEvent == MovementEvents.None || (ControllersOwn & movementEvent) != 0) { continue; }
-                Assert.That(((states | moments) & movementEvent) != 0, Is.True,
+                if (controllersOwn.HasAny(movementEvent)) { continue; }
+                Assert.That((states | moments).HasAny(movementEvent), Is.True,
                     $"{movementEvent} is declared by no component: add it to what raises it (its StateEvents, or its OneOffEvents).");
             }
         }

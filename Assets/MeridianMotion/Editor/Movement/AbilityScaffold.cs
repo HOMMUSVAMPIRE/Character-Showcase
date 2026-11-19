@@ -14,7 +14,7 @@ namespace MeridianMotion.EditorTools
     /// written, so the window can show them and a test can check them without touching the project. It makes:
     /// - the ability's component, a small working ability to build on (from NewAbilityTemplates/Component.txt): its
     ///   settings, its hooks, its state and that state's place on the MMotionMotor;
-    /// - its CharacterState flag and its two MovementEvents, each the next unused bit (at the enums' New Ability lines);
+    /// - its CharacterState flag and its two MovementEvents, each the next unused bit (at the flags' New Ability lines);
     /// - its place in StandardMovementMode.DefaultComponents, and in MovementCompositionTests' copy of that order;
     /// - its PlayMode test fixture, on the ability test kit (AbilityFixture);
     /// - optionally, a level element it starts at (Assets/MeridianMotion/Runtime/LevelElements), and an IK component of its own (Assets/MeridianMotion/Runtime/Characters/IK);
@@ -107,8 +107,8 @@ namespace MeridianMotion.EditorTools
             {
                 return $"There's already a type called {name}{(answers.levelElement ? $" or {names.element}" : "")}{(answers.needsIK ? $" or {names.ik}" : "")}: choose another name.";
             }
-            if (Enum.GetNames(typeof(CharacterState)).Contains(names.state)) { return $"There's already a state called {names.state}: choose another name."; }
-            if (Enum.GetNames(typeof(MovementEvents)).Any(e => e == names.started || e == names.ended)) { return $"There's already a movement event called {names.started} or {names.ended}: choose another name."; }
+            if (CharacterState.TryParse(names.state, out _)) { return $"There's already a state called {names.state}: choose another name."; }
+            if (MovementEvents.TryParse(names.started, out _) || MovementEvents.TryParse(names.ended, out _)) { return $"There's already a movement event called {names.started} or {names.ended}: choose another name."; }
             if (typeof(MMotionMotor).GetMember(names.field).Length > 0) { return $"The MMotionMotor already has a member called {names.field}: choose another name."; }
             HashSet<string> settings = ExistingSettingNames();
             foreach (string setting in SettingNames(answers, names))
@@ -120,7 +120,7 @@ namespace MeridianMotion.EditorTools
             foreach (string path in new[] { StatePath, EventsPath })
             {
                 string text = read(path);
-                if (text == null || !text.Contains(EnumAnchor)) { return $"{path} has no New Ability line ('{EnumAnchor} …') to add to: put it back above the enum's closing brace."; }
+                if (text == null || !text.Contains(EnumAnchor)) { return $"{path} has no New Ability line ('{EnumAnchor} …') to add to: put it back above the struct's closing brace."; }
             }
             string mode = read(ModePath);
             if (mode == null || !mode.Contains("DefaultComponents()")) { return $"{ModePath} has no DefaultComponents to add it to."; }
@@ -246,32 +246,35 @@ namespace MeridianMotion.EditorTools
             return output.ToString().TrimEnd('\n') + "\n";
         }
 
-        /// <summary>The enum's text with the given members added at its New Ability line, each the next unused bit.</summary>
+        /// <summary>
+        /// The flags' text (CharacterState.cs or MovementEvents.cs) with the given flags added at its New Ability line,
+        /// each the next unused bit of the package's (below Flags256.PackageBits): its bit number (XBit) and its value (X).
+        /// </summary>
         public static string AddEnumMembers(string text, string comment, params string[] members)
         {
             int anchor = text.IndexOf(EnumAnchor, StringComparison.Ordinal);
             int lineStart = text.LastIndexOf('\n', anchor) + 1;
             string indent = text.Substring(lineStart, anchor - lineStart);
+            string type = Regex.Match(text, @"public partial struct (\w+)").Groups[1].Value;
             int next = HighestBit(text.Substring(0, lineStart)) + 1;
             var added = new StringBuilder();
             added.Append(indent).Append("// ").Append(comment).Append('\n');
             foreach (string member in members)
             {
-                if (next >= 64) { throw new InvalidOperationException("The enum has no unused bits left."); }
-                added.Append(indent).Append(member).Append(" = 1L << ").Append(next++).Append(",\n");
+                if (next >= Flags256.PackageBits) { throw new InvalidOperationException($"{type} has no unused bits of the package's left."); }
+                added.Append(indent).Append("public const int ").Append(member).Append("Bit = ").Append(next++).Append(";\n");
+                added.Append(indent).Append("public static readonly ").Append(type).Append(' ').Append(member).Append(" = Bit(").Append(member).Append("Bit);\n");
             }
             return text.Insert(lineStart, added.ToString());
         }
 
-        /// <summary>The highest bit any member's value takes (written as a number or 1L &lt;&lt; n), or -1.</summary>
-        public static int HighestBit(string enumText)
+        /// <summary>The highest bit any flag takes (its bit number: public const int XBit = n;), or -1.</summary>
+        public static int HighestBit(string flagsText)
         {
             int highest = -1;
-            foreach (Match match in Regex.Matches(enumText, @"=\s*(?:1[uUlL]*\s*<<\s*(\d+)|(\d+)[uUlL]*)\s*,"))
+            foreach (Match match in Regex.Matches(flagsText, @"public const int \w+Bit = (\d+);"))
             {
-                int bit = match.Groups[1].Success ? int.Parse(match.Groups[1].Value)
-                    : (int)Math.Floor(Math.Log(Math.Max(1d, double.Parse(match.Groups[2].Value)), 2));
-                highest = Math.Max(highest, bit);
+                highest = Math.Max(highest, int.Parse(match.Groups[1].Value));
             }
             return highest;
         }

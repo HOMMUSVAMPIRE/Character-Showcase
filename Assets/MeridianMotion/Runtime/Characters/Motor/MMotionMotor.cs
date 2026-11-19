@@ -406,8 +406,8 @@ namespace MeridianMotion.Characters
         /// </summary>
         private void DetectEvents(MovementStep data)
         {
-            bool wasGrounded = (data.previousState & CharacterState.Grounded) != 0;
-            bool isGrounded = (data.state & CharacterState.Grounded) != 0;
+            bool wasGrounded = data.previousState.HasAny(CharacterState.Grounded);
+            bool isGrounded = data.state.HasAny(CharacterState.Grounded);
             if (!wasGrounded && isGrounded) { data.events |= MovementEvents.Landed; }
             if (wasGrounded && !isGrounded) { data.events |= MovementEvents.LeftGround; }
 
@@ -422,12 +422,12 @@ namespace MeridianMotion.Characters
         private void RaiseEvents(MovementStep data)
         {
             if (data.events == MovementEvents.None || MovementEventRaised == null) { return; }
-            // Every bit of the enum, by count rather than while the bit is no more than the events: once the top bit is
-            // in use, shifting on past it goes negative and then to 0, and a loop on bit <= events never ends.
-            for (int shift = 0; shift < 63; shift++)
+            // One at a time, lowest bit first, each found by NextBit, which ends (-1) after the last: never a loop on a
+            // shifted bit while it's no more than the events, which, with the enum's top bit in use, went negative, then
+            // to 0, and never ended.
+            for (int bit = data.events.NextBit(0); bit >= 0; bit = data.events.NextBit(bit + 1))
             {
-                var single = (MovementEvents)(1L << shift);
-                if ((data.events & single) != 0) { MovementEventRaised(single, data); }
+                MovementEventRaised(MovementEvents.Bit(bit), data);
             }
         }
 

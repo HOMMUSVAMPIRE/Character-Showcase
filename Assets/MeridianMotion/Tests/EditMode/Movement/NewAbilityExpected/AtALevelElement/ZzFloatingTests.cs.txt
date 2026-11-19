@@ -19,7 +19,7 @@ namespace MeridianMotion.Tests.Traversal
         protected override IEnumerator SetUpToStart()
         {
             rig.Floor();
-            rig.Track(new GameObject("ZzFloatingPoint")).AddComponent<Level.ZzFloatingPoint>();
+            rig.Track(new GameObject("ZzFloatingPoint")).AddComponent<MeridianMotion.Levels.ZzFloatingPoint>();
             // At the element, it starts at once: not settled first, so the kit sees it start.
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f), settleSeconds: 0f);
         }

@@ -99,7 +99,7 @@ namespace MeridianMotion.Characters
         public override void AfterMovementResolved(MovementStep step, MMotionMotor motor)
         {
             PushPullState grab = motor.pushPull;
-            if (!grab.IsGrabbing || ((step.state & CharacterState.Grabbing) == 0)) { return; }
+            if (!grab.IsGrabbing || !step.state.HasAny(CharacterState.Grabbing)) { return; }
             Vector3 toward = -grab.faceNormal;
             float along = Vector3.Dot(step.finalMovementVector - grab.holdCorrection, toward);
             if (Mathf.Abs(along) > 1e-6f) { grab.target.Move(toward * along); }

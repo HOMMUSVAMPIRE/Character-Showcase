@@ -140,19 +140,20 @@ namespace MeridianMotion.Characters
         private void HandleMovementEvent(MovementEvents movementEvent, MovementStep data)
         {
             float speed;
-            switch (movementEvent)
+            // An event is raised one flag at a time, so it's one bit: the switch is on its bit's number.
+            switch (movementEvent.SingleBit)
             {
-                case MovementEvents.SwimStarted:
-                case MovementEvents.SwimEnded:
-                case MovementEvents.DiveStarted:
-                case MovementEvents.DiveEnded:
+                case MovementEvents.SwimStartedBit:
+                case MovementEvents.SwimEndedBit:
+                case MovementEvents.DiveStartedBit:
+                case MovementEvents.DiveEndedBit:
                     // In or out, up or down: as fast as it was going that way, before or after the step.
                     speed = Mathf.Max(Mathf.Abs(data.initialVelocity.y), Mathf.Abs(data.finalVelocity.y));
                     break;
-                case MovementEvents.WadeStarted:
+                case MovementEvents.WadeStartedBit:
                     speed = new Vector2(data.finalVelocity.x, data.finalVelocity.z).magnitude;
                     break;
-                case MovementEvents.Landed:
+                case MovementEvents.LandedBit:
                     speed = -data.initialVelocity.y;
                     break;
                 default:
@@ -212,8 +213,8 @@ namespace MeridianMotion.Characters
             float moved = hasLastPosition ? new Vector2(position.x - lastPosition.x, position.z - lastPosition.z).magnitude : 0f;
             lastPosition = position;
             hasLastPosition = true;
-            bool atSurface = data != null && (data.state & (CharacterState.Swimming | CharacterState.Wading)) != 0
-                             && (data.state & CharacterState.Diving) == 0;
+            bool atSurface = data != null && data.state.HasAny((CharacterState.Swimming | CharacterState.Wading))
+                             && !data.state.HasAny(CharacterState.Diving);
             SwimmableWater water = atSurface ? SwimmableWater.Under(position, movement.Body.StandingHeight) : null;
             if (water == null)
             {

@@ -19,7 +19,7 @@ namespace MeridianMotion.Characters
     /// A press of {{ButtonDisplay}} starts it (within {{Display}} Input Buffer of being able to).
 {{/button}}
 {{#levelElement}}
-    /// It starts within {{Display}} Reach of a {{Element}} in the level (see Level.{{Element}}).
+    /// It starts within {{Display}} Reach of a {{Element}} in the level (see MeridianMotion.Levels.{{Element}}).
 {{/levelElement}}
     /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
     /// </summary>

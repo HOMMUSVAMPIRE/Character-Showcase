@@ -117,7 +117,7 @@ where it's missing), and nothing that ships names Blender or the generators (the
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
    (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
    no longer exists (renamed without `[MovedFrom]`), two `CharacterState` or `MovementEvents` members sharing a bit
-   (or one that isn't a single bit), `HasFlag` on either (it boxes, every step), a `...FromCommandLine` entry point the docs or tools name that the code doesn't declare, and an `"Assets/..."` path in shipped code (find the asset by its GUID, `MeridianMotionAssets`, or write into the output folder). And it holds every movement component
+   (or a bit number without its value, or a package flag past the package's bits), a `...FromCommandLine` entry point the docs or tools name that the code doesn't declare, and an `"Assets/..."` path in shipped code (find the asset by its GUID, `MeridianMotionAssets`, or write into the output folder). And it holds every movement component
    to docs/adding-an-ability.md: a `[Tooltip]` on each setting, settings of kinds presets copy (numbers, bools, enums,
    curves), `Traits` and `StateEvents` on a takeover, its states set, a PlayMode fixture naming it (on the ability test
    kit, `AbilityFixture<T>`, unless the script's `NOT_YET_ON_THE_KIT` lists it), its inspector name in movement.md's
@@ -255,8 +255,10 @@ component and field). Tests also read the movement mode's and its components'
 fields by name through reflection, so a rename compiles but fails at runtime: the hygiene check finds every name the
 tests use and fails if one disappears. A movement component's class name is saved in the asset too
 (`[SerializeReference]`): renaming or moving one needs `[UnityEngine.Scripting.APIUpdating.MovedFrom]`, or the asset
-shows it as a missing component. Unity silently drops enum fields wider than 32 bits, which is why a saved set of
-`MovementEvents` (64-bit) is a `long` (`AnimatorParameterTranslator.EventTrigger`, drawn by `EventTriggerDrawer`).
+shows it as a missing component. `CharacterState` and `MovementEvents` are 256-bit flag structs (`Flags256`), not enums:
+Unity silently drops enum fields wider than 32 bits, and saves these (`AnimatorParameterTranslator.EventTrigger`, drawn by
+`EventTriggerDrawer`). Each flag is a bit number (`XBit`, a constant, for a `switch`) and its value; the package's are in
+bits 0 to 127, a project's own from 128 (`Flags256.PackageBits`). A flag's bit is saved data: never renumber one.
 
 **Unity asset files.**
 - Every file and folder under `Assets/` needs a `.meta` with a unique GUID. Adding a file outside the editor, copy a

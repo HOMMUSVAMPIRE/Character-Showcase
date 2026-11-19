@@ -43,7 +43,7 @@ namespace MeridianMotion.Tests
         public IEnumerator Kit_ItHappens_FromItsInputs()
         {
             yield return SetUp();
-            Assert.That((Component.OneOffEvents & MomentEvent) != 0, Is.True,
+            Assert.That(Component.OneOffEvents.HasAny(MomentEvent), Is.True,
                 $"{typeof(T).Name} should declare {MomentEvent} among its OneOffEvents (see MovementComponent.OneOffEvents).");
             yield return RunUntilItHappens();
             Assert.That(Happened, Is.True, $"Test setup: {typeof(T).Name} should raise {MomentEvent} from the fixture's inputs within " +
@@ -109,7 +109,7 @@ namespace MeridianMotion.Tests
         private (Vector3, Quaternion, Vector3, bool) Step()
         {
             (Vector3 position, Quaternion rotation, Vector3 velocity) = Pose();
-            return (position, rotation, velocity, (rig.Movement.lastStep.events & MomentEvent) != 0);
+            return (position, rotation, velocity, rig.Movement.lastStep.events.HasAny(MomentEvent));
         }
 
         [UnityTest]

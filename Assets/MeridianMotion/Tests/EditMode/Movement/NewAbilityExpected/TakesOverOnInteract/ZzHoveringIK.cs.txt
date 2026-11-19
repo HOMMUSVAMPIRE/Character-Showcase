@@ -27,7 +27,7 @@ namespace MeridianMotion.Characters
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
-            bool underWay = (state.state & CharacterState.ZzHovering) != 0;
+            bool underWay = state.state.HasAny(CharacterState.ZzHovering);
             FadeTo(underWay ? weight : 0f);
             if (activeWeight <= 0f) { return; }
 

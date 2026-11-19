@@ -396,7 +396,7 @@ namespace MeridianMotion.Characters
             {
                 Vector3 before = simulation.Position;
                 simulation.Step(inputsFor(i));
-                bool running = (simulation.State & CharacterState.WallRunning) != 0;
+                bool running = simulation.State.HasAny(CharacterState.WallRunning);
                 if (running && float.IsNaN(startZ)) { startZ = before.z; startY = before.y; }
                 if (!running && !float.IsNaN(startZ))
                 {

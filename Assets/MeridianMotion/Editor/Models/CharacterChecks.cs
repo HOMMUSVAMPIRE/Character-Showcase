@@ -210,7 +210,7 @@ namespace MeridianMotion.EditorTools
                 {
                     foreach (StateEventPair pair in component.StateEvents)
                     {
-                        if (shown.Contains(pair.state) || (component.LocomotionState & pair.state) != 0 || !component.AllowsState(pair.state)) { continue; }
+                        if (shown.Contains(pair.state) || component.LocomotionState.HasAny(pair.state) || !component.AllowsState(pair.state)) { continue; }
                         unshown.Add($"{MovementComponent.DisplayNameOf(component.GetType())} ({pair.state})");
                     }
                 }

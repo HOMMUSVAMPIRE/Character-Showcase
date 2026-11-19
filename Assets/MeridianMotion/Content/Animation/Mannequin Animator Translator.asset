@@ -103,5 +103,10 @@ MonoBehaviour:
   - source: Diving
     parameter: Diving
   eventTriggers:
-  - events: 34359803907
+  - events:
+      bits:
+        w0: 34359803907
+        w1: 0
+        w2: 0
+        w3: 0
     trigger: Jump

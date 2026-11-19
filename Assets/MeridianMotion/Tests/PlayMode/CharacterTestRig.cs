@@ -52,7 +52,7 @@ namespace MeridianMotion.Tests
         /// <summary>The character's physics position (its feet), not the interpolated render position.</summary>
         public Vector3 Position => Body.position;
         public bool Grounded => Movement.lastStep != null
-                                && ((Movement.lastStep.state & CharacterState.Grounded) != 0);
+                                && (Movement.lastStep.state.HasAny(CharacterState.Grounded));
 
         public CharacterTestRig()
         {
@@ -312,11 +312,11 @@ namespace MeridianMotion.Tests
         }
 
         public bool Dashing => Movement.lastStep != null
-                               && ((Movement.lastStep.state & CharacterState.Dashing) != 0);
+                               && (Movement.lastStep.state.HasAny(CharacterState.Dashing));
 
         /// <summary>Whether the character was in the given state (crouching, sliding, wall-running...) in the last step.</summary>
         public bool InState(CharacterState state) => Movement.lastStep != null
-                                                     && (Movement.lastStep.state & state) != 0;
+                                                     && Movement.lastStep.state.HasAny(state);
 
         /// <summary>The character's horizontal speed in the last step, in m/s.</summary>
         public float HorizontalSpeed

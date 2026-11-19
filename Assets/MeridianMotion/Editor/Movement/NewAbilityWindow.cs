@@ -117,7 +117,7 @@ namespace MeridianMotion.EditorTools
 
         /// <summary>
         /// For -executeMethod: makes the ability given by -abilityName [Name], with -kind [TakesOver|OnTopOfWalking],
-        /// -button [None|Jump|Dash|Crouch|Roll|Grab], -after [a default component, or first], -area [Abilities|Traversal] and
+        /// -button [None|Jump|Dash|Crouch|Roll|Interact], -after [a default component, or first], -area [Abilities|Traversal] and
         /// -levelElement and -needsIK, then exits (code 1 if it can't). Run MovementModeSync.AddToAllModesFromCommandLine after it, once
         /// it's compiled, to give it to the movement modes.
         /// </summary>

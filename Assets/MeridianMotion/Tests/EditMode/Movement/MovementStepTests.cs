@@ -54,6 +54,8 @@ namespace MeridianMotion.Tests.EditMode.Movement
         {
             if (type == typeof(float)) { return 1.5f; }
             if (type == typeof(int)) { return 3; }
+            // A word of the flags' bits (Flags256), the highest bit set: a reset clears every word.
+            if (type == typeof(ulong)) { return 1UL << 63; }
             // MovementStep's own bools are the opposite of what a new one has (dirty starts true); a struct's start false.
             if (type == typeof(bool)) { return name == null || !(bool)typeof(MovementStep).GetField(name, Fields).GetValue(new MovementStep()); }
             if (type.IsEnum) { return Enum.ToObject(type, 1L); }

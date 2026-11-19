@@ -127,7 +127,7 @@ namespace MeridianMotion.Tests.Movement
                 Vector3 p = character.GetComponent<Rigidbody>().position;
                 Assert.That(float.IsFinite(p.x) && float.IsFinite(p.y) && float.IsFinite(p.z), Is.True, $"{character.name} ended up at {p}.");
             }
-            Assert.That((seen & CharacterState.Moving) != 0 && ((seen & CharacterState.Jumping) != 0) && ((seen & CharacterState.Dashing) != 0), Is.True,
+            Assert.That(seen.HasAny(CharacterState.Moving) && (seen.HasAny(CharacterState.Jumping)) && (seen.HasAny(CharacterState.Dashing)), Is.True,
                 $"Test setup: the characters should run, jump and dash while they're timed (they did: {seen}).");
             double average = stepTimes.Average() / CharacterCount, worst = stepTimes.Max() / CharacterCount;
             string report = $"[Movement performance] {CharacterCount} characters, {timed} steps: a character's step takes " +

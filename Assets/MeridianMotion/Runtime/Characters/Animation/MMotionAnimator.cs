@@ -252,8 +252,8 @@ namespace MeridianMotion.Characters
         {
             Vector3 velocity = step.finalVelocity;
             Quaternion facing = Quaternion.Euler(0f, step.finalRotation.eulerAngles.y, 0f);
-            bool touchingGround = (step.state & CharacterState.Grounded) != 0;
-            bool jumping = (step.state & CharacterState.Jumping) != 0;
+            bool touchingGround = step.state.HasAny(CharacterState.Grounded);
+            bool jumping = step.state.HasAny(CharacterState.Jumping);
 
             airTime = touchingGround ? 0f : airTime + deltaTime;
             float turnSpeed = AnimationState.turnSpeed;
@@ -267,29 +267,29 @@ namespace MeridianMotion.Characters
             float horizontalSpeed = new Vector2(velocity.x, velocity.z).magnitude;
             float speedScale = motor != null ? motor.SpeedScale : 1f;
             Vector3 ledgeEdge = Vector3.zero, ledgeNormal = Vector3.zero;
-            bool onLedge = ((step.state & CharacterState.LedgeHanging) != 0) || ((step.state & CharacterState.LedgeClimbing) != 0);
+            bool onLedge = step.state.HasAny(CharacterState.LedgeHanging) || step.state.HasAny(CharacterState.LedgeClimbing);
             if (onLedge && motor != null) { motor.ledge.TryGetEdge(out ledgeEdge, out ledgeNormal); }
-            else if (((step.state & CharacterState.Vaulting) != 0 || ((step.state & CharacterState.SteppingUp) != 0))
+            else if ((step.state.HasAny(CharacterState.Vaulting) || step.state.HasAny(CharacterState.SteppingUp))
                      && motor != null)
             {
                 motor.vault.TryGetEdge(out ledgeEdge, out ledgeNormal);
             }
             // A vault out of the water (a swimmer pulling itself up onto a pool's edge, or over a divider) is shown as a
             // climb up onto a ledge, its hands on the edge, not as a vault: from the water there's nothing to run at it from.
-            bool vaultingOutOfWater = ((step.state & CharacterState.Vaulting) != 0) && motor != null
+            bool vaultingOutOfWater = step.state.HasAny(CharacterState.Vaulting) && motor != null
                                       && motor.vault.outOfWater;
             // How far through a climb or a vault: once it's over, as far as it got (all the way), not back to 0, while the
             // Animator blends out of it. At 0 the climb's clip went back to its start for the blend (the body hanging
             // below the ledge), and the hips jumped back and forth as the character stepped off the top.
-            bool ledgeClimbing = motor != null && ((step.state & CharacterState.LedgeClimbing) != 0);
+            bool ledgeClimbing = motor != null && step.state.HasAny(CharacterState.LedgeClimbing);
             if (ledgeClimbing) { heldClimbProgress = motor.ledge.ClimbProgress; }
             else if (vaultingOutOfWater) { heldClimbProgress = Mathf.Lerp(climbOutOfWaterStart, 1f, motor.vault.Progress); }
             float climbProgress = heldClimbProgress;
-            bool vaultingNow = motor != null && ((step.state & CharacterState.Vaulting) != 0) && !vaultingOutOfWater;
+            bool vaultingNow = motor != null && step.state.HasAny(CharacterState.Vaulting) && !vaultingOutOfWater;
             bool showingVault = ShowVault(vaultingNow, vaultingNow ? motor.vault.Progress : 1f, step.state, deltaTime);
             float vaultProgress = heldVaultProgress;
-            bool wallSliding = ((step.state & CharacterState.WallSliding) != 0) && motor != null;
-            bool wallClimbing = ((step.state & CharacterState.WallClimbing) != 0) && motor != null;
+            bool wallSliding = step.state.HasAny(CharacterState.WallSliding) && motor != null;
+            bool wallClimbing = step.state.HasAny(CharacterState.WallClimbing) && motor != null;
             Vector3 wallPoint = Vector3.zero, wallNormal = Vector3.zero;
             if (wallSliding)
             {
@@ -302,13 +302,13 @@ namespace MeridianMotion.Characters
                 Vector3 climbed = motor.wallClimb.normal;
                 wallNormal = new Vector3(climbed.x, 0f, climbed.z).normalized;
             }
-            else if ((step.state & CharacterState.WallRunning) != 0 && motor != null)
+            else if (step.state.HasAny(CharacterState.WallRunning) && motor != null)
             {
                 wallPoint = motor.wallRun.wallPoint;
                 wallNormal = motor.wallRun.wallNormal;
             }
-            bool swinging = ((step.state & CharacterState.RopeSwinging) != 0) && motor != null;
-            bool ziplining = ((step.state & CharacterState.Ziplining) != 0) && motor != null;
+            bool swinging = step.state.HasAny(CharacterState.RopeSwinging) && motor != null;
+            bool ziplining = step.state.HasAny(CharacterState.Ziplining) && motor != null;
             Vector3 gripPoint = Vector3.zero, gripDirection = Vector3.zero;
             if (swinging) { motor.ropeSwing.TryGetGrip(out gripPoint, out gripDirection); }
             // The cable straight above the character as it's drawn (its transform's interpolated pose).
@@ -334,25 +334,25 @@ namespace MeridianMotion.Characters
                 timeInAir = airTime,
                 moving = horizontalSpeed > movingSpeedThreshold * speedScale, // The threshold is for the authored size.
                 jumping = jumping,
-                dashing = ((step.state & CharacterState.Dashing) != 0),
+                dashing = step.state.HasAny(CharacterState.Dashing),
                 // A roll from a crouch ends crouched: shown as crouching through it, so it blends into the crouch.
-                crouching = ((step.state & CharacterState.Crouching) != 0)
-                            || ((step.state & CharacterState.Rolling) != 0 && motor != null && motor.crouch.IsCrouched),
-                sliding = ((step.state & CharacterState.Sliding) != 0),
-                rolling = ((step.state & CharacterState.Rolling) != 0),
-                wallRunning = ((step.state & CharacterState.WallRunning) != 0),
-                wallSide = ((step.state & CharacterState.WallRunning) != 0) && motor != null ? motor.wallRun.side : 0f,
+                crouching = step.state.HasAny(CharacterState.Crouching)
+                            || (step.state.HasAny(CharacterState.Rolling) && motor != null && motor.crouch.IsCrouched),
+                sliding = step.state.HasAny(CharacterState.Sliding),
+                rolling = step.state.HasAny(CharacterState.Rolling),
+                wallRunning = step.state.HasAny(CharacterState.WallRunning),
+                wallSide = step.state.HasAny(CharacterState.WallRunning) && motor != null ? motor.wallRun.side : 0f,
                 rollProgress = motor != null ? motor.roll.Progress : 0f,
                 climbProgress = climbProgress,
-                hanging = ((step.state & CharacterState.LedgeHanging) != 0),
-                climbing = ((step.state & CharacterState.LedgeClimbing) != 0) || vaultingOutOfWater,
+                hanging = step.state.HasAny(CharacterState.LedgeHanging),
+                climbing = step.state.HasAny(CharacterState.LedgeClimbing) || vaultingOutOfWater,
                 vaulting = showingVault,
                 vaultBodyProgress = vaultingNow ? motor.vault.Progress : 1f,
                 vaultProgress = vaultProgress,
-                steppingUp = ((step.state & CharacterState.SteppingUp) != 0),
+                steppingUp = step.state.HasAny(CharacterState.SteppingUp),
                 // Only a step up's, whose feet foot placement tucks onto the top: a stair's leaves the feet to it as ever.
                 stepUpLag = lagIsStepUp ? stepUpLag : 0f,
-                grabbing = ((step.state & CharacterState.Grabbing) != 0),
+                grabbing = step.state.HasAny(CharacterState.Grabbing),
                 ledgeEdge = ledgeEdge,
                 ledgeNormal = ledgeNormal,
                 wallSliding = wallSliding,
@@ -367,8 +367,8 @@ namespace MeridianMotion.Characters
                 wallNormal = wallNormal,
                 swinging = swinging,
                 ziplining = ziplining,
-                swimming = ((step.state & CharacterState.Swimming) != 0),
-                diving = ((step.state & CharacterState.Diving) != 0),
+                swimming = step.state.HasAny(CharacterState.Swimming),
+                diving = step.state.HasAny(CharacterState.Diving),
                 gripPoint = gripPoint,
                 gripDirection = gripDirection,
                 scale = modelHost != null && modelHost.ModelParent != null && modelHost.ModelParent != transform
@@ -378,7 +378,7 @@ namespace MeridianMotion.Characters
         }
 
         // What else the character can be doing that ends a vault's animation finishing (see ShowVault).
-        private const CharacterState EndsAVaultsFinish = CharacterState.Jumping | CharacterState.Dashing | CharacterState.Sliding
+        private static readonly CharacterState EndsAVaultsFinish = CharacterState.Jumping | CharacterState.Dashing | CharacterState.Sliding
             | CharacterState.Rolling | CharacterState.WallRunning | CharacterState.WallSliding | CharacterState.WallClimbing
             | CharacterState.LedgeHanging | CharacterState.LedgeClimbing | CharacterState.Swimming | CharacterState.Grabbing
             | CharacterState.RopeSwinging | CharacterState.Ziplining | CharacterState.Crouching;
@@ -394,7 +394,7 @@ namespace MeridianMotion.Characters
         {
             float duration = vaultMinDuration * (motor != null ? motor.DurationScale : 1f);
             if (vaulting && !showingVault) { heldVaultProgress = 0f; }
-            bool finishing = !vaulting && showingVault && heldVaultProgress < 1f && (state & EndsAVaultsFinish) == 0;
+            bool finishing = !vaulting && showingVault && heldVaultProgress < 1f && !state.HasAny(EndsAVaultsFinish);
             if (!vaulting && !finishing)
             {
                 showingVault = false;
@@ -558,7 +558,7 @@ namespace MeridianMotion.Characters
             float rootHeight = transform.position.y;
             float scale = modelParent.lossyScale.y > 0f ? modelParent.lossyScale.y : 1f;
             bool steppingUp = motor != null && motor.lastStep != null
-                              && ((motor.lastStep.state & CharacterState.SteppingUp) != 0);
+                              && motor.lastStep.state.HasAny(CharacterState.SteppingUp);
             // Collision stepped the character up onto a stair, or down onto one, at once (see MovementStep.stepChange).
             bool stepped = motor != null && motor.lastStep != null
                            && motor.lastStep.stepChange != 0f;

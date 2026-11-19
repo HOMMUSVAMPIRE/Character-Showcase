@@ -19,9 +19,10 @@ Checks:
      abstract base, such as AbilityFixture<T>, is checked through the fixtures deriving it).
   8. Every movement component a movement asset names ([SerializeReference]: "type: {class: X, ns: Y, asm: Z}")
      still exists by that name, or names it in a [MovedFrom]: renamed without one, it drops out of the asset.
-  9. Every member of the flag enums abilities take bits of (CharacterState, MovementEvents) is a single bit of its own,
-     within the enum's width: no two share one.
- 10-17. The ability conventions (docs/adding-an-ability.md), on every MovementComponent subclass in
+  9. Every flag of the flag structs abilities take bits of (CharacterState, MovementEvents) is a bit number of its own
+     (`public const int XBit = n;`, within the package's bits) with its value (`static readonly … X = Bit(XBit);`): no
+     two share one.
+ 10-16. The ability conventions (docs/adding-an-ability.md), on every MovementComponent subclass in
      Assets/MeridianMotion/Runtime/Characters/MovementModes/Components, each failure naming the fix and the guide's section:
      10. Every setting (public or [SerializeField], not static, const, readonly or [NonSerialized]) has a [Tooltip].
      11. Every setting is of a kind a tuning preset can copy: a primitive, an enum or an AnimationCurve (as
@@ -35,8 +36,6 @@ Checks:
      15. docs/movement.md's component list, and abilities.md or traversal.md, name it by its inspector name (as
          MovementComponent.DisplayNameOf gives it).
      16. It's in StandardMovementMode.DefaultComponents.
-     17. No HasFlag on a CharacterState or MovementEvents anywhere in Assets/MeridianMotion/Runtime: it boxes the 64-bit enum, an
-         allocation every step.
      Where a component legitimately differs, it's in a named allow-list below (with why), and an entry that's no longer
      needed fails too, so it comes off.
  18. Nothing that ships (Assets/MeridianMotion: AGENTS.md, The package line) names the model pipeline: Blender, its runner, the mannequin's and
@@ -292,7 +291,8 @@ def check_serialized_components():
                                 f"give its new name [MovedFrom(... sourceClassName: \"{cls}\")], or the asset loses it")
 
 
-FLAG_ENUMS = {  # The flag enums each ability takes bits of (see docs/adding-an-ability.md), and where they're declared.
+PACKAGE_BITS = 128  # The flags' bits that are the package's (Flags256.PackageBits): the rest are a project's own.
+FLAG_ENUMS = {  # The flag structs each ability takes bits of (see docs/adding-an-ability.md), and where they're declared.
     "CharacterState": CHARACTERS / "Character" / "CharacterState.cs",
     "MovementEvents": CHARACTERS / "Character" / "MovementEvents.cs",
 }
@@ -300,52 +300,33 @@ FLAG_ENUMS = {  # The flag enums each ability takes bits of (see docs/adding-an-
 
 def check_flag_enums():
     # An ability takes the next unused bit of CharacterState for its state and two of MovementEvents for its start and
-    # end, by hand. Two abilities written at once could take the same bit, and C# accepts that: both flags would then be
-    # one, and each ability would seem to start when the other does. So every member is a single bit (None and Idle
-    # apart), no two share one, and each fits the enum's width. A member made of others (A | B) is an alias, and allowed.
+    # end, by hand or by New Ability. Two abilities written at once could take the same bit, and C# accepts that: both
+    # flags would then be one, and each ability would seem to start when the other does. So each flag is a bit number
+    # (`public const int XBit = n;`, the package's below PACKAGE_BITS) and its value from it
+    # (`public static readonly T X = Bit(XBit);`), no two share a bit, and each number has its value and each value its number.
     for name, path in FLAG_ENUMS.items():
         where = path.relative_to(ROOT)
-        text = path.read_text(encoding="utf-8")
-        match = re.search(rf"\benum\s+{name}\s*(?::\s*(\w+))?\s*\{{(.*?)\}}", text, re.S)
-        if not match:
-            problems.append(f"{where}: enum {name} not found (update FLAG_ENUMS in this script if it moved)")
+        code = blank_code(path.read_text(encoding="utf-8"))
+        if not re.search(rf"\bpartial struct\s+{name}\b", code):
+            problems.append(f"{where}: struct {name} not found (update FLAG_ENUMS in this script if it moved)")
             continue
-        bits = 64 if match.group(1) in ("long", "ulong") else 32
-        body = re.sub(r"//[^\n]*|/\*.*?\*/", "", match.group(2), flags=re.S)
-        owner = {}  # bit -> member
-        for member in (m.strip() for m in body.split(",")):
-            if not member:
-                continue
-            parts = [p.strip() for p in member.split("=", 1)]
-            if len(parts) != 2:
-                problems.append(f"{where}: {name}.{parts[0]} has no value of its own: give it its bit (the next unused one)")
-                continue
-            member_name, expression = parts
-            if re.fullmatch(r"[\w\s|]+", expression) and re.search(r"[A-Za-z_]", expression.replace("L", "")):
-                continue  # An alias of other members.
-            shift = re.fullmatch(r"1[uUlL]*\s*<<\s*(\d+)", expression)
-            literal = re.fullmatch(r"(0[xX][0-9a-fA-F]+|\d+)[uUlL]*", expression)
-            if shift:
-                value = 1 << int(shift.group(1))
-            elif literal:
-                value = int(literal.group(1), 0)
-            else:
-                problems.append(f"{where}: {name}.{member_name}'s value ({expression}) isn't a number or 1L << n: "
-                                f"this check can't read it")
-                continue
-            if value == 0:
-                continue  # None, Idle.
-            if value & (value - 1):
-                problems.append(f"{where}: {name}.{member_name} ({expression}) isn't a single bit: each member is one bit "
-                                f"of its own (a member made of others is written as A | B)")
-                continue
-            bit = value.bit_length() - 1
-            if bit >= bits:
-                problems.append(f"{where}: {name}.{member_name} is bit {bit}, past the enum's {bits} bits")
+        numbers = re.findall(r"\bpublic const int (\w+)Bit\s*=\s*(\d+)\s*;", code)
+        values = dict(re.findall(rf"\bpublic static readonly {name} (\w+)\s*=\s*Bit\((\w+)Bit\)\s*;", code))
+        owner = {}  # bit -> flag
+        for flag, number in numbers:
+            bit = int(number)
+            if bit >= PACKAGE_BITS:
+                problems.append(f"{where}: {name}.{flag}Bit is {bit}, past the package's bits (0 to {PACKAGE_BITS - 1}; the rest "
+                                f"are a project's own abilities'): give it the next unused bit")
             if bit in owner:
-                problems.append(f"{where}: {name}.{member_name} and {name}.{owner[bit]} are both bit {bit}: "
-                                f"give one the next unused bit")
-            owner.setdefault(bit, member_name)
+                problems.append(f"{where}: {name}.{flag} and {name}.{owner[bit]} are both bit {bit}: give one the next unused bit")
+            owner.setdefault(bit, flag)
+            if values.get(flag) != flag:
+                problems.append(f"{where}: {name}.{flag}Bit has no value: add `public static readonly {name} {flag} = Bit({flag}Bit);`")
+        named = {flag for flag, _ in numbers}
+        for value, number in values.items():
+            if number != value or value not in named:
+                problems.append(f"{where}: {name}.{value} = Bit({number}Bit) isn't its own bit number: each flag X is Bit(XBit)")
 
 
 # ---- The ability conventions (docs/adding-an-ability.md), checked on every MovementComponent ----
@@ -795,28 +776,6 @@ def check_default_components(components):
                             f"`yield return new {cls}();` at its place in the order ({where(path)}): {see(IN_THE_MODE)}")
 
 
-BOXED_FLAG_ENUMS = ("CharacterState", "MovementEvents")
-
-
-def check_no_has_flag():
-    # Enum.HasFlag boxes its argument (and, in Unity's Mono, a 64-bit enum's value too): an allocation per call, every
-    # step. Test the bit instead: (state & CharacterState.X) != 0. Found by its argument (HasFlag(CharacterState.X)), or
-    # by its receiver, a name something of these types is declared as (state.HasFlag(...)).
-    sources = {path: blank_code(path.read_text(errors="replace")) for path in sorted((RUNTIME).rglob("*.cs"))}
-    types = "|".join(BOXED_FLAG_ENUMS)
-    names = set()
-    for code in sources.values():
-        names.update(re.findall(rf"\b(?:{types})\s+(\w+)\s*[;=,)]", code))
-    receivers = "|".join(sorted(names)) or r"(?!)"
-    pattern = re.compile(rf"\bHasFlag\s*\(\s*(?:\(\s*(?:{types})\s*\)\s*)?\(?\s*(?:{types})\.|\b(?:{receivers})\s*\.\s*HasFlag\s*\(")
-    for path, code in sources.items():
-        for match in pattern.finditer(code):
-            line = code.count("\n", 0, match.start()) + 1
-            problems.append(f"{where(path, line)}: HasFlag on a {' or '.join(BOXED_FLAG_ENUMS)} boxes the 64-bit enum, an "
-                            f"allocation every call: test the bit instead, `(value & CharacterState.X) != 0`: "
-                            f"{see(ITS_STATE_FLAG)}")
-
-
 def check_ability_conventions():
     components = movement_components()
     if not components:
@@ -830,7 +789,6 @@ def check_ability_conventions():
     check_component_tests(components)
     check_component_docs(components)
     check_default_components(components)
-    check_no_has_flag()
 
 
 # What the package doesn't have, so nothing that ships may name it: the model pipeline (Blender, the mannequin's and the

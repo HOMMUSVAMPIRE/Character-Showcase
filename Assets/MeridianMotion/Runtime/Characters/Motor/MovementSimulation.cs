@@ -44,7 +44,7 @@ namespace MeridianMotion.Characters
         /// <summary>The character's state in the last step.</summary>
         public CharacterState State => Motor.lastStep != null ? Motor.lastStep.state : CharacterState.None;
         /// <summary>Whether the character was on the ground in the last step.</summary>
-        public bool Grounded => (State & CharacterState.Grounded) != 0;
+        public bool Grounded => State.HasAny(CharacterState.Grounded);
         /// <summary>The character's velocity in the last step (m/s).</summary>
         public Vector3 Velocity => Motor.lastStep != null ? Motor.lastStep.finalVelocity : Vector3.zero;
         /// <summary>The physics step (s).</summary>

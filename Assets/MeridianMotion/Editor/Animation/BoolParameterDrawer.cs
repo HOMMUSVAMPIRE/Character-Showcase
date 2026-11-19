@@ -41,10 +41,9 @@ namespace MeridianMotion.EditorTools
                     owner.ApplyModifiedProperties();
                 });
                 foreach ((string name, _) in AnimatorParameterTranslator.AnimationBools) { Add("Animation State/" + name, name); }
-                foreach (CharacterState state in Enum.GetValues(typeof(CharacterState)))
+                foreach ((string name, CharacterState state) in CharacterState.Named)
                 {
-                    if (state == CharacterState.None) { continue; }
-                    Add("Character State/" + ObjectNames.NicifyVariableName(state.ToString()), AnimatorParameterTranslator.SourceOf(state));
+                    Add("Character State/" + ObjectNames.NicifyVariableName(name), AnimatorParameterTranslator.SourceOf(state));
                 }
                 menu.DropDown(field);
             }
