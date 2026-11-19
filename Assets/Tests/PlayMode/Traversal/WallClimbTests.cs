@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of climbing climbable surfaces: walking, glancing or falling into one takes hold of it (but not an
@@ -32,9 +32,9 @@ namespace CharacterShowcase.Tests.Traversal
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
         // How high the character's grip is above its feet: the point that has to stay on the climbable area.
 
-        private static Inputs Up => CharacterTestRig.Move(Vector3.forward);
-        private static Inputs Down => CharacterTestRig.Move(Vector3.back);
-        private static Inputs Right => CharacterTestRig.Move(Vector3.right);
+        private static StepInputs Up => CharacterTestRig.Move(Vector3.forward);
+        private static StepInputs Down => CharacterTestRig.Move(Vector3.back);
+        private static StepInputs Right => CharacterTestRig.Move(Vector3.right);
 
         protected override IEnumerator SetUpToStart()
         {
@@ -45,7 +45,7 @@ namespace CharacterShowcase.Tests.Traversal
             rig.ClimbableBox("Wall", new Vector3(0f, height / 2f, face + 0.5f), new Vector3(10f, height, 1f));
         }
 
-        protected override Inputs InputsFor(int step) => Up;
+        protected override StepInputs InputsFor(int step) => Up;
 
         protected override string OffSetting => "wallClimbSpeed";
 
@@ -77,7 +77,7 @@ namespace CharacterShowcase.Tests.Traversal
         {
             yield return rig.RunUntil(() => Climbing, _ => Up, timeoutSeconds: 0.5f);
             Assert.That(Climbing, Is.True, $"Test setup: the character should be climbing (it's at {rig.Position}, " +
-                                           $"{rig.Movement.lastFrameMovementData.state}).");
+                                           $"{rig.Movement.lastStep.state}).");
             yield return rig.RunUntil(() => !rig.Movement.wallClimb.IsEntering, _ => Up, timeoutSeconds: EnterDuration + 0.1f);
         }
 
@@ -352,7 +352,7 @@ namespace CharacterShowcase.Tests.Traversal
             // A climbable wall that moves sideways at 1 m/s, far enough (back and forth over 24 s) not to turn round
             // during the test.
             var platform = rig.Platform(new Vector3(0f, 8f, face + 0.5f), new Vector3(6f, 7.5f, 1f), new Vector3(12f, 0f, 0f), 24f, Vector3.zero);
-            platform.gameObject.AddComponent<Level.ClimbableSurface>();
+            platform.gameObject.AddComponent<MeridianMotion.Levels.ClimbableSurface>();
             yield return TakeHold();
             yield return rig.Run(0.4f, _ => Up);
             Vector3 platformStart = platform.GetComponent<Rigidbody>().position, characterStart = rig.Position;
@@ -370,10 +370,10 @@ namespace CharacterShowcase.Tests.Traversal
         {
             yield return SetUpStanding();
             if (size == default) { size = new Vector3(10f, 10f, 1f); }
-            painted = rig.Box("Paintable Wall", new Vector3(0f, size.y / 2f, face + size.z / 2f), size).AddComponent<Level.PaintedClimbableSurface>();
+            painted = rig.Box("Paintable Wall", new Vector3(0f, size.y / 2f, face + size.z / 2f), size).AddComponent<MeridianMotion.Levels.PaintedClimbableSurface>();
         }
 
-        private Level.PaintedClimbableSurface painted;
+        private MeridianMotion.Levels.PaintedClimbableSurface painted;
 
         [UnityTest]
         public IEnumerator APaintedPatchOfAWall_IsClimbed_OnlyWithinThePaint()

@@ -1,10 +1,11 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
-    /// The view from under the water, for the camera it's on: while the camera is in a body of water (see Water), the
+    /// The view from under the water, for the camera it's on: while the camera is in a body of water (see SwimmableWater), the
     /// scene's fog becomes the water's, dense and tinted, so what's under the water fades into it with distance, and the
     /// sun is tinted and dimmed, as light coming down through the water is, so even what's near takes on its colour;
     /// out of the water, the scene's own fog and sun come back as they were. It knows only its camera's position and the water, nothing
@@ -15,10 +16,11 @@ namespace Level
     /// grading, muffled sound), CameraSubmerged and CameraSurfaced say when the camera goes under and comes up.
     /// </summary>
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/Levels/Underwater View")]
     public class UnderwaterView : MonoBehaviour
     {
         [Tooltip("The fog's colour under the water: what the water fades to with distance")]
-        [SerializeField] private Color fogColour = new Color(0.05f, 0.24f, 0.31f);
+        [SerializeField] [FormerlySerializedAs("fogColour")] private Color fogColor = new Color(0.05f, 0.24f, 0.31f);
         [Tooltip("How dense the fog is under the water (exponential): higher, it's murkier, and things fade out nearer")]
         [Min(0f)] [SerializeField] private float fogDensity = 0.3f;
         [Tooltip("What the sun's colour is multiplied by under the water (the scene's sun: RenderSettings.sun)")]
@@ -30,20 +32,20 @@ namespace Level
         [Min(0f)] [SerializeField] private float surfaceMargin = 0.05f;
 
         /// <summary>Raised when the camera goes under a water's surface, with that water.</summary>
-        public event Action<Water> CameraSubmerged;
+        public event Action<SwimmableWater> CameraSubmerged;
         /// <summary>Raised when the camera comes back above the water it was under, with that water.</summary>
-        public event Action<Water> CameraSurfaced;
+        public event Action<SwimmableWater> CameraSurfaced;
 
         /// <summary>The fog's colour under the water.</summary>
-        public Color FogColour { get => fogColour; set { fogColour = value; if (IsUnderwater) { ApplyUnderwaterFog(); } } }
+        public Color FogColor { get => fogColor; set { fogColor = value; if (IsUnderwater) { ApplyUnderwaterFog(); } } }
         /// <summary>How dense the fog is under the water (exponential).</summary>
         public float FogDensity { get => fogDensity; set { fogDensity = Mathf.Max(0f, value); if (IsUnderwater) { ApplyUnderwaterFog(); } } }
         /// <summary>Whether the camera is under a water's surface, as of the last check.</summary>
         public bool IsUnderwater => water != null;
         /// <summary>The water the camera is under, as of the last check, or null.</summary>
-        public Water Water => water;
+        public SwimmableWater Water => water;
 
-        private Water water;
+        private SwimmableWater water;
         // The scene's own fog, kept while the camera's under the water, to put back when it comes up.
         private bool savedFog;
         private FogMode savedFogMode;
@@ -55,12 +57,12 @@ namespace Level
         private float savedSunIntensity;
 
         // After the camera has moved for the frame (cameras follow in LateUpdate; this checks after them, or a frame late).
-        private void LateUpdate() => Check();
+        private void LateUpdate() => Refresh();
 
         private void OnDisable()
         {
             if (water == null) { return; }
-            Water was = water;
+            SwimmableWater was = water;
             water = null;
             RestoreFog();
             CameraSurfaced?.Invoke(was);
@@ -70,11 +72,11 @@ namespace Level
         /// Checks the camera against the water, now, changing the fog and raising CameraSubmerged or CameraSurfaced if
         /// it's gone under or come up since the last check. Called every frame (LateUpdate).
         /// </summary>
-        public void Check()
+        public void Refresh()
         {
-            Water now = Water.At(transform.position + Vector3.down * surfaceMargin);
+            SwimmableWater now = SwimmableWater.At(transform.position + Vector3.down * surfaceMargin);
             if (now == water) { return; }
-            Water was = water;
+            SwimmableWater was = water;
             water = now;
             if (was == null) { SaveFog(); }
             if (now != null) { ApplyUnderwaterFog(); } else { RestoreFog(); }
@@ -102,7 +104,7 @@ namespace Level
             // Exponential, as the levels' haze is: a build keeps only the fog modes its scenes use (see Graphics settings'
             // Fog Modes), so another mode could be missing from the shaders there.
             RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogColor = fogColour;
+            RenderSettings.fogColor = fogColor;
             RenderSettings.fogDensity = fogDensity;
             if (savedSun != null)
             {

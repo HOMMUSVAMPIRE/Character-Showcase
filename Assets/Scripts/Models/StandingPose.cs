@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Where a model's soles are as it stands still, measured from its standing clip: how far above its origin they are

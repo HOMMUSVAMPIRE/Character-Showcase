@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
     /// A gate on a timed course: a trigger volume that tells its CourseTimer when something passes into it (the object
@@ -10,6 +10,7 @@ namespace Level
     /// </summary>
     [RequireComponent(typeof(Collider))]
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/Levels/Timing Gate")]
     public class TimingGate : MonoBehaviour
     {
         [Tooltip("The course this gate times.")]
@@ -27,7 +28,7 @@ namespace Level
         private void OnTriggerEnter(Collider other)
         {
             if (timer == null) { return; }
-            timer.Pass(role, other.attachedRigidbody != null ? other.attachedRigidbody.transform : other.transform);
+            timer.RegisterGatePass(role, other.attachedRigidbody != null ? other.attachedRigidbody.transform : other.transform);
         }
     }
 }

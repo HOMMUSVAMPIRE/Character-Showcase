@@ -1,8 +1,8 @@
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Makes the default water effects (see WaterEffects) and gives them to the Character prefab: a splash (a burst of
@@ -23,9 +23,9 @@ namespace CharacterShowcase.EditorTools
         public const string SplashPath = PrefabFolder + "/Water Splash.prefab";
         /// <summary>The default ripple's prefab.</summary>
         public const string RipplePath = PrefabFolder + "/Water Ripple.prefab";
-        private const string CharacterPrefabPath = SceneGameSetup.CharacterPrefabPath;
+        private const string CharacterPrefabPath = CharacterSceneSetup.CharacterPrefabPath;
 
-        [MenuItem("Tools/Character Showcase/Create Water Effects")]
+        [MenuItem("Tools/Meridian Motion/Create Water Effects")]
         public static void CreateFromMenu() => Create();
 
         /// <summary>For -executeMethod: makes what's missing, then exits (1 if it couldn't).</summary>

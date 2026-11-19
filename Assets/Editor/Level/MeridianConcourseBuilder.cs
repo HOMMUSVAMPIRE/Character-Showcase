@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's first area, The Concourse (the central hub), into the complex's
@@ -101,14 +101,14 @@ namespace CharacterShowcase.EditorTools.Level
             // stairs, and planters with trees on the diagonals.
             var random = new System.Random(Settings.foliage.seed + 1);
             Tree(plaza, Vector2.zero, 1.2f, random);
-            GuideLine(plaza, "Guide Ring (Orange)", Octagon(6.5f), 0f, Surface.Accent, closed: true);
-            GuideLine(plaza, "Guide Ring (White)", Octagon(7.1f), 0f, Surface.White, closed: true);
+            GuideLine(plaza, "Guide Ring (Orange)", Octagon(6.5f), 0f, GrayboxMaterial.Accent, closed: true);
+            GuideLine(plaza, "Guide Ring (White)", Octagon(7.1f), 0f, GrayboxMaterial.White, closed: true);
             foreach (Vector2 way in new[] { Vector2.up, Vector2.right, Vector2.down })
             {
                 Vector2 across = new Vector2(way.y, -way.x) * (BroadStairWidth / 2f);
                 foreach (float s in new[] { -1f, 1f })
                 {
-                    GuideLine(plaza, "Guide Line (to the Broad Stair)", new[] { across * s + way * 8f, across * s + way * (PlazaHalf - 0.4f) }, 0f, Surface.Accent);
+                    GuideLine(plaza, "Guide Line (to the Broad Stair)", new[] { across * s + way * 8f, across * s + way * (PlazaHalf - 0.4f) }, 0f, GrayboxMaterial.Accent);
                 }
             }
             foreach (Vector2 corner in new[] { new Vector2(1f, 1f), new Vector2(-1f, 1f), new Vector2(1f, -1f), new Vector2(-1f, -1f) })
@@ -214,7 +214,7 @@ namespace CharacterShowcase.EditorTools.Level
             foreach (float x in new[] { -terraceHalf - 3f, terraceHalf + 3f })
             {
                 BoxXZ(landmarks, x < 0f ? "Gate Tower (West, +36)" : "Gate Tower (East, +36)",
-                    new Vector2(x, secondEnd + terraceDepth / 2f), new Vector2(6f, 6f), 0f, 36f, 0f, Surface.Panel);
+                    new Vector2(x, secondEnd + terraceDepth / 2f), new Vector2(6f, 6f), 0f, 36f, 0f, GrayboxMaterial.Panel);
                 // A banner down each tower's face toward the plaza.
                 Banner(landmarks, new Vector2(x, secondEnd + terraceDepth / 2f - 3f), Vector2.down, 33f, 14f);
             }

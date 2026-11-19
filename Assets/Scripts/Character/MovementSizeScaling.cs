@@ -1,6 +1,6 @@
-namespace Character
+namespace MeridianMotion.Characters
 {
-    /// <summary>How a character's speeds change with its size. See MovementController.</summary>
+    /// <summary>How a character's speeds change with its size. See MMotionMotor.</summary>
     public enum MovementSizeScaling
     {
         /// <summary>Speeds and jump launch speed scale with the square root of height, and timings with it, while gravity

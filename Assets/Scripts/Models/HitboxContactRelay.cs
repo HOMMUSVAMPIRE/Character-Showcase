@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// On the Rigidbody a model's hitboxes move with (the character's): Unity tells a Rigidbody's object of the collisions
@@ -14,18 +14,18 @@ namespace Character
     public sealed class HitboxContactRelay : MonoBehaviour
     {
         // What's touching a hitbox now, and which: a collision's end has no contacts to say which it was.
-        private readonly Dictionary<Collider, Hitbox> touching = new();
+        private readonly Dictionary<Collider, BoneHitbox> touching = new();
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (collision.contactCount == 0 || !collision.GetContact(0).thisCollider.TryGetComponent(out Hitbox hitbox)) { return; }
+            if (collision.contactCount == 0 || !collision.GetContact(0).thisCollider.TryGetComponent(out BoneHitbox hitbox)) { return; }
             touching[collision.collider] = hitbox;
             hitbox.Report(collision.collider, true);
         }
 
         private void OnCollisionExit(Collision collision)
         {
-            if (touching.Remove(collision.collider, out Hitbox hitbox) && hitbox != null) { hitbox.Report(collision.collider, false); }
+            if (touching.Remove(collision.collider, out BoneHitbox hitbox) && hitbox != null) { hitbox.Report(collision.collider, false); }
         }
     }
 }

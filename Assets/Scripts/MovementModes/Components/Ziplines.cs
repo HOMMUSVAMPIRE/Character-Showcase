@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Ziplines (see Level.Zipline): catching hold of a zipline's cable in mid-air, and riding along it, downhill, to its
+    /// Ziplines (see MeridianMotion.Levels.ZiplineCable): catching hold of a zipline's cable in mid-air, and riding along it, downhill, to its
     /// end.
     /// </summary>
     [Serializable]
@@ -38,22 +38,22 @@ namespace Character
 
         /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the cable.</summary>
         public override MovementEvents OneOffEvents => MovementEvents.Jumped;
-        public override bool IsActive(MovementController controller) => controller.zipline.IsRiding;
+        public override bool IsActive(MMotionMotor controller) => controller.zipline.IsRiding;
         /// <summary>Riding, the character holds on to the cable, which holds it up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        public override AbilityTraits Traits => AbilityTraits.Supported | AbilityTraits.Attached;
         /// <summary>The events of Ziplining starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Ziplining, MovementEvents.ZiplineStarted, MovementEvents.ZiplineEnded),
         };
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            controller.zipline.regrabCooldown = MovementHelpers.CountDown(controller.zipline.regrabCooldown, movementData.deltaTime);
+            controller.zipline.regrabCooldown = MovementRules.CountDown(controller.zipline.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.zipline.IsRiding) { LetGoOfZipline(controller); }
         }
@@ -65,7 +65,7 @@ namespace Character
         /// carrying on at the ride's speed. Jump lets go with a jump; Crouch lets go and drops; so does touching the
         /// ground, or being stopped by a wall or ceiling. Catching hold gives back the character's jumps and air dashes.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             ZiplineState ride = controller.zipline;
             bool caught = false;
@@ -74,7 +74,7 @@ namespace Character
                 if (!TryCatchZipline(movementData, controller)) { return false; }
                 caught = true;
             }
-            Zipline line = ride.line;
+            ZiplineCable line = ride.line;
             if (line == null || !line.isActiveAndEnabled)
             {
                 LetGoOfZipline(controller); // What it was riding is gone: it falls on at the speed it was going.
@@ -92,10 +92,10 @@ namespace Character
                     LetGoOfZipline(controller);
                     return false;
                 }
-                if (Mode.IsNewJumpPress(inputs, controller))
+                if (Mode.HasFreshJumpPress(inputs, controller))
                 {
                     LetGoOfZipline(controller);
-                    MovementHelpers.JumpOff(movementData, controller,
+                    MovementRules.JumpOff(movementData, controller,
                         direction * ride.speed + Vector3.up * (ziplineJumpUpSpeed * controller.SpeedScale), MovementEvents.Jumped);
                     return true;
                 }
@@ -147,7 +147,7 @@ namespace Character
         /// are and where they're going: a fast fall passes a cable in less than a step), with room to hang below it. Not
         /// the one let go of last, until the regrab delay is over.
         /// </summary>
-        private bool TryCatchZipline(MovementData movementData, MovementController controller)
+        private bool TryCatchZipline(MovementStep movementData, MMotionMotor controller)
         {
             ZiplineState ride = controller.zipline;
             if (ziplineGrabReach <= 0f || movementData.initialGrounded
@@ -160,19 +160,19 @@ namespace Character
             float reach = ziplineGrabReach * controller.HeightScale;
             float margin = ZiplineEndMargin * controller.HeightScale;
 
-            Zipline best = null;
+            ZiplineCable best = null;
             float bestSqrDistance = reach * reach, bestAlong = 0f;
             // Indexed, not foreach: All is an IReadOnlyList, whose enumerator is boxed, an allocation every step in the air.
-            IReadOnlyList<Zipline> lines = Zipline.All;
+            IReadOnlyList<ZiplineCable> lines = ZiplineCable.All;
             for (int i = 0; i < lines.Count; i++)
             {
-                Zipline line = lines[i];
+                ZiplineCable line = lines[i];
                 if (line == null || (line == ride.lastLine && ride.regrabCooldown > 0f)) { continue; }
                 float length = line.Length;
                 if (length <= 2f * margin) { continue; }
                 Vector3 direction = line.Direction;
                 Vector3 from = line.Start + direction * margin, to = line.End - direction * margin;
-                float sqrDistance = MovementHelpers.SqrDistanceBetweenSegments(from, to, grip, gripNext, out float onCable, out _);
+                float sqrDistance = MovementRules.SqrDistanceBetweenSegments(from, to, grip, gripNext, out float onCable, out _);
                 // The nearest; of two as near, the first by where it is (StableOrder), not the order they were enabled in.
                 if (sqrDistance > bestSqrDistance || (sqrDistance == bestSqrDistance && best != null && StableOrder.Compare(line.Start, best.Start) >= 0)) { continue; }
                 best = line;
@@ -188,12 +188,12 @@ namespace Character
             // The ride starts at the character's speed along the cable, either way.
             ride.speed = Vector3.Dot(movementData.initialVelocity, best.Direction);
             ride.elapsed = 0f;
-            MovementHelpers.TakeHoldOfALine(movementData, controller, this);
+            MovementRules.AttachToLine(movementData, controller, this);
             return true;
         }
 
         /// <summary>Lets go of the zipline ridden; the same one can't be caught again for the regrab delay.</summary>
-        private void LetGoOfZipline(MovementController controller)
+        private void LetGoOfZipline(MMotionMotor controller)
         {
             ZiplineState ride = controller.zipline;
             ride.lastLine = ride.line;
@@ -210,7 +210,7 @@ namespace Character
     public class ZiplineState
     {
         /// <summary>The zipline ridden (null when not riding one).</summary>
-        public Level.Zipline line;
+        public MeridianMotion.Levels.ZiplineCable line;
         /// <summary>How far (m) along the cable from its start the character hangs.</summary>
         public float along;
         /// <summary>How fast (m/s) the character moves along the cable, positive toward its end.</summary>
@@ -218,7 +218,7 @@ namespace Character
         /// <summary>Seconds since catching hold.</summary>
         public float elapsed;
         /// <summary>The zipline last let go of, which can't be caught again until regrabCooldown runs out.</summary>
-        public Level.Zipline lastLine;
+        public MeridianMotion.Levels.ZiplineCable lastLine;
         /// <summary>Seconds until lastLine can be caught again.</summary>
         public float regrabCooldown;
 
@@ -240,9 +240,9 @@ namespace Character
         }
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's zipline riding state (Ziplines).</summary>
         public ZiplineState zipline { get; } = new ZiplineState();

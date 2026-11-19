@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// A second UV set (UV2, Unity's UV channel 1) for the level's meshes, in which every face has its own space: what

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Dressing, after the concept art and the icons and decals sheet: orange banners with the Meridian mark, guide lines
     // on floors, bracketed pads where characters spawn, cyan marks where mechanics to come will be, floor rulers, orange
@@ -18,7 +18,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void Banner(Transform parent, Vector2 wallPoint, Vector2 outward, float top, float length, string number = null)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Banner), parent, wallPoint, outward, top, length, number);
-            GrayboxSettings.DressingSettings d = Settings.dressing;
+            LevelBuilderSettings.DressingSettings d = Settings.dressing;
             var banner = new GameObject($"Banner{(number != null ? $" ({number})" : "")}");
             banner.transform.SetParent(parent, false);
             banner.transform.SetLocalPositionAndRotation(new Vector3(wallPoint.x, 0f, wallPoint.y),
@@ -27,17 +27,17 @@ namespace CharacterShowcase.EditorTools.Level
             // Laid out with +z out from the face, x across it.
             float w = d.banner.x / 2f, notch = d.banner.y, bottom = top - length, z0 = d.bannerStandOff, z1 = z0 + 0.03f, front = z1 + 0.005f;
             var mesh = new GrayboxMesh();
-            mesh.Plate(Surface.Accent, new[] { new Vector2(-w, bottom + notch), new Vector2(w, bottom + notch), new Vector2(w, top), new Vector2(-w, top) }, z0, z1);
-            mesh.Plate(Surface.Accent, new[] { new Vector2(-w, bottom), new Vector2(0f, bottom + notch), new Vector2(-w, bottom + notch) }, z0, z1);
-            mesh.Plate(Surface.Accent, new[] { new Vector2(w, bottom), new Vector2(w, bottom + notch), new Vector2(0f, bottom + notch) }, z0, z1);
-            mesh.Box(Surface.Graphite, new Vector3(-w - 0.1f, top - 0.04f, 0f), new Vector3(w + 0.1f, top + 0.06f, z1 + 0.04f));
+            mesh.Plate(GrayboxMaterial.Accent, new[] { new Vector2(-w, bottom + notch), new Vector2(w, bottom + notch), new Vector2(w, top), new Vector2(-w, top) }, z0, z1);
+            mesh.Plate(GrayboxMaterial.Accent, new[] { new Vector2(-w, bottom), new Vector2(0f, bottom + notch), new Vector2(-w, bottom + notch) }, z0, z1);
+            mesh.Plate(GrayboxMaterial.Accent, new[] { new Vector2(w, bottom), new Vector2(w, bottom + notch), new Vector2(0f, bottom + notch) }, z0, z1);
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-w - 0.1f, top - 0.04f, 0f), new Vector3(w + 0.1f, top + 0.06f, z1 + 0.04f));
             // The mark: three white slashes ("///" to the reader, who faces -z, so seen from in front the banner's +x is
             // to their left), in the upper part of the banner.
             float markHeight = Mathf.Min(1.4f * w, 0.35f * length), markBottom = top - 0.15f * length - markHeight, slash = 0.28f * w;
             for (int i = 0; i < 3; i++)
             {
                 float x = 0.75f * w - i * 0.55f * w;
-                mesh.Beam(Surface.White, new Vector3(x, markBottom, front), new Vector3(x - 0.45f * w, markBottom + markHeight, front),
+                mesh.Beam(GrayboxMaterial.White, new Vector3(x, markBottom, front), new Vector3(x - 0.45f * w, markBottom + markHeight, front),
                     Vector3.right, slash, 0.01f, ends: true);
             }
             mesh.AddTo(banner, banner.name);
@@ -54,7 +54,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// settings' width, in a surface (orange or white, the concept art's path lines). To see only.
         /// </summary>
         [Piece]
-        public static void GuideLine(Transform parent, string name, Vector2[] points, float height, Surface surface, bool closed = false)
+        public static void GuideLine(Transform parent, string name, Vector2[] points, float height, GrayboxMaterial surface, bool closed = false)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(GuideLine), parent, name, points, height, surface, closed);
             float w = Settings.dressing.guideLineWidth, t = Settings.markings.thickness;
@@ -89,13 +89,13 @@ namespace CharacterShowcase.EditorTools.Level
                 pad.transform.SetLocalPositionAndRotation(new Vector3(at.x, floor, at.y), Quaternion.Euler(0f, yaw, 0f));
                 float half = Settings.dressing.spawnPadSize / 2f, t = Settings.markings.thickness;
                 var mesh = new GrayboxMesh();
-                Brackets(mesh, Surface.White, half, 0.35f * half, 0.07f, t);
+                Brackets(mesh, GrayboxMaterial.White, half, 0.35f * half, 0.07f, t);
                 for (int i = 0; i < 2; i++)
                 {
                     float z = half + 0.35f + i * 0.35f;
                     var tip = new Vector3(0f, t / 2f, z + 0.25f);
-                    mesh.Beam(Surface.Cyan, new Vector3(-0.35f, t / 2f, z), tip, Vector3.up, t, 0.08f, ends: true);
-                    mesh.Beam(Surface.Cyan, new Vector3(0.35f, t / 2f, z), tip, Vector3.up, t, 0.08f, ends: true);
+                    mesh.Beam(GrayboxMaterial.Cyan, new Vector3(-0.35f, t / 2f, z), tip, Vector3.up, t, 0.08f, ends: true);
+                    mesh.Beam(GrayboxMaterial.Cyan, new Vector3(0.35f, t / 2f, z), tip, Vector3.up, t, 0.08f, ends: true);
                 }
                 mesh.AddTo(pad, pad.name);
                 MakeStatic(pad, occluder: false);
@@ -120,7 +120,7 @@ namespace CharacterShowcase.EditorTools.Level
                 mark.transform.localPosition = new Vector3(at.x, floor, at.y);
                 float half = Settings.dressing.futureMarkSize / 2f, t = Settings.markings.thickness;
                 var mesh = new GrayboxMesh();
-                Brackets(mesh, Surface.Cyan, half, 0.4f * half, 0.06f, t);
+                Brackets(mesh, GrayboxMaterial.Cyan, half, 0.4f * half, 0.06f, t);
                 mesh.AddTo(mark, mark.name);
                 MakeStatic(mark, occluder: false);
                 Text(mark.transform, "Future Mark Label", mechanic, new Vector3(0f, t + 0.002f, -half - 0.35f), Quaternion.Euler(90f, 0f, 0f),
@@ -129,7 +129,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>Four corner brackets of a square half wide each way, arms arm long and width wide, raised t, in mesh's local x and z.</summary>
-        private static void Brackets(GrayboxMesh mesh, Surface surface, float half, float arm, float width, float t)
+        private static void Brackets(GrayboxMesh mesh, GrayboxMaterial surface, float half, float arm, float width, float t)
         {
             foreach (float sx in new[] { -1f, 1f })
             {
@@ -170,17 +170,17 @@ namespace CharacterShowcase.EditorTools.Level
         public static void Ruler(Transform parent, string name, Vector2 start, Vector2 direction, float length, float height, float labelEvery = 0f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ruler), parent, name, start, direction, length, height, labelEvery);
-            GrayboxSettings.DressingSettings d = Settings.dressing;
+            LevelBuilderSettings.DressingSettings d = Settings.dressing;
             float t = Settings.markings.thickness, y = height + t / 2f;
             Vector2 side = new(direction.y, -direction.x);
             var mesh = new GrayboxMesh();
             Vector2 end = start + direction * length;
-            mesh.Beam(Surface.White, new Vector3(start.x, y, start.y), new Vector3(end.x, y, end.y), Vector3.up, t, 0.06f, ends: true);
+            mesh.Beam(GrayboxMaterial.White, new Vector3(start.x, y, start.y), new Vector3(end.x, y, end.y), Vector3.up, t, 0.06f, ends: true);
             for (float u = 0f; u <= length + 1e-3f; u += d.rulerTicks.x)
             {
                 bool metre = Mathf.Abs(u - Mathf.Round(u)) < 1e-3f;
                 Vector2 a = start + direction * u, b = a + side * (metre ? 0.45f : 0.22f);
-                mesh.Beam(Surface.White, new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), Vector3.up, t, 0.04f, ends: true);
+                mesh.Beam(GrayboxMaterial.White, new Vector3(a.x, y, a.y), new Vector3(b.x, y, b.y), Vector3.up, t, 0.04f, ends: true);
             }
             var ruler = new GameObject(name);
             ruler.transform.SetParent(parent, false);
@@ -207,12 +207,12 @@ namespace CharacterShowcase.EditorTools.Level
                 if (f.x != 0f)
                 {
                     float x = f.x > 0f ? x1 : x0 - band.y, zc = (z0 + z1) / 2f;
-                    mesh.Box(Surface.Accent, new Vector3(x, y0, zc - band.x / 2f), new Vector3(x + band.y, y1, zc + band.x / 2f));
+                    mesh.Box(GrayboxMaterial.Accent, new Vector3(x, y0, zc - band.x / 2f), new Vector3(x + band.y, y1, zc + band.x / 2f));
                 }
                 else
                 {
                     float z = f.y > 0f ? z1 : z0 - band.y, xc = (x0 + x1) / 2f;
-                    mesh.Box(Surface.Accent, new Vector3(xc - band.x / 2f, y0, z), new Vector3(xc + band.x / 2f, y1, z + band.y));
+                    mesh.Box(GrayboxMaterial.Accent, new Vector3(xc - band.x / 2f, y0, z), new Vector3(xc + band.x / 2f, y1, z + band.y));
                 }
             }
             var bands = new GameObject("Tower Bands");
@@ -240,17 +240,17 @@ namespace CharacterShowcase.EditorTools.Level
             var mesh = new GrayboxMesh();
             foreach (float s in new[] { -1f, 1f })
             {
-                mesh.Box(Surface.Graphite, new Vector3(-1f, 0f, s * half - 0.4f), new Vector3(1f, 0.55f, s * half + 0.4f), bottom: false);
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(-1f, 0f, s * half - 0.4f), new Vector3(1f, 0.55f, s * half + 0.4f), bottom: false);
             }
-            mesh.Box(Surface.Accent, new Vector3(-0.4f, 0.15f, -half + 0.4f), new Vector3(0.4f, 1.15f, half - 0.4f), ends: false);
-            mesh.Box(Surface.Graphite, new Vector3(-0.7f, 1.15f, -0.7f), new Vector3(0.7f, 1.7f, 0.7f), bottom: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-0.4f, 0.15f, -half + 0.4f), new Vector3(0.4f, 1.15f, half - 0.4f), ends: false);
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-0.7f, 1.15f, -0.7f), new Vector3(0.7f, 1.7f, 0.7f), bottom: false);
             float hook = hookBottom - railTop;
             foreach (float x in new[] { -0.15f, 0.15f })
             {
-                mesh.Tube(Surface.Steel, new Vector3(x, 0.15f, 0f), new Vector3(x, hook + 0.6f, 0f), 0.025f, 6);
+                mesh.Tube(GrayboxMaterial.Steel, new Vector3(x, 0.15f, 0f), new Vector3(x, hook + 0.6f, 0f), 0.025f, 6);
             }
-            mesh.Box(Surface.Accent, new Vector3(-0.3f, hook + 0.25f, -0.25f), new Vector3(0.3f, hook + 0.6f, 0.25f));
-            mesh.Box(Surface.Steel, new Vector3(-0.06f, hook, -0.06f), new Vector3(0.06f, hook + 0.25f, 0.06f), top: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-0.3f, hook + 0.25f, -0.25f), new Vector3(0.3f, hook + 0.6f, 0.25f));
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-0.06f, hook, -0.06f), new Vector3(0.06f, hook + 0.25f, 0.06f), top: false);
             mesh.AddTo(crane, crane.name);
             AddBox(crane, new Vector3(0f, 0.85f, 0f), new Vector3(2f, 1.7f, length + 0.8f));
             AddBox(crane, new Vector3(0f, hook + 0.3f, 0f), new Vector3(0.6f, 0.6f, 0.5f));

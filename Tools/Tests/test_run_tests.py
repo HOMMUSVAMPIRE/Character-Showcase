@@ -183,29 +183,29 @@ class WhatAChangeReaches(ProjectCase):
 
     def test_the_movement_reaches_movement_abilities_and_traversal(self):
         self.assertEqual({"Movement", "Abilities", "Traversal"},
-                         self.reach("Assets/Scripts/Character/MovementController.cs")[0])
+                         self.reach("Assets/Scripts/Character/MMotionMotor.cs")[0])
         self.assertEqual({"Movement", "Abilities", "Traversal"},
                          self.reach("Assets/Scripts/MovementModes/Components/Crouching.cs")[0])
 
     def test_animation_ik_and_models_reach_animation_and_models(self):
-        for path in ("Assets/Scripts/Animation/AnimationController.cs", "Assets/Scripts/IK/CharacterIK.cs",
-                     "Assets/Scripts/Models/CharacterModelHost.cs", "Assets/Editor/Models/HitboxFitter.cs"):
+        for path in ("Assets/Scripts/Animation/MMotionAnimator.cs", "Assets/Scripts/IK/HumanoidIK.cs",
+                     "Assets/Scripts/Models/CharacterModelSlot.cs", "Assets/Editor/Models/HitboxFitter.cs"):
             with self.subTest(path):
                 self.assertEqual({"Animation", "Models"}, self.reach(path)[0])
 
     def test_the_camera_reaches_camera(self):
-        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/CameraRig.cs")[0])
+        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs")[0])
 
     def test_the_levels_reach_levels_and_traversal(self):
-        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Scripts/Level/Rope.cs")[0])
+        self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Scripts/Level/SwingRope.cs")[0])
         self.assertEqual({"Levels", "Traversal"}, self.reach("Assets/Editor/Level/Graybox/Graybox.cs")[0])
 
     def test_spawning_reaches_spawning(self):
         self.assertEqual({"Spawning"}, self.reach("Assets/Scripts/Character/CharacterSpawner.cs")[0])
-        self.assertEqual({"Spawning"}, self.reach("Assets/Editor/Scene/SceneGameSetup.cs")[0])
+        self.assertEqual({"Spawning"}, self.reach("Assets/Editor/Scene/CharacterSceneSetup.cs")[0])
 
     def test_a_meta_file_reaches_what_its_asset_does(self):
-        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/CameraRig.cs.meta")[0])
+        self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs.meta")[0])
         self.assertEqual({"Camera"}, self.reach("Assets/Scripts/CameraSystem.meta")[0])
 
     def test_a_test_file_reaches_the_areas_it_declares(self):
@@ -224,7 +224,7 @@ class WhatAChangeReaches(ProjectCase):
         self.assertEqual(EVERYTHING, self.reach("Assets/Tests/Shared/TestArea.cs", root=self.root)[0])
 
     def test_anything_unmapped_under_assets_reaches_everything(self):
-        chosen, reasons = self.reach("Assets/Scripts/Character/MovementController.cs", "Assets/Prefabs/Character.prefab")
+        chosen, reasons = self.reach("Assets/Scripts/Character/MMotionMotor.cs", "Assets/Prefabs/Character.prefab")
         self.assertEqual(EVERYTHING, chosen)
         self.assertEqual(EVERYTHING, reasons[1][1])
         self.assertEqual(EVERYTHING, self.reach("ProjectSettings/DynamicsManager.asset")[0])
@@ -240,8 +240,8 @@ class WhatAChangeReaches(ProjectCase):
         self.assertIn("hygiene check", run_tests.nothing_to_run(reasons))
 
     def test_each_file_says_why(self):
-        _, reasons = self.reach("Assets/Scripts/CameraSystem/CameraRig.cs")
-        self.assertEqual([("Assets/Scripts/CameraSystem/CameraRig.cs", {"Camera"}, "the camera")], reasons)
+        _, reasons = self.reach("Assets/Scripts/CameraSystem/MMotionCameraRig.cs")
+        self.assertEqual([("Assets/Scripts/CameraSystem/MMotionCameraRig.cs", {"Camera"}, "the camera")], reasons)
 
     def test_every_rule_names_a_real_area(self):
         areas = set(run_tests.read_test_areas(run_tests.ROOT).values())
@@ -289,15 +289,15 @@ class ReadingTheResults(unittest.TestCase):
         # The test-run's one failure, and VaultTests' set-up, which its test-run total doesn't count.
         self.assertEqual({"passed": 1, "failed": 2, "inconclusive": 1, "skipped": 1}, outcome.counts)
         problems = {name: (result, message, stack) for result, name, message, stack in outcome.problems}
-        result, message, stack = problems["CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_IsClimbed"]
+        result, message, stack = problems["MeridianMotion.Tests.Abilities.LedgeTests.ALedge_IsClimbed"]
         self.assertEqual("Failed (Error)", result)
         self.assertTrue(message.startswith("The character didn't reach the top."))
-        self.assertTrue(stack.startswith("at CharacterShowcase.Tests.Abilities.LedgeTests"))
+        self.assertTrue(stack.startswith("at MeridianMotion.Tests.Abilities.LedgeTests"))
         self.assertNotIn("TestEnumerator", stack)
         self.assertEqual(("Inconclusive", "The character has no ledge hang.", ""),
-                         problems["CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_OnAFox"])
-        self.assertEqual("Skipped (Ignored)", problems["CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_Later"][0])
-        self.assertEqual("Failed (SetUp)", problems["CharacterShowcase.Tests.Abilities.VaultTests"][0])
+                         problems["MeridianMotion.Tests.Abilities.LedgeTests.ALedge_OnAFox"])
+        self.assertEqual("Skipped (Ignored)", problems["MeridianMotion.Tests.Abilities.LedgeTests.ALedge_Later"][0])
+        self.assertEqual("Failed (SetUp)", problems["MeridianMotion.Tests.Abilities.VaultTests"][0])
         self.assertTrue(outcome.failed(strict=False))
 
     def test_compile_errors_are_read_from_the_log_each_once(self):
@@ -376,9 +376,9 @@ class Running(ProjectCase):
         code, output, _ = run_main(self.root, ["--area", "Abilities"], config, self)
         self.assertEqual(run_tests.EXIT_FAILED, code)
         self.assertIn("PlayMode: 1 passed, 2 failed, 1 inconclusive, 1 skipped", output)
-        self.assertIn("[Failed (Error)] CharacterShowcase.Tests.Abilities.LedgeTests.ALedge_IsClimbed", output)
+        self.assertIn("[Failed (Error)] MeridianMotion.Tests.Abilities.LedgeTests.ALedge_IsClimbed", output)
         self.assertIn("The character didn't reach the top.", output)
-        self.assertIn("at at CharacterShowcase.Tests.Abilities.LedgeTests", output)
+        self.assertIn("at at MeridianMotion.Tests.Abilities.LedgeTests", output)
         self.assertIn("The character has no ledge hang.", output)
         # EditMode has no Abilities fixture, so only PlayMode ran, for that category.
         self.assertIn("EditMode: no fixtures in Abilities", output)

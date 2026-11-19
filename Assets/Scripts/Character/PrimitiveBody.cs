@@ -1,17 +1,17 @@
 using System.Collections.Generic;
 using System.Globalization;
-using PhysicsQueries;
+using MeridianMotion.PhysicsQueries;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A body (see CharacterBody) shaped as one of Unity's primitive colliders: a capsule (upright or lying along an axis),
     /// a box or a sphere, centred wherever it's authored. It's a shape, not a collider: the movement needs no collider on
     /// the character (its queries are made with the shape itself, and pushing it out of the world with a private collider
-    /// that nothing else meets: see MovementController.QueryCollider). If the character has a collider of its kind (its
+    /// that nothing else meets: see MMotionMotor.QueryCollider). If the character has a collider of its kind (its
     /// Body Collider), the body keeps it shaped as it is, for the physics that meets the character; it's the body's
-    /// shape as authored, too, unless it's given one (see MovementController.SetBody). Its size follows the character's (a
+    /// shape as authored, too, unless it's given one (see MMotionMotor.SetBody). Its size follows the character's (a
     /// capsule's length along its axis with that axis's scale, its radius with the larger of the others, but no more than
     /// half its height; a box's sides each with theirs; a sphere with the largest). Its postures are its authored shape
     /// lowered from the top (low) or laid down along the facing, resting on the feet (lying), no thicker than its lying
@@ -19,7 +19,7 @@ namespace Character
     /// a shape given it, it's the default body (BodyShape.Default).
     ///
     /// It can have extra parts (see BodyDefinition's Extra Parts): more primitives beside its main shape, together one
-    /// body (a long creature's back and head), the way a model's hitboxes are many (see SetExtraParts). Its queries cover
+    /// body (a long generic-rig character's back and head), the way a model's hitboxes are many (see SetExtraParts). Its queries cover
     /// every part; it's as tall as its highest part's top, and reaches as far as its furthest part does. Held low, every
     /// part is kept under the lowered top (one already under it staying where it is, the others pushed down under it,
     /// made thinner only where they must be); lying, only its main shape lies down, the extra parts left out. The main
@@ -51,7 +51,7 @@ namespace Character
         /// A body for the owner, keeping the given primitive collider shaped as it is (or, if null, the owner's first
         /// solid capsule, box or sphere collider, if it has one).
         /// </summary>
-        public PrimitiveBody(MovementController owner, Collider primitive) : base(owner)
+        public PrimitiveBody(MMotionMotor owner, Collider primitive) : base(owner)
         {
             collider = IsPrimitive(primitive) ? primitive : null;
             searched = collider != null;
@@ -82,7 +82,7 @@ namespace Character
         /// <summary>
         /// Gives the body extra parts as authored (see BodyDefinition's Extra Parts; primitives at the character's authored
         /// size, relative to its feet and facing, standing), in place of any it had; none or null makes it one shape again.
-        /// Parts without a size are left out. Doesn't resize it: the owner does (see MovementController.SetBody).
+        /// Parts without a size are left out. Doesn't resize it: the owner does (see MMotionMotor.SetBody).
         /// </summary>
         public void SetExtraParts(IReadOnlyList<BodyShape> parts)
         {
@@ -213,7 +213,7 @@ namespace Character
         }
 
         /// <summary>The owner's first solid primitive collider on its own object (a capsule, then a box, then a sphere).</summary>
-        private static Collider FindPrimitive(MovementController owner)
+        private static Collider FindPrimitive(MMotionMotor owner)
         {
             foreach (Collider c in owner.GetComponents<Collider>())
             {
@@ -236,7 +236,7 @@ namespace Character
         // No collider: the default body (an upright capsule standing on the feet).
         private static BodyShape Read(Collider c) => BodyShape.TryRead(c, out BodyShape shape) ? shape : BodyShape.Default;
 
-        /// <summary>Shapes a primitive collider of the shape's kind as the shape (see MovementController.QueryCollider, too).</summary>
+        /// <summary>Shapes a primitive collider of the shape's kind as the shape (see MMotionMotor.QueryCollider, too).</summary>
         internal static void Write(Collider collider, BodyShape s)
         {
             switch (collider)
@@ -431,7 +431,7 @@ namespace Character
         }
 
         /// <summary>
-        /// The shape with its bottom held lift (m) above the feet, its top where it was (see MovementController's Hover Over
+        /// The shape with its bottom held lift (m) above the feet, its top where it was (see MMotionMotor's Hover Over
         /// Steps): a box or upright capsule shortened from the bottom, as far as that lifts it, but never thinner across
         /// (a capsule no shorter than it's wide, a box no thinner than its skin's twice over), so it reaches as far ahead
         /// and to the sides. A shape already that far above the feet, or round across its height (a sphere, or a capsule
@@ -470,7 +470,7 @@ namespace Character
         /// growing, it waits for room: unless told not to (checkRoom false), if the new body would reach anywhere the
         /// current one doesn't and wouldn't fit with its feet at feet (turned rotation, at the given scale and posture),
         /// nothing changes and this returns false; also false for a shape of another kind than its collider, or without a
-        /// size. Doesn't resize it: the owner does (see MovementController.SetBody).
+        /// size. Doesn't resize it: the owner does (see MMotionMotor.SetBody).
         /// </summary>
         public bool SetAuthoredShape(BodyShape shape, Vector3 feet, Quaternion rotation, Vector3 scale, BodyPosture posture, bool checkRoom = true)
         {
@@ -494,7 +494,7 @@ namespace Character
                 || Mathf.Abs(shape.center.x) + a.x > Mathf.Abs(than.center.x) + b.x + tolerance;
         }
 
-        public override CharacterBody CopyFor(MovementController copy, BodyShape? authoredShape = null)
+        public override CharacterBody CopyFor(MMotionMotor copy, BodyShape? authoredShape = null)
         {
             RememberAuthoredSize();
             BodyShape shape = authoredShape is { HasSize: true } given ? given : authored;
@@ -633,7 +633,7 @@ namespace Character
                         query = Owner.QueryCollider(s, part);
                         query.enabled = true;
                     }
-                    MovementController.GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
+                    MMotionMotor.GetColliderPose(other, out Vector3 otherPosition, out Quaternion otherRotation);
                     if (Physics.ComputePenetration(query, feet + offset, rotation, other, otherPosition, otherRotation,
                             out Vector3 direction, out float distance))
                     {

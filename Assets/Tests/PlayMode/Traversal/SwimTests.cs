@@ -1,11 +1,11 @@
 using System.Collections;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of swimming: falling into deep water, the character plunges and floats back up to swim with its feet the
@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests.Traversal
         // The pool: its surface at 0, its floor this far down, wide enough to swim a long way in.
         private const float PoolDepth = 5f, PoolSize = 60f;
 
-        private Water water;
+        private SwimmableWater water;
 
         private float SwimSpeed => rig.MovementSetting<float>("swimSpeed") * rig.Movement.SpeedScale;
         private float SprintSwimSpeed => rig.MovementSetting<float>("swimSprintSpeed") * rig.Movement.SpeedScale;
@@ -41,7 +41,7 @@ namespace CharacterShowcase.Tests.Traversal
             yield return SpawnCharacter(Vector3.up * Scale, settleSeconds: 0f);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Idle();
 
         protected override string OffSetting => "swimDepth";
 

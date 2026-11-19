@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// A JSON object that keeps its keys in the order they were added, so a level spec reads (and diffs) in the order

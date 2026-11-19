@@ -1,6 +1,6 @@
 using System;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Named values an ability publishes for its look, with no animation code: a component sets them during its step
@@ -74,8 +74,8 @@ namespace Character
         }
     }
 
-    // The values' place on the character (see MovementController): what its abilities publish for their look.
-    public partial class MovementController
+    // The values' place on the character (see MMotionMotor): what its abilities publish for their look.
+    public partial class MMotionMotor
     {
         /// <summary>The values the character's abilities publish for their look (see AbilityValues).</summary>
         public AbilityValues AbilityValues { get; } = new AbilityValues();

@@ -2,14 +2,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// A stress test of the movement: many characters stepped together on a course of walls and ledges, sprinting in
@@ -39,7 +39,7 @@ namespace CharacterShowcase.Tests.Movement
 
         // The extra characters and their copies of the movement mode (the rig cleans up its own).
         private readonly List<Object> created = new();
-        private readonly List<MovementController> characters = new();
+        private readonly List<MMotionMotor> characters = new();
 
         [UnityTearDown]
         public IEnumerator TearDown()
@@ -68,13 +68,13 @@ namespace CharacterShowcase.Tests.Movement
             {
                 GameObject character = Object.Instantiate(prefab, Spot(i) + Vector3.up * 0.05f, Quaternion.identity);
                 created.Add(character);
-                character.GetComponent<ACCharacterController>().enabled = false;
-                var movement = character.GetComponent<MovementController>();
+                character.GetComponent<MMotionCharacter>().enabled = false;
+                var movement = character.GetComponent<MMotionMotor>();
                 // Its own copy of the movement mode, as the rig's character has, so nothing changes the asset.
-                if (movement.movementHandler != null)
+                if (movement.movementMode != null)
                 {
-                    movement.movementHandler = Object.Instantiate(movement.movementHandler);
-                    created.Add(movement.movementHandler);
+                    movement.movementMode = Object.Instantiate(movement.movementMode);
+                    created.Add(movement.movementMode);
                 }
                 characters.Add(movement);
             }
@@ -86,12 +86,12 @@ namespace CharacterShowcase.Tests.Movement
         /// What character i does on a step: sprints in a direction that turns slowly (so it runs at and along its wall
         /// and ledge), jumping and dashing now and then, each at its own time.
         /// </summary>
-        private static Inputs InputsFor(int i, int step)
+        private static StepInputs InputsFor(int i, int step)
         {
             float angle = (step * 2f + i * 37f) % 360f;
             Vector3 direction = Quaternion.Euler(0f, angle, 0f) * Vector3.forward;
             int jumpAt = (step + i * 7) % 45, dashAt = (step + i * 11) % 120;
-            if (jumpAt < 8) { Inputs jump = CharacterTestRig.Jump(direction); jump.sprint = CharacterTestRig.Held(); return jump; }
+            if (jumpAt < 8) { StepInputs jump = CharacterTestRig.Jump(direction); jump.sprint = CharacterTestRig.Held(); return jump; }
             if (dashAt == 0) { return CharacterTestRig.Dash(direction); }
             return CharacterTestRig.Sprint(direction);
         }
@@ -105,24 +105,24 @@ namespace CharacterShowcase.Tests.Movement
             var stepTimes = new List<double>(timed);
             var stopwatch = new Stopwatch();
             // What the characters did while timed: a stress test of characters standing still would measure nothing.
-            CharacterState seen = CharacterState.Idle;
+            CharacterState seen = CharacterState.None;
             for (int step = 0; step < warmUp + timed; step++)
             {
                 yield return new WaitForFixedUpdate();
                 stopwatch.Restart();
                 for (int i = 0; i < characters.Count; i++)
                 {
-                    characters[i].ProcessMovementInputs(CharacterInputFrame.Holding(InputsFor(i, step), characters[i].Tick), Time.fixedDeltaTime);
-                    characters[i].MovementCleanup();
+                    characters[i].Step(CharacterInputFrame.Holding(InputsFor(i, step), characters[i].InputTick), Time.fixedDeltaTime);
+                    characters[i].FinishStep();
                 }
                 stopwatch.Stop();
                 if (step < warmUp) { continue; }
                 stepTimes.Add(stopwatch.Elapsed.TotalMilliseconds);
-                foreach (MovementController character in characters) { seen |= character.lastFrameMovementData.state; }
+                foreach (MMotionMotor character in characters) { seen |= character.lastStep.state; }
             }
             yield return new WaitForFixedUpdate();
 
-            foreach (MovementController character in characters)
+            foreach (MMotionMotor character in characters)
             {
                 Vector3 p = character.GetComponent<Rigidbody>().position;
                 Assert.That(float.IsFinite(p.x) && float.IsFinite(p.y) && float.IsFinite(p.z), Is.True, $"{character.name} ended up at {p}.");

@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of sprinting: holding Sprint moves the character at its movement mode's run speed instead of its walk

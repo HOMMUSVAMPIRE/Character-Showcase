@@ -2,7 +2,7 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// A fixture of tests on the character: each test gets a new CharacterTestRig (rig), disposed after it. NUnit runs this

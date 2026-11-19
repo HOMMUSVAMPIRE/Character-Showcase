@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of ziplines: reaching a cable in mid-air catches hold of it, and the character rides it downhill, hanging
@@ -19,7 +19,7 @@ namespace CharacterShowcase.Tests.Traversal
     [Category(TestArea.Traversal)]
     public class ZiplineTests : AbilityFixture<Ziplines>
     {
-        private Zipline line;
+        private ZiplineCable line;
 
         protected override IEnumerator SetUpToStart()
         {
@@ -30,7 +30,7 @@ namespace CharacterShowcase.Tests.Traversal
             rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f * Scale));
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Idle();
 
         protected override string OffSetting => "ziplineGrabReach";
 

@@ -1,25 +1,25 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// A body (see BodyShape), as an asset: a character's (its MovementController's Body Definition), or a model's (its
+    /// A body (see BodyShape), as an asset: a character's (its MMotionMotor's Body Definition), or a model's (its
     /// CharacterModelSource's, in the model's own units, which a character fitting its body to its model takes: see
-    /// CharacterModelHost's Body Fit). Prepare Character Models fits one to each model it prepares, from the model's
+    /// CharacterModelSlot's Body Fit). Prepare Humanoid Models fits one to each model it prepares, from the model's
     /// meshes in their bind pose, unless Refit On Prepare is turned off for one shaped by hand.
     /// </summary>
-    [CreateAssetMenu(menuName = "Character Showcase/Body Definition", fileName = "Body", order = 40)]
+    [CreateAssetMenu(menuName = "Meridian Motion/Characters/Body Definition", fileName = "Body", order = 40)]
     public class BodyDefinition : ScriptableObject
     {
         [Tooltip("The body: its kind, its size and where it sits standing (relative to the feet, the character's origin), and " +
                  "how thick it is lying down")]
         [SerializeField] private BodyShape shape = BodyShape.Default;
-        [Tooltip("More primitives beside the body's shape, together one body: a long creature's back and head, say, where a " +
+        [Tooltip("More primitives beside the body's shape, together one body: a long generic-rig character's back and head, say, where a " +
                  "box round all of it would reach out with its corners. The movement's queries cover every part, and the " +
                  "body is as tall as its highest part. Each is placed as the shape is (relative to the feet and facing, " +
                  "standing). Empty: the body is its shape alone")]
         [SerializeField] private System.Collections.Generic.List<BodyShape> extraParts = new();
-        [Tooltip("Let Prepare Character Models fit this body to its model again each time it runs. Turn off for a body " +
+        [Tooltip("Let Prepare Humanoid Models fit this body to its model again each time it runs. Turn off for a body " +
                  "shaped by hand, which it then leaves as it is")]
         [SerializeField] private bool refitOnPrepare = true;
 
@@ -29,7 +29,7 @@ namespace Character
         /// <summary>The body's extra parts beside its shape (see the field's tooltip): none for a body of one shape.</summary>
         public System.Collections.Generic.List<BodyShape> ExtraParts => extraParts;
 
-        /// <summary>Whether Prepare Character Models fits this body to its model each time it runs.</summary>
+        /// <summary>Whether Prepare Humanoid Models fits this body to its model each time it runs.</summary>
         public bool RefitOnPrepare { get => refitOnPrepare; set => refitOnPrepare = value; }
 
         /// <summary>A definition of the given body, not saved as an asset (destroy it when done).</summary>

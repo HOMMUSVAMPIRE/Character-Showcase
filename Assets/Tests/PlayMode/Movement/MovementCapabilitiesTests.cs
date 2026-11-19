@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
-    /// Tests of the character's capabilities (MovementController.Capabilities, measured by simulating its movement): they
+    /// Tests of the character's capabilities (MMotionMotor.Capabilities, measured by simulating its movement): they
     /// match what the character itself does in the world (a jump, a sprint jump, a slide, a roll), follow its settings and
     /// its size, leave out what's turned off, and add double jumps when it has air jumps. The test camera looks down +Z.
     /// </summary>
@@ -29,13 +29,13 @@ namespace CharacterShowcase.Tests.Movement
         /// <summary>How far the character's jump carries it, running (or sprinting) up then Jump held, as the capabilities measure it.</summary>
         private IEnumerator JumpAcross(bool sprint, System.Action<float> distance)
         {
-            Inputs Forward(int i) => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
+            StepInputs Forward(int i) => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return rig.Run(0.8f, Forward);
             float start = rig.Position.z;
             bool left = false, landed = false;
             yield return rig.RunUntil(() => landed, step =>
             {
-                Inputs inputs = Forward(step);
+                StepInputs inputs = Forward(step);
                 inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => { if (!rig.Grounded) { left = true; } else if (left) { landed = true; } }, 4f);
@@ -71,7 +71,7 @@ namespace CharacterShowcase.Tests.Movement
             Assert.That(Capabilities, Is.SameAs(first), "Tuned back as it was, it should share the measurement made then.");
 
             // Even a tiny change of size counts. Made without jumps, which a measurement then skips (see
-            // BasicMovementMode.MeasureCapabilities: the jumps and climbs are most of its cost), so the size's new
+            // StandardMovementMode.MeasureCapabilities: the jumps and climbs are most of its cost), so the size's new
             // measurement is a quick one; the change is still only of size, from the measurement without jumps.
             rig.SetMovementSetting("maxJumps", 0);
             Assume.That(Capabilities, Is.SameAs(withoutJumps), "Test setup: tuned without jumps again, it should share that measurement.");
@@ -106,7 +106,7 @@ namespace CharacterShowcase.Tests.Movement
         /// <summary>
         /// Tunes the character with an air jump, and without sliding or wall-running: one tuning, so WhatsTurnedOff_IsLeftOut
         /// and AirJumps_AddDoubleJumps_ReachingFurther share one measurement (a measurement with jumps is the costly kind,
-        /// and measurements are shared by everything with the same tuning: see MovementController.Capabilities). Neither
+        /// and measurements are shared by everything with the same tuning: see MMotionMotor.Capabilities). Neither
         /// sliding nor wall-running changes a jump across a floor or onto a block (which the measurement makes with
         /// wall-running off anyway), so the double jumps measure as they would with them on.
         /// </summary>
@@ -154,9 +154,9 @@ namespace CharacterShowcase.Tests.Movement
             yield return rig.StandOnFloor();
             using var simulation = new MovementSimulation(rig.Movement);
             // A sprint, a jump held from step 10, and a dash at step 50: through the air, a landing, and on.
-            Inputs Planned(int i)
+            StepInputs Planned(int i)
             {
-                Inputs inputs = MovementSimulation.Move(Vector3.forward, sprint: true);
+                StepInputs inputs = MovementSimulation.Move(Vector3.forward, sprint: true);
                 if (i >= 10) { inputs.jump = MovementSimulation.Held(i - 10); }
                 if (i >= 50) { inputs.dash = MovementSimulation.Held(i - 50); }
                 return inputs;
@@ -174,7 +174,7 @@ namespace CharacterShowcase.Tests.Movement
             Assert.That(simulation.Restore(saved), Is.True, "The snapshot should go back into the character it was saved from.");
             simulation.Run(60, i =>
             {
-                Inputs other = MovementSimulation.Move(Vector3.left, sprint: false);
+                StepInputs other = MovementSimulation.Move(Vector3.left, sprint: false);
                 other.crouch = MovementSimulation.Held(i);
                 if (i == 20) { other.roll = MovementSimulation.Held(0); }
                 return other;

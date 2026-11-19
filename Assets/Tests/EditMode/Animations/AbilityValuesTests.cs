@@ -1,7 +1,7 @@
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 
-namespace CharacterShowcase.Tests.EditMode.Animations
+namespace MeridianMotion.Tests.EditMode.Animations
 {
     /// <summary>
     /// Tests of the values abilities publish for their look (AbilityValues): a value is kept by its name's hash, the same

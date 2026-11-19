@@ -72,7 +72,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   characterController: {fileID: 8983899932423906658}
   rb: {fileID: 5209213404800541197}
-  movementHandler: {fileID: 11400000, guid: ee973badba204454bb67677c21875fb7, type: 2}
+  movementMode: {fileID: 11400000, guid: ee973badba204454bb67677c21875fb7, type: 2}
   lastFrameMovementData:
     timeSinceGrounded: 0
     finalGroundTransform: {fileID: 0}
@@ -106,8 +106,8 @@ MonoBehaviour:
     targetPitch: 0
     modelDrop: 0
   pendingVelocityChange: {x: 0, y: 0, z: 0}
-  movementSpeedMultiplier: 1
-  jumpStrengthModifier: 1
+  speedMultiplier: 1
+  jumpSpeedMultiplier: 1
   groundCheckRadius: 0
   movementLayerMask:
     serializedVersion: 2
@@ -197,7 +197,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a9207c3b093447be937897df9569f3ee, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CharacterShowcase::Character.CharacterModelHost
+  m_EditorClassIdentifier: MeridianMotion.Characters::MeridianMotion.Characters.CharacterModelHost
   modelSource: {fileID: 11400000, guid: fd051d156126e401fae044d417c1cb53, type: 2}
   fallbackSource: {fileID: 11400000, guid: fd051d156126e401fae044d417c1cb53, type: 2}
   modelParent: {fileID: 5701748026665167100}
@@ -219,7 +219,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9ec39934c4994be581bd84442478cc99, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CharacterShowcase::Character.WaterEffects
+  m_EditorClassIdentifier: MeridianMotion.Characters::MeridianMotion.Characters.WaterEffects
   splashPrefab: {fileID: 2128114978611597593, guid: ea3a210b33f594878b973fe72b185d5d, type: 3}
   ripplePrefab: {fileID: 5259221796791745848, guid: 5b5e8c7877acb430497ed0149d01fec7, type: 3}
   splashFullSpeed: 10

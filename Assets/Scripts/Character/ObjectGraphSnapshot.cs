@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Object = UnityEngine.Object;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A copy of an object's state, and of every plain C# object it reaches (its fields' objects, theirs, and so on:

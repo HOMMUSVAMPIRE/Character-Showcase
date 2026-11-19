@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using Level;
-using UnityEditor;
+using MeridianMotion.Levels;
 using UnityEditor.EditorTools;
+using UnityEditor;
 using UnityEngine;
 
-namespace Level.EditorTools
+namespace MeridianMotion.Levels.EditorTools
 {
     /// <summary>
     /// The inspector for a PaintedClimbableSurface: its settings, the Paint button (which switches to the paint tool, see

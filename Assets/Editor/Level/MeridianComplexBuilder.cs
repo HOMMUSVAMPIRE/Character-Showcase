@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
-    /// Builds the Meridian Complex's graybox as one scene (see GrayboxScene for the build and its environment), under a
+    /// Builds the Meridian Complex's graybox as one scene (see LevelDefinition for the build and its environment), under a
     /// "Meridian Complex" root: its seven areas, each by its own builder (01 Concourse, 02 Kinetic Gardens, 03
     /// Ascension Spire, 04 Fabrication Hall, 05 Suspension Yard, 06 Service Network, 07 Calibration Annex), joined at
     /// their connections, on a placeholder ground. Rebuilding replaces the scene and its environment assets, so edits
@@ -20,7 +20,7 @@ namespace CharacterShowcase.EditorTools.Level
         private const float GroundHalf = 220f;
 
         /// <summary>The complex's scene: its seven areas, each built by its own builder, then the ground.</summary>
-        internal static readonly GrayboxScene Scene = new("Meridian Complex", ScenePath,
+        internal static readonly LevelDefinition Scene = new("Meridian Complex", ScenePath,
             ("01 Concourse", MeridianConcourseBuilder.BuildInto),
             ("02 Kinetic Gardens", MeridianKineticGardensBuilder.BuildInto),
             ("03 Ascension Spire", MeridianAscensionSpireBuilder.BuildInto),
@@ -34,7 +34,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// Builds the level in the background (see LevelBuildWindow), a step at a time between editor frames, with a
         /// window showing its progress, so the editor doesn't freeze for the whole build. Opens the scene when it's done.
         /// </summary>
-        [MenuItem("Tools/Character Showcase/Level/Build Meridian Complex")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Build Meridian Complex")]
         public static void BuildFromMenu() => LevelBuildWindow.BuildFromMenu(Scene);
 
         /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake, then exits.</summary>

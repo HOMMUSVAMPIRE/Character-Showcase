@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of bodies of the other primitive shapes (see BodyShape and PrimitiveBody), in place of the character's upright
@@ -177,7 +177,7 @@ namespace CharacterShowcase.Tests.Movement
             Assert.That(CharacterTestRig.CharacterPrefab().GetComponents<Collider>(), Is.Empty,
                 "The prefab should have no collider of its own: its body is a shape, and its model's hitboxes meet the world.");
             Assert.That(rig.Movement.Body.Collider, Is.Null, "Nor should one be added for its body.");
-            // Its body is the definition's, unless it takes its model's (see CharacterModelHost's Body Fit).
+            // Its body is the definition's, unless it takes its model's (see CharacterModelSlot's Body Fit).
             BodyShape expected = rig.Models.BodyFor(rig.Models.ModelSource, rig.Movement) ?? definition.Shape;
             Assert.That(rig.Movement.AuthoredBody.Equals(expected), Is.True, $"Its body should be {expected}, not {rig.Movement.AuthoredBody}.");
         }

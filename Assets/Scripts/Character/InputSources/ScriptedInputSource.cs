@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Drives a character from a script: a list of timed steps (each held for its seconds: a move input, a look and the
@@ -10,6 +10,7 @@ namespace Character
     /// When the script ends the character stands idle, or it starts over (Loop). Its frames are the same however often
     /// it's played, so a scripted character moves the same each time.
     /// </summary>
+    [AddComponentMenu("Meridian Motion/Characters/Scripted Input Source")]
     public class ScriptedInputSource : CharacterInputSource
     {
         /// <summary>One part of a script: what the input does, held for a time.</summary>
@@ -65,7 +66,7 @@ namespace Character
             endsWorkedOutFor = -1f;
         }
 
-        public override CharacterInputFrame FrameFor(uint tick, MovementController character)
+        public override CharacterInputFrame FrameFor(uint tick, MMotionMotor character)
         {
             if (!started)
             {

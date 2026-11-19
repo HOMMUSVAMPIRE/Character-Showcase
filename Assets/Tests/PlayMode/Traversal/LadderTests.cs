@@ -1,13 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of climbing ladders, which are climbed as climbable surfaces are, but only straight up and down, on the
@@ -19,14 +19,14 @@ namespace CharacterShowcase.Tests.Traversal
     [Category(TestArea.Traversal)]
     public class LadderTests : CharacterRigFixture
     {
-        private Ladder ladder;
+        private ClimbableLadder ladder;
         // The ladder's front face (z), toward the character.
         private float face;
 
         private bool Climbing => rig.InState(CharacterState.WallClimbing);
         private bool OnLadder => Climbing && rig.Movement.wallClimb.ladder != null;
         private Vector3 Forward => rig.Body.rotation * Vector3.forward;
-        private static Inputs Up => CharacterTestRig.Move(Vector3.forward);
+        private static StepInputs Up => CharacterTestRig.Move(Vector3.forward);
 
         /// <summary>A floor, the character standing on it facing +Z, and a ladder of the given height a little in front of it, offset to its side.</summary>
         private IEnumerator SetUpLadder(float height = 6f, float sideways = 0.15f)

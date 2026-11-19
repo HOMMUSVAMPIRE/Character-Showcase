@@ -397,7 +397,7 @@ CROUCH_WALK = Gait(speed=1.0, duration=0.8, stance=0.65, legs=legs(0.75, 0.25, 0
 
 # Stepping in place, to turn on the spot: the trot's diagonal pairs, slower, with small lifts and no stride. Played as the
 # fox turns standing (by its turn speed), its paws lift and are put down again where the turning body has them, so it
-# steps round (PawPlacementIK locks each where it's put down).
+# steps round (LegPlacementIK locks each where it's put down).
 TURN_STEP = Gait(speed=0.0, duration=0.5, stance=0.5, legs=legs(0.0, 0.5, 0.5, 0.0), lift_front=35.0, lift_hind=25.0,
                  bob=0.006, head_bob=1.0, tail_sway=8.0)
 

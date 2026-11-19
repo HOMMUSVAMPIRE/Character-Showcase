@@ -1,7 +1,7 @@
-using PhysicsQueries;
+using MeridianMotion.PhysicsQueries;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// An order for things the movement chooses between that doesn't depend on the order Unity gives them in (a query's

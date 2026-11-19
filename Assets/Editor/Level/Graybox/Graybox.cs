@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Level.EditorTools;
+using MeridianMotion.Levels.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Graybox building blocks shared by the level builders: boxes and solids, stairs, ramps, bridges, guardrails and
@@ -20,8 +20,8 @@ namespace CharacterShowcase.EditorTools.Level
         public static float StepRise = 0.3f, StepRun = 0.4f;
         /// <summary>How far bridges run out, how thick decks are, and guardrails' height and thickness: the settings' after Begin.</summary>
         public static float BridgeLength = 20f, Deck = 1f, RailHeight = 1.1f, RailThickness = 0.15f;
-        /// <summary>The numbers the pieces are made with (see GrayboxSettings), loaded by Begin.</summary>
-        public static GrayboxSettings Settings { get; private set; }
+        /// <summary>The numbers the pieces are made with (see LevelBuilderSettings), loaded by Begin.</summary>
+        public static LevelBuilderSettings Settings { get; private set; }
         /// <summary>The material everything's given that has no surface of its own in the palette: the one passed to Begin, or the render pipeline's default.</summary>
         public static Material Material;
 
@@ -30,7 +30,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// their own (walls are panelled concrete, guardrails metal with an orange top rail, stairs concrete with orange
         /// nosings, the ground paving); boxes and solids are concrete unless a builder says otherwise.
         /// </summary>
-        public enum Surface
+        public enum GrayboxMaterial
         {
             /// <summary>Smooth cast concrete: decks, floors, terraces, steps.</summary>
             Concrete,
@@ -56,14 +56,14 @@ namespace CharacterShowcase.EditorTools.Level
             Soil,
             /// <summary>Lawn: grass over open ground and platform tops, and its tufts.</summary>
             Grass,
-            /// <summary>Water's surface: see-through, rippling, darker where it's deeper (its own shader: see GrayboxScene).</summary>
+            /// <summary>Water's surface: see-through, rippling, darker where it's deeper (its own shader: see LevelDefinition).</summary>
             Water,
         }
 
         private static Material[] palette;
 
         /// <summary>
-        /// The materials the surfaces are given (indexed by Surface) for the builds to come: GrayboxScene sets it before
+        /// The materials the surfaces are given (indexed by Surface) for the builds to come: LevelDefinition sets it before
         /// building. A surface it has no material for is given Material.
         /// </summary>
         public static void UsePalette(Material[] materials) => palette = materials;
@@ -77,7 +77,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static object DeferOwner;
 
         /// <summary>
-        /// Puts off placing something until the whole level's built (RunDeferred, which GrayboxScene calls after every
+        /// Puts off placing something until the whole level's built (RunDeferred, which LevelDefinition calls after every
         /// part): for what has to find the floor under it, or room round it, among everything else.
         /// </summary>
         public static void Defer(System.Action place) => deferred.Add((DeferOwner, place));
@@ -101,7 +101,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void ClearDeferred() => deferred.Clear();
 
         /// <summary>The material for a surface: the palette's, or Material.</summary>
-        public static Material For(Surface surface)
+        public static Material For(GrayboxMaterial surface)
         {
             Material material = palette != null && (int)surface < palette.Length ? palette[(int)surface] : null;
             return material != null ? material : Material;
@@ -120,7 +120,7 @@ namespace CharacterShowcase.EditorTools.Level
                 Material = probe.GetComponent<MeshRenderer>().sharedMaterial;
                 Object.DestroyImmediate(probe);
             }
-            Settings = GrayboxSettings.Load();
+            Settings = LevelBuilderSettings.Load();
             StepRise = Settings.stairs.stepRise;
             StepRun = Settings.stairs.stepRun;
             BridgeLength = Settings.decks.bridgeLength;
@@ -251,7 +251,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// the vertical, in the surface's material. Static.
         /// </summary>
         [Piece]
-        public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f, Surface surface = Surface.Concrete)
+        public static GameObject Box(Transform parent, string name, Vector3 localCentre, Vector3 size, float yaw = 0f, GrayboxMaterial surface = GrayboxMaterial.Concrete)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Box), parent, name, localCentre, size, yaw, surface);
             GameObject box = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -269,7 +269,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>A box over a footprint on the ground plane (centre and size in the parent's x and z), from y0 to y1.</summary>
         [Piece]
         public static GameObject BoxXZ(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f,
-            Surface surface = Surface.Concrete)
+            GrayboxMaterial surface = GrayboxMaterial.Concrete)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(BoxXZ), parent, name, centre, size, y0, y1, yaw, surface);
             return Box(parent, name, new Vector3(centre.x, (y0 + y1) / 2f, centre.y), new Vector3(size.x, y1 - y0, size.y), yaw, surface);
@@ -277,7 +277,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>A box as BoxXZ makes it, but only to see: no collider, for trims too small to matter to movement.</summary>
         [Piece]
-        public static GameObject Trim(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw, Surface surface)
+        public static GameObject Trim(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw, GrayboxMaterial surface)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Trim), parent, name, centre, size, y0, y1, yaw, surface);
             GameObject trim = BoxXZ(parent, name, centre, size, y0, y1, yaw, surface);
@@ -289,7 +289,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>An axis-aligned box over x from x0 to x1 and z from z0 to z1 (in the parent's x and z), from y0 to y1.</summary>
         [Piece]
         public static GameObject Block(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float y1,
-            Surface surface = Surface.Concrete)
+            GrayboxMaterial surface = GrayboxMaterial.Concrete)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Block), parent, name, x0, x1, z0, z1, y0, y1, surface);
             return BoxXZ(parent, name, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), new Vector2(x1 - x0, z1 - z0), y0, y1, 0f, surface);

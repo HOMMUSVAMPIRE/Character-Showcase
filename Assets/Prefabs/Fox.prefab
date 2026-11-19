@@ -29,7 +29,7 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 11400000, guid: 6fedef50458cb4c6a864457e58ea92a4, type: 2}
     - target: {fileID: 2359205359729717119, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}
-      propertyPath: movementHandler
+      propertyPath: movementMode
       value: 
       objectReference: {fileID: 11400000, guid: 5cadb8145cdaf4f7587d65c171b68cb3, type: 2}
     - target: {fileID: 5072992517839684357, guid: 2879140e65c9afe4aa77bb8c108127d5, type: 3}

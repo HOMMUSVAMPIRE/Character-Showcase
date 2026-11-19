@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Animations
+namespace MeridianMotion.Tests.EditMode.Animations
 {
     /// <summary>
     /// Checks of the package's motion-capture clips in Assets/Animation/CMU, run in the editor: each is set up as a
@@ -56,7 +56,7 @@ namespace CharacterShowcase.Tests.EditMode.Animations
             CheckEvery(Clips(), path =>
             {
                 var importer = (ModelImporter)AssetImporter.GetAtPath(path);
-                if (importer.animationType != ModelImporterAnimationType.Human) { return "not Humanoid (run Tools > Character Showcase > Prepare Motion Capture Clips)"; }
+                if (importer.animationType != ModelImporterAnimationType.Human) { return "not Humanoid (run Tools > Meridian Motion > Prepare > Motion Capture Clips)"; }
                 Avatar avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
                 if (avatar == null || !avatar.isValid || !avatar.isHuman) { return "no valid Humanoid avatar"; }
                 HumanBone[] human = importer.humanDescription.human;
@@ -81,8 +81,8 @@ namespace CharacterShowcase.Tests.EditMode.Animations
         public void ClipsThatMoveAbout_StayOnTheSpot_AndFaceForward_OnTheMannequin()
         {
             string[] clips = Clips().Where(path => OnTheSpotFolders.Contains(Path.GetFileName(Path.GetDirectoryName(path)))).ToArray();
-            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterModelImporter.MannequinPrefabPath);
-            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {CharacterModelImporter.MannequinPrefabPath} to play them on."); }
+            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(HumanoidModelImporter.MannequinPrefabPath);
+            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {HumanoidModelImporter.MannequinPrefabPath} to play them on."); }
             CheckEvery(clips, path =>
             {
                 AnimationClip clip = MotionCaptureClipImporter.WholeClip(path);

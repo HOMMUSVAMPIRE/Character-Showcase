@@ -2,14 +2,14 @@ using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Where a character's model comes from, and how to set it up on the character. The CharacterModelHost asks its
+    /// Where a character's model comes from, and how to set it up on the character. The CharacterModelSlot asks its
     /// source for a model at runtime with CreateModelAsync, so a character's look is changed by giving it a different
     /// source, and nothing about the character depends on how the model is stored.
     ///
-    /// Subclasses decide how the model is obtained: DirectCharacterModelSource instantiates a prefab it references;
+    /// Subclasses decide how the model is obtained: PrefabModelSource instantiates a prefab it references;
     /// others could load one from Addressables or an asset bundle (releasing it again in ReleaseModel), or assemble one
     /// from a character creator's choices. The settings here (placement, IK, the translator that animates the model)
     /// apply however the model is obtained, and SetUpModelAsync applies them, so a subclass only has to produce the model.
@@ -18,7 +18,7 @@ namespace Character
     {
         [Header("Animation")]
         [Tooltip("Turns the character's movement into this model's animations")]
-        [SerializeField] private CharacterAnimationTranslator translator;
+        [SerializeField] private AnimationTranslator translator;
         [Tooltip("Optional: replaces the model's Animator Controller")]
         [SerializeField] private RuntimeAnimatorController animatorController;
         [Tooltip("Optional: replaces the model's Avatar")]
@@ -26,7 +26,7 @@ namespace Character
 
         [Header("Placement")]
         [Tooltip("Keep the model at its own size (times Scale), or scale it to Fit Height. Either way, a character whose " +
-                 "CharacterModelHost has Body Fit off warns if the model is too tall or too short for its body; with Body " +
+                 "CharacterModelSlot has Body Fit off warns if the model is too tall or too short for its body; with Body " +
                  "Fit on, its body is fitted to the model instead.")]
         [SerializeField] private ModelHeight height = ModelHeight.KeepModelSize;
         [Tooltip("With Height set to Fit To Height, the model is scaled to stand this tall, in meters")]
@@ -39,37 +39,37 @@ namespace Character
         [Min(0.001f)] [SerializeField] private float scale = 1f;
         [Tooltip("Measure where the model's soles are when it's loaded (once for all copies of the same model), rather " +
                  "than using Ground Offset and Animated Ground Offset. On for sources made by hand or in code, whose " +
-                 "models haven't been measured; Prepare Character Models measures its models' and turns this off.")]
+                 "models haven't been measured; Prepare Humanoid Models measures its models' and turns this off.")]
         [SerializeField] private bool measureGroundOnLoad = true;
         [Tooltip("How far above its origin the model's soles are as it stands, in the model's own units (before Scale and " +
                  "Fit To Height), with its feet where foot placement holds them (or, for a model without foot placement, " +
                  "where its animation puts them): the model is lowered by this, so its feet rest on the ground. Negative " +
-                 "if its feet sink below its origin. Prepare Character Models measures it from the model standing idle.")]
+                 "if its feet sink below its origin. Prepare Humanoid Models measures it from the model standing idle.")]
         [SerializeField] private float groundOffset;
         [Tooltip("The same, with the feet where its animation puts them. A model of other proportions than the clips' own " +
                  "has its feet a little higher or lower there than at the IK goals foot placement uses: foot placement " +
                  "makes up the difference while it's off or fading (in the air, dashing).")]
         [SerializeField] private float animatedGroundOffset;
         [Tooltip("Degrees the model is turned about the up axis so it faces the character's forward (+Z), before Rotation " +
-                 "Offset: for a model made facing another way, which its animation keeps. Prepare Character Models " +
+                 "Offset: for a model made facing another way, which its animation keeps. Prepare Humanoid Models " +
                  "measures it, to the nearest quarter turn (as do sources measuring on load).")]
         [SerializeField] private float facingCorrection;
         [Tooltip("The model's height unscaled (m, from its meshes in its bind pose), measured when it was prepared (Prepare " +
                  "Character Models); 0 if it hasn't been. With its sizing above, how tall it stands (Measured Height), which " +
-                 "a character fitting its body to its model (its CharacterModelHost's Body Fit) takes as its standing height")]
+                 "a character fitting its body to its model (its CharacterModelSlot's Body Fit) takes as its standing height")]
         [Min(0f)] [SerializeField] private float measuredOwnHeight;
 
         [Header("Body")]
         [Tooltip("The model's own body (see BodyDefinition), in the model's own units (before Scale or Fit To Height, which " +
-                 "size it with the model): what a character fitting its body to its model takes (CharacterModelHost's " +
-                 "Body Fit). Prepare Character Models fits one to the model. Empty: a character fitting its body to the " +
+                 "size it with the model): what a character fitting its body to its model takes (CharacterModelSlot's " +
+                 "Body Fit). Prepare Humanoid Models fits one to the model. Empty: a character fitting its body to the " +
                  "model fits one as the model loads")]
         [SerializeField] private BodyDefinition bodyDefinition;
 
         [Header("Setup")]
-        [Tooltip("Add CharacterIK to humanoid models that don't have it, so their hands and feet can be posed with IK")]
+        [Tooltip("Add HumanoidIK to humanoid models that don't have it, so their hands and feet can be posed with IK")]
         [SerializeField] private bool addIK = true;
-        [Tooltip("Add FootPlacementIK to humanoid models that don't have it, planting their feet on uneven ground")]
+        [Tooltip("Add HumanoidFootPlacementIK to humanoid models that don't have it, planting their feet on uneven ground")]
         [SerializeField] private bool addFootPlacement = true;
         [Tooltip("Put the model on the same layer as the character, as cameras and physics queries expect")]
         [SerializeField] private bool matchCharacterLayer = true;
@@ -77,9 +77,9 @@ namespace Character
         [SerializeField] private bool alwaysAnimate = true;
 
         /// <summary>
-        /// Turns the character's movement into this source's models' animations, through the CharacterModel it creates.
+        /// Turns the character's movement into this source's models' animations, through the LoadedCharacterModel it creates.
         /// </summary>
-        public CharacterAnimationTranslator Translator { get => translator; set => translator = value; }
+        public AnimationTranslator Translator { get => translator; set => translator = value; }
         /// <summary>Replaces the model's Animator Controller when it's set up; null keeps the model's own.</summary>
         public RuntimeAnimatorController AnimatorController { get => animatorController; set => animatorController = value; }
         /// <summary>Replaces the model's Avatar when it's set up; null keeps the model's own.</summary>
@@ -119,7 +119,7 @@ namespace Character
         /// </summary>
         public float FitHeight { get => fitHeight; set => fitHeight = Mathf.Max(0.01f, value); }
 
-        /// <summary>Records the model's height, unscaled (see Measured Height). Done by Prepare Character Models.</summary>
+        /// <summary>Records the model's height, unscaled (see Measured Height). Done by Prepare Humanoid Models.</summary>
         public void RecordMeasurements(float ownHeight) => measuredOwnHeight = Mathf.Max(0f, ownHeight);
 
         /// <summary>The model's own body, in the model's own units (see ModelBody); null for none.</summary>
@@ -152,13 +152,13 @@ namespace Character
         /// which Awaitable.NextFrameAsync(cancellationToken) and friends do for you. Return null if the model couldn't be
         /// created; the character then keeps the model it had.
         /// </summary>
-        public abstract Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken);
+        public abstract Awaitable<LoadedCharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken);
 
         /// <summary>
         /// Gets rid of a model this source created, when the character is done with it. By default it's destroyed;
         /// a source that loaded it from somewhere else releases it there (Addressables.ReleaseInstance, say).
         /// </summary>
-        public virtual void ReleaseModel(CharacterModel model)
+        public virtual void ReleaseModel(LoadedCharacterModel model)
         {
             if (model == null || model.Root == null) { return; }
             // Destroy takes effect at the end of the frame; hide it now, so it's gone the moment its replacement appears.
@@ -180,12 +180,12 @@ namespace Character
 
             // The model may be inactive (see CreateModelAsync), so include inactive objects in every search.
             Animator modelAnimator = model.GetComponentInChildren<Animator>(true);
-            FootPlacementIK feet = null;
+            HumanoidFootPlacementIK feet = null;
             if (modelAnimator != null)
             {
                 if (animatorController != null) { modelAnimator.runtimeAnimatorController = animatorController; }
                 if (avatar != null) { modelAnimator.avatar = avatar; }
-                modelAnimator.applyRootMotion = false; // The character is moved by its MovementController, not by animation.
+                modelAnimator.applyRootMotion = false; // The character is moved by its MMotionMotor, not by animation.
                 if (alwaysAnimate) { modelAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate; }
 
                 // IK works with humanoids only. It must live on the Animator's GameObject, as OnAnimatorIK requires.
@@ -193,13 +193,13 @@ namespace Character
                 if (modelAnimator.isHuman)
                 {
                     GameObject animated = modelAnimator.gameObject;
-                    if (addIK && !animated.TryGetComponent(out CharacterIK _)) { animated.AddComponent<CharacterIK>(); }
-                    if (addFootPlacement && !animated.TryGetComponent(out FootPlacementIK _)) { animated.AddComponent<FootPlacementIK>(); }
+                    if (addIK && !animated.TryGetComponent(out HumanoidIK _)) { animated.AddComponent<HumanoidIK>(); }
+                    if (addFootPlacement && !animated.TryGetComponent(out HumanoidFootPlacementIK _)) { animated.AddComponent<HumanoidFootPlacementIK>(); }
                     animated.TryGetComponent(out feet);
                 }
             }
 
-            // Where the soles are: as stored (measured by Prepare Character Models), or measured now, set up as it is.
+            // Where the soles are: as stored (measured by Prepare Humanoid Models), or measured now, set up as it is.
             float soles = groundOffset, animatedSoles = animatedGroundOffset, facing = facingCorrection;
             if (measureGroundOnLoad && modelAnimator != null && TryGetStandingPose(model, modelAnimator, out StandingPose standing))
             {
@@ -375,7 +375,7 @@ namespace Character
             foreach (Transform child in gameObject.transform)
             {
                 // Hitboxes keep their own layer (see CharacterHitboxes), which the movement leaves out.
-                if (child.TryGetComponent(out Hitbox _)) { continue; }
+                if (child.TryGetComponent(out BoneHitbox _)) { continue; }
                 SetLayerRecursively(child.gameObject, layer);
             }
         }
@@ -409,24 +409,24 @@ namespace Character
     }
 
     /// <summary>A model created by a CharacterModelSource for a character, and the parts of it the character uses.</summary>
-    public sealed class CharacterModel
+    public sealed class LoadedCharacterModel
     {
-        public CharacterModel(GameObject root, CharacterAnimationTranslator translator)
+        public LoadedCharacterModel(GameObject root, AnimationTranslator translator)
         {
             Root = root;
             Translator = translator;
             // The model is usually still inactive when this is made, so inactive objects are included.
             Animator = root != null ? root.GetComponentInChildren<Animator>(true) : null;
-            IK = Animator != null ? Animator.GetComponent<CharacterIK>() : null;
+            IK = Animator != null ? Animator.GetComponent<HumanoidIK>() : null;
         }
 
         /// <summary>The model instance.</summary>
         public GameObject Root { get; }
         /// <summary>Turns the character's movement into the model's animations. May be null.</summary>
-        public CharacterAnimationTranslator Translator { get; }
+        public AnimationTranslator Translator { get; }
         /// <summary>The model's Animator. May be null.</summary>
         public Animator Animator { get; }
         /// <summary>IK for the model's hands, feet, elbows and knees. May be null.</summary>
-        public CharacterIK IK { get; }
+        public HumanoidIK IK { get; }
     }
 }

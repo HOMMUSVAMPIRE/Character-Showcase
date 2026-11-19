@@ -1,7 +1,7 @@
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A water effect of one's own (a splash, a ripple): a component on the root of an effect prefab given to
@@ -23,7 +23,7 @@ namespace Character
         /// <summary>The point on the water's surface where it happens.</summary>
         public Vector3 position;
         /// <summary>The water it happens on.</summary>
-        public Water water;
+        public SwimmableWater water;
         /// <summary>How strong it is, 0 to 1 (a splash: by how fast the character went into or out of the water).</summary>
         public float strength;
         /// <summary>The character's size (its height relative to as authored, 1 as authored), which effects scale with.</summary>

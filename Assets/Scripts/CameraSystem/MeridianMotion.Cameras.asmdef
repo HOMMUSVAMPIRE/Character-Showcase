@@ -1,0 +1,17 @@
+{
+    "name": "MeridianMotion.Cameras",
+    "rootNamespace": "MeridianMotion.Cameras",
+    "references": [
+        "Unity.InputSystem",
+        "MeridianMotion.PhysicsQueries"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

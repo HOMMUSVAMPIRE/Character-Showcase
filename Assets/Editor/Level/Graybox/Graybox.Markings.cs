@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Markings and wayfinding, after the style sheet's surface markings and signage: hazard stripes along edges to jump
     // from, corner brackets and painted values round test lanes, signs naming where each bridge goes, and each area's
@@ -18,7 +18,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void HazardStripes(Transform parent, Vector2 a, Vector2 b, Vector2 inward, float height)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(HazardStripes), parent, a, b, inward, height);
-            GrayboxSettings.MarkingSettings m = Settings.markings;
+            LevelBuilderSettings.MarkingSettings m = Settings.markings;
             float length = Vector2.Distance(a, b), width = m.hazardWidth, stripe = m.stripeWidth;
             if (length < 0.1f) { return; }
             Vector2 along = (b - a) / length;
@@ -32,7 +32,7 @@ namespace CharacterShowcase.EditorTools.Level
                 Vector2[] shape = Clip(Clip(strip, 1f, -1f, c0 + stripe), -1f, 1f, -c0);
                 if (shape.Length < 3) { continue; }
                 for (int i = 0; i < shape.Length; i++) { shape[i] = a + along * shape[i].x + inward * shape[i].y; }
-                mesh.Prism(band % 2 == 0 ? Surface.Accent : Surface.Graphite, shape, height, height + m.thickness);
+                mesh.Prism(band % 2 == 0 ? GrayboxMaterial.Accent : GrayboxMaterial.Graphite, shape, height, height + m.thickness);
             }
             var stripes = new GameObject("Hazard Stripes");
             stripes.transform.SetParent(parent, false);
@@ -48,7 +48,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void CornerBrackets(Transform parent, float x0, float x1, float z0, float z1, float height)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CornerBrackets), parent, x0, x1, z0, z1, height);
-            GrayboxSettings.MarkingSettings m = Settings.markings;
+            LevelBuilderSettings.MarkingSettings m = Settings.markings;
             float arm = m.cornerBracket.x, w = m.cornerBracket.y, g = m.cornerGap, y1 = height + m.thickness;
             var mesh = new GrayboxMesh();
             foreach ((float x, float sx) in new[] { (x0 - g, 1f), (x1 + g, -1f) })
@@ -57,10 +57,10 @@ namespace CharacterShowcase.EditorTools.Level
                 {
                     // One arm along x the full length, the other along z from beyond the first's width, so they don't overlap.
                     Vector3 p = new(x, height, z), q = new(x + sx * arm, y1, z + sz * w);
-                    mesh.Box(Surface.Accent, Vector3.Min(p, q), Vector3.Max(p, q), bottom: false);
+                    mesh.Box(GrayboxMaterial.Accent, Vector3.Min(p, q), Vector3.Max(p, q), bottom: false);
                     p = new Vector3(x, height, z + sz * w);
                     q = new Vector3(x + sx * w, y1, z + sz * arm);
-                    mesh.Box(Surface.Accent, Vector3.Min(p, q), Vector3.Max(p, q), bottom: false);
+                    mesh.Box(GrayboxMaterial.Accent, Vector3.Min(p, q), Vector3.Max(p, q), bottom: false);
                 }
             }
             var brackets = new GameObject("Corner Brackets");
@@ -120,7 +120,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         private static void BridgeGantry(Transform parent, string destination, Vector2 start, Vector2 direction, float width, float height)
         {
-            GrayboxSettings.SignSettings s = Settings.signs;
+            LevelBuilderSettings.SignSettings s = Settings.signs;
             Vector2 at = start + direction * 2f;
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
             var gantry = new GameObject($"Sign Gantry ({destination})");
@@ -134,24 +134,24 @@ namespace CharacterShowcase.EditorTools.Level
             var mesh = new GrayboxMesh();
             foreach (float x in new[] { -half, half })
             {
-                mesh.Box(Surface.Graphite, new Vector3(x - p, 0f, -p), new Vector3(x + p, top - s.gantryPost, p), bottom: false);
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(x - p, 0f, -p), new Vector3(x + p, top - s.gantryPost, p), bottom: false);
             }
-            mesh.Box(Surface.Graphite, new Vector3(-half - p, top - s.gantryPost, -p), new Vector3(half + p, top, p));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-half - p, top - s.gantryPost, -p), new Vector3(half + p, top, p));
             // Hangers from the beam to the panel.
             foreach (float x in new[] { -panelWidth / 3f, panelWidth / 3f })
             {
-                mesh.Box(Surface.Steel, new Vector3(x - 0.02f, panelTop, -0.02f), new Vector3(x + 0.02f, top - s.gantryPost, 0.02f), top: false, bottom: false);
+                mesh.Box(GrayboxMaterial.Steel, new Vector3(x - 0.02f, panelTop, -0.02f), new Vector3(x + 0.02f, top - s.gantryPost, 0.02f), top: false, bottom: false);
             }
-            mesh.Box(Surface.Graphite, new Vector3(-panelWidth / 2f, panelBottom, -depth / 2f), new Vector3(panelWidth / 2f, panelTop, depth / 2f));
-            mesh.Box(Surface.Accent, new Vector3(-panelWidth / 2f, panelBottom, -depth / 2f - 0.01f), new Vector3(panelWidth / 2f, panelBottom + band, -depth / 2f));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-panelWidth / 2f, panelBottom, -depth / 2f), new Vector3(panelWidth / 2f, panelTop, depth / 2f));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-panelWidth / 2f, panelBottom, -depth / 2f - 0.01f), new Vector3(panelWidth / 2f, panelBottom + band, -depth / 2f));
             // Chevrons at the panel's right, pointing on along the bridge (upward on the sign).
             float cx = panelWidth / 2f - 0.45f, cy = (panelBottom + band + panelTop) / 2f, z = -depth / 2f - 0.01f;
             for (int i = 0; i < 2; i++)
             {
                 float y = cy - 0.12f + i * 0.2f;
                 var tip = new Vector3(cx, y + 0.12f, z);
-                mesh.Beam(Surface.Accent, new Vector3(cx - 0.2f, y - 0.05f, z), tip, Vector3.forward, 0.02f, 0.07f, ends: true);
-                mesh.Beam(Surface.Accent, new Vector3(cx + 0.2f, y - 0.05f, z), tip, Vector3.forward, 0.02f, 0.07f, ends: true);
+                mesh.Beam(GrayboxMaterial.Accent, new Vector3(cx - 0.2f, y - 0.05f, z), tip, Vector3.forward, 0.02f, 0.07f, ends: true);
+                mesh.Beam(GrayboxMaterial.Accent, new Vector3(cx + 0.2f, y - 0.05f, z), tip, Vector3.forward, 0.02f, 0.07f, ends: true);
             }
             mesh.AddTo(gantry, gantry.name);
             foreach (float x in new[] { -half, half }) { AddBox(gantry, new Vector3(x, (top - s.gantryPost) / 2f, 0f), new Vector3(s.gantryPost, top - s.gantryPost, s.gantryPost)); }
@@ -172,7 +172,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void AreaSign(Transform parent, Vector2 at, float bottom, Vector2 facing, string number, string name, bool freeStanding = false)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(AreaSign), parent, at, bottom, facing, number, name, freeStanding);
-            GrayboxSettings.SignSettings s = Settings.signs;
+            LevelBuilderSettings.SignSettings s = Settings.signs;
             float yaw = Mathf.Atan2(-facing.x, -facing.y) * Mathf.Rad2Deg;
             var sign = new GameObject($"Area Sign ({number} {name})");
             sign.transform.SetParent(parent, false);
@@ -182,20 +182,20 @@ namespace CharacterShowcase.EditorTools.Level
             Vector2 size = s.areaSignSize;
             float w = size.x / 2f, h = size.y, depth = freeStanding ? 0.15f : 0.08f, back = freeStanding ? depth / 2f : 0f, face = back - depth;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Graphite, new Vector3(-w, 0f, face), new Vector3(w, h, back));
-            mesh.Box(Surface.Accent, new Vector3(-w, 0f, face - 0.01f), new Vector3(w, 0.1f, face));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-w, 0f, face), new Vector3(w, h, back));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-w, 0f, face - 0.01f), new Vector3(w, 0.1f, face));
             // Three slashes at the left.
             for (int i = 0; i < 3; i++)
             {
                 float x = -w + 0.35f + i * 0.28f;
-                mesh.Beam(Surface.Accent, new Vector3(x, 0.3f, face - 0.01f), new Vector3(x + 0.3f, h - 0.25f, face - 0.01f), Vector3.right, 0.12f, 0.02f, ends: true);
+                mesh.Beam(GrayboxMaterial.Accent, new Vector3(x, 0.3f, face - 0.01f), new Vector3(x + 0.3f, h - 0.25f, face - 0.01f), Vector3.right, 0.12f, 0.02f, ends: true);
             }
             if (freeStanding)
             {
                 float lift = s.areaSignLift;
                 foreach (float x in new[] { -w + 0.3f, w - 0.3f })
                 {
-                    mesh.Box(Surface.Graphite, new Vector3(x - 0.06f, -lift, -0.06f), new Vector3(x + 0.06f, 0f, 0.06f), top: false, bottom: false);
+                    mesh.Box(GrayboxMaterial.Graphite, new Vector3(x - 0.06f, -lift, -0.06f), new Vector3(x + 0.06f, 0f, 0.06f), top: false, bottom: false);
                     AddBox(sign, new Vector3(x, -lift / 2f, 0f), new Vector3(0.12f, lift, 0.12f));
                 }
             }

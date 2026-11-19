@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of rope swinging: reaching a rope in mid-air catches hold of it, and the character swings on it as a
@@ -20,7 +20,7 @@ namespace CharacterShowcase.Tests.Traversal
     [Category(TestArea.Traversal)]
     public class RopeSwingTests : AbilityFixture<RopeSwinging>
     {
-        private Rope rope;
+        private SwingRope rope;
 
         private static readonly Vector3 Anchor = new Vector3(0f, 10f, 0f);
         private const float RopeLength = 8f;
@@ -36,7 +36,7 @@ namespace CharacterShowcase.Tests.Traversal
             rig.Movement.OverrideVelocity(new Vector3(0f, 0f, 6f * rig.Movement.SpeedScale));
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Idle();
 
         protected override string OffSetting => "ropeGrabReach";
 
@@ -65,7 +65,7 @@ namespace CharacterShowcase.Tests.Traversal
         }
 
         /// <summary>Movement input pushing the way the swing is going (along Z), which pumps it.</summary>
-        private Inputs Pump(int _) => CharacterTestRig.Move(Vector3.forward * Mathf.Sign(rig.Movement.ropeSwing.velocity.z));
+        private StepInputs Pump(int _) => CharacterTestRig.Move(Vector3.forward * Mathf.Sign(rig.Movement.ropeSwing.velocity.z));
 
         [UnityTest]
         public IEnumerator ReachingARope_CatchesHold_AndSwingsOnItAboutItsAnchor()

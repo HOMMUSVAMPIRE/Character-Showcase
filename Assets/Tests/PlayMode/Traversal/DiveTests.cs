@@ -1,12 +1,12 @@
 using System.Collections;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
 using UnityEngine.TestTools.Utils;
+using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of diving and swimming underwater: Crouch at the surface dives under it, the body lying flat along the way it
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Traversal
         // The pool: its surface at 0, deep enough to swim down a long way in.
         private const float PoolDepth = 20f, PoolSize = 80f;
 
-        private Water water;
+        private SwimmableWater water;
 
         private float SwimSpeed => rig.MovementSetting<float>("swimSpeed") * rig.Movement.SpeedScale;
         private float VerticalSpeed => rig.MovementSetting<float>("swimVerticalSpeed") * rig.Movement.SpeedScale;
@@ -58,7 +58,7 @@ namespace CharacterShowcase.Tests.Traversal
             Assert.That(rig.BodyNow.direction, Is.EqualTo(2), "Lying, the capsule should lie along the way the character faces.");
             Assert.That(rig.BodyNow.center.y - rig.BodyNow.radius, Is.EqualTo(0f).Within(1e-4f), "Lying, the body should rest on its feet.");
             Assert.That(rig.FrontExtent, Is.GreaterThan(rig.SideExtent), "Lying, the body should reach further ahead than to the sides.");
-            Assert.That(rig.Movement.lastFrameMovementData.modelDrop, Is.EqualTo(rig.SwimDepth - rig.CurrentHeight / 2f).Within(1e-3f),
+            Assert.That(rig.Movement.lastStep.modelDrop, Is.EqualTo(rig.SwimDepth - rig.CurrentHeight / 2f).Within(1e-3f),
                 "The model should be drawn lowered from the swim depth, where the swimming animations float it, to the body's middle.");
             Assert.That(rig.Position.y + rig.CurrentHeight, Is.LessThan(water.SurfaceHeight), "The dive should take the character under the surface.");
         }
@@ -178,8 +178,8 @@ namespace CharacterShowcase.Tests.Traversal
             if (alongTheFloor) { yield return rig.RunUntil(() => rig.Grounded, step => CharacterTestRig.Crouch(), timeoutSeconds: 10f); }
             else { yield return rig.Run(0.8f, step => CharacterTestRig.Crouch()); }
             float face = rig.Position.z + rig.FrontExtent + 0.6f;
-            Ladder ladder = rig.Ladder(new Vector3(rig.Position.x, -PoolDepth, face + 0.03f), PoolDepth + 3f);
-            rig.Box("Pool Wall", new Vector3(0f, -PoolDepth / 2f, face + 0.03f + ladder.Depth + 0.5f), new Vector3(PoolSize, PoolDepth + 4f, 1f));
+            ClimbableLadder ladder = rig.Ladder(new Vector3(rig.Position.x, -PoolDepth, face + 0.03f), PoolDepth + 3f);
+            rig.Box("Pool Wall", new Vector3(0f, -PoolDepth / 2f, face + 0.03f + ladder.RailDepth + 0.5f), new Vector3(PoolSize, PoolDepth + 4f, 1f));
             Physics.SyncTransforms();
             bool tookHold = false, letGo = false;
             float start = rig.Position.y;

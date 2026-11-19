@@ -1,5 +1,5 @@
 {
-  "about": "What the default character can do (the Character prefab, with its model's collider), measured by running its movement (MovementController.Capabilities): the limits the movement checks hold a level's gaps, climbs, stairs, ramps and clearances to. Written by Tools > Character Showcase > Level > Specs > Write Movement Envelope: don't edit it. The ramp gradient is the levels' rule (GrayboxSettings' Max Ramp Gradient), not the character's limit.",
+  "about": "What the default character can do (the Character prefab, with its model's collider), measured by running its movement (MMotionMotor.Capabilities): the limits the movement checks hold a level's gaps, climbs, stairs, ramps and clearances to. Written by Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope: don't edit it. The ramp gradient is the levels' rule (LevelBuilderSettings' Max Ramp Gradient), not the character's limit.",
   "stepHeight": 0.35,
   "walkableSlope": 55,
   "maxRampGradient": 0.25,

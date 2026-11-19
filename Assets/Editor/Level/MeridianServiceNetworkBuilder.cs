@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Service Network (06), the underground maintenance level, into the
@@ -141,7 +141,7 @@ namespace CharacterShowcase.EditorTools.Level
             Transform west = Group(mechanics, "West Shaft Climb");
             Ladder(west, new Vector2(14f, 112f), Level, ShaftTop - Level, Vector2.down);
             // From the skyway's east edge (x 6) to past the shaft's east wall, between the shaft's wall and z 115.5.
-            BoxXZ(west, "Shaft Deck (+16)", new Vector2(12.25f, 114f), new Vector2(12.5f, 3f), ShaftTop - Deck, ShaftTop, 0f, Surface.Steel);
+            BoxXZ(west, "Shaft Deck (+16)", new Vector2(12.25f, 114f), new Vector2(12.5f, 3f), ShaftTop - Deck, ShaftTop, 0f, GrayboxMaterial.Steel);
             IBeamColumn(west, "Column", new Vector2(7f, 115f), column, 0f, ShaftTop - Deck);
             IBeamColumn(west, "Column", new Vector2(18f, 115f), column, 0f, ShaftTop - Deck);
             Bracket(west, new Vector2(11f, 112.5f), Vector2.up, ShaftTop - Deck);
@@ -156,7 +156,7 @@ namespace CharacterShowcase.EditorTools.Level
             // south sides), onto a deck west of it.
             Transform east = Group(mechanics, "East Shaft Climb");
             Ladder(east, new Vector2(56f, 60f), Level, ShaftTop - Level, Vector2.right);
-            BoxXZ(east, "Shaft Deck (+16)", new Vector2(53.5f, 60f), new Vector2(4f, 8f), ShaftTop - Deck, ShaftTop, 0f, Surface.Steel);
+            BoxXZ(east, "Shaft Deck (+16)", new Vector2(53.5f, 60f), new Vector2(4f, 8f), ShaftTop - Deck, ShaftTop, 0f, GrayboxMaterial.Steel);
             IBeamColumn(east, "Column", new Vector2(52f, 57f), column, 0f, ShaftTop - Deck);
             IBeamColumn(east, "Column", new Vector2(52f, 63f), column, 0f, ShaftTop - Deck);
             Bracket(east, new Vector2(55.5f, 58f), Vector2.left, ShaftTop - Deck);

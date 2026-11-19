@@ -5,7 +5,7 @@ using System.Text;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// Records the animation tests, for comparing the animation before and after a change to how it's driven or built (the

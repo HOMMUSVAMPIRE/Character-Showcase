@@ -1,9 +1,9 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// What the ability test kits share (AbilityFixture, for an ability that's under way for a while; MomentFixture, for
@@ -20,7 +20,7 @@ namespace CharacterShowcase.Tests
         protected abstract IEnumerator SetUpToStart();
 
         /// <summary>The inputs for each step (counted from the end of SetUpToStart) that start the ability and keep it going.</summary>
-        protected abstract Inputs InputsFor(int step);
+        protected abstract StepInputs InputsFor(int step);
 
         /// <summary>
         /// The ability's setting a value of 0 turns it off (a duration, a reach: the convention for every ability), as

@@ -1,6 +1,6 @@
 using UnityEngine.Profiling;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// Counts the managed heap allocations made on the main thread between Start and Stop, from the profiler's GC.Alloc

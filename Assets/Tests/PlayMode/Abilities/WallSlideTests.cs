@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of sliding down walls: falling into a wall head-on slides slowly down it, a fast fall braked to the slide
@@ -34,7 +34,7 @@ namespace CharacterShowcase.Tests.Abilities
             rig.Box("Wall", new Vector3(0f, 15f * Scale, face + 0.5f), new Vector3(10f, 30f * Scale, 1f));
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         protected override string OffSetting => "wallSlideMaxDuration";
 
@@ -128,7 +128,7 @@ namespace CharacterShowcase.Tests.Abilities
             // Keep steering into the wall, pressing Jump again and again: each jump kicks off, then slides on again.
             yield return rig.Run(6f, step =>
             {
-                Inputs inputs = CharacterTestRig.Move(Vector3.forward);
+                StepInputs inputs = CharacterTestRig.Move(Vector3.forward);
                 if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             });
@@ -144,7 +144,7 @@ namespace CharacterShowcase.Tests.Abilities
             bool startedRisingFast = false, slid = false;
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
             {
-                if (Sliding && !slid && rig.Movement.lastFrameMovementData.initialInertia.y > maxRise + 0.01f) { startedRisingFast = true; }
+                if (Sliding && !slid && rig.Movement.lastStep.initialInertia.y > maxRise + 0.01f) { startedRisingFast = true; }
                 slid |= Sliding;
             });
             Assert.That(startedRisingFast, Is.False, "Rising fast into a wall shouldn't slide down it.");
@@ -261,7 +261,7 @@ namespace CharacterShowcase.Tests.Abilities
             rig.Movement.MovementEventRaised += (movementEvent, _) => { if (movementEvent == MovementEvents.WallJumped) { kickHeights.Add(rig.Position.y); } };
             yield return rig.Run(4f, step =>
             {
-                Inputs inputs = CharacterTestRig.Move(Vector3.forward);
+                StepInputs inputs = CharacterTestRig.Move(Vector3.forward);
                 if (step % 25 == 24) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             });

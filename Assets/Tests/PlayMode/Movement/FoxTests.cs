@@ -1,14 +1,14 @@
 using System.Collections;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
-    /// Tests of the fox (Fox.prefab, the showcase's), the first creature that isn't a humanoid: it stands on its
+    /// Tests of the fox (Fox.prefab, the showcase's), the first generic-rig character that isn't a humanoid: it stands on its
     /// paws in a box body, its eye point at its eyes; trots as it walks and gallops sprinting, at its speeds; jumps once,
     /// to its jump height; crouches under what's too low to stand under; turns only as far as a corridor narrower than
     /// it's long lets it; walks up and down stairs; and, jumping onto a wall at an angle, runs along it. (Its Animator's states are
@@ -51,7 +51,7 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator TheFox_TrotsAtItsWalkSpeed_AndGallopsAtItsRunSpeed([Values(false, true)] bool sprint)
         {
             yield return SpawnFox();
-            System.Func<int, Inputs> run = step => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
+            System.Func<int, StepInputs> run = step => sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return rig.Run(0.3f, run);
             float speed = 0f;
             yield return rig.MeanSpeed(0.4f, run, s => speed = s);
@@ -181,7 +181,7 @@ namespace CharacterShowcase.Tests.Movement
                 // Sprinting at the wall, then a metre from it, jumping, steering along it.
                 if (jumpAt < 0 && side * rig.Position.x > wallFace - rig.SideExtent - 1f) { jumpAt = step; }
                 if (jumpAt < 0) { return CharacterTestRig.Sprint(approach); }
-                Inputs inputs = CharacterTestRig.Sprint(steerAlong ? along : approach);
+                StepInputs inputs = CharacterTestRig.Sprint(steerAlong ? along : approach);
                 inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => { if (rig.Movement.wallRun.IsWallRunning) { ran += Time.fixedDeltaTime; } });

@@ -8,7 +8,7 @@ Before you start, open the project as the README says ([How to open this Project
 
 ## 1. Make it with New Ability
 
-Open **Tools > Character Showcase > New Ability…** and answer:
+Open **Tools > Meridian Motion > New Ability…** and answer:
 
 | Question | Answer | Why |
 | --- | --- | --- |
@@ -53,7 +53,7 @@ Some rules every setting follows (the hygiene check, step 6, checks them):
 
 ## 3. What it does
 
-**What it does with the character.** Find the line `public override AbilityTraits Traits => AbilityTraits.HoldsUp;` and its comment. Traits tell other abilities what this one does with the character: `HoldsUp` means the character isn't falling while it has it. A ground pound falls, so it has none. Every ability that takes over says what its traits are, even when they're none (the hygiene check makes sure), so replace those two lines with:
+**What it does with the character.** Find the line `public override AbilityTraits Traits => AbilityTraits.Supported;` and its comment. Traits tell other abilities what this one does with the character: `Supported` means the character isn't falling while it has it. A ground pound falls, so it has none. Every ability that takes over says what its traits are, even when they're none (the hygiene check makes sure), so replace those two lines with:
 
 <!-- tutorial: GroundPound.cs, replace "Traits =>" .. "Traits =>" -->
 ```csharp
@@ -73,7 +73,7 @@ public class GroundPoundState
     /// <summary>Whether it's under way: from the press until it lands.</summary>
     public bool slamming;
     /// <summary>Crouch's presses, so each press starts it at most once.</summary>
-    public readonly ButtonPress press = new();
+    public readonly PressBuffer press = new();
 
     /// <summary>Whether Ground Pound is under way.</summary>
     public bool IsActive => slamming;
@@ -85,7 +85,7 @@ public class GroundPoundState
 <!-- tutorial: GroundPound.cs, replace "void Interrupt(" .. "void Interrupt(" -->
 ```csharp
 /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
-public override void Interrupt(MovementData movementData, MovementController controller)
+public override void Interrupt(MovementStep movementData, MMotionMotor controller)
 {
     controller.groundPound.timeLeft = 0f;
     controller.groundPound.slamming = false;
@@ -100,7 +100,7 @@ public override void Interrupt(MovementData movementData, MovementController con
 /// Carries on while it lasts, or starts if it can: the character hangs where it is for its hang time, then slams
 /// straight down until it lands.
 /// </summary>
-public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
 {
     GroundPoundState state = controller.groundPound;
     if (!state.IsActive)
@@ -123,14 +123,14 @@ public override bool TakeOver(MovementData movementData, Inputs inputs, Movement
     return true;
 }
 
-private void PublishProgress(MovementController controller)
+private void PublishProgress(MMotionMotor controller)
 {
     float hang = groundPoundHangTime * controller.DurationScale;
     controller.AbilityValues.Set(ProgressValue, hang > 0f ? 1f - controller.groundPound.timeLeft / hang : 1f);
 }
 
 /// <summary>Whether Ground Pound can start this step: turned on by its speed, in the air, on a press of Crouch.</summary>
-private bool CanStart(MovementData movementData, Inputs inputs, MovementController controller)
+private bool CanStart(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
 {
     if (groundPoundSpeed <= 0f || movementData.initialGrounded) { return false; }
     return controller.groundPound.press.Consume(inputs.crouch, groundPoundInputBuffer);
@@ -147,7 +147,7 @@ What each part does:
 
 ## 4. Press Play
 
-Save the file and let Unity compile. Open LevelPlayground, press Play, jump, and press Crouch in the air: the character hangs for a moment, then slams down. To tune it, select `Assets/ScriptableObjects/BasicMovementMode.asset` and find Ground Pound in its Components list: change its Ground Pound Hang Time and Ground Pound Speed there (in Play mode too, to feel the difference; changes made in Play mode stay).
+Save the file and let Unity compile. Open LevelPlayground, press Play, jump, and press Crouch in the air: the character hangs for a moment, then slams down. To tune it, select `Assets/ScriptableObjects/StandardMovementMode.asset` and find Ground Pound in its Components list: change its Ground Pound Hang Time and Ground Pound Speed there (in Play mode too, to feel the difference; changes made in Play mode stay).
 
 Nothing happens? Check Ground Pound is ticked in that list, and look in the Console for a compile error: it names the file and the line.
 
@@ -159,7 +159,7 @@ As it is, the character plays its falling animation while it slams. To give the 
 2. **A state.** Under States, add one named `Ground Pound`, with one motion: the clip slot `Crouch Idle` (any clip slot works; add a slot of its own for a clip made for it).
 3. **Transitions.** Under Transitions, add one from `Any State` to `Ground Pound` on the condition `GroundPounding` true, and one from `Ground Pound` to `Locomotion` on `GroundPounding` false. The crouch's transition in from Any State excludes every other ability's bool: add `GroundPounding` false to its conditions too, or the two keep swapping.
 4. **Drive it.** Select `Assets/Animation/Mannequin Animator Translator.asset`. Under Bool Parameters, add one: its Parameter `GroundPounding`, its Shows `State: GroundPound` (the list offers every state flag).
-5. **Build.** Tools > Character Showcase > Build Animator Controllers, then press Play.
+5. **Build.** Tools > Meridian Motion > Build Animator Controllers, then press Play.
 
 The hang's progress (Ground Pound Progress) can drive a float parameter the same way (Float Parameters, Shows `Ability: Ground Pound Progress`), to wind up a pose through the hang.
 
@@ -176,7 +176,7 @@ protected override IEnumerator SetUpToStart()
     yield return SpawnCharacter(new Vector3(0f, 3f * Scale, 0f), settleSeconds: 0f);
 }
 
-protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle();
+protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Crouch() : CharacterTestRig.Idle();
 
 protected override string OffSetting => "groundPoundSpeed";
 ```

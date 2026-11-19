@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of rolling: a roll goes in the input direction (or straight ahead) for its duration, low, without steering;
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
         }
 
-        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Roll(Vector3.forward) : CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Roll(Vector3.forward) : CharacterTestRig.Idle();
 
         protected override string OffSetting => "rollDuration";
 
@@ -311,7 +311,7 @@ namespace CharacterShowcase.Tests.Abilities
             // The cable's end hangs the feet a low share of the landing roll's fall above the floor; its start is well
             // above that, so the ride itself drops the character far more than a landing roll's fall.
             float endY = hang + 0.3f * LandingRollMinFall;
-            Level.Zipline line = rig.Zipline(new Vector3(0f, endY + 3f * LandingRollMinFall, 0f), new Vector3(0f, endY, 24f));
+            MeridianMotion.Levels.ZiplineCable line = rig.Zipline(new Vector3(0f, endY + 3f * LandingRollMinFall, 0f), new Vector3(0f, endY, 24f));
             rig.Teleport(line.PointAt(2f) - Vector3.up * (hang - 0.15f));
             yield return rig.RunUntil(() => rig.Ziplining, _ => CharacterTestRig.Idle(), timeoutSeconds: 0.5f);
             Assert.That(rig.Ziplining, Is.True, $"Test setup: the character should have caught hold of the cable (it's at {rig.Position}).");

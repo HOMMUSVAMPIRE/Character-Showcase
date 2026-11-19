@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>Marks a Graybox piece a level spec can call: its parameters are what a spec gives it, by name.</summary>
     [AttributeUsage(AttributeTargets.Method)]

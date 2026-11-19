@@ -28,7 +28,7 @@ Every area can be reached on foot, by stairs and ramps that keep to the characte
 Mechanics the character doesn't have yet (sliding doors, shutters, ceiling climbing, crawl spaces, hidden routes, a higher route over the Suspension Yard) have markers named "(future)", under Future Mechanics.
 
 ### Building it
-The whole scene is generated: Tools > Character Showcase > Level > Build Meridian Complex rebuilds it (also `-executeMethod CharacterShowcase.EditorTools.Level.MeridianComplexBuilder.BuildFromCommandLine`), replacing it and its environment assets. Rebuilding replaces the scene, so change the builders (Assets/Editor/Level, one per area) rather than the scene.
+The whole scene is generated: Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex rebuilds it (also `-executeMethod MeridianMotion.Showcase.Levels.MeridianComplexBuilder.BuildFromCommandLine`), replacing it and its environment assets. Rebuilding replaces the scene, so change the builders (Assets/Editor/Level, one per area) rather than the scene.
 
 From the menu it builds in the background, one area at a time, and bakes the lighting in the background too, with a window showing its progress (also under the editor's Background Tasks), so the editor keeps responding. The whole build takes a few seconds. The level's pieces aren't marked Contribute GI (it has no baked or realtime GI to use it), which used to make the bake pack lightmaps for every piece, taking minutes.
 
@@ -85,7 +85,7 @@ Cameras skip what's out of view (each railing run, stair, lawn chunk and so on i
 Grass tufts cast no shadows and aren't drawn beyond the foliage's Tuft Draw Distance (the lawn under them still is). The game camera needs Occlusion Culling ticked, as the demo's Main Camera has. To see the culling at work, open Window > Rendering > Occlusion Culling, select a camera, and use the Visualization tab.
 
 ### Generation settings
-The numbers the shared pieces are made with are in one asset, Assets/Editor/Level/GrayboxSettings.asset (Tools > Character Showcase > Level > Generation Settings selects it). Each section of its inspector covers a family of pieces:
+The numbers the shared pieces are made with are in one asset, Assets/Editor/Level/LevelBuilderSettings.asset (Tools > Meridian Motion > Showcase > Levels > Generation Settings selects it). Each section of its inspector covers a family of pieces:
 - stair profile and nosings;
 - deck thickness, bridge length, walkway columns and trusses;
 - guardrail height, posts and rails;
@@ -116,7 +116,7 @@ The levels share a palette of materials, after the style reference's colours (gr
 - Foliage (the trees' and shrubs' leaves), Soil (trunks and planters' soil) and Grass (lawns);
 - and Water, made with its own shader instead (see [The water's look](#the-waters-look)).
 
-The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.Surface`). The materials (Assets/Materials/Level) are made the first time a level's built (from the looks in `GrayboxScene`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
+The panel and slab sizes are each material's Panel Size. Each piece chooses its own surfaces; builders pick one for a box or solid where the default, concrete, isn't right (`Graybox.GrayboxMaterial`). The materials (Assets/Materials/Level) are made the first time a level's built (from the looks in `LevelDefinition`) and then kept, so they can be tuned by hand; delete one to have the next build make it afresh.
 
 ### Environment
 It's lit as a sunny midday for URP: a high sun with soft shadows, a procedural sky that lights the ambient and reflections, light haze, and a global post-processing volume (ACES tonemapping, light bloom, a little contrast). The sun and haze are the generation settings' Environment section. The PC render pipeline asset (Assets/Settings/PC_RPAsset.asset) has its shadow Max Distance raised well above URP's default, so the terraces' shadows reach across the hub.
@@ -124,7 +124,7 @@ It's lit as a sunny midday for URP: a high sun with soft shadows, a procedural s
 ## The Meridian Basin
 The Meridian Basin (Assets/Scenes/MeridianBasin) is a variant of the Meridian Complex sunk into a terraced octagonal pit: a park on the floor and terrace rings stepping up from it to the rim (each part of its spec is a level, L0 Central Park to L5 Operations Ring), with interiors set into the terraces, the Ascension Spire standing in the park with bridges out to the terraces, and the Service Lift as the one tunnel, a shortcut. It's compact and vertical: the walls between the terraces are too high to climb, and besides a stair up each, the ways up are platforming (jumps to ledges, double jumps, lifts, and halls and hatches with a way up inside). It's built from the same pieces, materials and lighting as the complex, after a reference sheet in ReferenceAssets/ (MeridianBasinRef.png).
 
-It has no builder. Its spec, Assets/Levels/MeridianBasin.level.json, is written by a Python script, Tools/LevelSpec/examples/meridian_basin.py, which works the layout out (eight faces on each ring, the climbs graded to the movement's limits); the script's notes describe it, and its dimensions are in the script. To change it, edit the script, run it (`python3 Tools/LevelSpec/examples/meridian_basin.py`), check the spec (`levelspec check`), and build the scene from the spec: Build Level from Spec… in Unity, then Set Up Scene, or `levelspec build Assets/Levels/MeridianBasin.level.json --unity` with Unity closed, which does both (see [Level Specs](level-specs.md)). Export Level Specs doesn't touch it, as only levels with builders are exported. The scene is set up to play (its Game Setup: the spawner at its spawn markers, the camera, its moving platforms, crates and timing gates) and is in the build's scenes, after the Level Playground.
+It has no builder. Its spec, Assets/Levels/MeridianBasin.level.json, is written by a Python script, Tools/LevelSpec/examples/meridian_basin.py, which works the layout out (eight faces on each ring, the climbs graded to the movement's limits); the script's notes describe it, and its dimensions are in the script. To change it, edit the script, run it (`python3 Tools/LevelSpec/examples/meridian_basin.py`), check the spec (`levelspec check`), and build the scene from the spec: Build Level from Spec… in Unity, then Set Up Scene, or `levelspec build Assets/Levels/MeridianBasin.level.json --unity` with Unity closed, which does both (see [Level Specs](level-specs.md)). Export Level Specs doesn't touch it, as only levels with builders are exported. The scene is set up to play (its Meridian Motion Setup: the spawner at its spawn markers, the camera, its moving platforms, crates and timing gates) and is in the build's scenes, after the Level Playground.
 
 ## The Level Playground
 The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with one of each piece the complex is built from, made by the same builders' pieces in the same material and lighting:
@@ -139,16 +139,16 @@ The Level Playground (Assets/Scenes/LevelPlayground) is a small test scene with 
 - in the north-east, a pool sunk into the ground: water over a tiled basin, a beach sloping in at its west end to a shallow shelf, and a drop-off to a deep end to dive in, with an arch to swim through along its floor and a ladder up its east wall;
 - and placeholders for mechanics to come.
 
-Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Character Showcase > Level > Build Level Playground, or `-executeMethod CharacterShowcase.EditorTools.Level.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
+Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Meridian Motion > Showcase > Levels > Build Level Playground, or `-executeMethod MeridianMotion.Showcase.Levels.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
 ## Level mechanics
 The level builders reference no character code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. `LevelFixtureSetup` (in the level elements' editor assembly, Assets/Scripts/Level/Editor) turns each into the level element it stands for (see [Climbing and Traversal](traversal.md)). Every build runs it before saving the scene, so a built level's mechanics work as it is; Set Up Scene runs it again, leaving what's set up as it is, for a scene built some other way. The names are the level elements' convention, which any scene can use:
-- "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a MovingPlatform with those settings;
-- "Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableObject (Can Be Pulled, Speed Multiplier);
+- "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a TickedPlatform with those settings;
+- "Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableBlock (Can Be Pulled, Speed Multiplier);
 - "Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder with those settings, which keeps the level's mesh ("Ladder (future): …" markers aren't ladders);
 - "Rope | length=m | thickness=m" (at its anchor) gets a Rope, which draws itself as it swings, in the level's material ("Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes);
 - "Zipline | length=m | speed=m/s" (at the cable's start, its +Z along it) gets a Zipline that keeps the level's cable;
-- "Bounce Pad | height=m | keep=f" gets a BouncePad, its "Spring" child squashing on each launch;
+- "Bounce Pad | height=m | keep=f" gets a LaunchPad, its "Spring" child squashing on each launch;
 - "Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that keeps the level's surface;
 - "Climbable Panel | speed=f" gets a ClimbableSurface (the whole panel climbable, at that speed multiplier); only the panel is climbable, not the wall it stands on, so a climb stops at its edges;
 - "Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, and each course a CourseTimer, the scene's own or one made in a Course Timers group at the scene's root (`LevelFixtureSetup.CoursesName`), which Set Up Scene has the spawner tell who's racing; a gate's display, "Timing Display | course=name", shows its course's time under way, the last and best, and (with a distance) the speed.

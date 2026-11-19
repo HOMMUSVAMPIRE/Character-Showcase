@@ -9,7 +9,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // The window's inspector: a part's or piece's settings, each edited as its piece's parameter type.
     public partial class LevelEditorWindow

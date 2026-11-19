@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Shows an AnimatorParameterTranslator's float parameter with its source as a menu: the animation state's own values

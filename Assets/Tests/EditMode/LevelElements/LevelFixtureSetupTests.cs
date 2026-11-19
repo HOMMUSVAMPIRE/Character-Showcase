@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
-using Level;
-using Level.EditorTools;
+using MeridianMotion.Levels.EditorTools;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
-using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.LevelElements
+namespace MeridianMotion.Tests.EditMode.LevelElements
 {
     /// <summary>
     /// Checks of LevelFixtureSetup (the level elements' editor code that the level builders and Set Up Scene both run), on
@@ -58,16 +58,16 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
 
             string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
 
-            var moving = platform.GetComponent<MovingPlatform>();
+            var moving = platform.GetComponent<TickedPlatform>();
             Assert.IsNotNull(moving);
             Assert.IsNotNull(platform.GetComponent<Rigidbody>());
             Assert.AreEqual(new Vector3(0f, 6f, 0f), moving.travel);
-            Assert.AreEqual(5f, moving.period);
+            Assert.AreEqual(5f, moving.roundTripTime);
             Assert.AreEqual(1.5f, moving.pauseAtEnds);
             Assert.AreEqual(new Vector3(0f, 30f, 0f), moving.spinDegreesPerSecond);
             Assert.AreEqual(0.25f, moving.phaseOffset);
-            Assert.IsFalse(moving.smooth);
-            var pushable = crate.GetComponent<PushableObject>();
+            Assert.IsFalse(moving.easeAtEnds);
+            var pushable = crate.GetComponent<PushableBlock>();
             Assert.IsNotNull(pushable);
             Assert.IsFalse(pushable.CanBePulled);
             Assert.AreEqual(0.8f, pushable.SpeedMultiplier, 1e-5f);
@@ -86,16 +86,16 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
 
             string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
 
-            var climbable = ladder.GetComponent<Ladder>();
+            var climbable = ladder.GetComponent<ClimbableLadder>();
             Assert.IsNotNull(climbable);
             Assert.IsFalse(climbable.BuildsMesh, "A level's ladder should keep the level's mesh.");
             Assert.AreSame(levelMesh, ladder.GetComponent<MeshFilter>().sharedMesh);
             Assert.AreEqual(5.5f, climbable.Height, 1e-5f);
             Assert.AreEqual(0.7f, climbable.Width, 1e-5f);
             Assert.AreEqual(0.25f, climbable.RungSpacing, 1e-5f);
-            Assert.AreEqual(0.05f, climbable.Depth, 1e-5f);
+            Assert.AreEqual(0.05f, climbable.RailDepth, 1e-5f);
             Assert.AreEqual(0.03f, climbable.RungSize, 1e-5f);
-            Assert.IsNull(marker.GetComponent<Ladder>(), "A future ladder's marker isn't a ladder.");
+            Assert.IsNull(marker.GetComponent<ClimbableLadder>(), "A future ladder's marker isn't a ladder.");
             StringAssert.Contains("1 ladder", summary);
             Object.DestroyImmediate(levelMesh);
         }
@@ -131,10 +131,10 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
             Assert.AreEqual(TimingGateRole.StartAndFinish, lap.GetComponent<TimingGate>().Role);
             Assert.IsTrue(start.GetComponent<Collider>().isTrigger);
 
-            Assert.AreEqual(1, trap.OnDisplay.GetPersistentEventCount(), "The display should be wired to its course's timer.");
+            Assert.AreEqual(1, trap.OnTextChanged.GetPersistentEventCount(), "The display should be wired to its course's timer.");
             // Persistent listeners run only in play mode, so check what it calls rather than calling it.
-            Assert.AreSame(text, trap.OnDisplay.GetPersistentTarget(0));
-            Assert.AreEqual("set_text", trap.OnDisplay.GetPersistentMethodName(0));
+            Assert.AreSame(text, trap.OnTextChanged.GetPersistentTarget(0));
+            Assert.AreEqual("set_text", trap.OnTextChanged.GetPersistentMethodName(0));
         }
 
         [Test]
@@ -153,15 +153,15 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
 
             string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
 
-            var swing = rope.GetComponent<Rope>();
+            var swing = rope.GetComponent<SwingRope>();
             Assert.IsNotNull(swing);
             Assert.IsTrue(swing.BuildsMesh, "A rope draws itself as it swings.");
             Assert.AreEqual(9f, swing.Length, 1e-5f);
             Assert.AreEqual(0.08f, swing.Thickness, 1e-5f);
-            Assert.IsNull(anchor.GetComponent<Rope>(), "A rope's anchor placeholder isn't a rope.");
-            Assert.IsNull(marker.GetComponent<Rope>(), "A future rope swing's marker isn't a rope.");
+            Assert.IsNull(anchor.GetComponent<SwingRope>(), "A rope's anchor placeholder isn't a rope.");
+            Assert.IsNull(marker.GetComponent<SwingRope>(), "A future rope swing's marker isn't a rope.");
 
-            var zipline = line.GetComponent<Zipline>();
+            var zipline = line.GetComponent<ZiplineCable>();
             Assert.IsNotNull(zipline);
             Assert.IsFalse(zipline.BuildsMesh, "A level's zipline should keep the level's cable.");
             Assert.AreSame(levelCable, line.GetComponent<MeshFilter>().sharedMesh);
@@ -169,7 +169,7 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
             Assert.AreEqual(12f, zipline.MaxSpeed, 1e-5f);
             Assert.That(Vector3.Angle(zipline.Direction, line.transform.forward), Is.LessThan(0.01f), "The cable runs along the zipline's +Z.");
 
-            var bounce = pad.GetComponent<BouncePad>();
+            var bounce = pad.GetComponent<LaunchPad>();
             Assert.IsNotNull(bounce);
             Assert.AreEqual(7.5f, bounce.LaunchHeight, 1e-5f);
             Assert.AreSame(spring.transform, bounce.Spring);
@@ -206,7 +206,7 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
 
             string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
 
-            var water = pool.GetComponent<Water>();
+            var water = pool.GetComponent<SwimmableWater>();
             Assert.IsNotNull(water);
             Assert.IsFalse(water.BuildsMesh, "A level's water should keep the level's surface.");
             Assert.AreSame(levelSurface, pool.GetComponent<MeshFilter>().sharedMesh);
@@ -214,7 +214,7 @@ namespace CharacterShowcase.Tests.EditMode.LevelElements
             Assert.AreEqual(-0.4f, water.SurfaceHeight, 1e-5f);
             Assert.IsTrue(water.Contains(new Vector3(23f, -2f, 31f)), "The water's middle, under its surface, should be in it.");
             Assert.IsFalse(water.Contains(new Vector3(23f, 0f, 31f)), "Above its surface isn't in the water.");
-            Assert.IsNull(marker.GetComponent<Water>(), "A future water marker isn't water.");
+            Assert.IsNull(marker.GetComponent<SwimmableWater>(), "A future water marker isn't water.");
             StringAssert.Contains("1 body of water", summary);
             Object.DestroyImmediate(levelSurface);
         }

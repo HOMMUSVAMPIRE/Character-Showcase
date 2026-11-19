@@ -13,7 +13,7 @@ import re
 from .model import GROUP_PIECES, PathCounter, child_path
 
 SETTINGS_ASSET = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-                              "Assets", "Editor", "Level", "GrayboxSettings.asset")
+                              "Assets", "Editor", "Level", "LevelBuilderSettings.asset")
 
 #: What each layer of a schematic holds.
 LAYERS = {
@@ -24,7 +24,7 @@ LAYERS = {
 
 
 def default_state():
-    """The dimensions each part starts from: the generation settings' (GrayboxSettings.asset), as Graybox.Begin sets them."""
+    """The dimensions each part starts from: the generation settings' (LevelBuilderSettings.asset), as Graybox.Begin sets them."""
     state = {"stepRise": 0.3, "stepRun": 0.4, "bridgeLength": 20.0, "deck": 1.0, "railHeight": 1.1, "railThickness": 0.15}
     keys = {"stepRise": "stepRise", "stepRun": "stepRun", "bridgeLength": "bridgeLength", "deckThickness": "deck",
             "railHeight": "railHeight", "railThickness": "railThickness"}

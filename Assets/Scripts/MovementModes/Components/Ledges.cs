@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Ledges: catching hold of a ledge in mid-air, hanging from it, and climbing up onto it (and climbing over the top
@@ -51,23 +51,23 @@ namespace Character
         /// <summary>A ledge is only grabbed while the character is rising slower than this (m/s).</summary>
         public float LedgeMaxGrabRiseSpeed => ledgeMaxGrabRiseSpeed;
 
-        public override bool IsActive(MovementController controller) => controller.ledge.IsActive;
+        public override bool IsActive(MMotionMotor controller) => controller.ledge.IsActive;
         /// <summary>Hanging from a ledge (or climbing up it), the character holds on, and is held up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        public override AbilityTraits Traits => AbilityTraits.Supported | AbilityTraits.Attached;
         /// <summary>The events of LedgeHanging and LedgeClimbing starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.LedgeHanging, MovementEvents.LedgeGrabbed, MovementEvents.LedgeReleased),
             new(CharacterState.LedgeClimbing, MovementEvents.LedgeClimbStarted, MovementEvents.LedgeClimbEnded),
         };
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            controller.ledge.regrabCooldown = MovementHelpers.CountDown(controller.ledge.regrabCooldown, movementData.deltaTime);
+            controller.ledge.regrabCooldown = MovementRules.CountDown(controller.ledge.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.ledge.IsActive) { LetGoOfLedge(controller); }
         }
@@ -78,7 +78,7 @@ namespace Character
         /// holds still below the ledge (moving with it, if it moves); Jump climbs up onto it (crouched, if there's only
         /// room to crouch on top), and Crouch or steering away from the wall lets go, as does the ledge's object going.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             LedgeState ledge = controller.ledge;
             if (!ledge.IsActive && !TryGrabLedge(movementData, inputs, controller)) { return false; }
@@ -88,7 +88,7 @@ namespace Character
                 return false;
             }
 
-            MovementController.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
+            MMotionMotor.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
             Vector3 wallNormal = ledgeRotation * ledge.localWallNormal;
             wallNormal.y = 0f;
             wallNormal = wallNormal.sqrMagnitude > 1e-6f ? wallNormal.normalized : -Facing(movementData);
@@ -107,7 +107,7 @@ namespace Character
                     movementData.initialInertia = Vector3.zero;
                     return false;
                 }
-                if (Mode.IsNewJumpPress(inputs, controller))
+                if (Mode.HasFreshJumpPress(inputs, controller))
                 {
                     controller.jump.press.Use();
                     TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
@@ -128,7 +128,7 @@ namespace Character
         /// Grabs a ledge if the character is in mid-air, not rising fast, and heading toward a wall whose top is within
         /// reach of its hands, with room to hang below it.
         /// </summary>
-        private bool TryGrabLedge(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryGrabLedge(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             LedgeState ledge = controller.ledge;
             // A wall being slid down doesn't stop its top being grabbed, once the slide has brought it within reach.
@@ -154,7 +154,7 @@ namespace Character
         }
 
         /// <summary>Where the character's feet hang from a ledge with the given edge and wall normal below it.</summary>
-        private Vector3 HangPosition(MovementController controller, Vector3 wallNormal, Vector3 edge)
+        private Vector3 HangPosition(MMotionMotor controller, Vector3 wallNormal, Vector3 edge)
         {
             Vector3 hang = edge + wallNormal * (controller.Body.FrontExtent + 2f * controller.Skin);
             hang.y = edge.y - ledgeHangHeight * controller.Body.StandingHeight;
@@ -165,7 +165,7 @@ namespace Character
         /// Takes hold of a ledge found by FindLedge (its top's hit, the wall's normal below it, the point on its edge),
         /// hanging with the feet at hang: from here on the ledge has the character.
         /// </summary>
-        private void HoldLedge(MovementController controller, RaycastHit top, Vector3 wallNormal, Vector3 edge, Vector3 hang)
+        private void HoldLedge(MMotionMotor controller, RaycastHit top, Vector3 wallNormal, Vector3 edge, Vector3 hang)
         {
             LedgeState ledge = controller.ledge;
             Vector3 climbTarget = edge - wallNormal * (controller.Body.BackExtent + ledgeClimbInset * controller.HeightScale);
@@ -173,7 +173,7 @@ namespace Character
 
             // Kept in the ledge's space, so the character hangs on and climbs ledges that move.
             ledge.ledge = top.transform;
-            MovementController.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
+            MMotionMotor.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
             Quaternion toLedgeSpace = Quaternion.Inverse(ledgeRotation);
             ledge.localHangPosition = toLedgeSpace * (hang - ledgePosition);
             ledge.localClimbTarget = toLedgeSpace * (climbTarget - ledgePosition);
@@ -197,7 +197,7 @@ namespace Character
         /// to stand or crouch, the character hangs from the edge instead, holding still this step. Returns whether the
         /// ledge has the character (climbing or hanging).
         /// </summary>
-        internal bool TryClimbOverTop(MovementData movementData, MovementController controller, Vector3 heading, bool withinReach, bool requireFloor = false)
+        internal bool TryClimbOverTop(MovementStep movementData, MMotionMotor controller, Vector3 heading, bool withinReach, bool requireFloor = false)
         {
             if (ledgeClimbDuration <= 0f) { return false; }
             Vector3 feet = movementData.initialPosition;
@@ -219,7 +219,7 @@ namespace Character
             }
             HoldLedge(controller, top, wallNormal, edge, HangPosition(controller, wallNormal, edge));
             LedgeState ledge = controller.ledge;
-            MovementController.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
+            MMotionMotor.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
             TryStartClimb(movementData, controller, ledgePosition, ledgeRotation);
             movementData.directMovementVector = Vector3.zero;
             movementData.targetRotation = Quaternion.LookRotation(-wallNormal, Vector3.up);
@@ -235,7 +235,7 @@ namespace Character
         /// at the top of the window, and a walkable top between the two. Gives the top's hit, the wall's normal
         /// (flattened, pointing toward the character), and the point on the ledge's edge in front of the character.
         /// </summary>
-        internal bool FindLedge(MovementController controller, Vector3 feet, Vector3 heading, float low, float high, float reach,
+        internal bool FindLedge(MMotionMotor controller, Vector3 feet, Vector3 heading, float low, float high, float reach,
             out RaycastHit top, out Vector3 wallNormal, out Vector3 edge)
         {
             top = default;
@@ -269,7 +269,7 @@ namespace Character
         /// Starts climbing up onto the ledge, if there's room on top to stand, or else to crouch (the climb then ends
         /// crouched). Without room for either, the character keeps hanging.
         /// </summary>
-        private void TryStartClimb(MovementData movementData, MovementController controller, Vector3 ledgePosition, Quaternion ledgeRotation)
+        private void TryStartClimb(MovementStep movementData, MMotionMotor controller, Vector3 ledgePosition, Quaternion ledgeRotation)
         {
             LedgeState ledge = controller.ledge;
             Vector3 target = ledgePosition + ledgeRotation * ledge.localClimbTarget;
@@ -301,7 +301,7 @@ namespace Character
         /// up to two steps' height above (clear of stairs' next step, as well as their first) onto the first thing under it, walkable (or the edge of a step, as stairs' are),
         /// with room to stand there.
         /// </summary>
-        private static bool TryDropOntoLedge(MovementController controller, Vector3 target, out Vector3 standing)
+        private static bool TryDropOntoLedge(MMotionMotor controller, Vector3 target, out Vector3 standing)
         {
             standing = target;
             if (!controller.Posture.IsStanding) { return false; } // The sweep would be of a crouched (or lying) body.
@@ -324,12 +324,12 @@ namespace Character
         /// Climbs up onto the ledge: rising up the wall to the ledge's height, then moving forward onto it, over the
         /// climb's duration, without gravity. The character's collision still applies, so nothing is passed through.
         /// </summary>
-        private bool Climb(MovementData movementData, MovementController controller, Vector3 ledgePosition, Quaternion ledgeRotation)
+        private bool Climb(MovementStep movementData, MMotionMotor controller, Vector3 ledgePosition, Quaternion ledgeRotation)
         {
             LedgeState ledge = controller.ledge;
             ledge.climbElapsed += movementData.deltaTime;
-            // At the end on the step its time runs out (see MovementHelpers.HasElapsed), not a step after.
-            float t = MovementHelpers.HasElapsed(ledge.climbElapsed, ledge.climbDuration, movementData.deltaTime) ? 1f : ledge.ClimbProgress;
+            // At the end on the step its time runs out (see MovementRules.HasElapsed), not a step after.
+            float t = MovementRules.HasElapsed(ledge.climbElapsed, ledge.climbDuration, movementData.deltaTime) ? 1f : ledge.ClimbProgress;
 
             Vector3 start = ledgePosition + ledgeRotation * ledge.localHangPosition;
             Vector3 end = ledgePosition + ledgeRotation * ledge.localClimbTarget;
@@ -354,7 +354,7 @@ namespace Character
         /// <summary>The character's collider height crouched, as a share of its standing height (see Crouching).</summary>
         private float CrouchedHeight => SettingsOf<Crouching>().CrouchHeight;
 
-        private void LetGoOfLedge(MovementController controller)
+        private void LetGoOfLedge(MMotionMotor controller)
         {
             LedgeState ledge = controller.ledge;
             ledge.phase = LedgeState.Phase.None;
@@ -423,9 +423,9 @@ namespace Character
         public float ClimbProgress => climbDuration > 0f ? Mathf.Clamp01(climbElapsed / climbDuration) : 0f;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's ledge hanging and climbing state (Ledges).</summary>
         public LedgeState ledge { get; } = new LedgeState();

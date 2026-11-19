@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// A fixture of tests on an ability that happens in a moment (the movement component T raising MomentEvent, one of
@@ -109,7 +109,7 @@ namespace CharacterShowcase.Tests
         private (Vector3, Quaternion, Vector3, bool) Step()
         {
             (Vector3 position, Quaternion rotation, Vector3 velocity) = Pose();
-            return (position, rotation, velocity, (rig.Movement.lastFrameMovementData.events & MomentEvent) != 0);
+            return (position, rotation, velocity, (rig.Movement.lastStep.events & MomentEvent) != 0);
         }
 
         [UnityTest]

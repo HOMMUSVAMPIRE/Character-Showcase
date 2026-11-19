@@ -1,13 +1,13 @@
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the Level Playground: a small graybox scene with one of each piece the Meridian Complex is built from,
-    /// made by the same Graybox pieces in the same material and environment (see GrayboxScene), so a change to a piece
+    /// made by the same Graybox pieces in the same material and environment (see LevelDefinition), so a change to a piece
     /// can be tried here in a few seconds before rebuilding the whole complex. Level geometry, lighting and markers
     /// only, like the complex's builders; its spawn marker is for Set Up Scene.
     ///
@@ -55,7 +55,7 @@ namespace CharacterShowcase.EditorTools.Level
         private const float TowerApothem = 8f;         // Wide enough across each flat for a stair-wide bridge.
 
         /// <summary>The playground's scene and its parts, in build order.</summary>
-        internal static readonly GrayboxScene Scene = new("Level Playground", ScenePath,
+        internal static readonly LevelDefinition Scene = new("Level Playground", ScenePath,
             ("the start", BuildStart),
             ("the terrace and ramp", BuildTerrace),
             ("the towers and bridges", BuildTowers),
@@ -84,7 +84,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>Builds the playground in the background (see LevelBuildWindow), with a window showing its progress. Opens the scene when it's done.</summary>
-        [MenuItem("Tools/Character Showcase/Level/Build Level Playground")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Build Level Playground")]
         public static void BuildFromMenu() => LevelBuildWindow.BuildFromMenu(Scene);
 
         /// <summary>For -executeMethod: the whole build at once, waiting for the lighting bake, then exits.</summary>
@@ -109,7 +109,7 @@ namespace CharacterShowcase.EditorTools.Level
             SpawnMarker(Group(start, "Spawn Points"), "Start", new Vector2(0f, -10f), 0.05f, 0f);
             Prism(start, "Dais (+0.6)", Offset(Octagon(3f), new Vector2(8f, -4f)), 0f, 0.6f);
             Bollards(start, Offset(Octagon(5f), new Vector2(8f, -4f)), 0f);
-            GuideLine(start, "Guide Ring (Orange)", Offset(Octagon(4.2f), new Vector2(8f, -4f)), 0f, Surface.Accent, closed: true);
+            GuideLine(start, "Guide Ring (Orange)", Offset(Octagon(4.2f), new Vector2(8f, -4f)), 0f, GrayboxMaterial.Accent, closed: true);
             Planter(start, "Planter", -5f, -2.6f, -7f, -4.6f, 0f, tree: true, new System.Random(Settings.foliage.seed));
             Column(start, "Column (Turned 45°)", new Vector2(4f, 8f), new Vector2(2f, 2f), 0f, 4f, 45f, accent: true);
         }
@@ -214,7 +214,7 @@ namespace CharacterShowcase.EditorTools.Level
             // stair along the east wall.
             const float walk = 4f, walkZ0 = z0 + h, walkZ1 = walkZ0 + 3f, stairX = x1 - h - 1.25f;
             Transform catwalk = Group(building, "Catwalk (+4)");
-            Block(catwalk, "Catwalk Deck (+4)", x0 + h, x1 - h, walkZ0, walkZ1, walk - Deck, walk, Surface.Steel);
+            Block(catwalk, "Catwalk Deck (+4)", x0 + h, x1 - h, walkZ0, walkZ1, walk - Deck, walk, GrayboxMaterial.Steel);
             Flight(catwalk, "Stair (to the Catwalk)", new Vector2(stairX, walkZ1 + FlightLength(0f, walk)), Vector2.down, 2.5f, 0f, walk);
             Rail(Group(catwalk, "Guardrails"), new Vector2(x0 + h, walkZ1), new Vector2(x1 - h, walkZ1), walk, (new Vector2(stairX, walkZ1), 2.5f));
             BracedFrame(catwalk, "Braced Frame", new Vector2(28f, walkZ0), new Vector2(28f, walkZ1), 0f, walk - Deck);
@@ -222,7 +222,7 @@ namespace CharacterShowcase.EditorTools.Level
 
             PushableCrate(objects, new Vector2(28f, -28f), 0f, 2f);
             UtilityStation(objects, new Vector2(x1 - h, -22f), Vector2.left, 0f); // On the east wall, between its pilasters.
-            Block(objects, "Shelf", 17f, 23f, -34.5f, -33f, 0f, 2.5f, Surface.Graphite);
+            Block(objects, "Shelf", 17f, 23f, -34.5f, -33f, 0f, 2.5f, GrayboxMaterial.Graphite);
             AreaSign(building, new Vector2(x0 - h, -30.5f), 1.2f, Vector2.left, "00", "Level Playground"); // Beside the door.
             Banner(building, new Vector2(19.5f, z1 + h), Vector2.up, top - 0.4f, 3.6f, "00"); // On the north wall, beside the window.
         }
@@ -301,12 +301,12 @@ namespace CharacterShowcase.EditorTools.Level
             // A narrow beam between two blocks at +4 (up to the first by a stair), and a wall to run along beside it.
             Platform(tests, "Beam Start (+4)", -38f, -34f, -40f, -36f, 0f, 4f);
             Platform(tests, "Beam End (+4)", -24f, -20f, -40f, -36f, 0f, 4f);
-            Block(tests, "Narrow Beam (1 m, +4)", -34f, -24f, -38.5f, -37.5f, 3f, 4f, Surface.Steel);
+            Block(tests, "Narrow Beam (1 m, +4)", -34f, -24f, -38.5f, -37.5f, 3f, 4f, GrayboxMaterial.Steel);
             HazardStripes(tests, new Vector2(-34f, -40f), new Vector2(-34f, -36f), Vector2.left, 4f);
             HazardStripes(tests, new Vector2(-24f, -40f), new Vector2(-24f, -36f), Vector2.right, 4f);
             Flight(tests, "Stair (Beam Start)", new Vector2(-36f, -36f + FlightLength(0f, 4f)), Vector2.down, 4f, 0f, 4f);
             Ruler(tests, "Ruler (Beam)", new Vector2(-33.5f, -35.2f), Vector2.right, 9f, 0f);
-            Block(tests, "Wall-Run Wall (+8)", -33f, -23f, -33f, -32f, 0f, 8f, Surface.Panel);
+            Block(tests, "Wall-Run Wall (+8)", -33f, -23f, -33f, -32f, 0f, 8f, GrayboxMaterial.Panel);
         }
 
         // ---- South: one of each mechanic (fixtures the scene's game setup makes work: see Graybox.Mechanics) ----
@@ -316,7 +316,7 @@ namespace CharacterShowcase.EditorTools.Level
             Transform mechanics = Section(root, material, "Mechanics");
             // A lift up to a landing at +4.
             MovingPlatform(mechanics, "Lift", new Vector3(-34f, 0.05f, -48f), new Vector3(4f, 0.5f, 4f), new Vector3(0f, 4f, 0f), 6f, pause: 1.5f);
-            Platform(mechanics, "Lift Landing (+4)", -32f, -28f, -50f, -46f, 0f, 4f, coping: Surface.Accent);
+            Platform(mechanics, "Lift Landing (+4)", -32f, -28f, -50f, -46f, 0f, 4f, coping: GrayboxMaterial.Accent);
             // A ladder up the landing's east face, to climb instead of riding the lift.
             Ladder(mechanics, new Vector2(-28f, -48f), 0f, 4f, Vector2.right);
             // A low beam to slide or crouch under.
@@ -340,29 +340,29 @@ namespace CharacterShowcase.EditorTools.Level
             float x0 = Pool.xMin, x1 = Pool.xMax, z0 = Pool.yMin, z1 = Pool.yMax;
             float zIn0 = z0 + PoolWall, zIn1 = z1 - PoolWall, middle = (z0 + z1) / 2f, inner = zIn1 - zIn0;
             // A tiled basin in the ground's opening: walls round it from the deep end's floor up to the ground.
-            Block(pool, "Pool Wall (South)", x0, x1, z0, zIn0, PoolDeep, 0f, Surface.Panel);
-            Block(pool, "Pool Wall (North)", x0, x1, zIn1, z1, PoolDeep, 0f, Surface.Panel);
-            Block(pool, "Pool Wall (East)", x1 - PoolWall, x1, zIn0, zIn1, PoolDeep, 0f, Surface.Panel);
+            Block(pool, "Pool Wall (South)", x0, x1, z0, zIn0, PoolDeep, 0f, GrayboxMaterial.Panel);
+            Block(pool, "Pool Wall (North)", x0, x1, zIn1, z1, PoolDeep, 0f, GrayboxMaterial.Panel);
+            Block(pool, "Pool Wall (East)", x1 - PoolWall, x1, zIn0, zIn1, PoolDeep, 0f, GrayboxMaterial.Panel);
             // The shallow end: a beach at the west end, down from the ground at a 1:4 slope (the terrace ramp's) to a
             // shelf, wading in until it's deep enough to swim; the shelf's a block down to the deep end's floor, its
             // east face the drop-off.
             const float beach = 4f * -PoolShelf;
             Ramp(pool, "Beach (1:4)", new Vector2(x0 + beach, middle), Vector2.left, inner, beach, PoolShelf, 0f);
-            Block(pool, "Pool Shelf", x0 + beach, PoolDropOff, zIn0, zIn1, PoolDeep, PoolShelf, Surface.Panel);
+            Block(pool, "Pool Shelf", x0 + beach, PoolDropOff, zIn0, zIn1, PoolDeep, PoolShelf, GrayboxMaterial.Panel);
             // The deep end: deep enough to dive in, with an arch to swim through along its floor (in its middle, so
             // swimmers at the surface go round it), and a ladder up its east wall.
-            Block(pool, "Pool Floor (Deep End)", PoolDropOff, x1 - PoolWall, zIn0, zIn1, PoolDeep - 0.5f, PoolDeep, Surface.Panel);
+            Block(pool, "Pool Floor (Deep End)", PoolDropOff, x1 - PoolWall, zIn0, zIn1, PoolDeep - 0.5f, PoolDeep, GrayboxMaterial.Panel);
             const float archX = 29f, archThickness = 1f, archTop = -1.2f, tunnelHeight = 1.5f, tunnelWidth = 3f;
             float archZ0 = zIn0 + 1.5f, archZ1 = zIn1 - 1.5f;
             Transform arch = Group(pool, "Swim-Through Arch");
-            Block(arch, "Arch (South)", archX, archX + archThickness, archZ0, middle - tunnelWidth / 2f, PoolDeep, archTop, Surface.Concrete);
-            Block(arch, "Arch (North)", archX, archX + archThickness, middle + tunnelWidth / 2f, archZ1, PoolDeep, archTop, Surface.Concrete);
-            Block(arch, "Arch (Lintel)", archX, archX + archThickness, middle - tunnelWidth / 2f, middle + tunnelWidth / 2f, PoolDeep + tunnelHeight, archTop, Surface.Concrete);
+            Block(arch, "Arch (South)", archX, archX + archThickness, archZ0, middle - tunnelWidth / 2f, PoolDeep, archTop, GrayboxMaterial.Concrete);
+            Block(arch, "Arch (North)", archX, archX + archThickness, middle + tunnelWidth / 2f, archZ1, PoolDeep, archTop, GrayboxMaterial.Concrete);
+            Block(arch, "Arch (Lintel)", archX, archX + archThickness, middle - tunnelWidth / 2f, middle + tunnelWidth / 2f, PoolDeep + tunnelHeight, archTop, GrayboxMaterial.Concrete);
             Ladder(pool, new Vector2(x1 - PoolWall, middle), PoolDeep, -PoolDeep, Vector2.left);
             // The water, over the whole basin inside its walls (under the beach's top, the beach hides it).
             Water(pool, "Pool", new Vector2((x0 + x1 - PoolWall) / 2f, middle), new Vector2(x1 - x0 - PoolWall, inner), PoolDeep, PoolSurface);
             // An off-white edge round the rim, and each end's depth on the ground beside it.
-            GuideLine(pool, "Pool Edge (White)", Rect(x0, z0, x1, z1), 0f, Surface.White, closed: true);
+            GuideLine(pool, "Pool Edge (White)", Rect(x0, z0, x1, z1), 0f, GrayboxMaterial.White, closed: true);
             FloorLabel(pool, $"{PoolSurface - PoolShelf:0.0} m", new Vector2((x0 + beach + PoolDropOff) / 2f, z0 - 1.4f), 0f, Vector2.up);
             FloorLabel(pool, $"{PoolSurface - PoolDeep:0.0} m", new Vector2(x1 - 4f, z0 - 1.4f), 0f, Vector2.up);
         }
@@ -376,7 +376,7 @@ namespace CharacterShowcase.EditorTools.Level
             // A tower at +8, up a ladder on its north face or a bounce pad beside its east face (9 m up, then steered
             // onto it), with a zipline from over its deck south down to the ground: walking off its south edge catches it.
             Transform tower = Group(air, "Zipline Tower (+8)");
-            Platform(tower, "Zipline Tower (+8)", -54f, -50f, 12f, 16f, 0f, Towers, coping: Surface.Accent);
+            Platform(tower, "Zipline Tower (+8)", -54f, -50f, 12f, 16f, 0f, Towers, coping: GrayboxMaterial.Accent);
             Ladder(tower, new Vector2(-53f, 16f), 0f, Towers, Vector2.up);
             BouncePad(air, new Vector2(-48.2f, 14f), 0f, 2.5f, 9f);
             Zipline(air, new Vector3(-52f, Towers + 3.1f, 15.6f), new Vector3(-52f, 3.4f, -16f), Towers, 0f, speed: 14f);
@@ -384,17 +384,17 @@ namespace CharacterShowcase.EditorTools.Level
             // A rope on a gantry, over the middle of a 10 m gap between two platforms at +4: up a stair to the north one,
             // swing across to the south one, and down its stair.
             Transform swing = Group(air, "Rope Swing (+4)");
-            Platform(swing, "Rope Platform (North, +4)", -47f, -43f, 2f, 6f, 0f, Terrace, coping: Surface.Accent);
-            Platform(swing, "Rope Platform (South, +4)", -47f, -43f, -12f, -8f, 0f, Terrace, coping: Surface.Accent);
+            Platform(swing, "Rope Platform (North, +4)", -47f, -43f, 2f, 6f, 0f, Terrace, coping: GrayboxMaterial.Accent);
+            Platform(swing, "Rope Platform (South, +4)", -47f, -43f, -12f, -8f, 0f, Terrace, coping: GrayboxMaterial.Accent);
             // A climbable panel up the north platform's west face, another way up to it.
             ClimbablePanel(swing, new Vector2(-47f, 2.5f), new Vector2(-47f, 5.5f), 0f, Terrace, Vector2.left);
             Flight(swing, "Stair (to the Rope Platform)", new Vector2(-45f, 6f + FlightLength(0f, Terrace)), Vector2.down, 3f, 0f, Terrace);
             Flight(swing, "Stair (from the Rope Platform)", new Vector2(-45f, -12f - FlightLength(0f, Terrace)), Vector2.up, 3f, 0f, Terrace);
             const float beam = 14f;
             Transform gantry = Group(swing, "Gantry");
-            Block(gantry, "Gantry Post (West)", -48.3f, -47.7f, -3.3f, -2.7f, 0f, beam + 0.4f, Surface.Graphite);
-            Block(gantry, "Gantry Post (East)", -42.3f, -41.7f, -3.3f, -2.7f, 0f, beam + 0.4f, Surface.Graphite);
-            Block(gantry, "Gantry Beam", -47.7f, -42.3f, -3.3f, -2.7f, beam, beam + 0.4f, Surface.Graphite);
+            Block(gantry, "Gantry Post (West)", -48.3f, -47.7f, -3.3f, -2.7f, 0f, beam + 0.4f, GrayboxMaterial.Graphite);
+            Block(gantry, "Gantry Post (East)", -42.3f, -41.7f, -3.3f, -2.7f, 0f, beam + 0.4f, GrayboxMaterial.Graphite);
+            Block(gantry, "Gantry Beam", -47.7f, -42.3f, -3.3f, -2.7f, beam, beam + 0.4f, GrayboxMaterial.Graphite);
             Rope(swing, new Vector3(-45f, beam - Settings.mechanics.ropeBracket, -3f), 9f);
             FloorLabel(swing, "10 m", new Vector2(-45f, 0.5f), 0f, Vector2.down);
         }

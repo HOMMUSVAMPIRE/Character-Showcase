@@ -1,10 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
     /// What the fox's paw placement tests share (FoxPawPlacementTests, FoxTerrainClearanceTests): spawning the fox with its
@@ -15,10 +15,10 @@ namespace CharacterShowcase.Tests.Animations
     {
         protected const string FoxPrefabPath = "Assets/Prefabs/Fox.prefab";
         // How far (m) a planted paw may be off the ground under it: a paw counts as planted until the animation has lifted
-        // it Planted Height (see PawPlacementIK), and one tilted to a slope has its toes a little off it either way.
+        // it Planted Height (see LegPlacementIK), and one tilted to a slope has its toes a little off it either way.
         protected const float PlantedTolerance = 0.03f;
 
-        protected PawPlacementIK paws;
+        protected LegPlacementIK paws;
 
         /// <summary>Spawns the fox at the feet position given (the world already built), and takes over its animation.</summary>
         protected IEnumerator SpawnFox(Vector3 feet)
@@ -30,8 +30,8 @@ namespace CharacterShowcase.Tests.Animations
             animation = rig.Animation;
             yield return rig.WaitForModel();
             TakeOverAnimator();
-            paws = animator.GetComponent<PawPlacementIK>();
-            if (paws == null) { Assert.Fail("The fox's model should have paw placement (PawPlacementIK): regenerate it."); }
+            paws = animator.GetComponent<LegPlacementIK>();
+            if (paws == null) { Assert.Fail("The fox's model should have paw placement (LegPlacementIK): regenerate it."); }
             yield return Settle();
         }
 
@@ -45,7 +45,7 @@ namespace CharacterShowcase.Tests.Animations
         protected IEnumerator Settle(float seconds = 0.6f) => rig.Run(seconds, _ => CharacterTestRig.Idle(), StepAndPlace);
 
         /// <summary>Where a leg's paw touches the ground (its toes), as posed now.</summary>
-        protected Vector3 Contact(PawPlacementIK.Leg leg) => leg.foot.TransformPoint(leg.contact);
+        protected Vector3 Contact(LegPlacementIK.Leg leg) => leg.foot.TransformPoint(leg.contact);
 
         /// <summary>How high (m) a point is above the ground under it (not the character's own body).</summary>
         protected float AboveGround(Vector3 point)
@@ -229,7 +229,7 @@ namespace CharacterShowcase.Tests.Animations
                 float[] soles = tests.SolesAboveGround();
                 for (int i = 0; i < soles.Length; i++)
                 {
-                    PawPlacementIK.Leg leg = tests.paws.Legs[i];
+                    LegPlacementIK.Leg leg = tests.paws.Legs[i];
                     if (measured % Window == 0) { lowestSole[i] = float.PositiveInfinity; }
                     lowestSole[i] = Mathf.Min(lowestSole[i], soles[i]);
                     if (measured % Window == Window - 1 && Mathf.Abs(lowestSole[i]) > Mathf.Abs(worstTouch))

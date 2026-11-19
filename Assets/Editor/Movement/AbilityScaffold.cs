@@ -4,18 +4,18 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// What New Ability (NewAbilityWindow) makes from its answers, worked out as a list of file changes before anything is
     /// written, so the window can show them and a test can check them without touching the project. It makes:
     /// - the ability's component, a small working ability to build on (from NewAbilityTemplates/Component.txt): its
-    ///   settings, its hooks, its state and that state's place on the MovementController;
+    ///   settings, its hooks, its state and that state's place on the MMotionMotor;
     /// - its CharacterState flag and its two MovementEvents, each the next unused bit (at the enums' New Ability lines);
-    /// - its place in BasicMovementMode.DefaultComponents, and in MovementCompositionTests' copy of that order;
+    /// - its place in StandardMovementMode.DefaultComponents, and in MovementCompositionTests' copy of that order;
     /// - its PlayMode test fixture, on the ability test kit (AbilityFixture);
     /// - optionally, a level element it starts at (Assets/Scripts/Level), and an IK component of its own (Assets/Scripts/IK);
     /// - a section for it in docs/abilities.md or docs/traversal.md, and its name in docs/movement.md's component list.
@@ -28,7 +28,7 @@ namespace CharacterShowcase.EditorTools
         public enum Kind { TakesOver, OnTopOfWalking }
 
         /// <summary>The button a press of which starts it (one Inputs has: a new button is a step of its own, see AGENTS.md).</summary>
-        public enum StartButton { None, Jump, Dash, Crouch, Roll, Grab }
+        public enum StartButton { None, Jump, Dash, Crouch, Roll, Interact }
 
         /// <summary>Which docs page and test folder it belongs to.</summary>
         public enum Area { Abilities, Traversal }
@@ -39,7 +39,7 @@ namespace CharacterShowcase.EditorTools
             /// <summary>Its class name (PascalCase, a gerund as the others are: Gliding).</summary>
             public string name = "";
             public Kind kind = Kind.TakesOver;
-            public StartButton button = StartButton.Grab;
+            public StartButton button = StartButton.Interact;
             /// <summary>Whether it starts at a level element of its own (made with it).</summary>
             public bool levelElement;
             /// <summary>Whether it gets an IK component of its own, placing the limbs while it's under way (made with it).</summary>
@@ -64,7 +64,7 @@ namespace CharacterShowcase.EditorTools
         public const string ComponentsFolder = "Assets/Scripts/MovementModes/Components";
         public const string StatePath = "Assets/Scripts/Character/CharacterState.cs";
         public const string EventsPath = "Assets/Scripts/Character/MovementEvents.cs";
-        public const string ModePath = "Assets/Scripts/MovementModes/BasicMovementMode.cs";
+        public const string ModePath = "Assets/Scripts/MovementModes/StandardMovementMode.cs";
         public const string CompositionTestPath = "Assets/Tests/EditMode/Movement/MovementCompositionTests.cs";
         public const string FixturesFolder = "Assets/Tests/PlayMode";
         public const string LevelFolder = "Assets/Scripts/Level";
@@ -94,7 +94,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Why the answers can't be made, or null if they can: a name that isn't a class name or is taken (as a type, a
-        /// state, an event, a member of the MovementController or a setting), no way of starting it, a place in the
+        /// state, an event, a member of the MMotionMotor or a setting), no way of starting it, a place in the
         /// order that isn't one, or a file it must change missing its New Ability line.
         /// </summary>
         public static string Problem(Answers answers, Func<string, string> read)
@@ -109,7 +109,7 @@ namespace CharacterShowcase.EditorTools
             }
             if (Enum.GetNames(typeof(CharacterState)).Contains(names.state)) { return $"There's already a state called {names.state}: choose another name."; }
             if (Enum.GetNames(typeof(MovementEvents)).Any(e => e == names.started || e == names.ended)) { return $"There's already a movement event called {names.started} or {names.ended}: choose another name."; }
-            if (typeof(MovementController).GetMember(names.field).Length > 0) { return $"The MovementController already has a member called {names.field}: choose another name."; }
+            if (typeof(MMotionMotor).GetMember(names.field).Length > 0) { return $"The MMotionMotor already has a member called {names.field}: choose another name."; }
             HashSet<string> settings = ExistingSettingNames();
             foreach (string setting in SettingNames(answers, names))
             {
@@ -139,10 +139,10 @@ namespace CharacterShowcase.EditorTools
             if (answers.levelElement) { yield return names.field + "Reach"; }
         }
 
-        /// <summary>The default components' class names, in order (BasicMovementMode.DefaultComponents).</summary>
+        /// <summary>The default components' class names, in order (StandardMovementMode.DefaultComponents).</summary>
         public static List<string> DefaultComponentNames()
         {
-            var mode = UnityEngine.ScriptableObject.CreateInstance<BasicMovementMode>();
+            var mode = UnityEngine.ScriptableObject.CreateInstance<StandardMovementMode>();
             try { return mode.DefaultComponentTypes().Select(t => t.Name).ToList(); }
             finally { UnityEngine.Object.DestroyImmediate(mode); }
         }
@@ -152,7 +152,7 @@ namespace CharacterShowcase.EditorTools
             const System.Reflection.BindingFlags Fields = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public |
                                                           System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;
             var names = new HashSet<string>();
-            foreach (Type type in TypeCache.GetTypesDerivedFrom<MovementComponent>().Append(typeof(BasicMovementMode)).Append(typeof(ComposedMovementMode)))
+            foreach (Type type in TypeCache.GetTypesDerivedFrom<MovementComponent>().Append(typeof(StandardMovementMode)).Append(typeof(AbilityMovementMode)))
             {
                 foreach (var field in type.GetFields(Fields)) { names.Add(field.Name); }
             }
@@ -201,11 +201,11 @@ namespace CharacterShowcase.EditorTools
             }
             if (answers.needsIK)
             {
-                changes.Add(new Change { path = IKPath(names), isNew = true, text = Render(template("IK"), values, flags), summary = $"Its IK ({names.ik}), on every humanoid model once Prepare Character Models runs" });
+                changes.Add(new Change { path = IKPath(names), isNew = true, text = Render(template("IK"), values, flags), summary = $"Its IK ({names.ik}), on every humanoid model once Prepare Humanoid Models runs" });
             }
             changes.Add(new Change { path = StatePath, text = AddEnumMembers(read(StatePath), $"{names.display} (see {names.type})", names.state), summary = $"Its state, CharacterState.{names.state}" });
             changes.Add(new Change { path = EventsPath, text = AddEnumMembers(read(EventsPath), $"{names.display} starting and ending (see {names.type})", names.started, names.ended), summary = $"Its events, {names.started} and {names.ended}" });
-            changes.Add(new Change { path = ModePath, text = AddToDefaultComponents(read(ModePath), names.type, answers.after), summary = answers.after == null ? "First in BasicMovementMode's default components" : $"After {answers.after} in BasicMovementMode's default components" });
+            changes.Add(new Change { path = ModePath, text = AddToDefaultComponents(read(ModePath), names.type, answers.after), summary = answers.after == null ? "First in StandardMovementMode's default components" : $"After {answers.after} in StandardMovementMode's default components" });
 
             string test = read(CompositionTestPath);
             if (test != null) { changes.Add(new Change { path = CompositionTestPath, optional = true, text = AddToCompositionTest(test, names.type, answers.after), summary = "The same place in MovementCompositionTests' copy of the order" }); }
@@ -276,7 +276,7 @@ namespace CharacterShowcase.EditorTools
             return highest;
         }
 
-        /// <summary>BasicMovementMode's text with the component in DefaultComponents, just after the given one (or first).</summary>
+        /// <summary>StandardMovementMode's text with the component in DefaultComponents, just after the given one (or first).</summary>
         public static string AddToDefaultComponents(string text, string type, string after)
         {
             Match method = Regex.Match(text, @"DefaultComponents\(\)\s*\{");
@@ -312,7 +312,7 @@ namespace CharacterShowcase.EditorTools
                 : answers.button != StartButton.None ? $"A press of {answers.button}" : $"Being at a {names.element}";
             return text.TrimEnd('\n') + "\n\n" +
                    $"## {names.display}\n" +
-                   $"{starts} starts {names.display}, which lasts its {names.display} Duration (on the BasicMovementMode asset's " +
+                   $"{starts} starts {names.display}, which lasts its {names.display} Duration (on the StandardMovementMode asset's " +
                    $"{names.display} component; 0 turns it off). Say here what it does, and name each of its settings by its " +
                    "inspector name and the component it's on, never by its value (see [Adding a Movement Ability](adding-an-ability.md)).\n";
         }

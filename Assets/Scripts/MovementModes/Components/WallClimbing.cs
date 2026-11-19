@@ -1,13 +1,13 @@
-using Level;
 using System;
-using PhysicsQueries;
+using MeridianMotion.Levels;
+using MeridianMotion.PhysicsQueries;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Wall climbing: taking hold of a climbable surface (see Level.ClimbableSurface and Level.Ladder) by running or
+    /// Wall climbing: taking hold of a climbable surface (see MeridianMotion.Levels.ClimbableSurface and MeridianMotion.Levels.ClimbableLadder) by running or
     /// jumping into it, and climbing over it in any direction, round corners onto the climbable surfaces it joins, but
     /// never off the climbable area.
     /// </summary>
@@ -82,24 +82,24 @@ namespace Character
         /// <summary>How fast (m/s) the character climbs at full input, at its authored size. 0 turns climbing off.</summary>
         public float WallClimbSpeed { get => wallClimbSpeed; set => wallClimbSpeed = value; }
 
-        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementRules.JumpOffWall).</summary>
         public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
-        public override bool IsActive(MovementController controller) => controller.wallClimb.IsClimbing;
+        public override bool IsActive(MMotionMotor controller) => controller.wallClimb.IsClimbing;
         /// <summary>Climbing, the character holds on to the surface, which holds it up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        public override AbilityTraits Traits => AbilityTraits.Supported | AbilityTraits.Attached;
         /// <summary>The events of WallClimbing starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.WallClimbing, MovementEvents.WallClimbStarted, MovementEvents.WallClimbEnded),
         };
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            controller.wallClimb.regrabCooldown = MovementHelpers.CountDown(controller.wallClimb.regrabCooldown, movementData.deltaTime);
+            controller.wallClimb.regrabCooldown = MovementRules.CountDown(controller.wallClimb.regrabCooldown, movementData.deltaTime);
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.wallClimb.IsClimbing) { EndWallClimb(controller); }
         }
@@ -121,7 +121,7 @@ namespace Character
             // Whether the point is on an edge or corner of the surface, not a face (the normal points from the edge)
             public bool atEdge;
             // The ladder it's on, if it's one's (its front face, on its middle at the grip's height); null otherwise
-            public Ladder ladder;
+            public ClimbableLadder ladder;
         }
 
         /// <summary>
@@ -135,7 +135,7 @@ namespace Character
         /// room (as from a ledge). Jump kicks off the surface, up and away from it; Crouch lets go, as does pressing down
         /// at the bottom with the feet on the ground, or the surface going.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallClimbState climb = controller.wallClimb;
             if (!climb.IsClimbing && !TryStartWallClimb(movementData, inputs, controller)) { return false; }
@@ -165,7 +165,7 @@ namespace Character
             // (and below, the enter) time, counting the step it began on.
             if (climb.IsExiting)
             {
-                if (MovementHelpers.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
+                if (MovementRules.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
                 {
                     LetGoOfWall(controller, normal);
                     return false;
@@ -180,7 +180,7 @@ namespace Character
                 LetGoOfWall(controller, normal);
                 return false;
             }
-            if (Mode.IsNewJumpPress(inputs, controller))
+            if (Mode.HasFreshJumpPress(inputs, controller))
             {
                 WallClimbJump(movementData, controller, normal);
                 return true;
@@ -189,7 +189,7 @@ namespace Character
             // Stepping onto the surface from the ground: held still until it's done, then climbing.
             if (climb.IsEntering)
             {
-                if (!MovementHelpers.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
+                if (!MovementRules.HasElapsed(climb.stepElapsed, climb.stepDuration, movementData.deltaTime))
                 {
                     climb.stepElapsed += movementData.deltaTime;
                     HoldStill(movementData, controller, here, carry);
@@ -282,7 +282,7 @@ namespace Character
         /// angle of head-on. Not while crouched, nor during another ability, other than a wall run or a slide down a wall,
         /// which a climbable surface is climbed instead.
         /// </summary>
-        private bool TryStartWallClimb(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallClimb(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallClimbState climb = controller.wallClimb;
             if (wallClimbSpeed <= 0f || climb.regrabCooldown > 0f || controller.crouch.IsCrouched) { return false; }
@@ -323,7 +323,7 @@ namespace Character
         }
 
         /// <summary>Holds the character where it is on the surface this step (moving with it, and kept at the holding distance).</summary>
-        private void HoldStill(MovementData movementData, MovementController controller, ClimbContact here, Vector3 carry)
+        private void HoldStill(MovementStep movementData, MMotionMotor controller, ClimbContact here, Vector3 carry)
         {
             float snap = wallClimbSnapSpeed * controller.SpeedScale * movementData.deltaTime;
             Vector3 hold = -here.normal * Mathf.Clamp(here.distance - WallClimbHoldDistance(controller), -snap, snap)
@@ -337,10 +337,10 @@ namespace Character
         /// <summary>
         /// Finds the surface nearest the character's grip (with its feet at feet), within reach, among the climbable
         /// ones, and how far the nearest unclimbable one is. hintNormal is the way the surface is expected to face, for
-        /// colliders whose nearest point can't be found directly (see MovementController.ClosestPointOn). False if
+        /// colliders whose nearest point can't be found directly (see MMotionMotor.ClosestPointOn). False if
         /// nothing climbable is within reach.
         /// </summary>
-        private bool ProbeClimbableSurface(MovementController controller, Vector3 feet, Vector3 hintNormal, float reach,
+        private bool ProbeClimbableSurface(MMotionMotor controller, Vector3 feet, Vector3 hintNormal, float reach,
             out ClimbContact contact, float paintTolerance = 0f)
         {
             contact = new ClimbContact { distance = float.PositiveInfinity, unclimbableDistance = float.PositiveInfinity };
@@ -351,8 +351,8 @@ namespace Character
             {
                 Collider candidate = climbOverlaps[i];
                 // Looked up once (it's a search up the collider's parents): kept below as whether it's a ladder at all.
-                Ladder candidateLadder = Ladder.Of(candidate);
-                Ladder ladder = candidateLadder;
+                ClimbableLadder candidateLadder = ClimbableLadder.Of(candidate);
+                ClimbableLadder ladder = candidateLadder;
                 Vector3 point, normal;
                 float distance, speedMultiplier = 1f;
                 bool atEdge = false;
@@ -364,7 +364,7 @@ namespace Character
                 else
                 {
                     ladder = null;
-                    if (!MovementController.ClosestPointOn(candidate, grip, -hintNormal, reach, out point)) { continue; }
+                    if (!MMotionMotor.ClosestPointOn(candidate, grip, -hintNormal, reach, out point)) { continue; }
                     distance = Vector3.Distance(grip, point);
                     normal = (grip - point) / Mathf.Max(distance, 1e-6f);
                     atEdge = IsAtEdge(candidate, grip, normal, distance, reach);
@@ -399,7 +399,7 @@ namespace Character
         /// bottom and top, and no further to its side than the character's radius past its edge. Gives the point on its
         /// front face, on its middle at the grip's height, and how far in front of the face the grip is.
         /// </summary>
-        private static bool OnLadder(MovementController controller, Ladder ladder, Vector3 grip, out Vector3 point, out float distance)
+        private static bool OnLadder(MMotionMotor controller, ClimbableLadder ladder, Vector3 grip, out Vector3 point, out float distance)
         {
             float up = ladder.HeightOf(grip);
             distance = ladder.InFrontOf(grip);
@@ -409,7 +409,7 @@ namespace Character
         }
 
         /// <summary>On a ladder, the move this step back toward its middle (at most step long); zero off one.</summary>
-        private static Vector3 LadderCentring(Ladder ladder, Vector3 feet, float step)
+        private static Vector3 LadderCentring(ClimbableLadder ladder, Vector3 feet, float step)
         {
             if (ladder == null) { return Vector3.zero; }
             return -ladder.Right * Mathf.Clamp(ladder.SideOf(feet), -step, step);
@@ -427,7 +427,7 @@ namespace Character
         /// Whether the character, with its feet at feet, would still be on the climbable area (see CanHoldAt), its grip
         /// no further from the surface than from (where it is now) or the edge tolerance allows.
         /// </summary>
-        private bool CanClimbTo(MovementController controller, Vector3 feet, Vector3 hintNormal, float reach, ClimbContact from, out ClimbContact contact) =>
+        private bool CanClimbTo(MMotionMotor controller, Vector3 feet, Vector3 hintNormal, float reach, ClimbContact from, out ClimbContact contact) =>
             ProbeClimbableSurface(controller, feet, hintNormal, reach, out contact) && CanHoldAt(controller, contact, from.distance);
 
         /// <summary>
@@ -435,7 +435,7 @@ namespace Character
         /// (within the edge tolerance of its holding distance, or no further than allowedDistance: having just taken
         /// hold from a little way off, it's drawn in as it climbs), and nothing unclimbable nearer.
         /// </summary>
-        private bool CanHoldAt(MovementController controller, ClimbContact contact, float allowedDistance = 0f) =>
+        private bool CanHoldAt(MMotionMotor controller, ClimbContact contact, float allowedDistance = 0f) =>
             contact.collider != null && SteepEnoughToClimb(contact.normal)
             && contact.distance <= Mathf.Max(WallClimbHoldDistance(controller) + WallClimbEdgeTolerance * controller.HeightScale, allowedDistance + 1e-4f)
             && !IsUnclimbableNearer(controller, contact);
@@ -444,7 +444,7 @@ namespace Character
         /// Whether something unclimbable ends the climbable area at a contact: nearer than the climbable surface, or round
         /// an edge, close beyond it (see WallClimbCornerClearance).
         /// </summary>
-        private static bool IsUnclimbableNearer(MovementController controller, ClimbContact contact) =>
+        private static bool IsUnclimbableNearer(MMotionMotor controller, ClimbContact contact) =>
             contact.unclimbableDistance < (contact.atEdge
                 ? contact.distance + WallClimbCornerClearance * controller.HeightScale
                 : contact.distance - WallClimbUnclimbableMargin * controller.Skin);
@@ -454,10 +454,10 @@ namespace Character
             normal.y <= Mathf.Sin(wallClimbMaxLeanBack * Mathf.Deg2Rad) && normal.y >= -Mathf.Sin(wallClimbMaxOverhang * Mathf.Deg2Rad);
 
         /// <summary>How far the character's grip is held from the surface: its collider just clear of it.</summary>
-        private static float WallClimbHoldDistance(MovementController controller) => controller.Body.FrontExtent + controller.Skin;
+        private static float WallClimbHoldDistance(MMotionMotor controller) => controller.Body.FrontExtent + controller.Skin;
 
         /// <summary>How far from the grip a surface being climbed is looked for.</summary>
-        private float WallClimbReach(MovementController controller) =>
+        private float WallClimbReach(MMotionMotor controller) =>
             controller.Body.FrontExtent + Mathf.Max(wallClimbStartReach, 2f * WallClimbEdgeTolerance) * controller.HeightScale + 2f * controller.Skin;
 
         /// <summary>Remembers the surface held at a contact.</summary>
@@ -489,7 +489,7 @@ namespace Character
         /// way it looks at the surface. With the look along the surface, where the look's directions don't lie on it, the
         /// stick's own directions are used.
         /// </summary>
-        private static Vector2 ClimbInput(MovementData movementData, Inputs inputs, Vector3 right, Vector3 up)
+        private static Vector2 ClimbInput(MovementStep movementData, StepInputs inputs, Vector3 right, Vector3 up)
         {
             Vector2 stick = new Vector2(inputs.movementVector.x, inputs.movementVector.z);
             float amount = Mathf.Clamp01(stick.magnitude);
@@ -502,18 +502,18 @@ namespace Character
         }
 
         /// <summary>A surface's normal, flattened onto the ground (unit length; the character's facing reversed if it's flat).</summary>
-        private static Vector3 FlatNormal(Vector3 normal, MovementData movementData)
+        private static Vector3 FlatNormal(Vector3 normal, MovementStep movementData)
         {
             Vector3 flat = new Vector3(normal.x, 0f, normal.z);
             return flat.sqrMagnitude > 1e-6f ? flat.normalized : -Facing(movementData);
         }
 
         /// <summary>How far the surface being climbed has moved the character since the last step (zero if it's still).</summary>
-        private static Vector3 WallClimbCarry(MovementData movementData, MovementController controller)
+        private static Vector3 WallClimbCarry(MovementStep movementData, MMotionMotor controller)
         {
             WallClimbState climb = controller.wallClimb;
             if (!climb.hasLocalFeet || climb.surface == null) { return Vector3.zero; }
-            MovementController.GetPhysicsPose(climb.surface, out Vector3 position, out Quaternion rotation);
+            MMotionMotor.GetPhysicsPose(climb.surface, out Vector3 position, out Quaternion rotation);
             Vector3 carry = position + rotation * climb.localFeet - movementData.initialPosition;
             // Static surfaces still give a tiny carry from floating point error, and a teleport shouldn't drag the character.
             if (carry.sqrMagnitude < 1e-10f || carry.sqrMagnitude > WallClimbMaxCarryPerStep * WallClimbMaxCarryPerStep) { return Vector3.zero; }
@@ -524,7 +524,7 @@ namespace Character
         /// Remembers where the character's feet are in the space of the surface it's climbing, once the step's movement is
         /// resolved, to move along with it next step.
         /// </summary>
-        public override void AfterMovementResolved(MovementData movementData, MovementController controller)
+        public override void AfterMovementResolved(MovementStep movementData, MMotionMotor controller)
         {
             WallClimbState climb = controller.wallClimb;
             if (!climb.IsClimbing || climb.surface == null || ((movementData.state & CharacterState.WallClimbing) == 0))
@@ -532,7 +532,7 @@ namespace Character
                 climb.hasLocalFeet = false;
                 return;
             }
-            MovementController.GetPhysicsPose(climb.surface, out Vector3 position, out Quaternion rotation);
+            MMotionMotor.GetPhysicsPose(climb.surface, out Vector3 position, out Quaternion rotation);
             Vector3 feet = movementData.initialPosition + movementData.finalMovementVector;
             climb.localFeet = Quaternion.Inverse(rotation) * (feet - position);
             climb.hasLocalFeet = true;
@@ -542,11 +542,11 @@ namespace Character
         /// Kicks off the surface: upward, and away from it. Gives back the character's jumps, less the one this uses, and
         /// takes away air steering for a moment, as jumping off a wall run does.
         /// </summary>
-        private void WallClimbJump(MovementData movementData, MovementController controller, Vector3 normal)
+        private void WallClimbJump(MovementStep movementData, MMotionMotor controller, Vector3 normal)
         {
             EndWallClimb(controller);
             Vector3 away = FlatNormal(normal, movementData);
-            MovementHelpers.JumpOffWall(movementData, controller,
+            MovementRules.JumpOffWall(movementData, controller,
                 away * (wallClimbJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallClimbJumpUpSpeed * controller.SpeedScale), away, away);
         }
 
@@ -554,7 +554,7 @@ namespace Character
         /// Lets go of the surface (with Crouch, or stepping off it at the bottom): the character drops, and doesn't slide
         /// down the same wall before it lands.
         /// </summary>
-        private void LetGoOfWall(MovementController controller, Vector3 normal)
+        private void LetGoOfWall(MMotionMotor controller, Vector3 normal)
         {
             EndWallClimb(controller);
             Vector3 flat = new Vector3(normal.x, 0f, normal.z);
@@ -563,7 +563,7 @@ namespace Character
             controller.wallSlide.hasLastWall = true;
         }
 
-        private void EndWallClimb(MovementController controller)
+        private void EndWallClimb(MMotionMotor controller)
         {
             WallClimbState climb = controller.wallClimb;
             climb.IsClimbing = false;
@@ -614,10 +614,10 @@ namespace Character
         /// reaches for it while it closes in to its holding distance (taking hold lying down, its body reached further).
         /// </summary>
         public float closingIn;
-        /// <summary>The surface's speed multiplier (see Level.ClimbableSurface).</summary>
+        /// <summary>The surface's speed multiplier (see MeridianMotion.Levels.ClimbableSurface).</summary>
         public float speedMultiplier = 1f;
-        /// <summary>The ladder climbed, if it's one (see Level.Ladder): straight up and down it, on its middle; null otherwise.</summary>
-        public Level.Ladder ladder;
+        /// <summary>The ladder climbed, if it's one (see MeridianMotion.Levels.ClimbableLadder): straight up and down it, on its middle; null otherwise.</summary>
+        public MeridianMotion.Levels.ClimbableLadder ladder;
         /// <summary>Seconds since the climb started.</summary>
         public float elapsed;
         /// <summary>Seconds until a climbable surface can be taken hold of again, after letting go of one or jumping off it.</summary>
@@ -636,9 +636,9 @@ namespace Character
         public float StepProgress => stepDuration > 0f ? Mathf.Clamp01(stepElapsed / stepDuration) : 0f;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's wall and ladder climbing state (WallClimbing).</summary>
         public WallClimbState wallClimb { get; } = new WallClimbState();

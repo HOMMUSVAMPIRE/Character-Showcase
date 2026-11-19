@@ -1,9 +1,9 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Holds a planted foot or paw where it was put down (FootPlacementIK's Foot Lock, PawPlacementIK's Paw Lock). It
+    /// Holds a planted foot or paw where it was put down (HumanoidFootPlacementIK's Foot Lock, LegPlacementIK's Foot Lock). It
     /// locks as the animation fully plants the limb, holding the point in the space of the ground under it (so it rides
     /// moving ground). It lets go as the limb lifts, or if the animation's limb gets too far from the lock, so the leg is
     /// never stretched to hold it. It's blended in and out over its blend time. How the held point is blended over where

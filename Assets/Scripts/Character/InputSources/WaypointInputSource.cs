@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// An AI that walks (or sprints) a character along a route of points, in order, facing each as it goes, and stands
@@ -10,6 +10,7 @@ namespace Character
     /// within what the character can get up (its MovementCapabilities.MoveUp: a jump, or a jump to a ledge it climbs).
     /// It holds Jump while the character rises, for the full height. Not pathfinding: the route is the way.
     /// </summary>
+    [AddComponentMenu("Meridian Motion/Characters/Waypoint Input Source")]
     public class WaypointInputSource : CharacterInputSource
     {
         [Header("Route")]
@@ -61,7 +62,7 @@ namespace Character
             rising = false;
         }
 
-        public override CharacterInputFrame FrameFor(uint tick, MovementController character)
+        public override CharacterInputFrame FrameFor(uint tick, MMotionMotor character)
         {
             var frame = new CharacterInputFrame { tick = tick };
             if (character == null || waypoints.Count == 0 || Arrived) { return frame; }
@@ -92,9 +93,9 @@ namespace Character
         private static Vector3 Across(Vector3 v) => new(v.x, 0f, v.z);
 
         /// <summary>Whether to hold Jump this step: to start a jump the way ahead needs, or to keep rising in one.</summary>
-        private bool WantsJump(MovementController character, Vector3 feet, Vector3 direction, float scale)
+        private bool WantsJump(MMotionMotor character, Vector3 feet, Vector3 direction, float scale)
         {
-            MovementData last = character.lastFrameMovementData;
+            MovementStep last = character.lastStep;
             if (last == null) { return false; }
             // Held while rising from its jump (for the jump's full height), then let go.
             if (rising)

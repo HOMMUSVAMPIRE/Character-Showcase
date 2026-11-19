@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Vaulting: heading into something whose top is too low to grab as a ledge (see Ledges) but too high to step onto,
@@ -48,23 +48,23 @@ namespace Character
         /// <summary>Seconds a vault spends getting a hand onto the top and rising to it, at the character's authored size. 0 turns vaulting off.</summary>
         public float VaultRiseDuration { get => vaultRiseDuration; set => vaultRiseDuration = value; }
 
-        public override bool IsActive(MovementController controller) => controller.vault.IsActive;
+        public override bool IsActive(MMotionMotor controller) => controller.vault.IsActive;
         /// <summary>Vaulting, the character's hands are on the obstacle, which holds it up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp | AbilityTraits.HoldsOn;
+        public override AbilityTraits Traits => AbilityTraits.Supported | AbilityTraits.Attached;
         /// <summary>
         /// Stepping up shows as the walk carried on, the model eased up after the character and the feet tucked onto the top
-        /// (see the AnimationController's Stepping Up settings): no animation state of its own is needed.
+        /// (see the MMotionAnimator's Stepping Up settings): no animation state of its own is needed.
         /// </summary>
-        public override CharacterState ShownByLocomotion => CharacterState.SteppingUp;
+        public override CharacterState LocomotionState => CharacterState.SteppingUp;
         /// <summary>The events of Vaulting and SteppingUp starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Vaulting, MovementEvents.VaultStarted, MovementEvents.VaultEnded),
             new(CharacterState.SteppingUp, MovementEvents.StepUpStarted, MovementEvents.StepUpEnded),
         };
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.vault.IsActive) { EndVault(movementData, controller); }
         }
@@ -78,7 +78,7 @@ namespace Character
         /// speed it leaves with, until the whole body is past the wall's face, without gravity. A step up lifts the
         /// character onto the top as fast as it takes to reach the wall, keeping its speed.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             VaultState vault = controller.vault;
             if (!vault.IsActive && !TryStartVault(movementData, inputs, controller)) { return false; }
@@ -89,7 +89,7 @@ namespace Character
             }
 
             // The path is kept in the obstacle's space, so a vault over something moving still goes over it.
-            MovementController.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
+            MMotionMotor.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
             vault.elapsed += movementData.deltaTime;
             if (vault.IsSteppingUp) { return StepUp(movementData, controller, obstaclePosition, obstacleRotation); }
 
@@ -105,7 +105,7 @@ namespace Character
             // doesn't drift over slowly and then shoot off.
             float distance, up;
             bool over = false;
-            if (!MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration, movementData.deltaTime))
+            if (!MovementRules.HasElapsed(vault.elapsed, vault.riseDuration, movementData.deltaTime))
             {
                 // Slowing evenly from the speed it rises at first to the speed it swings over at.
                 float rise = vault.elapsed / vault.riseDuration, t = vault.elapsed;
@@ -119,7 +119,7 @@ namespace Character
                 float acceleration = vault.crossDuration > 0f ? (vault.exitSpeed - vault.crossStartSpeed) / vault.crossDuration : 0f;
                 distance = Mathf.Min(length, vault.gapDistance + vault.crossStartSpeed * t + 0.5f * acceleration * t * t);
                 up = 1f;
-                over = MovementHelpers.HasElapsed(vault.elapsed, vault.riseDuration + vault.crossDuration, movementData.deltaTime);
+                over = MovementRules.HasElapsed(vault.elapsed, vault.riseDuration + vault.crossDuration, movementData.deltaTime);
                 // The step it ends on, on past the end for the rest of the step at the speed it leaves with: stopped at the
                 // end, that step moved only part of one, and the character lurched as it left the vault at full speed.
                 if (over) { distance = length + vault.exitSpeed * Mathf.Max(0f, since - vault.crossDuration); }
@@ -152,7 +152,7 @@ namespace Character
         /// Steps up onto the top: lifted just fast enough to clear it as the body reaches the wall (no faster than the
         /// step up's rise speed), moving on at the speed the character came in at, until its axis is past the edge.
         /// </summary>
-        private bool StepUp(MovementData movementData, MovementController controller, Vector3 obstaclePosition, Quaternion obstacleRotation)
+        private bool StepUp(MovementStep movementData, MMotionMotor controller, Vector3 obstaclePosition, Quaternion obstacleRotation)
         {
             VaultState vault = controller.vault;
             Vector3 edge = obstaclePosition + obstacleRotation * vault.localEdge;
@@ -186,7 +186,7 @@ namespace Character
         /// height and below the lowest ledge it could grab (see TakeOver), with room to rise up to it
         /// where the character is and to be on top of it just past the edge.
         /// </summary>
-        private bool TryStartVault(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartVault(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             // Below the window a ledge is grabbed in, whether or not ledges are (see Ledges).
@@ -221,7 +221,7 @@ namespace Character
         /// had the Animator start blending from swimming into the air, which the climb out then had to wait for, and the
         /// model went up, down and up again. Returns whether it started.
         /// </summary>
-        internal bool TryVaultOutOfWater(MovementData movementData, Inputs inputs, MovementController controller, Vector3 heading,
+        internal bool TryVaultOutOfWater(MovementStep movementData, StepInputs inputs, MMotionMotor controller, Vector3 heading,
             float low, float high)
         {
             if (vaultRiseDuration <= 0f || controller.crouch.IsCrouched || heading.sqrMagnitude < 1e-4f) { return false; }
@@ -236,7 +236,7 @@ namespace Character
         /// low and high above the character's feet, with room to rise up to it and to be on top of it just past the edge
         /// (see TryStartVault). From the ground, only over to somewhere to land.
         /// </summary>
-        private bool StartVaultOver(MovementData movementData, MovementController controller, Ledges ledges, Vector3 heading,
+        private bool StartVaultOver(MovementStep movementData, MMotionMotor controller, Ledges ledges, Vector3 heading,
             Vector3 steer, bool grounded, float low, float high)
         {
             VaultState vault = controller.vault;
@@ -289,7 +289,7 @@ namespace Character
             vault.elapsed = 0f;
             vault.outOfWater = false;
             vault.obstacle = top.transform;
-            MovementController.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
+            MMotionMotor.GetPhysicsPose(vault.obstacle, out Vector3 obstaclePosition, out Quaternion obstacleRotation);
             Quaternion toObstacleSpace = Quaternion.Inverse(obstacleRotation);
             vault.localEdge = toObstacleSpace * (edge - obstaclePosition);
             vault.localWallNormal = toObstacleSpace * wallNormal;
@@ -327,10 +327,10 @@ namespace Character
         }
 
         /// <summary>How far above the top vaulted over the character's feet go, so its capsule clears the edge.</summary>
-        private static float VaultClearance(MovementController controller) => 2f * controller.Skin;
+        private static float VaultClearance(MMotionMotor controller) => 2f * controller.Skin;
 
         /// <summary>Ends a vault or step up, the character carrying on at the speed it leaves with.</summary>
-        private static void EndVault(MovementData movementData, MovementController controller)
+        private static void EndVault(MovementStep movementData, MMotionMotor controller)
         {
             VaultState vault = controller.vault;
             vault.phase = VaultState.Phase.None;
@@ -429,9 +429,9 @@ namespace Character
         }
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's vaulting and stepping-up state (Vaulting).</summary>
         public VaultState vault { get; } = new VaultState();

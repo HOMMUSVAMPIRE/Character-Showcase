@@ -4,11 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using Character;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.LevelChecks
 {
     /// <summary>
     /// Writes Tools/LevelSpec/envelope.json again (see MovementEnvelopeWriter) whenever something it's measured from is
@@ -20,7 +21,7 @@ namespace CharacterShowcase.EditorTools
     /// </summary>
     public class MovementEnvelopeAutoWriter : AssetPostprocessor
     {
-        private const string GrayboxSettingsPath = "Assets/Editor/Level/GrayboxSettings.asset";
+        private const string GrayboxSettingsPath = "Assets/Editor/Level/LevelBuilderSettings.asset";
         // A saved change can import several assets at once: they're measured once, after the import.
         private static bool queued;
 
@@ -37,7 +38,7 @@ namespace CharacterShowcase.EditorTools
             if (path == MovementEnvelopeWriter.CharacterPrefabPath || path == GrayboxSettingsPath) { return true; }
             if (!path.EndsWith(".asset", StringComparison.Ordinal)) { return false; }
             Type type = AssetDatabase.GetMainAssetTypeAtPath(path);
-            return type != null && (typeof(ComposedMovementMode).IsAssignableFrom(type) || typeof(CharacterModelSource).IsAssignableFrom(type));
+            return type != null && (typeof(AbilityMovementMode).IsAssignableFrom(type) || typeof(CharacterModelSource).IsAssignableFrom(type));
         }
 
         /// <summary>Writes the envelope once the editor isn't busy (compiling, importing, or in play mode), if it changed.</summary>
@@ -62,7 +63,7 @@ namespace CharacterShowcase.EditorTools
             catch (Exception e)
             {
                 Debug.LogWarning($"[Movement envelope] Couldn't write '{MovementEnvelopeWriter.EnvelopePath}' again: {e.Message}. " +
-                                 "Write it by hand (Tools > Character Showcase > Level > Specs > Write Movement Envelope).");
+                                 "Write it by hand (Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope).");
             }
         }
 

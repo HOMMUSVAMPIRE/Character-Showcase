@@ -3,13 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Character;
-using UnityEditor;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.Pipeline
 {
     /// <summary>
     /// Generates the mannequin and the animations every character model shares:
@@ -22,7 +23,7 @@ namespace CharacterShowcase.EditorTools
     ///   walking, walking briskly, running, jogging, sprinting, jumping, landing and dashing, and crouching, sliding,
     ///   rolling, wall-running, hanging, climbing and pushing (the libraries' clips for those too, where installed).
     ///   Each loop's speed and phase are measured on the mannequin (MotionCaptureLocomotion's StrideSpeed and TouchDownPhase).
-    /// - prepares the mannequin like any other character model (CharacterModelImporter), and makes it the Character
+    /// - prepares the mannequin like any other character model (HumanoidModelImporter), and makes it the Character
     ///   prefab's model
     /// Other models play these animations through Humanoid retargeting. Safe to run repeatedly: IK settings and edits to
     /// the translator and definition are kept.
@@ -30,15 +31,15 @@ namespace CharacterShowcase.EditorTools
     public static partial class MannequinGenerator
     {
         /// <summary>Where the generated mannequin's file (mesh, rig and clips) is saved.</summary>
-        public const string ModelPath = CharacterModelImporter.MannequinModelPath;
+        public const string ModelPath = HumanoidModelImporter.MannequinModelPath;
         /// <summary>
-        /// Where the mannequin's model prefab is saved, as Prepare Character Models saves every model's.
+        /// Where the mannequin's model prefab is saved, as Prepare Humanoid Models saves every model's.
         /// </summary>
-        public const string ModelPrefabPath = CharacterModelImporter.MannequinPrefabPath;
-        private const string ControllerPath = CharacterModelImporter.ControllerPath;
-        private const string TranslatorPath = CharacterModelImporter.TranslatorPath;
+        public const string ModelPrefabPath = HumanoidModelImporter.MannequinPrefabPath;
+        private const string ControllerPath = HumanoidModelImporter.ControllerPath;
+        private const string TranslatorPath = HumanoidModelImporter.TranslatorPath;
         private const string GeneratorScript = "Tools/Mannequin/generate_mannequin.py";
-        private const string PrefabPath = SceneGameSetup.CharacterPrefabPath;
+        private const string PrefabPath = CharacterSceneSetup.CharacterPrefabPath;
         private const string ModelParentName = "ModelParent";
 
         // Fired by the translator on every jump, from the ground, in the air, off a wall or a rope or a zipline, and on
@@ -53,14 +54,14 @@ namespace CharacterShowcase.EditorTools
         /// Generates the mannequin in Blender and builds everything from it. If Blender isn't found, offers to locate
         /// it or to rebuild from the Mannequin.fbx already in the project.
         /// </summary>
-        [MenuItem("Tools/Character Showcase/Generate Mannequin", priority = 1)]
+        [MenuItem("Tools/Meridian Motion/Showcase/Generate Mannequin", priority = 1)]
         public static void GenerateFromMenu()
         {
             if (!BlenderRunner.FindOrAsk("Generate Mannequin", "the mannequin and its animations", "Mannequin.fbx", out string blender)) { return; }
             if (Generate(blender))
             {
                 EditorUtility.DisplayDialog("Generate Mannequin", "The mannequin and its animations are ready. " +
-                    "Run Tools > Character Showcase > Prepare Character Models to update the other models' prefabs too.", "OK");
+                    "Run Tools > Meridian Motion > Prepare > Humanoid Models to update the other models' prefabs too.", "OK");
             }
         }
 
@@ -81,14 +82,14 @@ namespace CharacterShowcase.EditorTools
         /// <summary>Generates the mannequin with Blender (or, given null, reuses the existing file) and sets it all up.</summary>
         public static bool Generate(string blenderPath)
         {
-            using (CharacterModelImporter.Busy()) { return GenerateWhileBusy(blenderPath); }
+            using (HumanoidModelImporter.Busy()) { return GenerateWhileBusy(blenderPath); }
         }
 
         /// <summary>
         /// Whether the mannequin's file has changed since its clips and controller were last built from it (regenerated
         /// with Blender by hand, say), so they need building again.
         /// </summary>
-        public static bool NeedsRebuild() => File.Exists(ModelPath) && CharacterModelImporter.HasChangedSincePrepared(ModelPath);
+        public static bool NeedsRebuild() => File.Exists(ModelPath) && HumanoidModelImporter.HasChangedSincePrepared(ModelPath);
 
         private static bool GenerateWhileBusy(string blenderPath)
         {
@@ -104,7 +105,7 @@ namespace CharacterShowcase.EditorTools
             var translator = LoadOrCreate<AnimatorParameterTranslator>(TranslatorPath);
             BindJumpTrigger(translator, controller);
 
-            CharacterModelImporter.Result mannequin = CharacterModelImporter.Prepare(ModelPath, controller, translator);
+            HumanoidModelImporter.Result mannequin = HumanoidModelImporter.Prepare(ModelPath, controller, translator);
             if (!mannequin.Succeeded)
             {
                 Debug.LogError($"[MannequinGenerator] {mannequin}");
@@ -114,7 +115,7 @@ namespace CharacterShowcase.EditorTools
             AssetDatabase.SaveAssets();
 
             if (!UseOnCharacterPrefab(mannequin.definition)) { return false; }
-            CharacterModelImporter.MarkPrepared(ModelPath, controller);
+            HumanoidModelImporter.MarkPrepared(ModelPath, controller);
             Debug.Log($"[MannequinGenerator] Generated the mannequin ('{ModelPath}', definition " +
                       $"'{AssetDatabase.GetAssetPath(mannequin.definition)}', {mannequin.height:0.00} m tall) and the shared animations: controller '{ControllerPath}' with clips " +
                       $"{string.Join(", ", LoadClips().Keys)}, translator '{TranslatorPath}'. It's the Character prefab's model.");
@@ -153,25 +154,25 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// Sets up the Character prefab's model: a CharacterModelHost loading the mannequin (also its fallback, should
+        /// Sets up the Character prefab's model: a CharacterModelSlot loading the mannequin (also its fallback, should
         /// another model fail to load), with a placeholder shown while there's no model and an eye point for the camera.
         /// The prefab has no collider for its body (see RemoveBodyColliders): its model's hitboxes are what meets it.
         /// The mannequin is the prefab's own model, which the tests spawn; scenes choose their own with the Character
         /// Model window, as an override on their instance of the prefab.
         /// </summary>
-        private static bool UseOnCharacterPrefab(DirectCharacterModelSource mannequin)
+        private static bool UseOnCharacterPrefab(PrefabModelSource mannequin)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
             try
             {
                 Transform modelParent = root.transform.Find(ModelParentName);
-                var animationController = root.GetComponent<AnimationController>();
+                var animationController = root.GetComponent<MMotionAnimator>();
                 if (modelParent == null || animationController == null)
                 {
-                    Debug.LogError($"[MannequinGenerator] '{PrefabPath}' needs an AnimationController and a '{ModelParentName}' child; it was not changed.");
+                    Debug.LogError($"[MannequinGenerator] '{PrefabPath}' needs an MMotionAnimator and a '{ModelParentName}' child; it was not changed.");
                     return false;
                 }
-                if (!root.TryGetComponent(out CharacterModelHost host)) { host = root.AddComponent<CharacterModelHost>(); }
+                if (!root.TryGetComponent(out CharacterModelSlot host)) { host = root.AddComponent<CharacterModelSlot>(); }
                 RemoveBodyColliders(root);
 
                 var hostSettings = new SerializedObject(host);
@@ -196,7 +197,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// Takes the character's own primitive colliders off its root (the capsule an earlier version had for its body), and
-        /// clears its MovementController's Body Collider: the movement needs no collider (its body is a shape: see
+        /// clears its MMotionMotor's Body Collider: the movement needs no collider (its body is a shape: see
         /// CharacterBody), and what meets the character meets its model's hitboxes (see CharacterHitboxes). Its Body
         /// Definition is its body.
         /// </summary>
@@ -206,7 +207,7 @@ namespace CharacterShowcase.EditorTools
             {
                 if (collider is CapsuleCollider || collider is BoxCollider || collider is SphereCollider) { Object.DestroyImmediate(collider); }
             }
-            if (character.TryGetComponent(out MovementController movement))
+            if (character.TryGetComponent(out MMotionMotor movement))
             {
                 var settings = new SerializedObject(movement);
                 settings.FindProperty("bodyCollider").objectReferenceValue = null;
@@ -228,7 +229,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// A plain capsule the size of the character's body, shown while the character has no model. It lives under
-        /// the model parent, so it's resized with the character (see ACCharacterController.SetScale). Created once; after
+        /// the model parent, so it's resized with the character (see MMotionCharacter.SetScale). Created once; after
         /// that it's left as it is, so it can be restyled (one made by an earlier version, under the character's root,
         /// is moved under the model parent).
         /// </summary>
@@ -241,7 +242,7 @@ namespace CharacterShowcase.EditorTools
                 return existing.gameObject;
             }
             // The character's body as authored (its Body Definition's, or its collider's), standing.
-            BodyShape body = root.TryGetComponent(out MovementController movement) ? movement.AuthoredBody : BodyShape.Default;
+            BodyShape body = root.TryGetComponent(out MMotionMotor movement) ? movement.AuthoredBody : BodyShape.Default;
             GameObject placeholder = GameObject.CreatePrimitive(body.kind switch
             {
                 BodyShapeKind.Box => PrimitiveType.Cube,

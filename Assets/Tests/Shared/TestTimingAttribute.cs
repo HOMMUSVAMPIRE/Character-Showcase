@@ -3,15 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using Character;
-using NUnit.Framework;
+using MeridianMotion.Characters;
 using NUnit.Framework.Interfaces;
-using Unity.Profiling;
+using NUnit.Framework;
 using Unity.Profiling.LowLevel.Unsafe;
+using Unity.Profiling;
 using UnityEngine.TestTools;
 using Debug = UnityEngine.Debug;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// Logs, at the end of each test of the fixture it's on (and fixtures deriving from it), how long the test ran and

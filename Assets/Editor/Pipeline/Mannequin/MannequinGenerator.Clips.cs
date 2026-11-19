@@ -3,13 +3,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Character;
-using UnityEditor;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.Pipeline
 {
     // The mannequin's clips: its importer settings, and one looping in-place clip per take. The libraries' clips are made ready by the shipped Prepare Animations (AnimationPreparation).
     public static partial class MannequinGenerator
@@ -49,7 +50,7 @@ namespace CharacterShowcase.EditorTools
 
         /// <summary>
         /// One looping, in-place clip per FBX take. Blender names takes "Armature|Walk"; Unity clips get the short name.
-        /// Root motion is baked into the pose: the character is moved by MovementController, not by animation.
+        /// Root motion is baked into the pose: the character is moved by MMotionMotor, not by animation.
         /// </summary>
         private static ModelImporterClipAnimation[] BuildClipSettings(ModelImporterClipAnimation[] takes)
         {

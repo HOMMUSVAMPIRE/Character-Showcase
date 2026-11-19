@@ -9,7 +9,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // The window's list of parts and pieces, the add-piece menu, and placing new pieces.
     public partial class LevelEditorWindow

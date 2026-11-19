@@ -1,10 +1,10 @@
 using System.IO;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.InputAndDeterminism
+namespace MeridianMotion.Tests.EditMode.InputAndDeterminism
 {
     /// <summary>
     /// Tests of a character's input as frames (CharacterInputFrame): the frame stays unmanaged and small; the presses and
@@ -34,10 +34,10 @@ namespace CharacterShowcase.Tests.EditMode.InputAndDeterminism
         public void PressesAndHolds_AreCountedInSteps_FromTheFrames()
         {
             var state = new InputState();
-            InputButton jump = state.View.jump;
+            InputButton jump = state.Current.jump;
 
             state.Advance(Holding(InputButtons.None), Step);
-            Assert.That(jump.value || jump.justPressed, Is.False);
+            Assert.That(jump.held || jump.justPressed, Is.False);
 
             state.Advance(Holding(InputButtons.Jump), Step);
             Assert.That(jump.justPressed, Is.True, "The first step a frame holds it is a press.");
@@ -49,13 +49,13 @@ namespace CharacterShowcase.Tests.EditMode.InputAndDeterminism
             Assert.That(jump.holdDuration, Is.EqualTo(2 * Step), "Two steps after the press, it's been held two steps.");
 
             state.Advance(Holding(InputButtons.None), Step);
-            Assert.That(jump.value, Is.False);
+            Assert.That(jump.held, Is.False);
             Assert.That(jump.justReleased, Is.True, "The first step a frame doesn't hold it is a release.");
             Assert.That(jump.lastHoldDuration, Is.EqualTo(2 * Step), "Released, it was held as long as it last was.");
             Assert.That(jump.holdDuration, Is.EqualTo(0f));
 
             state.Advance(Holding(InputButtons.Jump | InputButtons.Sprint), Step);
-            Assert.That(jump.justPressed && state.View.sprint.justPressed, Is.True, "Down again, each is a new press.");
+            Assert.That(jump.justPressed && state.Current.sprint.justPressed, Is.True, "Down again, each is a new press.");
         }
 
         [Test]
@@ -63,7 +63,7 @@ namespace CharacterShowcase.Tests.EditMode.InputAndDeterminism
         {
             var state = new InputState();
             state.Advance(new CharacterInputFrame { move = new Vector2(0.25f, -0.5f) }, Step);
-            Assert.That(state.View.movementVector, Is.EqualTo(new Vector3(0.25f, 0f, -0.5f)));
+            Assert.That(state.Current.movementVector, Is.EqualTo(new Vector3(0.25f, 0f, -0.5f)));
         }
 
         [Test]
@@ -84,11 +84,11 @@ namespace CharacterShowcase.Tests.EditMode.InputAndDeterminism
             var state = new InputState();
             latch.Sample(Vector2.zero, 0f, 0f, InputButtons.Jump, InputButtons.Jump);
             state.Advance(latch.Take(1, 0.02f), Step);
-            Assert.That(state.View.jump.justPressed, Is.True);
+            Assert.That(state.Current.jump.justPressed, Is.True);
             // No render frame between the two steps: the button's still down, not pressed again.
             state.Advance(latch.Take(2, 0.04f), Step);
-            Assert.That(state.View.jump.value, Is.True);
-            Assert.That(state.View.jump.justPressed, Is.False, "A frame that runs two steps shouldn't press the button twice.");
+            Assert.That(state.Current.jump.held, Is.True);
+            Assert.That(state.Current.jump.justPressed, Is.False, "A frame that runs two steps shouldn't press the button twice.");
         }
 
         [Test]

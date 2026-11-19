@@ -1,15 +1,15 @@
-using Character;
-using Level;
-using UnityEditor;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using UnityEditor.SceneManagement;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Builds a small obstacle course in the open scene for testing foot placement and moving ground: stairs, a gentle
     /// and a steep ramp, scattered low bumps, and moving platforms (a slider, an elevator and a spinner). Sized to stay
-    /// within the MovementController's Max Step Height and Max Slope Angle.
+    /// within the MMotionMotor's Max Step Height and Max Slope Angle.
     /// </summary>
     public static class FootPlacementTestArea
     {
@@ -18,7 +18,7 @@ namespace CharacterShowcase.EditorTools
         /// <summary>
         /// Builds the course a few meters in front of the scene's character, replacing one built before (undoably).
         /// </summary>
-        [MenuItem("Tools/Character Showcase/Create Foot Placement Test Area")]
+        [MenuItem("Tools/Meridian Motion/Create Foot Placement Test Area")]
         public static void Create()
         {
             // Rebuild rather than keep an existing course, so it always matches this code (undoable with Ctrl/Cmd+Z).
@@ -30,7 +30,7 @@ namespace CharacterShowcase.EditorTools
             }
 
             // Place the course a few meters in front of the character, on its ground level.
-            var character = Object.FindAnyObjectByType<ACCharacterController>();
+            var character = Object.FindAnyObjectByType<MMotionCharacter>();
             Vector3 origin = Vector3.zero;
             Quaternion facing = Quaternion.identity;
             if (character != null)
@@ -100,7 +100,7 @@ namespace CharacterShowcase.EditorTools
         {
             Transform platform = Box(parent, name, localPosition, size);
             platform.gameObject.AddComponent<Rigidbody>();
-            var mover = platform.gameObject.AddComponent<MovingPlatform>();
+            var mover = platform.gameObject.AddComponent<TickedPlatform>();
             mover.travel = travel; // Meters along the platform's own axes (its scale doesn't apply).
             mover.spinDegreesPerSecond = spin;
         }

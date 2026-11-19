@@ -1,10 +1,10 @@
 using System.Collections;
-using Level;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Levels
+namespace MeridianMotion.Tests.Levels
 {
     /// <summary>
     /// Tests of a CourseTimer's own rules, with no character (TimingGateTests times one): a lap gate starts a lap on the
@@ -44,15 +44,15 @@ namespace CharacterShowcase.Tests.Levels
             try
             {
                 timer.SetRacer(racer);
-                timer.Pass(TimingGateRole.StartAndFinish, racer);
+                timer.RegisterGatePass(TimingGateRole.StartAndFinish, racer);
                 Assert.IsTrue(timer.IsRunning, "The first pass should start a lap.");
-                timer.Pass(TimingGateRole.StartAndFinish, racer);
-                Assert.AreEqual(0, timer.Completed, "A pass straight after the start shouldn't end the lap.");
+                timer.RegisterGatePass(TimingGateRole.StartAndFinish, racer);
+                Assert.AreEqual(0, timer.LapCount, "A pass straight after the start shouldn't end the lap.");
 
                 // Just past the timer's minimum run time (see CourseTimer).
                 yield return new WaitForSeconds(timer.MinimumRunTime + 0.2f);
-                timer.Pass(TimingGateRole.StartAndFinish, racer);
-                Assert.AreEqual(1, timer.Completed, "A pass after the minimum run time should end the lap.");
+                timer.RegisterGatePass(TimingGateRole.StartAndFinish, racer);
+                Assert.AreEqual(1, timer.LapCount, "A pass after the minimum run time should end the lap.");
                 Assert.IsTrue(timer.IsRunning, "Ending a lap should start the next.");
                 Assert.Greater(timer.LastTime, timer.MinimumRunTime);
             }
@@ -71,9 +71,9 @@ namespace CharacterShowcase.Tests.Levels
             try
             {
                 timer.SetRacer(racer);
-                timer.Pass(TimingGateRole.Start, other);
+                timer.RegisterGatePass(TimingGateRole.Start, other);
                 Assert.IsFalse(timer.IsRunning, "A pass by anything but the racer shouldn't start a run.");
-                timer.Pass(TimingGateRole.Start, part);
+                timer.RegisterGatePass(TimingGateRole.Start, part);
                 Assert.IsTrue(timer.IsRunning, "A pass by part of the racer should count.");
                 yield return null;
             }

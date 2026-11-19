@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
 using UnityEditor.Compilation;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace MeridianMotion.Tests.EditMode.Movement
 {
     /// <summary>
     /// Keeps docs/tutorial-first-ability.md true: New Ability (AbilityScaffold) is run, without writing anything into the
@@ -27,8 +27,8 @@ namespace CharacterShowcase.Tests.EditMode.Movement
     {
         private const string PagePath = "docs/tutorial-first-ability.md";
         private const string CheckFolder = "Temp/TutorialCheck";
-        private const string CharacterAssembly = "CharacterShowcase";
-        private const string PlayModeTestsAssembly = "CharacterShowcase.Tests.PlayMode";
+        private const string CharacterAssembly = "MeridianMotion.Characters";
+        private const string PlayModeTestsAssembly = "MeridianMotion.Tests.PlayMode";
 
         private static string Root => Path.GetDirectoryName(Application.dataPath);
 

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Random = UnityEngine.Random;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>A place a character can spawn: a world position (the character's feet) and the way it faces.</summary>
     [Serializable]
@@ -59,13 +59,14 @@ namespace Character
     /// the character placed in it beforehand. It can spawn the character on Start, or wait for Spawn to be called.
     /// Whatever needs the spawned character (a camera to follow it, say) can listen for it through the
     /// CharacterSpawned event or the onCharacterSpawned UnityEvent, which can be wired up in the inspector. A spawn says
-    /// who the character is for (CharacterOwner): only the local player's is handed to the camera (onCameraTargetSpawned),
+    /// who the character is for (ControlledBy): only the local player's is handed to the camera (onCameraTargetSpawned),
     /// so a scene can have several characters, the camera following the player's.
     /// </summary>
     // Early, so a character spawned on Start is there before other scripts' Start runs: a camera's Start then
     // starts out behind it, facing its way, rather than warning that it has no target.
     [DefaultExecutionOrder(-100)]
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/Characters/Character Spawner")]
     public class CharacterSpawner : MonoBehaviour
     {
         [Header("Character")]
@@ -92,7 +93,7 @@ namespace Character
         [SerializeField] private UnityEvent<Transform> onCharacterSpawned = new();
         [Tooltip("Called after each spawn with what a camera needs to follow the character: its root transform, its eye " +
                  "point (for a first-person view) and its size reference (its model parent, whose scale is its size), " +
-                 "in that order. Wire it to CameraRig.Follow. The eye point or size reference is empty if the character " +
+                 "in that order. Wire it to MMotionCameraRig.Follow. The eye point or size reference is empty if the character " +
                  "has none. Only for the local player's character, not an AI's or a remote one's.")]
         [SerializeField] private UnityEvent<Transform, Transform, Transform> onCameraTargetSpawned = new();
 
@@ -153,10 +154,10 @@ namespace Character
 
         /// <summary>
         /// Spawns a new character at a spawn point chosen at random, for the owner given (the local player unless said:
-        /// see CharacterOwner), and returns it. Returns null, with an error, if there's no prefab or no spawn points. Each
+        /// see ControlledBy), and returns it. Returns null, with an error, if there's no prefab or no spawn points. Each
         /// call spawns another character: earlier ones are left as they are.
         /// </summary>
-        public GameObject Spawn(CharacterOwner owner = CharacterOwner.LocalPlayer)
+        public GameObject Spawn(ControlledBy owner = ControlledBy.LocalPlayer)
         {
             if (spawnPoints == null || spawnPoints.Count == 0)
             {
@@ -171,7 +172,7 @@ namespace Character
         /// returns it. Returns null, with an error, if there's no prefab or the index is out of range. Only the local
         /// player's is handed to the camera (onCameraTargetSpawned).
         /// </summary>
-        public GameObject SpawnAt(int index, CharacterOwner owner = CharacterOwner.LocalPlayer)
+        public GameObject SpawnAt(int index, ControlledBy owner = ControlledBy.LocalPlayer)
         {
             if (characterPrefab == null)
             {
@@ -192,19 +193,19 @@ namespace Character
             character.name = characterPrefab.name;
             // Overrides go on before the character's Start, which is when it loads its model (Awake has already run,
             // during Instantiate, but doesn't load or move anything).
-            if (movementMode != null && character.TryGetComponent(out MovementController movement)) { movement.movementHandler = movementMode; }
-            if (character.TryGetComponent(out ACCharacterController controller)) { controller.Owner = owner; }
-            character.TryGetComponent(out CharacterModelHost host);
+            if (movementMode != null && character.TryGetComponent(out MMotionMotor movement)) { movement.movementMode = movementMode; }
+            if (character.TryGetComponent(out MMotionCharacter controller)) { controller.ControlledBy = owner; }
+            character.TryGetComponent(out CharacterModelSlot host);
             if (modelSource != null && host != null) { host.SetModelSourceBeforeStart(modelSource); }
             Character = character;
-            if (owner == CharacterOwner.LocalPlayer) { PlayerCharacter = character; }
+            if (owner == ControlledBy.LocalPlayer) { PlayerCharacter = character; }
             LastSpawnIndex = index;
 
             CharacterSpawned?.Invoke(character);
             onCharacterSpawned?.Invoke(character.transform);
             // Only the local player's character is followed by the camera.
-            if (owner != CharacterOwner.LocalPlayer) { return character; }
-            // The model parent's scale is the character's size (see ACCharacterController.SetScale), unless the model
+            if (owner != ControlledBy.LocalPlayer) { return character; }
+            // The model parent's scale is the character's size (see MMotionCharacter.SetScale), unless the model
             // goes straight under the root, which is never scaled.
             Transform eyePoint = host != null ? host.EyePoint : null;
             Transform sizeReference = host != null && host.ModelParent != character.transform ? host.ModelParent : null;
@@ -213,18 +214,18 @@ namespace Character
         }
 
         /// <summary>
-        /// Spawns an NPC at its route's spawn point: a character controlled by an AI (CharacterOwner.AI) that walks the
+        /// Spawns an NPC at its route's spawn point: a character controlled by an AI (ControlledBy.Npc) that walks the
         /// route (a WaypointInputSource added to it), not followed by the camera. Returns it, or null (with an error) as
         /// SpawnAt does.
         /// </summary>
         public GameObject SpawnNpc(NpcRoute route)
         {
             if (route == null) { return null; }
-            GameObject character = SpawnAt(route.spawnPoint, CharacterOwner.AI);
+            GameObject character = SpawnAt(route.spawnPoint, ControlledBy.Npc);
             if (character == null) { return null; }
             var walker = character.AddComponent<WaypointInputSource>();
             walker.SetRoute(route.waypoints, route.loop, route.sprint);
-            if (character.TryGetComponent(out ACCharacterController controller)) { controller.InputSource = walker; }
+            if (character.TryGetComponent(out MMotionCharacter controller)) { controller.InputSource = walker; }
             return character;
         }
 

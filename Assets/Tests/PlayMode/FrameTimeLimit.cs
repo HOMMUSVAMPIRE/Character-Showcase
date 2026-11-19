@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// Runs a test faster than real time, but no more than a given slice of game time per frame, whatever the frame rate:

@@ -1,12 +1,13 @@
 using System.Collections.Generic;
-using CharacterShowcase.EditorTools.Level;
+using MeridianMotion.Showcase.Levels;
+using MeridianMotion.Tests;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
+using UnityEditor;
 using UnityEngine.Rendering;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Levels
+namespace MeridianMotion.Showcase.Tests.Levels
 {
     /// <summary>
     /// Checks that the level builders' boxes and prisms have a UV2 giving each face its own space, for climbable paint

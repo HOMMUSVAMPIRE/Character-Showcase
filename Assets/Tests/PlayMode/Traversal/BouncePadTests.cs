@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of bounce pads: coming down on one launches the character as high as the pad is set to (higher with Jump
@@ -28,7 +28,7 @@ namespace CharacterShowcase.Tests.Traversal
             yield return SpawnCharacter(Vector3.up * (PadTop + 0.3f * Scale), settleSeconds: 0f);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Idle();
 
         protected override string OffSetting => "bounceHeightMultiplier";
 
@@ -39,13 +39,13 @@ namespace CharacterShowcase.Tests.Traversal
         private IEnumerator SetUpPad(float launchHeight, Vector3 padAt = default, Quaternion? rotation = null)
         {
             rig.Floor();
-            BouncePad pad = rig.BouncePad(padAt + Vector3.up * PadTop, new Vector3(3f, PadTop, 3f), launchHeight, rotation);
+            LaunchPad pad = rig.BouncePad(padAt + Vector3.up * PadTop, new Vector3(3f, PadTop, 3f), launchHeight, rotation);
             yield return rig.SpawnSettled(Vector3.up * (PadTop + 0.3f), settleSeconds: 0f);
             rig.ClearEvents();
         }
 
         /// <summary>Runs until the character has bounced and come back down to (or below) the pad's top, returning the highest its feet got.</summary>
-        private IEnumerator RunThroughABounce(System.Func<int, Inputs> inputs, System.Action<float> highest, float seconds = 4f)
+        private IEnumerator RunThroughABounce(System.Func<int, StepInputs> inputs, System.Action<float> highest, float seconds = 4f)
         {
             float top = float.NegativeInfinity;
             bool bounced = false;
@@ -89,13 +89,13 @@ namespace CharacterShowcase.Tests.Traversal
             rig.BouncePad(new Vector3(0f, PadTop, 4f), new Vector3(3f, PadTop, 3f), 4f);
             yield return rig.SpawnSettled(Vector3.zero);
             rig.ClearEvents();
-            Inputs Forward(int _) => CharacterTestRig.Move(Vector3.forward);
+            StepInputs Forward(int _) => CharacterTestRig.Move(Vector3.forward);
             yield return rig.RunUntil(() => rig.Count(MovementEvents.Bounced) > 0, Forward, timeoutSeconds: 3f);
             Assert.That(rig.Count(MovementEvents.Bounced) > 0, Is.True, "Walking onto the pad should bounce.");
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Grounded, Is.False);
             Assert.That(rig.HorizontalSpeed, Is.GreaterThan(0.75f * rig.WalkSpeed), "The bounce should keep the character's speed across the pad.");
-            Assert.That(rig.Movement.lastFrameMovementData.finalVelocity.z, Is.GreaterThan(0f), "It should carry on the way it was walking.");
+            Assert.That(rig.Movement.lastStep.finalVelocity.z, Is.GreaterThan(0f), "It should carry on the way it was walking.");
         }
 
         [UnityTest]
@@ -105,7 +105,7 @@ namespace CharacterShowcase.Tests.Traversal
             yield return SetUpPad(4f, rotation: tilt);
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Count(MovementEvents.Bounced) > 0, Is.True, "Test setup: the character should have bounced.");
-            Vector3 velocity = rig.Movement.lastFrameMovementData.finalVelocity;
+            Vector3 velocity = rig.Movement.lastStep.finalVelocity;
             Assert.That(velocity.z, Is.GreaterThan(1f), "A pad tilted toward +Z should send the character that way.");
         }
 

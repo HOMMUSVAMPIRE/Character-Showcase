@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A character's Animator Controller described as data, which the Animator Controller Builder (Tools > Character
@@ -19,7 +19,7 @@ namespace Character
     /// (how fast a loop's strides are made for, where its left foot lands, where a jump takes off), so the controller fits
     /// its clips without hand-tuning. See docs/animation.md, Animator layouts.
     /// </summary>
-    [CreateAssetMenu(fileName = "Animator Layout", menuName = "Character Showcase/Animation/Animator Layout")]
+    [CreateAssetMenu(fileName = "Animator Layout", menuName = "Meridian Motion/Animation/Animator Layout")]
     public class AnimatorLayout : ScriptableObject
     {
         [Tooltip("The Animator Controller this layout is built into (its contents are replaced each build; the asset, and " +
@@ -28,9 +28,9 @@ namespace Character
         [Tooltip("The model the clips are measured on (its prefab, with an Animator): the measured numbers are as the clips " +
                  "play on it")]
         public GameObject measuringModel;
-        [Tooltip("Whether the base layer runs IK (OnAnimatorIK), which humanoid IK (CharacterIK) needs")]
+        [Tooltip("Whether the base layer runs IK (OnAnimatorIK), which humanoid IK (HumanoidIK) needs")]
         public bool ikPass = true;
-        [Tooltip("A starting point for animation sets only (the creature layout: its slots have no clips of their own): " +
+        [Tooltip("A starting point for animation sets only (the generic rig layout: its slots have no clips of their own): " +
                  "never built by itself, only into the sets that start from it, with their clips")]
         public bool onlyForSets;
         [Tooltip("The state the controller starts in")]

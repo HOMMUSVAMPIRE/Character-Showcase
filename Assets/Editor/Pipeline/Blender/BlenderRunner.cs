@@ -2,11 +2,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using MeridianMotion.EditorTools;
 using UnityEditor;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.Pipeline
 {
     /// <summary>
     /// Finding Blender and running the generators' scripts in it (Generate Mannequin's Tools/Mannequin/generate_mannequin.py,

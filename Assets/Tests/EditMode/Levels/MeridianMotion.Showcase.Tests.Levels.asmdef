@@ -1,0 +1,30 @@
+{
+    "name": "MeridianMotion.Showcase.Tests.Levels",
+    "rootNamespace": "MeridianMotion.Showcase.Tests.Levels",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.Tests.Shared",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.Showcase.Levels",
+        "MeridianMotion.Showcase.LevelChecks",
+        "MeridianMotion.Levels",
+        "MeridianMotion.Levels.EditorTools",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -2,10 +2,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using Character;
+using MeridianMotion.Characters;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// A record of the character's steps (pass Record as a Run's afterStep): where it was, whether it was on the ground
@@ -54,7 +54,7 @@ namespace CharacterShowcase.Tests
         /// <summary>Records the step the rig has just run (a Run's afterStep).</summary>
         public void Record(int _)
         {
-            MovementData data = rig.Movement.lastFrameMovementData;
+            MovementStep data = rig.Movement.lastStep;
             if (data == null) { return; }
             steps.Add(new Step
             {

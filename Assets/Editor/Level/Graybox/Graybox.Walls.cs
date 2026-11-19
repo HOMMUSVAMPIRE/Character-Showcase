@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Walls with openings, and guardrails.
     public static partial class Graybox
@@ -24,7 +24,7 @@ namespace CharacterShowcase.EditorTools.Level
             void Piece(string piece, float s, float e, float bottom, float top)
             {
                 if (e - s < 0.05f || top - bottom < 0.05f) { return; }
-                BoxXZ(parent, piece, a + dir * ((s + e) / 2f), new Vector2(thickness, e - s), bottom, top, yaw, Surface.Panel);
+                BoxXZ(parent, piece, a + dir * ((s + e) / 2f), new Vector2(thickness, e - s), bottom, top, yaw, GrayboxMaterial.Panel);
             }
             var cuts = new List<(float from, float to, float bottom, float top)>();
             foreach ((Vector2 centre, float width, float bottom, float top) in openings)
@@ -104,20 +104,20 @@ namespace CharacterShowcase.EditorTools.Level
             // Laid out along +z, centred; the top rail sits on the posts. The mid rail stops inside the end posts and is
             // narrower than them (as they are than the top rail), so no two faces share a plane but where they meet face
             // to face.
-            GrayboxSettings.RailSettings r = Settings.rails;
+            LevelBuilderSettings.RailSettings r = Settings.rails;
             float post = r.postSize / 2f, topRail = r.topRailSize.x / 2f, cap = r.topRailSize.y, midRail = r.midRailSize.x / 2f;
             float half = length / 2f, top = RailHeight, mid = top * r.midRailHeight, fascia = RailThickness / 2f + r.fasciaProud;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Accent, new Vector3(-topRail, top - cap, -half), new Vector3(topRail, top, half));
-            mesh.Box(Surface.Graphite, new Vector3(-midRail, mid, -half + post), new Vector3(midRail, mid + r.midRailSize.y, half - post));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-topRail, top - cap, -half), new Vector3(topRail, top, half));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-midRail, mid, -half + post), new Vector3(midRail, mid + r.midRailSize.y, half - post));
             int bays = Mathf.Max(1, Mathf.CeilToInt(length / r.postSpacing - 1e-3f));
             for (int i = 0; i <= bays; i++)
             {
                 float z = Mathf.Lerp(-half + post, half - post, (float)i / bays);
                 // No top (under the top rail) or bottom (on the surface).
-                mesh.Box(Surface.Graphite, new Vector3(-post, 0f, z - post), new Vector3(post, top - cap, z + post), top: false, bottom: false);
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(-post, 0f, z - post), new Vector3(post, top - cap, z + post), top: false, bottom: false);
             }
-            mesh.Box(Surface.Accent, new Vector3(-fascia, -r.fasciaDrop.y, -half), new Vector3(fascia, -r.fasciaDrop.x, half));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-fascia, -r.fasciaDrop.y, -half), new Vector3(fascia, -r.fasciaDrop.x, half));
             mesh.AddTo(rail, "Guardrail");
 
             var collider = rail.AddComponent<BoxCollider>();

@@ -1,0 +1,19 @@
+{
+    "name": "MeridianMotion.Showcase.LevelChecks",
+    "rootNamespace": "MeridianMotion.Showcase.LevelChecks",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.EditorTools"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Architectural detail: what makes a plain solid read as a built thing (pilasters on long walls, frames round
     // openings, a coping along a platform's edge, a chamfered column). All of it is to see only, with no collider of its
@@ -18,14 +18,14 @@ namespace CharacterShowcase.EditorTools.Level
         private static void WallDetail(Transform parent, string name, Vector2 a, Vector2 dir, float length, float y0, float y1, float thickness,
             List<(float from, float to, float bottom, float top)> openings)
         {
-            GrayboxSettings.WallSettings w = Settings.walls;
+            LevelBuilderSettings.WallSettings w = Settings.walls;
             float PilasterSpacing = w.pilasterSpacing, PilasterWidth = w.pilasterWidth, PilasterDepth = w.pilasterDepth;
             float FrameWidth = w.frameWidth, FrameLip = w.frameLip, FrameDepth = w.frameDepth;
             var mesh = new GrayboxMesh();
             bool any = false;
             float face = thickness / 2f;
             // A box on both faces of the wall: along it from s to e, from bottom to top, standing depth proud.
-            void OnFaces(Surface surface, float s, float e, float bottom, float top, float depth, bool topFace = true, bool bottomFace = true)
+            void OnFaces(GrayboxMaterial surface, float s, float e, float bottom, float top, float depth, bool topFace = true, bool bottomFace = true)
             {
                 s = Mathf.Max(s, 0f);
                 e = Mathf.Min(e, length);
@@ -44,7 +44,7 @@ namespace CharacterShowcase.EditorTools.Level
                     float p0 = first + i * PilasterSpacing - PilasterWidth / 2f, p1 = p0 + PilasterWidth;
                     if (openings.TrueForAll(o => p1 < o.from - 0.5f || p0 > o.to + 0.5f))
                     {
-                        OnFaces(Surface.Concrete, p0, p1, y0, y1, PilasterDepth, bottomFace: false);
+                        OnFaces(GrayboxMaterial.Concrete, p0, p1, y0, y1, PilasterDepth, bottomFace: false);
                     }
                 }
             }
@@ -58,18 +58,18 @@ namespace CharacterShowcase.EditorTools.Level
                 // Jambs, where there's wall beside the opening for them.
                 if (s >= FrameWidth)
                 {
-                    OnFaces(Surface.Accent, s - FrameLip, s, lipBottom, lipTop, FrameDepth, topFace: !header, bottomFace: false);
-                    OnFaces(Surface.Graphite, s - FrameWidth, s - FrameLip, jambBottom, jambTop, FrameDepth);
+                    OnFaces(GrayboxMaterial.Accent, s - FrameLip, s, lipBottom, lipTop, FrameDepth, topFace: !header, bottomFace: false);
+                    OnFaces(GrayboxMaterial.Graphite, s - FrameWidth, s - FrameLip, jambBottom, jambTop, FrameDepth);
                 }
                 if (e <= length - FrameWidth)
                 {
-                    OnFaces(Surface.Accent, e, e + FrameLip, lipBottom, lipTop, FrameDepth, topFace: !header, bottomFace: false);
-                    OnFaces(Surface.Graphite, e + FrameLip, e + FrameWidth, jambBottom, jambTop, FrameDepth);
+                    OnFaces(GrayboxMaterial.Accent, e, e + FrameLip, lipBottom, lipTop, FrameDepth, topFace: !header, bottomFace: false);
+                    OnFaces(GrayboxMaterial.Graphite, e + FrameLip, e + FrameWidth, jambBottom, jambTop, FrameDepth);
                 }
                 if (header)
                 {
-                    OnFaces(Surface.Accent, s, e, top, top + FrameLip, FrameDepth);
-                    OnFaces(Surface.Graphite, s - FrameLip, e + FrameLip, top + FrameLip, top + FrameWidth, FrameDepth);
+                    OnFaces(GrayboxMaterial.Accent, s, e, top, top + FrameLip, FrameDepth);
+                    OnFaces(GrayboxMaterial.Graphite, s - FrameLip, e + FrameLip, top + FrameLip, top + FrameWidth, FrameDepth);
                     // A light over the doorway, where there's wall above the frame for it.
                     Vector2 light = Settings.fixtures.doorLightSize;
                     float lightBottom = top + FrameWidth + Settings.fixtures.doorLightGap;
@@ -88,8 +88,8 @@ namespace CharacterShowcase.EditorTools.Level
                 }
                 if (sill)
                 {
-                    OnFaces(Surface.Accent, s, e, bottom - FrameLip, bottom, FrameDepth);
-                    OnFaces(Surface.Graphite, s - FrameLip, e + FrameLip, bottom - FrameWidth, bottom - FrameLip, FrameDepth);
+                    OnFaces(GrayboxMaterial.Accent, s, e, bottom - FrameLip, bottom, FrameDepth);
+                    OnFaces(GrayboxMaterial.Graphite, s - FrameLip, e + FrameLip, bottom - FrameWidth, bottom - FrameLip, FrameDepth);
                 }
             }
             if (!any) { return; }
@@ -107,7 +107,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         [Piece]
         public static GameObject Platform(Transform parent, string name, float x0, float x1, float z0, float z1, float y0, float top,
-            Surface surface = Surface.Concrete, Surface coping = Surface.Graphite)
+            GrayboxMaterial surface = GrayboxMaterial.Concrete, GrayboxMaterial coping = GrayboxMaterial.Graphite)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Platform), parent, name, x0, x1, z0, z1, y0, top, surface, coping);
             GameObject block = Block(parent, name, x0, x1, z0, z1, y0, top, surface);
@@ -121,7 +121,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// is easy to see). The bands run on past each corner to close it. One object, with no collider.
         /// </summary>
         [Piece]
-        public static void Coping(Transform parent, string name, Vector2[] shape, float top, float height, Surface surface = Surface.Graphite)
+        public static void Coping(Transform parent, string name, Vector2[] shape, float top, float height, GrayboxMaterial surface = GrayboxMaterial.Graphite)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Coping), parent, name, shape, top, height, surface);
             float CopingDepth = Settings.platforms.copingDepth, CopingGap = Settings.platforms.copingGap;
@@ -154,13 +154,13 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         [Piece]
         public static GameObject Column(Transform parent, string name, Vector2 centre, Vector2 size, float y0, float y1, float yaw = 0f,
-            Surface surface = Surface.Steel, bool accent = false, bool capped = true)
+            GrayboxMaterial surface = GrayboxMaterial.Steel, bool accent = false, bool capped = true)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Column), parent, name, centre, size, y0, y1, yaw, surface, accent, capped);
             var column = new GameObject(name);
             column.transform.SetParent(parent, false);
             column.transform.SetLocalPositionAndRotation(new Vector3(centre.x, y0, centre.y), Quaternion.Euler(0f, yaw, 0f));
-            GrayboxSettings.ColumnSettings settings = Settings.columns;
+            LevelBuilderSettings.ColumnSettings settings = Settings.columns;
             float hx = size.x / 2f, hz = size.y / 2f, c = settings.chamfer * Mathf.Min(size.x, size.y), h = y1 - y0;
             var mesh = new GrayboxMesh();
             mesh.Prism(surface, new[]
@@ -173,10 +173,10 @@ namespace CharacterShowcase.EditorTools.Level
                 float proud = settings.accentStripProud, widest = settings.accentStripWidth;
                 float sx = Mathf.Min(widest, 0.25f * (size.x - 2f * c)), sz = Mathf.Min(widest, 0.25f * (size.y - 2f * c));
                 float b = settings.accentStripSpan.x * h, t = settings.accentStripSpan.y * h;
-                mesh.Box(Surface.Accent, new Vector3(hx, b, -sz / 2f), new Vector3(hx + proud, t, sz / 2f));
-                mesh.Box(Surface.Accent, new Vector3(-hx - proud, b, -sz / 2f), new Vector3(-hx, t, sz / 2f));
-                mesh.Box(Surface.Accent, new Vector3(-sx / 2f, b, hz), new Vector3(sx / 2f, t, hz + proud));
-                mesh.Box(Surface.Accent, new Vector3(-sx / 2f, b, -hz - proud), new Vector3(sx / 2f, t, -hz));
+                mesh.Box(GrayboxMaterial.Accent, new Vector3(hx, b, -sz / 2f), new Vector3(hx + proud, t, sz / 2f));
+                mesh.Box(GrayboxMaterial.Accent, new Vector3(-hx - proud, b, -sz / 2f), new Vector3(-hx, t, sz / 2f));
+                mesh.Box(GrayboxMaterial.Accent, new Vector3(-sx / 2f, b, hz), new Vector3(sx / 2f, t, hz + proud));
+                mesh.Box(GrayboxMaterial.Accent, new Vector3(-sx / 2f, b, -hz - proud), new Vector3(sx / 2f, t, -hz));
             }
             mesh.AddTo(column, name);
             var collider = column.AddComponent<BoxCollider>();

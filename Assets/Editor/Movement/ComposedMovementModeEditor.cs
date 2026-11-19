@@ -1,20 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// The inspector of a movement mode made of components (ComposedMovementMode): its own settings, then its components
+    /// The inspector of a movement mode made of components (AbilityMovementMode): its own settings, then its components
     /// in order, each folded under its name with a toggle that turns it on and off, buttons that move it up and down the
     /// list (higher takes over the character first) and one that removes it, and a menu that adds any component the mode
     /// doesn't have yet; a warning, with buttons that add them, if it lacks any of its code's default components (see
     /// MovementModeSync); and a button that saves its tuning as a preset (see MovementTuningPresetEditor).
     /// </summary>
-    [CustomEditor(typeof(ComposedMovementMode), true)]
+    [CustomEditor(typeof(AbilityMovementMode), true)]
     public class ComposedMovementModeEditor : Editor
     {
         private const string ComponentsField = "components";
@@ -36,10 +36,10 @@ namespace CharacterShowcase.EditorTools
             }
             DrawAddMenu(list);
             serializedObject.ApplyModifiedProperties();
-            DrawMissingComponents((ComposedMovementMode)target);
+            DrawMissingComponents((AbilityMovementMode)target);
 
             EditorGUILayout.Space();
-            if (GUILayout.Button("Save Tuning as Preset…")) { MovementTuningPresetEditor.SaveAsPreset((ComposedMovementMode)target); }
+            if (GUILayout.Button("Save Tuning as Preset…")) { MovementTuningPresetEditor.SaveAsPreset((AbilityMovementMode)target); }
         }
 
         /// <summary>Draws the component at index; returns whether the list changed (and drawing should stop for this frame).</summary>
@@ -95,7 +95,7 @@ namespace CharacterShowcase.EditorTools
         /// If the mode lacks any of its code's default components (a new ability, added to the code after the asset was
         /// made), says which, with buttons that add them at their default places, turned on or off (MovementModeSync).
         /// </summary>
-        private void DrawMissingComponents(ComposedMovementMode mode)
+        private void DrawMissingComponents(AbilityMovementMode mode)
         {
             List<Type> missing = mode.MissingDefaultComponentTypes();
             if (missing.Count == 0) { return; }

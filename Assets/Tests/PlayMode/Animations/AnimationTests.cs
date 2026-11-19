@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
     /// Tests of animating the character's model, on whatever model the character has (its source's), so they hold for
@@ -94,7 +94,7 @@ namespace CharacterShowcase.Tests.Animations
         }
 
         /// <summary>
-        /// A source that hasn't been measured (made by hand or in code, rather than by Prepare Character Models)
+        /// A source that hasn't been measured (made by hand or in code, rather than by Prepare Humanoid Models)
         /// measures its model as it loads, and stands it on the ground just the same: one made from the character's own
         /// model, as a copy of its source that hasn't been measured.
         /// </summary>
@@ -102,8 +102,8 @@ namespace CharacterShowcase.Tests.Animations
         public IEnumerator AnUnmeasuredSource_MeasuresItsModelOnLoad_AndStandsItOnTheGround()
         {
             yield return SpawnWithOwnModel();
-            if (rig.Models.ModelSource is not DirectCharacterModelSource own) { Assert.Ignore("The character's model source doesn't reference its model directly."); yield break; }
-            var unmeasured = ScriptableObject.CreateInstance<DirectCharacterModelSource>();
+            if (rig.Models.ModelSource is not PrefabModelSource own) { Assert.Ignore("The character's model source doesn't reference its model directly."); yield break; }
+            var unmeasured = ScriptableObject.CreateInstance<PrefabModelSource>();
             unmeasured.ModelPrefab = own.ModelPrefab;
             unmeasured.Translator = own.Translator;
             unmeasured.AnimatorController = own.AnimatorController;
@@ -114,10 +114,10 @@ namespace CharacterShowcase.Tests.Animations
             {
                 yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(unmeasured));
                 TakeOverAnimator();
-                var feet = animator.GetComponent<FootPlacementIK>();
+                var feet = animator.GetComponent<HumanoidFootPlacementIK>();
                 if (feet != null && !own.MeasureGroundOnLoad)
                 {
-                    Assert.That(feet.FloorOffset, Is.EqualTo(own.GroundOffset).Within(1e-4f), "Measured on load, as Prepare Character Models measured the character's own.");
+                    Assert.That(feet.FloorOffset, Is.EqualTo(own.GroundOffset).Within(1e-4f), "Measured on load, as Prepare Humanoid Models measured the character's own.");
                     Assert.That(feet.AnimatedFloorOffset, Is.EqualTo(own.AnimatedGroundOffset).Within(1e-4f));
                 }
                 (float lowest, float highest) soles = default;
@@ -166,9 +166,9 @@ namespace CharacterShowcase.Tests.Animations
 
         /// <summary>
         /// A knee hint set on its own bends the knee and leaves the foot where it is, on a model stretched to twice its
-        /// height as unstretched. Unity only applies a hint while its limb's goal is active, so CharacterIK turns the goal
+        /// height as unstretched. Unity only applies a hint while its limb's goal is active, so HumanoidIK turns the goal
         /// on, aimed at where the animation has the foot, which Unity reports at half its height on such a model (see
-        /// CharacterUtilities.AnimatedIKGoalPosition): uncorrected, the foot is pulled up off the floor. Compared with
+        /// HumanoidIKGoals.AnimatedIKGoalPosition): uncorrected, the foot is pulled up off the floor. Compared with
         /// the same model unstretched, as on a model of other proportions than its clips' own, the goal Unity reports is
         /// a little off the foot, so the hint moves it that much at any size.
         /// </summary>
@@ -182,10 +182,10 @@ namespace CharacterShowcase.Tests.Animations
                 yield return new WaitForFixedUpdate();
                 Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
                 TakeOverAnimator();
-                var placement = animator.GetComponent<FootPlacementIK>();
+                var placement = animator.GetComponent<HumanoidFootPlacementIK>();
                 if (placement != null) { placement.enabled = false; } // Only the hint.
-                var ik = animator.GetComponent<CharacterIK>();
-                if (ik == null) { Assert.Ignore("The model has no CharacterIK."); }
+                var ik = animator.GetComponent<HumanoidIK>();
+                if (ik == null) { Assert.Ignore("The model has no HumanoidIK."); }
                 yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
                 Transform foot = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
                 Transform knee = animator.GetBoneTransform(HumanBodyBones.LeftLowerLeg);
@@ -209,7 +209,7 @@ namespace CharacterShowcase.Tests.Animations
 
         /// <summary>
         /// A goal is a world position, however the model is stretched: moving a hand's or foot's goal moves the hand or
-        /// foot as far (see CharacterUtilities.IKGoalPositionToSet, without which a stretched model's feet miss by up to
+        /// foot as far (see HumanoidIKGoals.IKGoalPositionToSet, without which a stretched model's feet miss by up to
         /// 10 cm, and its hands by up to 44). Measured from a goal near the animation's (not from the animated pose: a
         /// model of other proportions than the clips' own has its hands and feet a little off the goals Unity reports,
         /// which are the clips'), then moved.
@@ -222,10 +222,10 @@ namespace CharacterShowcase.Tests.Animations
             yield return new WaitForFixedUpdate();
             Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True, "Test setup: the character should resize.");
             TakeOverAnimator();
-            var placement = animator.GetComponent<FootPlacementIK>();
+            var placement = animator.GetComponent<HumanoidFootPlacementIK>();
             if (placement != null) { placement.enabled = false; } // Only the goal.
-            var ik = animator.GetComponent<CharacterIK>();
-            if (ik == null) { Assert.Ignore("The model has no CharacterIK."); }
+            var ik = animator.GetComponent<HumanoidIK>();
+            if (ik == null) { Assert.Ignore("The model has no HumanoidIK."); }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), StepAnimator);
 
             bool foot = limb == IKLimb.LeftFoot;
@@ -246,7 +246,7 @@ namespace CharacterShowcase.Tests.Animations
             Vector3 aimedAt = Vector3.zero;
             void Aim(Animator a)
             {
-                aimedAt = Vector3.Lerp(CharacterUtilities.AnimatedIKGoalPosition(a, goal), start.position, 0.2f);
+                aimedAt = Vector3.Lerp(HumanoidIKGoals.AnimatedIKGoalPosition(a, goal), start.position, 0.2f);
                 ik.SetGoal(limb, aimedAt + shift, a.GetIKRotation(goal), 1f, 1f);
             }
             ik.SetGoal(limb, bone.position, bone.rotation, 1f, 1f);
@@ -276,8 +276,8 @@ namespace CharacterShowcase.Tests.Animations
     }
 
     /// <summary>
-    /// Checks of the package's own character models and animations (every model Prepare Character Models has set up in
-    /// Assets/Models/CharacterModels, playing the shared controller): their planted feet stay put walking at the speed
+    /// Checks of the package's own character models and animations (every model Prepare Humanoid Models has set up in
+    /// Assets/Models/Humanoid, playing the shared controller): their planted feet stay put walking at the speed
     /// the walk loop is made for, they stand on the ground, hold their arms down standing and keep their torsos upright,
     /// as the mannequin does. In the SampleContent category, and skipped where there are no prepared models: a team
     /// using its own models and animations can leave them out.
@@ -291,12 +291,12 @@ namespace CharacterShowcase.Tests.Animations
         // package's models), where keyframed feet can be held exactly.
         private const float AllowedFootSlide = 0.06f;
 
-        /// <summary>Every model Prepare Character Models has set up, by source path, or a placeholder if there are none.</summary>
+        /// <summary>Every model Prepare Humanoid Models has set up, by source path, or a placeholder if there are none.</summary>
         private static IEnumerable<string> PreparedModels()
         {
 #if UNITY_EDITOR
             string[] paths = UnityEditor.AssetDatabase.IsValidFolder(ModelsFolder)
-                ? UnityEditor.AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { ModelsFolder })
+                ? UnityEditor.AssetDatabase.FindAssets($"t:{nameof(PrefabModelSource)}", new[] { ModelsFolder })
                     .Select(UnityEditor.AssetDatabase.GUIDToAssetPath)
                     .OrderBy(path => path, System.StringComparer.Ordinal)
                     .ToArray()
@@ -323,9 +323,9 @@ namespace CharacterShowcase.Tests.Animations
         {
             if (path == NoModels) { Assert.Ignore($"There are no prepared models in {ModelsFolder}."); }
 #if UNITY_EDITOR
-            var source = UnityEditor.AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(path);
+            var source = UnityEditor.AssetDatabase.LoadAssetAtPath<PrefabModelSource>(path);
 #else
-            DirectCharacterModelSource source = null;
+            PrefabModelSource source = null;
 #endif
             Assert.That(source, Is.Not.Null, $"Test setup: no model source at '{path}'.");
             yield return SpawnWithModel(source);
@@ -399,8 +399,8 @@ namespace CharacterShowcase.Tests.Animations
         {
             yield return SpawnWithPreparedModel(path);
             TakeOverAnimator();
-            Inputs walk = CharacterTestRig.Move(Vector3.forward * (WalkLoopSpeed() / rig.WalkSpeed));
-            foreach ((string activity, Inputs inputs) in new[] { ("standing", CharacterTestRig.Idle()), ("walking", walk), ("running", CharacterTestRig.Move(Vector3.forward)) })
+            StepInputs walk = CharacterTestRig.Move(Vector3.forward * (WalkLoopSpeed() / rig.WalkSpeed));
+            foreach ((string activity, StepInputs inputs) in new[] { ("standing", CharacterTestRig.Idle()), ("walking", walk), ("running", CharacterTestRig.Move(Vector3.forward)) })
             {
                 // Settle into the activity, then average the lean over a couple of strides.
                 yield return rig.Run(1f, _ => inputs, StepAnimator);

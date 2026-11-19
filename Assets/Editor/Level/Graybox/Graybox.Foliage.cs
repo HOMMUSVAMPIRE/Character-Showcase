@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Foliage, after the concept art and the style sheet's planters: low-poly trees (a tapering trunk under stacked,
     // faceted canopy tiers), shrubs, concrete planters with an orange band, and trees scattered over open ground. All
@@ -18,17 +18,17 @@ namespace CharacterShowcase.EditorTools.Level
             // A seed of its own, drawn from the random it was given, so a level spec can record it (see SeededRandom).
             if (random is not SeededRandom) { random = new SeededRandom(random.Next()); }
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Tree), parent, at, floor, random);
-            GrayboxSettings.FoliageSettings f = Settings.foliage;
+            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float Range(Vector2 range) => Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
             float trunk = Range(f.trunkHeight), radius = Range(f.canopyRadius), turn = (float)random.NextDouble() * 360f;
             var tree = new GameObject("Tree");
             tree.transform.SetParent(parent, false);
             tree.transform.localPosition = new Vector3(at.x, floor, at.y);
             var mesh = new GrayboxMesh();
-            mesh.Frustum(Surface.Soil, Vector3.zero, 0.22f, 0.14f, 0f, trunk + 0.3f, 6, turn, top: false);
-            mesh.Frustum(Surface.Foliage, Vector3.zero, 0.4f * radius, radius, trunk - 0.2f, trunk + 0.5f * radius, 7, turn, top: false, bottom: true);
-            mesh.Frustum(Surface.Foliage, Vector3.zero, radius, 0.75f * radius, trunk + 0.5f * radius, trunk + 1.1f * radius, 7, turn + 25f, top: false);
-            mesh.Frustum(Surface.Foliage, Vector3.zero, 0.75f * radius, 0.05f, trunk + 1.1f * radius, trunk + 1.9f * radius, 7, turn + 50f, top: false);
+            mesh.Frustum(GrayboxMaterial.Soil, Vector3.zero, 0.22f, 0.14f, 0f, trunk + 0.3f, 6, turn, top: false);
+            mesh.Frustum(GrayboxMaterial.Foliage, Vector3.zero, 0.4f * radius, radius, trunk - 0.2f, trunk + 0.5f * radius, 7, turn, top: false, bottom: true);
+            mesh.Frustum(GrayboxMaterial.Foliage, Vector3.zero, radius, 0.75f * radius, trunk + 0.5f * radius, trunk + 1.1f * radius, 7, turn + 25f, top: false);
+            mesh.Frustum(GrayboxMaterial.Foliage, Vector3.zero, 0.75f * radius, 0.05f, trunk + 1.1f * radius, trunk + 1.9f * radius, 7, turn + 50f, top: false);
             mesh.AddTo(tree, tree.name);
             AddBox(tree, new Vector3(0f, trunk / 2f, 0f), new Vector3(0.44f, trunk, 0.44f));
             MakeStatic(tree, occluder: false);
@@ -37,10 +37,10 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>A shrub in mesh, on a floor at centre: two faceted tiers, its size picked by random.</summary>
         private static void Shrub(GrayboxMesh mesh, Vector3 centre, System.Random random)
         {
-            GrayboxSettings.FoliageSettings f = Settings.foliage;
+            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float r = Mathf.Lerp(f.shrubRadius.x, f.shrubRadius.y, (float)random.NextDouble()), turn = (float)random.NextDouble() * 360f;
-            mesh.Frustum(Surface.Foliage, centre, 0.6f * r, r, 0f, 0.6f * r, 6, turn, top: false);
-            mesh.Frustum(Surface.Foliage, centre, r, 0.1f, 0.6f * r, 1.3f * r, 6, turn + 30f, top: false);
+            mesh.Frustum(GrayboxMaterial.Foliage, centre, 0.6f * r, r, 0f, 0.6f * r, 6, turn, top: false);
+            mesh.Frustum(GrayboxMaterial.Foliage, centre, r, 0.1f, 0.6f * r, 1.3f * r, 6, turn + 30f, top: false);
         }
 
         /// <summary>
@@ -60,12 +60,12 @@ namespace CharacterShowcase.EditorTools.Level
             planter.transform.localPosition = new Vector3(0f, floor, 0f);
             var mesh = new GrayboxMesh();
             // The rim's four sides, the east and west between the north and south, so none overlap.
-            mesh.Box(Surface.Concrete, new Vector3(x0, 0f, z0), new Vector3(x1, h, z0 + rim), bottom: false);
-            mesh.Box(Surface.Concrete, new Vector3(x0, 0f, z1 - rim), new Vector3(x1, h, z1), bottom: false);
-            mesh.Box(Surface.Concrete, new Vector3(x0, 0f, z0 + rim), new Vector3(x0 + rim, h, z1 - rim), bottom: false, ends: false);
-            mesh.Box(Surface.Concrete, new Vector3(x1 - rim, 0f, z0 + rim), new Vector3(x1, h, z1 - rim), bottom: false, ends: false);
-            mesh.Box(Surface.Soil, new Vector3(x0 + rim, 0f, z0 + rim), new Vector3(x1 - rim, soil, z1 - rim), bottom: false, sides: false, ends: false);
-            mesh.Box(Surface.Accent, new Vector3(x0 - 0.01f, 0f, z0 - 0.01f), new Vector3(x1 + 0.01f, 0.1f, z1 + 0.01f), top: false, bottom: false);
+            mesh.Box(GrayboxMaterial.Concrete, new Vector3(x0, 0f, z0), new Vector3(x1, h, z0 + rim), bottom: false);
+            mesh.Box(GrayboxMaterial.Concrete, new Vector3(x0, 0f, z1 - rim), new Vector3(x1, h, z1), bottom: false);
+            mesh.Box(GrayboxMaterial.Concrete, new Vector3(x0, 0f, z0 + rim), new Vector3(x0 + rim, h, z1 - rim), bottom: false, ends: false);
+            mesh.Box(GrayboxMaterial.Concrete, new Vector3(x1 - rim, 0f, z0 + rim), new Vector3(x1, h, z1 - rim), bottom: false, ends: false);
+            mesh.Box(GrayboxMaterial.Soil, new Vector3(x0 + rim, 0f, z0 + rim), new Vector3(x1 - rim, soil, z1 - rim), bottom: false, sides: false, ends: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(x0 - 0.01f, 0f, z0 - 0.01f), new Vector3(x1 + 0.01f, 0.1f, z1 + 0.01f), top: false, bottom: false);
             int shrubs = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(x1 - x0, z1 - z0) / 1.2f));
             bool alongX = x1 - x0 >= z1 - z0;
             for (int i = 0; i < shrubs; i++)
@@ -93,7 +93,7 @@ namespace CharacterShowcase.EditorTools.Level
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(ScatterTrees), parent, area, floor, salt, spread);
             Defer(() =>
             {
-                GrayboxSettings.FoliageSettings f = Settings.foliage;
+                LevelBuilderSettings.FoliageSettings f = Settings.foliage;
                 var random = new System.Random(f.seed + salt);
                 Transform trees = Group(parent, "Trees");
                 float spacing = f.scatterSpacing * spread, c = f.scatterClearance;
@@ -127,7 +127,7 @@ namespace CharacterShowcase.EditorTools.Level
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Lawns), parent, area, floors, salt, spacing, density);
             Defer(() =>
             {
-                GrayboxSettings.FoliageSettings f = Settings.foliage;
+                LevelBuilderSettings.FoliageSettings f = Settings.foliage;
                 var random = new System.Random(f.seed + 100 + salt);
                 float cell = f.lawnCell * spacing, half = cell / 2f, edge = f.lawnMargins.x, clear = f.lawnMargins.y, t = f.lawnThickness;
                 int nx = Mathf.FloorToInt(area.width / cell), nz = Mathf.FloorToInt(area.height / cell);
@@ -167,12 +167,12 @@ namespace CharacterShowcase.EditorTools.Level
                                     if (!grass[i, j]) { continue; }
                                     any = true;
                                     float x0 = area.xMin + i * cell, z0 = area.yMin + j * cell, x1 = x0 + cell, z1 = z0 + cell, top = floor + t;
-                                    mesh.Quad(Surface.Grass, Vector3.up, new(x0, top, z0), new(x1, top, z0), new(x1, top, z1), new(x0, top, z1));
+                                    mesh.Quad(GrayboxMaterial.Grass, Vector3.up, new(x0, top, z0), new(x1, top, z0), new(x1, top, z1), new(x0, top, z1));
                                     // Sides only at the lawn's edge, where the cell beside it is paving.
-                                    if (!Grass(i - 1, j)) { mesh.Quad(Surface.Grass, Vector3.left, new(x0, floor, z0), new(x0, top, z0), new(x0, top, z1), new(x0, floor, z1)); }
-                                    if (!Grass(i + 1, j)) { mesh.Quad(Surface.Grass, Vector3.right, new(x1, floor, z0), new(x1, floor, z1), new(x1, top, z1), new(x1, top, z0)); }
-                                    if (!Grass(i, j - 1)) { mesh.Quad(Surface.Grass, Vector3.back, new(x0, floor, z0), new(x1, floor, z0), new(x1, top, z0), new(x0, top, z0)); }
-                                    if (!Grass(i, j + 1)) { mesh.Quad(Surface.Grass, Vector3.forward, new(x0, floor, z1), new(x0, top, z1), new(x1, top, z1), new(x1, floor, z1)); }
+                                    if (!Grass(i - 1, j)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.left, new(x0, floor, z0), new(x0, top, z0), new(x0, top, z1), new(x0, floor, z1)); }
+                                    if (!Grass(i + 1, j)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.right, new(x1, floor, z0), new(x1, floor, z1), new(x1, top, z1), new(x1, top, z0)); }
+                                    if (!Grass(i, j - 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.back, new(x0, floor, z0), new(x1, floor, z0), new(x1, top, z0), new(x0, top, z0)); }
+                                    if (!Grass(i, j + 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.forward, new(x0, floor, z1), new(x0, top, z1), new(x1, top, z1), new(x1, floor, z1)); }
 
                                     float perCell = f.tuftDensity * density * cell * cell;
                                     int count = Mathf.FloorToInt(perCell) + (random.NextDouble() < perCell - Mathf.Floor(perCell) ? 1 : 0);
@@ -207,7 +207,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         private static void GrassTufts(Transform lawn, GrayboxMesh tufts)
         {
-            GrayboxSettings.FoliageSettings f = Settings.foliage;
+            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             var grass = new GameObject("Grass Tufts");
             grass.transform.SetParent(lawn, false);
             tufts.AddTo(grass, grass.name, uv2: false);
@@ -226,7 +226,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>A grass tuft in mesh, on a lawn at "at": the settings' number of thin blades, each leaning its own way and seen from both sides.</summary>
         private static void Tuft(GrayboxMesh mesh, Vector3 at, System.Random random)
         {
-            GrayboxSettings.FoliageSettings f = Settings.foliage;
+            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             for (int b = 0; b < f.tuftBlades; b++)
             {
                 float angle = (float)random.NextDouble() * Mathf.PI * 2f, height = Mathf.Lerp(f.tuftHeight.x, f.tuftHeight.y, (float)random.NextDouble());
@@ -238,7 +238,7 @@ namespace CharacterShowcase.EditorTools.Level
                 foreach (Vector3 side in new[] { normal, -normal })
                 {
                     int i = mesh.Face(side, new[] { p, q, tip });
-                    mesh.Triangle(Surface.Grass, i, i + 1, i + 2, side);
+                    mesh.Triangle(GrayboxMaterial.Grass, i, i + 1, i + 2, side);
                 }
             }
         }

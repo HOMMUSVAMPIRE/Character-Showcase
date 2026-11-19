@@ -1,14 +1,14 @@
 using System.Collections;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
-    /// Tests of pushing and pulling large objects (PushableObject): holding grab by one and steering into it pushes it,
+    /// Tests of pushing and pulling large objects (PushableBlock): holding grab by one and steering into it pushes it,
     /// and away pulls it, at the push and pull speed times the object's own multiplier; an object that can't be pulled
     /// stays put; objects stop at walls and the character with them; pushed off an edge, an object falls and the
     /// character lets go; and without holding grab, an object is just an obstacle. Expected values are read from the
@@ -19,7 +19,7 @@ namespace CharacterShowcase.Tests.Traversal
     [Category(TestArea.Traversal)]
     public class PushPullTests : AbilityFixture<PushingAndPulling>
     {
-        private PushableObject box;
+        private PushableBlock box;
         private const float BoxSize = 1.5f;
 
         private float PushPullSpeed => rig.Component<PushingAndPulling>().PushPullSpeed * rig.Movement.SpeedScale;
@@ -35,7 +35,7 @@ namespace CharacterShowcase.Tests.Traversal
             yield return PlaceBox(0f, 1f, true, BoxSize * Scale);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Grab(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Interact(Vector3.forward);
 
         protected override string OffSetting => "grabReach";
 
@@ -58,9 +58,9 @@ namespace CharacterShowcase.Tests.Traversal
         /// <summary>Holds grab and steers in a direction for the given time (after taking hold), measuring how far the box and the character moved.</summary>
         private IEnumerator HoldAndSteer(Vector3 direction, float seconds, System.Action<float, float> moved)
         {
-            yield return rig.Run(0.2f, step => CharacterTestRig.Grab(direction));
+            yield return rig.Run(0.2f, step => CharacterTestRig.Interact(direction));
             float boxStart = box.Position.z, characterStart = rig.Position.z;
-            yield return rig.Run(seconds, step => CharacterTestRig.Grab(direction));
+            yield return rig.Run(seconds, step => CharacterTestRig.Interact(direction));
             moved(box.Position.z - boxStart, rig.Position.z - characterStart);
         }
 
@@ -150,7 +150,7 @@ namespace CharacterShowcase.Tests.Traversal
             Assert.That(box.Position.z + BoxSize / 2f, Is.LessThan(edgeZ), "Test setup: the box should start on the raised floor.");
 
             bool letGo = false;
-            yield return rig.Run((edgeZ + BoxSize) / PushPullSpeed + 1f, step => CharacterTestRig.Grab(Vector3.forward),
+            yield return rig.Run((edgeZ + BoxSize) / PushPullSpeed + 1f, step => CharacterTestRig.Interact(Vector3.forward),
                 _ => { if (box.Position.y < BoxSize / 2f - 0.5f && !Grabbing) { letGo = true; } });
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
 
@@ -173,12 +173,12 @@ namespace CharacterShowcase.Tests.Traversal
         public IEnumerator JumpingWhileHoldingABox_DoesNothing()
         {
             yield return SetUpBox();
-            yield return rig.Run(0.2f, step => CharacterTestRig.Grab());
+            yield return rig.Run(0.2f, step => CharacterTestRig.Interact());
             float startY = rig.Position.y;
             float highest = startY;
             yield return rig.Run(0.4f, step =>
             {
-                Inputs inputs = CharacterTestRig.Grab();
+                StepInputs inputs = CharacterTestRig.Interact();
                 inputs.jump = CharacterTestRig.Held();
                 return inputs;
             }, _ => highest = Mathf.Max(highest, rig.Position.y));

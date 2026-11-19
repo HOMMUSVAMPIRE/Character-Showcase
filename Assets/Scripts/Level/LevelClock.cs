@@ -1,14 +1,14 @@
 using System;
 using UnityEngine;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
     /// The level's clock, in physics steps: what the mechanics that move a character (moving platforms, pushables, ropes)
     /// go by, so where they are is a function of the step, not of when each was enabled. Two machines on the same tick,
     /// or a character replayed against a past step, see them in the same place. By default Unity's fixed steps since the
     /// game started; something else can set it (TickSource: a networked game's tick, the tests' rig). A character keeps
-    /// its own clock (MovementController.StepTick); a networked game sets both from the same tick.
+    /// its own clock (MMotionMotor.StepIndex); a networked game sets both from the same tick.
     /// </summary>
     public static class LevelClock
     {

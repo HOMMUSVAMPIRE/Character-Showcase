@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Wall sliding: running into a wall head-on in mid-air slides slowly down it, and jumping kicks off it, upward.
@@ -59,26 +59,26 @@ namespace Character
         /// <summary>The longest a slide down a wall lasts, in seconds. 0 turns wall sliding off.</summary>
         public float WallSlideMaxDuration { get => wallSlideMaxDuration; set => wallSlideMaxDuration = value; }
 
-        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementRules.JumpOffWall).</summary>
         public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
-        public override bool IsActive(MovementController controller) => controller.wallSlide.IsWallSliding;
+        public override bool IsActive(MMotionMotor controller) => controller.wallSlide.IsWallSliding;
         /// <summary>Sliding down it, the wall holds the character up (it slides, rather than falls).</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        public override AbilityTraits Traits => AbilityTraits.Supported;
         /// <summary>The events of WallSliding starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.WallSliding, MovementEvents.WallSlideStarted, MovementEvents.WallSlideEnded),
         };
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallSlideState slide = controller.wallSlide;
             if (movementData.initialGrounded) { slide.jumpsUsed = 0; slide.hasLastWall = false; }
-            slide.cooldownRemaining = MovementHelpers.CountDown(slide.cooldownRemaining, movementData.deltaTime);
+            slide.cooldownRemaining = MovementRules.CountDown(slide.cooldownRemaining, movementData.deltaTime);
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.wallSlide.IsWallSliding) { EndWallSlide(controller); }
         }
@@ -96,10 +96,10 @@ namespace Character
         /// it with Crouch, the character doesn't slide down that wall again before landing. Only walls that reach up the
         /// character's body are slid down, and the wall's top can still be grabbed during a slide, if it's within reach.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallSlideState slide = controller.wallSlide;
-            RememberApproach(movementData, slide, controller.StepTick);
+            RememberApproach(movementData, slide, controller.StepIndex);
             if (!slide.IsWallSliding && !TryStartWallSlide(movementData, inputs, controller)) { return false; }
 
             Vector3 feet = movementData.initialPosition;
@@ -134,7 +134,7 @@ namespace Character
 
             // Only so many kicks in a row off the same wall; off another wall (up a chimney), the count starts again.
             int jumpsInARow = JumpedOffThisWallLast(controller, normal) ? slide.jumpsUsed : 0;
-            if (Mode.IsNewJumpPress(inputs, controller) && jumpsInARow < wallSlideMaxJumps)
+            if (Mode.HasFreshJumpPress(inputs, controller) && jumpsInARow < wallSlideMaxJumps)
             {
                 slide.jumpsUsed = jumpsInARow;
                 WallSlideJump(movementData, controller, normal);
@@ -158,7 +158,7 @@ namespace Character
         /// Starts a slide down a wall if the character is falling in mid-air, high enough above the ground, and heading
         /// into a wall just in front of it near head-on: steering into it, or moving toward it.
         /// </summary>
-        private bool TryStartWallSlide(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallSlide(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallSlideState slide = controller.wallSlide;
             if (wallSlideMaxDuration <= 0f || movementData.initialGrounded || slide.cooldownRemaining > 0f
@@ -211,11 +211,11 @@ namespace Character
         /// Remembers how the character is moving (horizontally) while it's moving: hitting a wall stops it, and the
         /// speed it hit with is what a slide starts from (see Approach).
         /// </summary>
-        private static void RememberApproach(MovementData movementData, WallSlideState slide, long now)
+        private static void RememberApproach(MovementStep movementData, WallSlideState slide, long now)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 horizontal = new Vector3(inertia.x, 0f, inertia.z);
-            if (movementData.initialGrounded) { slide.approachTick = MovementController.NeverTick; return; }
+            if (movementData.initialGrounded) { slide.approachTick = MMotionMotor.NeverTick; return; }
             if (horizontal.sqrMagnitude > 0.25f)
             {
                 slide.approachVelocity = horizontal;
@@ -227,7 +227,7 @@ namespace Character
         /// How the character is coming at a wall (horizontally): as it's moving now, or the faster of that and how it
         /// was moving within the approach memory (before a wall stopped it).
         /// </summary>
-        internal static Vector3 Approach(MovementData movementData, WallSlideState slide, MovementController controller)
+        internal static Vector3 Approach(MovementStep movementData, WallSlideState slide, MMotionMotor controller)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
@@ -239,13 +239,13 @@ namespace Character
         /// Whether there's a wall to slide down in front of the character in the given direction (within the check
         /// distance, and upright enough), its normal, flattened (pointing away from the wall), and where it was hit.
         /// </summary>
-        private bool FindWallAhead(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out Vector3 point)
+        private bool FindWallAhead(MMotionMotor controller, Vector3 feet, Vector3 direction, out Vector3 normal, out Vector3 point)
         {
             normal = point = Vector3.zero;
             float reach = wallSlideCheckDistance * controller.HeightScale + controller.Skin;
             // As upright as a wall run's wall, whether or not walls are run along (see WallRunning).
             float maxTilt = SettingsOf<WallRunning>().WallRunMaxWallTilt;
-            if (!MovementHelpers.FindUprightWall(controller, feet, direction, reach, maxTilt, out RaycastHit hit, out normal)) { return false; }
+            if (!MovementRules.FindUprightWall(controller, feet, direction, reach, maxTilt, out RaycastHit hit, out normal)) { return false; }
             point = hit.point;
             return true;
         }
@@ -256,7 +256,7 @@ namespace Character
         /// wall, jumping back onto it higher and kicking off again, the jumps given back each time climbed any wall.
         /// Air steering comes back gradually, as after a wall run's jump.
         /// </summary>
-        private void WallSlideJump(MovementData movementData, MovementController controller, Vector3 normal)
+        private void WallSlideJump(MovementStep movementData, MMotionMotor controller, Vector3 normal)
         {
             EndWallSlide(controller);
             controller.wallSlide.jumpsUsed++;
@@ -264,12 +264,12 @@ namespace Character
             // for every slide, hopping up one wall would have a dash each time on top of the character's own jumps.
             bool newWall = !JumpedOffThisWallLast(controller, normal);
             if (newWall) { GiveBackAirMoves(controller); }
-            MovementHelpers.JumpOffWall(movementData, controller,
+            MovementRules.JumpOffWall(movementData, controller,
                 normal * (wallSlideJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallSlideJumpUpSpeed * controller.SpeedScale),
                 normal, normal, givesBackJumps: newWall);
         }
 
-        private void EndWallSlide(MovementController controller)
+        private void EndWallSlide(MMotionMotor controller)
         {
             controller.wallSlide.IsWallSliding = false;
             controller.wallSlide.cooldownRemaining = wallSlideCooldown;
@@ -298,8 +298,8 @@ namespace Character
         /// stopped it.
         /// </summary>
         public Vector3 approachVelocity;
-        /// <summary>The step (MovementController.StepTick) approachVelocity was last recorded in (NeverTick for none).</summary>
-        public long approachTick = MovementController.NeverTick;
+        /// <summary>The step (MMotionMotor.StepIndex) approachVelocity was last recorded in (NeverTick for none).</summary>
+        public long approachTick = MMotionMotor.NeverTick;
         /// <summary>
         /// A wall (its normal) the character slid off the end of, or dropped from: not slid down again until it touches
         /// the ground.
@@ -309,9 +309,9 @@ namespace Character
         public bool hasLastWall;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's wall sliding state (WallSliding).</summary>
         public WallSlideState wallSlide { get; } = new WallSlideState();

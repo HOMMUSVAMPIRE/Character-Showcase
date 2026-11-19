@@ -1,7 +1,8 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Walking and running: on the ground, with no ability having the character, movement input moves it the way the input
@@ -14,7 +15,7 @@ namespace Character
     [MovementComponentName("Walking & Running")]
     public class WalkingAndRunning : MovementComponent
     {
-        [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
+        [Tooltip("How fast (m/s) the character moves at full movement input, at its authored size (it scales with size: see the MMotionMotor's Size Scaling)")]
         [SerializeField] private float walkSpeed;
         [Tooltip("How fast (m/s) the character moves while the Sprint button is held, at its authored size. At or below Walk Speed, sprinting does nothing.")]
         [SerializeField] private float runSpeed;
@@ -22,10 +23,10 @@ namespace Character
                  "back on the ground slower than it walks (the end of a vault, or of a climb up onto a ledge): it speeds up to " +
                  "its walking speed at that rate, from the speed it was going, rather than snapping to it. Otherwise walking " +
                  "is at its speed at once. 0 = at once after abilities too")]
-        [Min(0f)] [SerializeField] private float abilityPickUpTime = 0.3f;
+        [Min(0f)] [SerializeField] [FormerlySerializedAs("abilityPickUpTime")] private float speedRecoveryTime = 0.3f;
 
         // The abilities that hand the character back to walking on the ground slower than it walks, which it then picks
-        // up speed from (see abilityPickUpTime).
+        // up speed from (see speedRecoveryTime).
         private const CharacterState SlowHandOvers = CharacterState.Vaulting | CharacterState.LedgeClimbing;
 
         /// <summary>How fast (m/s) the character walks at full movement input, at its authored size.</summary>
@@ -37,14 +38,14 @@ namespace Character
         /// The speed to move at for these inputs, at full movement input and the character's authored size: the run
         /// speed while Sprint is held (if there is one, faster than walking), otherwise the walk speed.
         /// </summary>
-        public float MoveSpeed(Inputs inputs) =>
-            inputs.sprint != null && inputs.sprint.value && runSpeed > walkSpeed ? runSpeed : walkSpeed;
+        public float MoveSpeed(StepInputs inputs) =>
+            inputs.sprint != null && inputs.sprint.held && runSpeed > walkSpeed ? runSpeed : walkSpeed;
 
         /// <summary>
         /// On the ground, moves the character the way the movement input points, at walking speed (see the mode's
         /// MoveSpeed), facing that way.
         /// </summary>
-        public override void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void Locomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             // In the air, the character steers instead (see FallAndAirHandling), and isn't picking up speed after an
             // ability any more (nor once it stops: see PickingUp).
@@ -53,7 +54,7 @@ namespace Character
                 controller.walk.pickingUp = false;
                 return;
             }
-            float steeringEffectiveness = controller.movementSpeedMultiplier;
+            float steeringEffectiveness = controller.speedMultiplier;
 
             // With movement input, move the way it points (relative to the input's look) at walking speed (or running, while
             // sprinting), facing that way. Walking only makes up the difference between the momentum the character is
@@ -93,14 +94,14 @@ namespace Character
         /// rate, until it's caught up; otherwise walking. A vault ending standing on the top, or a climb onto a ledge,
         /// snapped from the speed it left with (or a near standstill) to walking or running in a step.
         /// </summary>
-        private float PickingUp(MovementData movementData, MovementController controller, Vector3 direction, float walking)
+        private float PickingUp(MovementStep movementData, MMotionMotor controller, Vector3 direction, float walking)
         {
             WalkState walk = controller.walk;
-            if ((movementData.previousState & SlowHandOvers) != 0) { walk.pickingUp = abilityPickUpTime > 0f; }
+            if ((movementData.previousState & SlowHandOvers) != 0) { walk.pickingUp = speedRecoveryTime > 0f; }
             if (!walk.pickingUp) { return walking; }
             Vector3 was = movementData.initialVelocity;
             float wasAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(was.x, 0f, was.z), direction));
-            float rate = Mathf.Max(runSpeed, walkSpeed) * controller.SpeedScale / (abilityPickUpTime * controller.DurationScale);
+            float rate = Mathf.Max(runSpeed, walkSpeed) * controller.SpeedScale / (speedRecoveryTime * controller.DurationScale);
             float now = wasAlong + rate * movementData.deltaTime;
             if (now >= walking) { walk.pickingUp = false; return walking; }
             return now;
@@ -114,9 +115,9 @@ namespace Character
         public bool pickingUp;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's walking state (Walking &amp; Running): picking up speed after an ability.</summary>
         public WalkState walk { get; } = new WalkState();

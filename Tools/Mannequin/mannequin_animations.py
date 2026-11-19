@@ -427,7 +427,7 @@ def wall_slide(p):
 def rope_swing(p):
     """Hanging from a rope in front of the chest: the right hand high on it above the head, the left lower, at the
     face, the elbows bent a little to hold the body close, looking up the rope, the knees drawn up and together with the
-    feet pointed, as if gripping the rope between them, swaying a little. (LineGripIK puts the hands on the rope, hangs
+    feet pointed, as if gripping the rope between them, swaying a little. (CableGripIK puts the hands on the rope, hangs
     the body behind it and leans it with the swing.)"""
     pose = Pose()
     w = math.sin(TAU * p)
@@ -442,7 +442,7 @@ def rope_swing(p):
 def zipline(p):
     """Riding a zipline: hanging from the cable by both hands close together straight overhead, the shoulders shrugged up
     with the weight, the legs together and a little forward, knees soft, the feet pointed, swaying a little as the
-    cable carries it. (LineGripIK puts the hands on the cable.)"""
+    cable carries it. (CableGripIK puts the hands on the cable.)"""
     pose = Pose()
     w = math.sin(TAU * p)
     torso(pose, hips_lean=-4.0 + 2.0 * w, spine_lean=-2.0, chest_lean=-1.0, head_lean=-6.0)

@@ -1,8 +1,8 @@
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Things that can happen to a character during a physics step, for animation, effects and sound to react to.
-    /// Movement modes report the ones they cause (jumps and dashes); the MovementController detects the rest.
+    /// Movement modes report the ones they cause (jumps and dashes); the MMotionMotor detects the rest.
     /// 64 bits wide, as the first 31 ran out. Unity doesn't save fields of enums wider than 32 bits (it drops them
     /// silently), so a serialized set of these is kept as a long (see AnimatorParameterTranslator.EventTrigger).
     /// </summary>
@@ -67,7 +67,7 @@ namespace Character
         // Caught hold of a zipline's cable, and let go of it (at its end, or jumping off: a Jumped too)
         ZiplineStarted = 1L << 33,
         ZiplineEnded = 1L << 34,
-        // Launched by a bounce pad (see Level.BouncePad), reported by the movement mode
+        // Launched by a bounce pad (see MeridianMotion.Levels.LaunchPad), reported by the movement mode
         Bounced = 1L << 35,
         // Started swimming (got into water deep enough to swim in), and stopped (climbed or jumped out, or found its feet
         // in shallower water: jumping out is a Jumped too)
@@ -86,12 +86,12 @@ namespace Character
     /// A state of the character's and the events raised as it starts and stops being in it (see
     /// MovementComponent.StateEvents): an ability sets the state, and the events follow from it.
     /// </summary>
-    public readonly struct StateEvent
+    public readonly struct StateEventPair
     {
         public readonly CharacterState state;
         public readonly MovementEvents started, ended;
 
-        public StateEvent(CharacterState state, MovementEvents started, MovementEvents ended)
+        public StateEventPair(CharacterState state, MovementEvents started, MovementEvents ended)
         {
             this.state = state;
             this.started = started;
@@ -99,7 +99,7 @@ namespace Character
         }
 
         /// <summary>Adds this state's start or end to the step's events, if it started or ended this step.</summary>
-        public void Detect(MovementData data)
+        public void Detect(MovementStep data)
         {
             bool was = (data.previousState & state) != 0, now = (data.state & state) != 0;
             if (!was && now) { data.events |= started; }

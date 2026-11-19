@@ -1,7 +1,7 @@
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Calibration Annex (07), the measured test ground south-west of the
@@ -50,12 +50,12 @@ namespace CharacterShowcase.EditorTools.Level
             // The yard: its floor and a low wall round it, open on the north and east, with the arrival platform in its north-east corner.
             Block(yard, "Floor (±0)", X0, X1, Z0, Z1, -0.5f, FloorTop);
             const float t = WallThickness, open0 = -100f, open1 = -90f, corner = -74f;
-            Block(yard, "Wall (West)", X0, X0 + t, Z0, Z1, 0f, WallHeight, Surface.Panel);
-            Block(yard, "Wall (South)", X0 + t, X1, Z0, Z0 + t, 0f, WallHeight, Surface.Panel);
-            Block(yard, "Wall (North, West)", X0 + t, open0, Z1 - t, Z1, 0f, WallHeight, Surface.Panel);
-            Block(yard, "Wall (North, East)", open1, corner, Z1 - t, Z1, 0f, WallHeight, Surface.Panel);
-            Block(yard, "Wall (East, South)", X1 - t, X1, Z0 + t, open0, 0f, WallHeight, Surface.Panel);
-            Block(yard, "Wall (East, North)", X1 - t, X1, open1, corner, 0f, WallHeight, Surface.Panel);
+            Block(yard, "Wall (West)", X0, X0 + t, Z0, Z1, 0f, WallHeight, GrayboxMaterial.Panel);
+            Block(yard, "Wall (South)", X0 + t, X1, Z0, Z0 + t, 0f, WallHeight, GrayboxMaterial.Panel);
+            Block(yard, "Wall (North, West)", X0 + t, open0, Z1 - t, Z1, 0f, WallHeight, GrayboxMaterial.Panel);
+            Block(yard, "Wall (North, East)", open1, corner, Z1 - t, Z1, 0f, WallHeight, GrayboxMaterial.Panel);
+            Block(yard, "Wall (East, South)", X1 - t, X1, Z0 + t, open0, 0f, WallHeight, GrayboxMaterial.Panel);
+            Block(yard, "Wall (East, North)", X1 - t, X1, open1, corner, 0f, WallHeight, GrayboxMaterial.Panel);
             Marker(connections, "Entrance (N, ±0)", new Vector2((open0 + open1) / 2f, Z1), FloorTop);
             Marker(connections, "Entrance (E, ±0)", new Vector2(X1, (open0 + open1) / 2f), FloorTop);
             AreaSign(yard, new Vector2(-106f, Z1), 1.2f, Vector2.up, "07", "Calibration Annex"); // Beside the north entrance, on the wall's face.
@@ -224,7 +224,7 @@ namespace CharacterShowcase.EditorTools.Level
         {
             const float wall0 = -79f, wall1 = -78f, near0 = -100f, near1 = -92f;
             float far1 = near0 - WallRunGap, far0 = far1 - 8f;
-            Block(test, "Wall-Run Wall (+20)", wall0, wall1, far1 - 2f, near0 + 2f, 0f, WallRunWall, Surface.Panel);
+            Block(test, "Wall-Run Wall (+20)", wall0, wall1, far1 - 2f, near0 + 2f, 0f, WallRunWall, GrayboxMaterial.Panel);
 
             // West: 16 m, a wall run and a jump.
             const float x0 = -88f;

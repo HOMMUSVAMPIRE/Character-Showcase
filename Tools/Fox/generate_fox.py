@@ -5,10 +5,10 @@ The body is built with Blender's Skin modifier around a four-legged stick skelet
 rigged with a Generic armature (Hips, Spine1-2, Neck, Head, Muzzle, Ears, Tail1-4, and each leg's bones), and
 skinned with automatic (heat) weights. Animation clips come from fox_animations.py. Built standing on all fours,
 facing -Y in Blender (which is +Z, Unity's forward), its paws on the ground at the origin.
-Usually run from Unity with Tools > Character Showcase > Generate Fox, which then sets it up.
+Usually run from Unity with Tools > Meridian Motion > Showcase > Generate Fox, which then sets it up.
 By hand (Blender 4.x, from the repo root):
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
-        -P Tools/Fox/generate_fox.py -- Assets/Models/Creatures/Fox/Fox.fbx [--preview <dir>]
+        -P Tools/Fox/generate_fox.py -- Assets/Models/Generic/Fox/Fox.fbx [--preview <dir>]
 All measurements are in meters: about 0.7 m at the shoulder, 1.3 m from nose to rump, and a 0.6 m tail.
 """
 import math

@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace MeridianMotion.Tests.EditMode.Movement
 {
     /// <summary>
     /// Tests of movement tuning presets (MovementTuningPreset) and the settings they're made of (MovementSettings): a
@@ -35,11 +35,11 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         }
 
         /// <summary>Each component's settings as Unity saves them, in the mode's order.</summary>
-        private static string[] Tuning(ComposedMovementMode mode) =>
+        private static string[] Tuning(AbilityMovementMode mode) =>
             mode.Components.Select(c => $"{c.GetType().Name} {JsonUtility.ToJson(c)}").ToArray();
 
         /// <summary>Changes every setting of every component of the mode, so each differs from a new mode's.</summary>
-        private static void ChangeEverything(ComposedMovementMode mode)
+        private static void ChangeEverything(AbilityMovementMode mode)
         {
             foreach (MovementComponent component in mode.Components)
             {
@@ -61,7 +61,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void ASettingsFields_AreTheFieldsUnitySaves_OfKindsAPresetCopies()
         {
-            foreach (MovementComponent component in New<BasicMovementMode>().Components)
+            foreach (MovementComponent component in New<StandardMovementMode>().Components)
             {
                 string[] saved = Regex.Matches(JsonUtility.ToJson(component), @"""(\w+)"":").Select(m => m.Groups[1].Value)
                     .Where(key => !Regex.IsMatch(key, "^(serializedVersion|m_\\w+|time|value|inSlope|outSlope|tangentMode|weightedMode|inWeight|outWeight)$"))
@@ -80,12 +80,12 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void APresetSavedFromAMode_GivesItBackTheSameTuning()
         {
-            var tuned = New<BasicMovementMode>();
+            var tuned = New<StandardMovementMode>();
             ChangeEverything(tuned);
             var preset = New<MovementTuningPreset>();
             preset.Capture(tuned);
 
-            var other = New<BasicMovementMode>();
+            var other = New<StandardMovementMode>();
             Assume.That(Tuning(other), Is.Not.EqualTo(Tuning(tuned)));
             int changed = preset.ApplyTo(other);
             Assert.That(Tuning(other), Is.EqualTo(Tuning(tuned)), "Every setting, curves and on/off switches included, should come back.");
@@ -103,7 +103,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
             preset.Include(typeof(Ziplines), MovementSettings.EnabledSetting, true);
             preset.PartFor(typeof(Ziplines)).values.Enabled = false;
 
-            var mode = New<BasicMovementMode>();
+            var mode = New<StandardMovementMode>();
             ChangeEverything(mode);
             mode.Get<Ziplines>(includeDisabled: true).Enabled = true;
             string[] before = Tuning(mode);
@@ -121,12 +121,12 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void APreset_NeverAddsRemovesOrReordersComponents_AndReportsWhatItCantSet()
         {
-            var source = New<BasicMovementMode>();
+            var source = New<StandardMovementMode>();
             var preset = New<MovementTuningPreset>();
             preset.Capture(source);
             preset.PartFor(typeof(Dashing)).settings.Add("noSuchSetting");
 
-            var mode = New<BasicMovementMode>();
+            var mode = New<StandardMovementMode>();
             mode.Remove<Ziplines>();
             mode.Remove<BouncePads>();
             mode.Add<BouncePads>(); // Now last.
@@ -141,10 +141,10 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void APresetsCurves_AreCopied_NotShared()
         {
-            var source = New<BasicMovementMode>();
+            var source = New<StandardMovementMode>();
             var preset = New<MovementTuningPreset>();
             preset.Capture(source);
-            var mode = New<BasicMovementMode>();
+            var mode = New<StandardMovementMode>();
             ChangeEverything(mode);
             preset.ApplyTo(mode);
             FieldInfo curve = MovementSettings.Find(typeof(Dashing), "dashSpeedCurve");

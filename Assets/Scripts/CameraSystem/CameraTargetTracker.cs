@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>
     /// Observes a target transform from the outside and derives everything the camera needs to know about it
@@ -44,7 +44,7 @@ namespace CameraSystem
         /// </summary>
         public bool ProbablyGrounded => Mathf.Abs(Velocity.y) < 0.75f * sizeScale + HorizontalSpeed * 0.5f;
 
-        // The target's size relative to normal (see CameraRig.SizeScale), which the distances and speeds here scale with.
+        // The target's size relative to normal (see MMotionCameraRig.SizeScale), which the distances and speeds here scale with.
         private float sizeScale = 1f;
 
         /// <summary>

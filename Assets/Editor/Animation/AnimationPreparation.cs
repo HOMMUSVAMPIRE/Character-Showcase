@@ -2,14 +2,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// Prepare Animations (Tools > Character Showcase > Prepare Animations): gets the clips the characters play ready, then
+    /// Prepare Animations (Tools > Meridian Motion > Prepare > Animations): gets the clips the characters play ready, then
     /// builds every Animator Controller from its layout (AnimatorControllerBuilder). Getting the clips ready is:
     /// - the Quaternius libraries' clips imported as clips (QuaterniusAnimationImporter), where they're installed, and the
     ///   motion-capture clips (MotionCaptureClipImporter);
@@ -33,7 +33,7 @@ namespace CharacterShowcase.EditorTools
         // libraries' import settings, which are shared), so a change to it is noticed (see SwimDepthWatcher).
         private const string FloatedAtPath = "Library/CharacterShowcase/SwimsFloatedAt.txt";
 
-        [MenuItem("Tools/Character Showcase/Prepare Animations", priority = 4)]
+        [MenuItem("Tools/Meridian Motion/Prepare/Animations", priority = 4)]
         public static void PrepareFromMenu() => Prepare(showProgress: true);
 
         /// <summary>For -executeMethod: Prepare, then exits (code 1 if it failed).</summary>
@@ -82,8 +82,8 @@ namespace CharacterShowcase.EditorTools
         /// <summary>The mannequin, measured on as the clips play on it: its prepared prefab if there is one yet, else its file.</summary>
         private static GameObject MeasuringModel()
         {
-            var model = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterModelImporter.MannequinPrefabPath);
-            return model != null ? model : AssetDatabase.LoadAssetAtPath<GameObject>(CharacterModelImporter.MannequinModelPath);
+            var model = AssetDatabase.LoadAssetAtPath<GameObject>(HumanoidModelImporter.MannequinPrefabPath);
+            return model != null ? model : AssetDatabase.LoadAssetAtPath<GameObject>(HumanoidModelImporter.MannequinModelPath);
         }
 
         /// <summary>
@@ -95,7 +95,7 @@ namespace CharacterShowcase.EditorTools
         /// </summary>
         public static void StandLibraryOnTheMannequinsFloor(GameObject mannequin)
         {
-            AnimationClip idle = AssetDatabase.LoadAllAssetsAtPath(CharacterModelImporter.MannequinModelPath).OfType<AnimationClip>().FirstOrDefault(c => c.name == "Idle");
+            AnimationClip idle = AssetDatabase.LoadAllAssetsAtPath(HumanoidModelImporter.MannequinModelPath).OfType<AnimationClip>().FirstOrDefault(c => c.name == "Idle");
             if (idle == null) { Debug.LogWarning($"[{LogName}] The mannequin has no Idle clip to stand the libraries' clips by."); return; }
             float idleFloor = MotionCaptureLocomotion.LowestFoot(mannequin, idle);
             // How the library's mannequin's sizes compare with this one's: the offsets are in its units.
@@ -149,17 +149,17 @@ namespace CharacterShowcase.EditorTools
         /// How far (m) below the surface the Character prefab's feet hang as it swims: its movement mode's Swimming's swim
         /// depth (whether or not it's turned on; Swimming's default without one), a share of its standing height. That's
         /// the height of the body it has with its model, which the movement measures by: the model's own body, when its
-        /// host fits its body to its model (CharacterModelHost's Body Fit), else its body as authored (its Body
+        /// host fits its body to its model (CharacterModelSlot's Body Fit), else its body as authored (its Body
         /// Definition's). Floated for the authored body's height while the character took its model's, a little shorter,
         /// the swimmer was drawn that much too high.
         /// </summary>
         public static float DefaultSwimDepth()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
-            MovementController movement = prefab != null ? prefab.GetComponent<MovementController>() : null;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath);
+            MMotionMotor movement = prefab != null ? prefab.GetComponent<MMotionMotor>() : null;
             if (movement == null) { return 0f; }
-            float share = movement.movementHandler is ComposedMovementMode mode ? mode.SettingsOf<Swimming>().SwimDepth : new Swimming().SwimDepth;
-            BodyShape? withModel = prefab.TryGetComponent(out CharacterModelHost host) ? host.BodyFor(host.ModelSource, movement) : null;
+            float share = movement.movementMode is AbilityMovementMode mode ? mode.SettingsOf<Swimming>().SwimDepth : new Swimming().SwimDepth;
+            BodyShape? withModel = prefab.TryGetComponent(out CharacterModelSlot host) ? host.BodyFor(host.ModelSource, movement) : null;
             return share * BodyFitting.StandingHeightOf(withModel ?? movement.AuthoredBody);
         }
 
@@ -238,14 +238,14 @@ namespace CharacterShowcase.EditorTools
             // The default character's prefab, its movement asset and its body: what its swim depth comes from.
             private static HashSet<string> WatchedPaths()
             {
-                var paths = new HashSet<string> { SceneGameSetup.CharacterPrefabPath };
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
-                if (prefab != null && prefab.TryGetComponent(out MovementController movement))
+                var paths = new HashSet<string> { CharacterSceneSetup.CharacterPrefabPath };
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath);
+                if (prefab != null && prefab.TryGetComponent(out MMotionMotor movement))
                 {
-                    if (movement.movementHandler != null) { paths.Add(AssetDatabase.GetAssetPath(movement.movementHandler)); }
+                    if (movement.movementMode != null) { paths.Add(AssetDatabase.GetAssetPath(movement.movementMode)); }
                     if (movement.BodyDefinition != null) { paths.Add(AssetDatabase.GetAssetPath(movement.BodyDefinition)); }
                 }
-                if (prefab != null && prefab.TryGetComponent(out CharacterModelHost host) && host.ModelSource != null && host.ModelSource.BodyDefinition != null)
+                if (prefab != null && prefab.TryGetComponent(out CharacterModelSlot host) && host.ModelSource != null && host.ModelSource.BodyDefinition != null)
                 {
                     paths.Add(AssetDatabase.GetAssetPath(host.ModelSource.BodyDefinition));
                 }

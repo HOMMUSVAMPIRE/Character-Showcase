@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Sets up the motion-capture clips in Assets/Animation/CMU as Humanoid animations, so they play on any humanoid
@@ -67,7 +67,7 @@ namespace CharacterShowcase.EditorTools
         };
 
         /// <summary>Sets up every clip that isn't already, and logs when they all are.</summary>
-        [MenuItem("Tools/Character Showcase/Prepare Motion Capture Clips", priority = 4)]
+        [MenuItem("Tools/Meridian Motion/Prepare/Motion Capture Clips", priority = 4)]
         public static void PrepareAllFromMenu()
         {
             List<string> problems = PrepareAll();
@@ -202,7 +202,7 @@ namespace CharacterShowcase.EditorTools
         /// gone) kept in the pose. Its height is based on the feet (as they are at its start, so a jump still rises),
         /// which puts the clip's floor at the model's: kept as captured, the performer's floor would be a little above
         /// or below the model's, and Unity's IK reports foot goals relative to it on a stretched model (see
-        /// CharacterUtilities.AnimatedIKGoalPosition), so the feet would be planted that much too high or low.
+        /// HumanoidIKGoals.AnimatedIKGoalPosition), so the feet would be planted that much too high or low.
         /// </summary>
         public static void SetRoot(ModelImporterClipAnimation clip)
         {

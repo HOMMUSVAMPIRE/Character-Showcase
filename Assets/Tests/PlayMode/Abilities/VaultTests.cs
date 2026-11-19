@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of vaulting: a character in mid-air heading into a wall whose top is too low to grab as a ledge but too
@@ -44,7 +44,7 @@ namespace CharacterShowcase.Tests.Abilities
             BuildLowWall(null, 0.4f * Scale, 0.25f * Scale);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         protected override string OffSetting => "vaultRiseDuration";
 
@@ -78,7 +78,7 @@ namespace CharacterShowcase.Tests.Abilities
         /// whether it vaulted, stepped up, slid down a wall or hung from it, and its horizontal speed on the step after
         /// its vault ended.
         /// </summary>
-        private IEnumerator RunInto(float speed, Inputs inputs, float seconds, VaultRecord record)
+        private IEnumerator RunInto(float speed, StepInputs inputs, float seconds, VaultRecord record)
         {
             if (speed > 0f) { yield return rig.Launch(Vector3.forward * speed, inputs); }
             bool wasVaulting = false;
@@ -167,14 +167,14 @@ namespace CharacterShowcase.Tests.Abilities
                 highest = Mathf.Max(highest, rig.Position.y);
             });
             Assert.That(onTop, Is.GreaterThan(3), "Test setup: the vault should carry the character across the top, standing on it.");
-            Assert.That(highest - lowest, Is.LessThan(0.01f * rig.Controller.Scale.y), "Standing on the top, the character shouldn't bounce up and down.");
+            Assert.That(highest - lowest, Is.LessThan(0.01f * rig.Controller.CurrentScale.y), "Standing on the top, the character shouldn't bounce up and down.");
         }
 
         /// <summary>
         /// Sprinting into a vault, the character takes off far enough from the wall to slow evenly through the rise, to
         /// Vault Take Off Speed's share of its speed, rather than dropping almost to a standstill as the vault begins (it
         /// was found just short of the wall, and the rise could only close that gap); and after it, sprinting picks up from
-        /// the speed it left with (see Walking &amp; Running's Ability Pick Up Time), rather than snapping back to its speed.
+        /// the speed it left with (see Walking &amp; Running's Speed Recovery Time), rather than snapping back to its speed.
         /// </summary>
         [UnityTest]
         public IEnumerator SprintingIntoAVault_SlowsEvenlyThroughTheRise_AndPicksUpAfter()
@@ -293,7 +293,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return SetUpLowWall(onTheGround: true, distance: 1f);
             rig.SetMovementSetting("vaultFromGround", false);
             var record = new VaultRecord();
-            Inputs inputs = sprinting ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
+            StepInputs inputs = sprinting ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
             yield return RunInto(0f, inputs, 1f, record);
 
             Assert.That(record.vaulted, Is.False, "With vaulting from the ground off, walking or sprinting into the wall shouldn't vault it.");
@@ -358,9 +358,9 @@ namespace CharacterShowcase.Tests.Abilities
             Assert.That(rig.Position.y, Is.EqualTo(landing).Within(0.05f), "The character should reach the top of the stairs.");
         }
 
-        private static Inputs JumpSprint()
+        private static StepInputs JumpSprint()
         {
-            Inputs inputs = CharacterTestRig.Sprint(Vector3.forward);
+            StepInputs inputs = CharacterTestRig.Sprint(Vector3.forward);
             inputs.jump = CharacterTestRig.Held();
             return inputs;
         }

@@ -5,11 +5,11 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds a graybox scene (the Meridian Complex, or the Level Playground) without freezing the editor, and shows
-    /// how far along it is. The scene's build steps (see GrayboxScene: one area at a time) run one per editor update,
+    /// how far along it is. The scene's build steps (see LevelDefinition: one area at a time) run one per editor update,
     /// so the editor redraws between them, then the lighting (Lightmapping.BakeAsync) and the occlusion culling
     /// (StaticOcclusionCulling.GenerateInBackground, if the generation settings bake it) are baked in the background,
     /// the progress shown as they go. The build is also shown in the editor's Background Tasks. Each step still runs in
@@ -27,9 +27,9 @@ namespace CharacterShowcase.EditorTools.Level
 
         // The build in progress (not kept across a script reload, which stops it: see wasBuilding).
         [NonSerialized] private static LevelBuildWindow running;
-        [NonSerialized] private GrayboxScene level;
-        [NonSerialized] private List<GrayboxScene.BuildStep> steps;
-        [NonSerialized] private GrayboxScene.BuildState build;
+        [NonSerialized] private LevelDefinition level;
+        [NonSerialized] private List<LevelDefinition.BuildStep> steps;
+        [NonSerialized] private LevelDefinition.BuildState build;
         [NonSerialized] private int nextStep;
         [NonSerialized] private bool baking, occluding;
         [NonSerialized] private int progressId;
@@ -50,7 +50,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// For a level's menu item: starts building it in the background, after offering to save the open scene (which
         /// the build replaces); or, if a level's already being built, brings that build's window to the front.
         /// </summary>
-        internal static void BuildFromMenu(GrayboxScene level)
+        internal static void BuildFromMenu(LevelDefinition level)
         {
             if (running != null)
             {
@@ -63,13 +63,13 @@ namespace CharacterShowcase.EditorTools.Level
             window.Begin(level);
         }
 
-        private void Begin(GrayboxScene toBuild)
+        private void Begin(LevelDefinition toBuild)
         {
             running = this;
             level = toBuild;
             levelName = level.Name;
             steps = level.Steps();
-            build = new GrayboxScene.BuildState();
+            build = new LevelDefinition.BuildState();
             nextStep = 0;
             baking = false;
             occluding = false;
@@ -100,7 +100,7 @@ namespace CharacterShowcase.EditorTools.Level
                 {
                     if (Lightmapping.isRunning)
                     {
-                        Report(GrayboxScene.BakeStepName, StepsShare + (1f - StepsShare) * 0.9f * Mathf.Clamp01(Lightmapping.buildProgress));
+                        Report(LevelDefinition.BakeStepName, StepsShare + (1f - StepsShare) * 0.9f * Mathf.Clamp01(Lightmapping.buildProgress));
                         return;
                     }
                     baking = false;
@@ -118,7 +118,7 @@ namespace CharacterShowcase.EditorTools.Level
                 {
                     steps[nextStep].run(build);
                     nextStep++;
-                    Report(nextStep < steps.Count ? steps[nextStep].name : GrayboxScene.BakeStepName, StepsShare * nextStep / steps.Count);
+                    Report(nextStep < steps.Count ? steps[nextStep].name : LevelDefinition.BakeStepName, StepsShare * nextStep / steps.Count);
                     return;
                 }
 
@@ -144,7 +144,7 @@ namespace CharacterShowcase.EditorTools.Level
             if (level.StartOcclusionBake())
             {
                 occluding = true;
-                Report(GrayboxScene.OcclusionStepName, 0.95f);
+                Report(LevelDefinition.OcclusionStepName, 0.95f);
                 return;
             }
             Complete();
@@ -244,8 +244,8 @@ namespace CharacterShowcase.EditorTools.Level
                 Cancel();
                 return;
             }
-            GrayboxScene carryOnLevel = level;
-            GrayboxScene.BuildState carryOn = build;
+            LevelDefinition carryOnLevel = level;
+            LevelDefinition.BuildState carryOn = build;
             if (occluding)
             {
                 // The occlusion bake carries on in the background: save the level when it's done.

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>
     /// A volume that overrides camera behaviour while the camera's target is inside it — e.g. force first person
@@ -10,6 +10,7 @@ namespace CameraSystem
     /// Supports primitive colliders and convex mesh colliders.
     /// </summary>
     [RequireComponent(typeof(Collider))]
+    [AddComponentMenu("Meridian Motion/Cameras/Camera Zone")]
     public class CameraZone : MonoBehaviour
     {
         /// <summary>The enabled zones, which Find searches.</summary>

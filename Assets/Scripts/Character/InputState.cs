@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A character's input as its movement reads it, worked out each physics step from that step's input frame and the
@@ -13,7 +13,7 @@ namespace Character
     {
         // The buttons View has, in the order the step counts below are kept in.
         private static readonly InputButtons[] Buttons =
-            { InputButtons.Jump, InputButtons.Dash, InputButtons.Sprint, InputButtons.Crouch, InputButtons.Roll, InputButtons.Grab };
+            { InputButtons.Jump, InputButtons.Dash, InputButtons.Sprint, InputButtons.Crouch, InputButtons.Roll, InputButtons.Interact };
 
         // For each button: how many steps it's been held since the step it went down (0 on that step), and how many it was
         // held the last time it came up.
@@ -21,7 +21,7 @@ namespace Character
         private readonly int[] lastHeldSteps = new int[Buttons.Length];
 
         /// <summary>The input as the movement reads it, updated in place each step.</summary>
-        public Inputs View { get; } = new()
+        public StepInputs Current { get; } = new()
         {
             movementVector = Vector3.zero,
             jump = new InputButton(),
@@ -29,7 +29,7 @@ namespace Character
             sprint = new InputButton(),
             crouch = new InputButton(),
             roll = new InputButton(),
-            grab = new InputButton(),
+            interact = new InputButton(),
         };
 
         /// <summary>The frame the last step was given.</summary>
@@ -42,20 +42,20 @@ namespace Character
         public void Advance(in CharacterInputFrame frame, float stepLength)
         {
             Frame = frame;
-            View.movementVector = new Vector3(frame.move.x, 0f, frame.move.y);
-            Advance(View.jump, 0, frame, stepLength);
-            Advance(View.dash, 1, frame, stepLength);
-            Advance(View.sprint, 2, frame, stepLength);
-            Advance(View.crouch, 3, frame, stepLength);
-            Advance(View.roll, 4, frame, stepLength);
-            Advance(View.grab, 5, frame, stepLength);
+            Current.movementVector = new Vector3(frame.move.x, 0f, frame.move.y);
+            Advance(Current.jump, 0, frame, stepLength);
+            Advance(Current.dash, 1, frame, stepLength);
+            Advance(Current.sprint, 2, frame, stepLength);
+            Advance(Current.crouch, 3, frame, stepLength);
+            Advance(Current.roll, 4, frame, stepLength);
+            Advance(Current.interact, 5, frame, stepLength);
         }
 
         private void Advance(InputButton button, int index, in CharacterInputFrame frame, float stepLength)
         {
             bool down = frame.Holds(Buttons[index]);
-            bool wasDown = button.value;
-            button.value = down;
+            bool wasDown = button.held;
+            button.held = down;
             button.justPressed = down && !wasDown;
             button.justReleased = !down && wasDown;
             if (down)

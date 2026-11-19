@@ -2,12 +2,12 @@ using System;
 using Unity.Profiling;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// One part of a character's movement (an ability such as riding ziplines), in a ComposedMovementMode's list of
+    /// One part of a character's movement (an ability such as riding ziplines), in a AbilityMovementMode's list of
     /// components: it holds its own settings, and the mode calls it at each point of a physics step. A component keeps no
-    /// per-character state of its own (modes are shared assets: that's on the MovementController, see
+    /// per-character state of its own (modes are shared assets: that's on the MMotionMotor, see
     /// the state classes beside each component), and asks its mode for what the rest of the movement knows (gravity, the jump press, other
     /// abilities in progress). Turned off (Enabled), or removed from the list, the movement goes on as if it weren't
     /// there. A mode has one component of each type; another mode type reuses the same components by listing them.
@@ -18,7 +18,7 @@ namespace Character
         [Tooltip("Whether the character uses this part of its movement. Turned off, the movement goes on as if it weren't in the list")]
         [SerializeField] private bool enabled = true;
 
-        [NonSerialized] private ComposedMovementMode mode;
+        [NonSerialized] private AbilityMovementMode mode;
         [NonSerialized] private ProfilerMarker marker;
         [NonSerialized] private bool hasMarker;
 
@@ -60,8 +60,8 @@ namespace Character
         {
             if (hooksByType.TryGetValue(type, out Hooks found)) { return found; }
             Hooks overridden = Hooks.None;
-            Type[] step = { typeof(MovementData), typeof(Inputs), typeof(MovementController) };
-            Type[] finish = { typeof(MovementData), typeof(MovementController) };
+            Type[] step = { typeof(MovementStep), typeof(StepInputs), typeof(MMotionMotor) };
+            Type[] finish = { typeof(MovementStep), typeof(MMotionMotor) };
             void Check(string name, Type[] parameters, Hooks hook)
             {
                 System.Reflection.MethodInfo method = type.GetMethod(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance, null, parameters, null);
@@ -72,14 +72,14 @@ namespace Character
             Check(nameof(TakeOver), step, Hooks.TakeOver);
             Check(nameof(BeforeLocomotion), step, Hooks.BeforeLocomotion);
             Check(nameof(Locomotion), step, Hooks.Locomotion);
-            Check(nameof(AfterWalking), step, Hooks.AfterWalking);
+            Check(nameof(AfterLocomotion), step, Hooks.AfterLocomotion);
             Check(nameof(FinishStep), finish, Hooks.FinishStep);
             hooksByType[type] = overridden;
             return overridden;
         }
 
         /// <summary>The movement mode this is a component of (set by the mode before it calls the component).</summary>
-        public ComposedMovementMode Mode { get => mode; internal set => mode = value; }
+        public AbilityMovementMode Mode { get => mode; internal set => mode = value; }
 
         /// <summary>
         /// The settings of the mode's component of type T, turned on or not, or T's defaults if the mode has none: for a
@@ -88,12 +88,12 @@ namespace Character
         /// which finds only one that's turned on.
         /// </summary>
         protected T SettingsOf<T>() where T : MovementComponent, new() =>
-            mode != null ? mode.SettingsOf<T>() : ComposedMovementMode.DefaultsOf<T>.Instance;
+            mode != null ? mode.SettingsOf<T>() : AbilityMovementMode.DefaultsOf<T>.Instance;
 
         /// <summary>
         /// Every step, before anything moves the character, whatever has it (an ability's cooldowns run out meanwhile).
         /// </summary>
-        public virtual void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
         }
 
@@ -101,7 +101,7 @@ namespace Character
         /// Every step, once the timers have advanced and before an ability takes over the character: for what acts on it
         /// whatever has it (gravity, which the abilities that move it without gravity override).
         /// </summary>
-        public virtual void BeforeAbilities(MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void BeforeAbilities(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
         }
 
@@ -110,23 +110,23 @@ namespace Character
         /// returns whether it has the character this step. The mode asks its components in list order, and stops at the
         /// first that has the character: earlier in the list comes first.
         /// </summary>
-        public virtual bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller) => false;
+        public virtual bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller) => false;
 
         /// <summary>Whether this ability is under way for the character (so no other ability may start).</summary>
-        public virtual bool IsActive(MovementController controller) => false;
+        public virtual bool IsActive(MMotionMotor controller) => false;
 
         /// <summary>
         /// What this ability does with the character while it's under way (see AbilityTraits), so other abilities can
-        /// ask the mode about it (ComposedMovementMode.AbilityInProgressWith) rather than list the abilities they mean,
+        /// ask the mode about it (AbilityMovementMode.AbilityInProgressWith) rather than list the abilities they mean,
         /// a list a new ability would be missing from. None unless the ability says.
         /// </summary>
         public virtual AbilityTraits Traits => AbilityTraits.None;
 
         /// <summary>
-        /// The states this ability sets and the events raised as each starts and ends (see StateEvent), so the ability
+        /// The states this ability sets and the events raised as each starts and ends (see StateEventPair), so the ability
         /// only has to set the state. A static array, so asking allocates nothing. None unless the ability says.
         /// </summary>
-        public virtual StateEvent[] StateEvents => System.Array.Empty<StateEvent>();
+        public virtual StateEventPair[] StateEvents => System.Array.Empty<StateEventPair>();
 
         /// <summary>
         /// The movement events of a moment this component raises itself (a jump, a bounce, a jump off a wall): those with
@@ -140,13 +140,13 @@ namespace Character
         /// Those of its states whose look is the character's walking (wading, slowed in shallow water), so a model needs no
         /// animation state of its own for them: the Character Doctor doesn't ask for one.
         /// </summary>
-        public virtual CharacterState ShownByLocomotion => CharacterState.Idle;
+        public virtual CharacterState LocomotionState => CharacterState.None;
 
         /// <summary>
-        /// Whether, as it's tuned, it can be in the given one of its states (Crouching slides only with Sliding Enabled on):
+        /// Whether, as it's tuned, it can be in the given one of its states (Crouching slides only with Can Slide on):
         /// the Character Doctor asks a model to show only the states its movement can be in.
         /// </summary>
-        public virtual bool Enters(CharacterState state) => true;
+        public virtual bool AllowsState(CharacterState state) => true;
 
         /// <summary>
         /// The names of the values this component publishes for its look (AbilityValues, set during its step), so an
@@ -158,7 +158,7 @@ namespace Character
         /// When no ability has the character this step (none took it over), before it walks, dashes and jumps: for what
         /// changes how it moves on its own (crouching, say).
         /// </summary>
-        public virtual void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void BeforeLocomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
         }
 
@@ -167,7 +167,7 @@ namespace Character
         /// ground, steering in the air, the ground's friction). In list order, so what changes the momentum the character
         /// carries (friction) comes before what reads it (walking makes up the difference to its speed).
         /// </summary>
-        public virtual void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void Locomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
         }
 
@@ -176,7 +176,7 @@ namespace Character
         /// takes over the character's movement while it lasts; a jump). In list order, so a dash comes before the jump
         /// that can cancel it.
         /// </summary>
-        public virtual void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
+        public virtual void AfterLocomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
         }
 
@@ -186,26 +186,26 @@ namespace Character
         /// it has its way; the mode holds the body so where there's room (else as low as it fits), and stands it back up
         /// where there's room once none does.
         /// </summary>
-        public virtual BodyPosture? Posture(MovementController controller) => null;
+        public virtual BodyPosture? Posture(MMotionMotor controller) => null;
 
         /// <summary>
         /// Every step, last of all, whatever has the character (once its posture is set): for limits on the step's
         /// movement (how fast it falls).
         /// </summary>
-        public virtual void FinishStep(MovementData movementData, MovementController controller)
+        public virtual void FinishStep(MovementStep movementData, MMotionMotor controller)
         {
         }
 
         /// <summary>
-        /// Ends this ability if it's under way, because another took the character (see ComposedMovementMode.InterruptOthers),
+        /// Ends this ability if it's under way, because another took the character (see AbilityMovementMode.InterruptOthers),
         /// or because this was turned off while it had the character.
         /// </summary>
-        public virtual void Interrupt(MovementData movementData, MovementController controller)
+        public virtual void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
         }
 
         /// <summary>Once the step's movement is resolved against the world (see MovementMode.AfterMovementResolved).</summary>
-        public virtual void AfterMovementResolved(MovementData movementData, MovementController controller)
+        public virtual void AfterMovementResolved(MovementStep movementData, MMotionMotor controller)
         {
         }
 
@@ -244,7 +244,7 @@ namespace Character
         TakeOver = 1 << 2,
         BeforeLocomotion = 1 << 3,
         Locomotion = 1 << 4,
-        AfterWalking = 1 << 5,
+        AfterLocomotion = 1 << 5,
         FinishStep = 1 << 6,
     }
 
@@ -260,12 +260,12 @@ namespace Character
         /// The ability holds the character up: it isn't falling while it's held (by a ledge, a wall, a rope, a cable or
         /// water). A fall is measured from where it was let go (see Rolling).
         /// </summary>
-        HoldsUp = 1 << 0,
+        Supported = 1 << 0,
         /// <summary>
         /// The character holds on to something (a ledge, a crate, a rope or a cable): what would throw it about, a bounce
         /// pad, leaves it be.
         /// </summary>
-        HoldsOn = 1 << 1,
+        Attached = 1 << 1,
     }
 
     /// <summary>

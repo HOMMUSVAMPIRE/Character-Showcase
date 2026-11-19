@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
-using Character;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Models
+namespace MeridianMotion.Tests.EditMode.Models
 {
     /// <summary>
-    /// Checks of what Prepare Character Models leaves behind for every model in Assets/Models/CharacterModels, run in
+    /// Checks of what Prepare Humanoid Models leaves behind for every model in Assets/Models/Humanoid, run in
     /// the editor without entering Play mode: each is ready to use with the shared animation, its avatar's reference
     /// pose is a T-pose with nothing rotated above its skeleton, and its stored ground offset matches a fresh
     /// measurement. A model added without being prepared, or a change to preparing that breaks one of these, fails
@@ -30,8 +30,8 @@ namespace CharacterShowcase.Tests.EditMode.Models
         /// <summary>Every prepared model's source, by path, or a placeholder (skipped) if there are none.</summary>
         private static IEnumerable<string> PreparedSources()
         {
-            string[] paths = AssetDatabase.IsValidFolder(CharacterModelImporter.ModelsFolder)
-                ? AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}", new[] { CharacterModelImporter.ModelsFolder })
+            string[] paths = AssetDatabase.IsValidFolder(HumanoidModelImporter.ModelsFolder)
+                ? AssetDatabase.FindAssets($"t:{nameof(PrefabModelSource)}", new[] { HumanoidModelImporter.ModelsFolder })
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .OrderBy(path => path, System.StringComparer.Ordinal)
                     .ToArray()
@@ -39,10 +39,10 @@ namespace CharacterShowcase.Tests.EditMode.Models
             return paths.Length > 0 ? paths : new[] { NoModels };
         }
 
-        private static DirectCharacterModelSource Load(string path)
+        private static PrefabModelSource Load(string path)
         {
-            if (path == NoModels) { Assert.Ignore($"There are no prepared models in {CharacterModelImporter.ModelsFolder}."); }
-            var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(path);
+            if (path == NoModels) { Assert.Ignore($"There are no prepared models in {HumanoidModelImporter.ModelsFolder}."); }
+            var source = AssetDatabase.LoadAssetAtPath<PrefabModelSource>(path);
             Assert.That(source, Is.Not.Null, $"Test setup: no model source at '{path}'.");
             return source;
         }
@@ -65,21 +65,21 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test]
         public void EveryModelFile_HasAPreparedSource()
         {
-            foreach (string modelPath in CharacterModelImporter.FindModelFiles())
+            foreach (string modelPath in HumanoidModelImporter.FindModelFiles())
             {
-                string sourcePath = CharacterModelImporter.DefinitionPathFor(modelPath, CharacterModelImporter.DisplayName(modelPath));
-                Assert.That(AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(sourcePath), Is.Not.Null,
-                    $"'{modelPath}' has no source at '{sourcePath}': run Tools > Character Showcase > Prepare Character Models.");
+                string sourcePath = HumanoidModelImporter.SourcePathFor(modelPath, HumanoidModelImporter.NameOf(modelPath));
+                Assert.That(AssetDatabase.LoadAssetAtPath<PrefabModelSource>(sourcePath), Is.Not.Null,
+                    $"'{modelPath}' has no source at '{sourcePath}': run Tools > Meridian Motion > Prepare > Humanoid Models.");
             }
         }
 
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_IsReady_AndPlaysTheSharedAnimation([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
-            Assert.That(CharacterModelImporter.Validate(source), Is.Null);
-            Assert.That(CharacterModelImporter.ControllerOf(source),
-                Is.SameAs(AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath)));
+            PrefabModelSource source = Load(path);
+            Assert.That(HumanoidModelImporter.Validate(source), Is.Null);
+            Assert.That(HumanoidModelImporter.ControllerOf(source),
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<AnimatorController>(HumanoidModelImporter.ControllerPath)));
         }
 
         /// <summary>
@@ -90,42 +90,42 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasHitboxesOnItsBodysBones_OnALayerTheMovementLeavesOut([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
+            PrefabModelSource source = Load(path);
             int layer = CharacterHitboxes.Layer;
             Assert.That(layer, Is.GreaterThanOrEqualTo(0), $"The project should have a '{CharacterHitboxes.LayerName}' layer.");
             var hitboxes = source.ModelPrefab.GetComponent<CharacterHitboxes>();
-            Assert.That(hitboxes, Is.Not.Null, "The model should have hitboxes: run Tools > Character Showcase > Fit Hitboxes.");
+            Assert.That(hitboxes, Is.Not.Null, "The model should have hitboxes: run Tools > Meridian Motion > Fit Hitboxes.");
             Animator animator = source.ModelPrefab.GetComponentInChildren<Animator>(true);
             var bodyBones = new HashSet<Transform>(HitboxFitter.HumanoidBones.Select(b => animator.GetBoneTransform(b)).Where(t => t != null));
             Assert.That(hitboxes.Hitboxes.Select(h => h.Bone), Is.EquivalentTo(bodyBones), "A hitbox on each of its body's bones.");
-            foreach (Hitbox hitbox in hitboxes.Hitboxes)
+            foreach (BoneHitbox hitbox in hitboxes.Hitboxes)
             {
                 Assert.That(hitbox.gameObject.layer, Is.EqualTo(layer), $"'{hitbox.name}' should be on the {CharacterHitboxes.LayerName} layer.");
                 Assert.That(hitbox.Collider.radius, Is.GreaterThan(0f));
             }
-            foreach (FootPlacementIK feet in source.ModelPrefab.GetComponentsInChildren<FootPlacementIK>(true))
+            foreach (HumanoidFootPlacementIK feet in source.ModelPrefab.GetComponentsInChildren<HumanoidFootPlacementIK>(true))
             {
                 int ground = new SerializedObject(feet).FindProperty("groundLayers").intValue;
                 Assert.That(ground & (1 << layer), Is.Zero, "Foot placement shouldn't stand the feet on hitboxes.");
             }
             var character = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Character.prefab");
-            Assert.That(character.GetComponent<MovementController>().MovementLayerMask.value & (1 << layer), Is.Zero,
+            Assert.That(character.GetComponent<MMotionMotor>().MovementLayerMask.value & (1 << layer), Is.Zero,
                 "The character's movement shouldn't meet hitboxes.");
         }
 
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasNothingRotatedAboveItsSkeleton([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
-            Assert.That(CharacterModelImporter.RotatedAboveSkeleton(source.ModelPrefab, source.Avatar), Is.Null,
+            PrefabModelSource source = Load(path);
+            Assert.That(HumanoidModelImporter.RotatedAboveSkeleton(source.ModelPrefab, source.Avatar), Is.Null,
                 "Rotated or unevenly scaled nodes above the skeleton distort the model when the character is stretched.");
         }
 
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasABody_FittedToIt([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
-            Assert.That(source.BodyDefinition, Is.Not.Null, $"'{path}' should have a body of its own: run Prepare Character Models.");
+            PrefabModelSource source = Load(path);
+            Assert.That(source.BodyDefinition, Is.Not.Null, $"'{path}' should have a body of its own: run Prepare Humanoid Models.");
             if (!source.BodyDefinition.RefitOnPrepare) { Assert.Ignore("Its body is shaped by hand."); }
             BodyShape body = source.BodyDefinition.Shape;
             float height = CharacterModelSource.MeasureHeight(source.ModelPrefab, source.ModelPrefab.transform);
@@ -138,16 +138,16 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasGroundOffsets_MatchingAFreshMeasurement([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
-            Assert.That(CharacterModelImporter.TryMeasureGroundOffset(source.ModelPrefab, CharacterModelImporter.ControllerOf(source),
+            PrefabModelSource source = Load(path);
+            Assert.That(HumanoidModelImporter.TryMeasureGroundOffset(source.ModelPrefab, HumanoidModelImporter.ControllerOf(source),
                 source.Avatar, out float measured), Is.True, "Its standing pose should be measurable.");
             Assert.That(source.GroundOffset, Is.EqualTo(measured).Within(1e-4f),
-                "Its Ground Offset is out of date: run Prepare Character Models.");
-            Assert.That(CharacterModelImporter.TryMeasureGroundOffsets(source.ModelPrefab, CharacterModelImporter.ControllerOf(source),
+                "Its Ground Offset is out of date: run Prepare Humanoid Models.");
+            Assert.That(HumanoidModelImporter.TryMeasureGroundOffsets(source.ModelPrefab, HumanoidModelImporter.ControllerOf(source),
                 source.Avatar, out _, out float animated), Is.True);
             Assert.That(source.AnimatedGroundOffset, Is.EqualTo(animated).Within(1e-4f), "Its Animated Ground Offset is out of date.");
             Assert.That(source.MeasureGroundOnLoad, Is.False, "Measured once here, it needn't be measured each time it loads.");
-            Assert.That(CharacterModelImporter.TryMeasureStanding(source.ModelPrefab, CharacterModelImporter.ControllerOf(source),
+            Assert.That(HumanoidModelImporter.TryMeasureStanding(source.ModelPrefab, HumanoidModelImporter.ControllerOf(source),
                 source.Avatar, out _, out _, out StandingPose pose), Is.True);
             Assert.That(source.FacingCorrection, Is.EqualTo(pose.FacingCorrection), "Its Facing Correction is out of date.");
             Assert.That(Mathf.Abs(measured), Is.LessThan(0.1f * CharacterModelSource.MeasureHeight(source.ModelPrefab)),
@@ -162,7 +162,7 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void EveryPreparedModel_HasATPose_AsItsReferencePose([ValueSource(nameof(PreparedSources))] string path)
         {
-            DirectCharacterModelSource source = Load(path);
+            PrefabModelSource source = Load(path);
             Animator prefabAnimator = source.ModelPrefab.GetComponentInChildren<Animator>(true);
             Avatar avatar = source.Avatar != null ? source.Avatar : prefabAnimator.avatar;
             HumanDescription description = avatar.humanDescription;
@@ -243,7 +243,7 @@ namespace CharacterShowcase.Tests.EditMode.Models
             (Transform root, Transform node, Transform hips, Transform[] all) = Armature(Quaternion.Euler(turn), scale);
             Matrix4x4[] before = all.Skip(1).Select(t => t.localToWorldMatrix).ToArray();
 
-            Assert.That(CharacterModelImporter.StraightenAboveSkeleton(root, hips), Is.True);
+            Assert.That(HumanoidModelImporter.StraightenAboveSkeleton(root, hips), Is.True);
             Assert.That(Quaternion.Angle(node.localRotation, Quaternion.identity), Is.LessThan(1e-3f), "The node should be unrotated.");
             Matrix4x4[] after = all.Skip(1).Select(t => t.localToWorldMatrix).ToArray();
             for (int i = 0; i < before.Length; i++)
@@ -261,7 +261,7 @@ namespace CharacterShowcase.Tests.EditMode.Models
         {
             (Transform root, Transform node, Transform hips, Transform[] all) = Armature(Quaternion.Euler(30f, 0f, 0f), new Vector3(1f, 1.25f, 1f));
             Quaternion rotation = node.localRotation;
-            Assert.That(CharacterModelImporter.StraightenAboveSkeleton(root, hips), Is.False);
+            Assert.That(HumanoidModelImporter.StraightenAboveSkeleton(root, hips), Is.False);
             Assert.That(node.localRotation, Is.EqualTo(rotation));
         }
 
@@ -269,9 +269,9 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void GroundOffsets_CountMeshesCarriedByBones()
         {
-            DirectCharacterModelSource source = Load(PreparedSources().First());
-            RuntimeAnimatorController controller = CharacterModelImporter.ControllerOf(source);
-            Assert.That(CharacterModelImporter.TryMeasureGroundOffset(source.ModelPrefab, controller, source.Avatar, out float bare), Is.True);
+            PrefabModelSource source = Load(PreparedSources().First());
+            RuntimeAnimatorController controller = HumanoidModelImporter.ControllerOf(source);
+            Assert.That(HumanoidModelImporter.TryMeasureGroundOffset(source.ModelPrefab, controller, source.Avatar, out float bare), Is.True);
 
             GameObject model = Track(Object.Instantiate(source.ModelPrefab));
             Transform foot = model.GetComponentInChildren<Animator>().GetBoneTransform(HumanBodyBones.LeftFoot);
@@ -283,7 +283,7 @@ namespace CharacterShowcase.Tests.EditMode.Models
             shoe.transform.position = foot.position + Vector3.down * 0.3f;
             shoe.transform.localScale = Vector3.Scale(Vector3.one * 0.02f, new Vector3(1f / foot.lossyScale.x, 1f / foot.lossyScale.y, 1f / foot.lossyScale.z));
 
-            Assert.That(CharacterModelImporter.TryMeasureGroundOffset(model, controller, source.Avatar, out float shod), Is.True);
+            Assert.That(HumanoidModelImporter.TryMeasureGroundOffset(model, controller, source.Avatar, out float shod), Is.True);
             Assert.That(shod, Is.LessThan(bare - 0.15f), "A mesh carried by the foot reaching below the skinned soles should set the offset.");
         }
 
@@ -294,29 +294,29 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void WhatAModelWasPreparedAgainst_ChangesWithItsAnimation()
         {
-            string modelPath = CharacterModelImporter.FindModelFiles().FirstOrDefault();
-            var shared = AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath);
+            string modelPath = HumanoidModelImporter.FindModelFiles().FirstOrDefault();
+            var shared = AssetDatabase.LoadAssetAtPath<AnimatorController>(HumanoidModelImporter.ControllerPath);
             if (modelPath == null || shared == null) { Assert.Ignore("Needs a model file and the package's shared Animator Controller."); }
-            Assert.That(CharacterModelImporter.RecordFor(modelPath, shared), Is.EqualTo(CharacterModelImporter.RecordFor(modelPath, shared)),
+            Assert.That(HumanoidModelImporter.RecordFor(modelPath, shared), Is.EqualTo(HumanoidModelImporter.RecordFor(modelPath, shared)),
                 "Nothing changed, so it shouldn't need preparing again.");
 
             const string folder = "Assets/__PreparedModelTests";
             // Busy, so the model postprocessor leaves these temporary imports alone.
-            using (CharacterModelImporter.Busy())
+            using (HumanoidModelImporter.Busy())
             {
                 try
                 {
                     AssetDatabase.CreateFolder("Assets", "__PreparedModelTests");
                     string copyPath = folder + "/Copy.controller";
-                    Assert.That(AssetDatabase.CopyAsset(CharacterModelImporter.ControllerPath, copyPath), Is.True);
+                    Assert.That(AssetDatabase.CopyAsset(HumanoidModelImporter.ControllerPath, copyPath), Is.True);
                     var copy = AssetDatabase.LoadAssetAtPath<AnimatorController>(copyPath);
-                    CharacterModelImporter.PreparedRecord before = CharacterModelImporter.RecordFor(modelPath, copy);
-                    Assert.That(before.File, Is.EqualTo(CharacterModelImporter.RecordFor(modelPath, shared).File));
+                    HumanoidModelImporter.PreparedRecord before = HumanoidModelImporter.RecordFor(modelPath, copy);
+                    Assert.That(before.File, Is.EqualTo(HumanoidModelImporter.RecordFor(modelPath, shared).File));
 
                     copy.AddParameter("Changed", AnimatorControllerParameterType.Float);
                     EditorUtility.SetDirty(copy);
                     AssetDatabase.SaveAssets();
-                    CharacterModelImporter.PreparedRecord after = CharacterModelImporter.RecordFor(modelPath, copy);
+                    HumanoidModelImporter.PreparedRecord after = HumanoidModelImporter.RecordFor(modelPath, copy);
                     Assert.That(after.File, Is.EqualTo(before.File), "The model file hasn't changed.");
                     Assert.That(after.Animation, Is.Not.EqualTo(before.Animation), "A changed controller should make the model due again.");
                 }
@@ -333,8 +333,8 @@ namespace CharacterShowcase.Tests.EditMode.Models
         [Test, Category(SampleContent)]
         public void Previews_AreSizedLikeTheLoadedModel_FitToHeightIncluded()
         {
-            DirectCharacterModelSource prepared = Load(PreparedSources().First());
-            var source = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            PrefabModelSource prepared = Load(PreparedSources().First());
+            var source = Track(ScriptableObject.CreateInstance<PrefabModelSource>());
             source.ModelPrefab = prepared.ModelPrefab;
             source.Height = ModelHeight.FitToHeight;
             source.FitHeight = 1.2f;

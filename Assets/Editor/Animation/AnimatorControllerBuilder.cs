@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Character;
-using UnityEditor;
+using MeridianMotion.Characters;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// Builds an Animator Controller from its layout (AnimatorLayout): Tools > Character Showcase > Build Animator
+    /// Builds an Animator Controller from its layout (AnimatorLayout): Tools > Meridian Motion > Build Animator
     /// Controllers builds every layout in the project, as Prepare Animations does once the clips are ready (and the
     /// showcase's model generators, after making their clips). The controller asset is emptied and filled again in place, so everything referring to it (every model
     /// prefab) keeps it. Clip slots fall back through their candidates, a state's motions through theirs, and anything whose
@@ -75,7 +75,7 @@ namespace CharacterShowcase.EditorTools
             return controller;
         }
 
-        [MenuItem("Tools/Character Showcase/Build Animator Controllers", priority = 5)]
+        [MenuItem("Tools/Meridian Motion/Build Animator Controllers", priority = 5)]
         private static void BuildAllFromMenu() => BuildAll();
 
         /// <summary>
@@ -142,7 +142,7 @@ namespace CharacterShowcase.EditorTools
                 // its fallback slot's (followed as far as it goes).
                 foreach (ClipSlot slot in layout.clips)
                 {
-                    AnimationClip clip = set != null ? set.ClipFor(slot.name) : null;
+                    AnimationClip clip = set != null ? set.ClipForSlot(slot.name) : null;
                     if (clip == null) { clip = slot.candidates?.FirstOrDefault(c => c != null); }
                     else { report.Append($"  {slot.name}: the set's {clip.name}\n"); }
                     if (clip != null) { clips[slot.name] = clip; }
@@ -355,7 +355,7 @@ namespace CharacterShowcase.EditorTools
                     }
                 }
 
-                // OnAnimatorIK (and so CharacterIK) only runs on layers with IK Pass enabled. Layers are returned by
+                // OnAnimatorIK (and so HumanoidIK) only runs on layers with IK Pass enabled. Layers are returned by
                 // copy, so modify the array and assign it back.
                 AnimatorControllerLayer[] layers = target.layers;
                 layers[0].iKPass = layout.ikPass;

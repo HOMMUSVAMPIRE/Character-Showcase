@@ -1,19 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests.InputAndDeterminism
+namespace MeridianMotion.Tests.InputAndDeterminism
 {
     /// <summary>
     /// Tests that the movement is deterministic on one build: the same state, input frames and world give the same steps,
     /// bit for bit (pose and velocity), whatever else differs. A long session times things exactly as a fresh one (the
     /// character's tick clock); the same scene built in another order runs the same (stable choices between equally near
-    /// floors, walls and ropes); a character saved mid-ability and put back (MovementController.SaveState, RestoreState),
+    /// floors, walls and ropes); a character saved mid-ability and put back (MMotionMotor.SaveState, RestoreState),
     /// the level's clock with it, steps on exactly as it did, and so does a new character its state's written to bytes and
     /// read into (StateSerializer); and a run whose world needs Unity's physics steps (a moving
     /// platform) is the same at another frame rate. What prediction in a networked game relies on: each difference
@@ -49,13 +49,13 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
             return null;
         }
 
-        private IEnumerator Record(int steps, Func<int, Inputs> script, List<Pose> into, CharacterState? mustDo = null)
+        private IEnumerator Record(int steps, Func<int, StepInputs> script, List<Pose> into, CharacterState? mustDo = null)
         {
-            CharacterState did = CharacterState.Idle;
+            CharacterState did = CharacterState.None;
             yield return rig.Run(steps, script, _ =>
             {
                 into.Add(new Pose(rig));
-                did |= rig.Movement.lastFrameMovementData.state;
+                did |= rig.Movement.lastStep.state;
             });
             if (mustDo is { } wanted) { Assume.That(did & wanted, Is.EqualTo(wanted), $"Test setup: the run should do {wanted} (it did {did})."); }
         }
@@ -65,7 +65,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
         /// <summary>
         /// A character whose clock starts three billion steps in (some 700 days at 50 a second) walks off a ledge, jumps
         /// in its coyote time, dashes and lands exactly as one starting at 0: it times everything in whole steps
-        /// (MovementController.StepTick, SecondsSince), so nothing drifts or loses its fractions as the clock grows.
+        /// (MMotionMotor.StepIndex, SecondsSince), so nothing drifts or loses its fractions as the clock grows.
         /// </summary>
         [UnityTest]
         public IEnumerator ALongSession_TimesEverythingExactlyAsAFreshOne()
@@ -79,7 +79,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
                 rig.SpawnCharacter(new Vector3(0f, 0.02f, 0f));
                 rig.Movement.SetClock(run == 0 ? 0u : 3_000_000_000u);
                 int leftAt = -1;
-                Inputs Script(int step)
+                StepInputs Script(int step)
                 {
                     if (step < 15) { return CharacterTestRig.Idle(); }
                     if (leftAt < 0 && !rig.Grounded) { leftAt = step; }
@@ -127,7 +127,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
             Physics.SyncTransforms();
         }
 
-        private static Inputs SceneScript(Scene scene, int step) => scene switch
+        private static StepInputs SceneScript(Scene scene, int step) => scene switch
         {
             Scene.ACornerOfTwoWalls => CharacterTestRig.Sprint(new Vector3(1f, 0f, 1f).normalized),
             Scene.TwoRopes => step >= 10 && step < 22 ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(step < 10 ? Vector3.forward : Vector3.zero),
@@ -171,7 +171,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
                     break;
                 case Ability.Ziplining:
                     rig.Floor();
-                    Level.Zipline line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
+                    MeridianMotion.Levels.ZiplineCable line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
                     yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
                     rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f));
                     break;
@@ -198,7 +198,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
             Physics.SyncTransforms();
         }
 
-        private Inputs AbilityScript(Ability ability, int step)
+        private StepInputs AbilityScript(Ability ability, int step)
         {
             switch (ability)
             {
@@ -210,7 +210,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
                 // Into the rope, then hanging on and swinging: it swings by itself, so its own state matters.
                 case Ability.RopeSwinging: return step >= 10 && step < 22 ? CharacterTestRig.Jump(Vector3.forward) : CharacterTestRig.Move(step < 10 ? Vector3.forward : Vector3.zero);
                 // Taking hold of the box and pushing it, then pulling it back.
-                case Ability.Pushing: return CharacterTestRig.Grab(step < 50 ? Vector3.forward : Vector3.back);
+                case Ability.Pushing: return CharacterTestRig.Interact(step < 50 ? Vector3.forward : Vector3.back);
                 default:
                     if (step == 3) { rig.Controller.SetScale(new Vector3(1.4f, 1.4f, 1.4f)); }
                     return CharacterTestRig.Move(Vector3.forward * 0.5f);
@@ -250,7 +250,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
             Assert.That(rig.Movement.RestoreState(saved), Is.True);
             world.Restore();
             rig.LevelTick = levelTick;
-            Assert.That(rig.Movement.StepTick, Is.EqualTo(saved.StepTick), "Put back, its clock should be where it was.");
+            Assert.That(rig.Movement.StepIndex, Is.EqualTo(saved.StepIndex), "Put back, its clock should be where it was.");
             var again = new List<Pose>();
             yield return Record(40, step => AbilityScript(ability, at + step), again);
             string differs = FirstDifference(first, again);

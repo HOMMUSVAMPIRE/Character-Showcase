@@ -1,10 +1,10 @@
 using System.Collections.Generic;
+using MeridianMotion.PhysicsQueries;
 using NUnit.Framework;
-using PhysicsQueries;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace MeridianMotion.Tests.EditMode.Movement
 {
     /// <summary>
     /// Tests of the growing physics query buffers (PhysicsQueries.QueryBuffer): a query that fills its buffer grows it

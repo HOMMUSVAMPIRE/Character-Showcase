@@ -3,7 +3,7 @@
 The Universal Animation Libraries (Assets/Animation/Quaternius) are the libraries' mannequin with every animation on it;
 the pack ships the female mannequin as a model file of its own, but not this one. This keeps the armature and its mesh,
 drops the animations, and writes an FBX like the female one's (the same objects, rig and orientation), for
-Assets/Models/CharacterModels/Quaternius, where Prepare Character Models sets it up as a character model. The file is
+Assets/Models/Humanoid/Quaternius, where Prepare Humanoid Models sets it up as a character model. The file is
 read back and checked: every bone where it rests in the library, the mesh the same, and no animations.
 
 Run with Blender (4.x):
@@ -59,7 +59,7 @@ bpy.ops.export_scene.fbx(
     bake_anim=False,
     mesh_smooth_type='FACE',
     # The axes and units Quaternius's own files are in (Z up, -Y forward, centimetres), as the female mannequin's is:
-    # written Y up in metres instead, Unity imported it turned round (Prepare Character Models then turned it back).
+    # written Y up in metres instead, Unity imported it turned round (Prepare Humanoid Models then turned it back).
     axis_forward='-Y',
     axis_up='Z',
     apply_scale_options='FBX_SCALE_UNITS',

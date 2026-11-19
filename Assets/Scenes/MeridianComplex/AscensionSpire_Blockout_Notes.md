@@ -3,7 +3,7 @@
 The Ascension Spire, the complex's vertical-traversal district, is graybox in `MeridianComplex.unity`, from the sheets
 `MeridianComplex-ZoneLayouts.png` (its detailed layout) and `MeridianComplex-RemainingAreas.png`. Level geometry only,
 in the placeholder smooth-concrete material. It's built by `Assets/Editor/Level/MeridianAscensionSpireBuilder.cs`, as
-part of **Tools > Character Showcase > Level > Build Meridian Complex**.
+part of **Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex**.
 
 The spire is laid out in its own coordinates, centred on the central core, under a group at world (48, 0, 148).
 

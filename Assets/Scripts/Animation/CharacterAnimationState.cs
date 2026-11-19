@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// What a character's animations need to know about how they're moving, worked out from the movement each frame.
@@ -26,13 +26,13 @@ namespace Character
         public Quaternion facing;
         /// <summary>
         /// How far (degrees, positive nose up) the character's body is pitched about its feet, from level (see
-        /// MovementController.BodyPitch): swimming underwater, along the way it swims. The model is tilted to match.
+        /// MMotionMotor.BodyPitch): swimming underwater, along the way it swims. The model is tilted to match.
         /// </summary>
         public float bodyPitch;
 
         /// <summary>
         /// The time (seconds) the animation update this state was built for covers: what the IK eases by when the Animator
-        /// is stepped by hand (see CharacterAnimationStates.DeltaTimeOf), so a test stepping it with the physics gets the
+        /// is stepped by hand (see AnimationStateTiming.DeltaTimeOf), so a test stepping it with the physics gets the
         /// step's, not the render frame's. 0 before the first update.
         /// </summary>
         public float deltaTime;
@@ -45,7 +45,7 @@ namespace Character
         public CharacterState state;
         /// <summary>
         /// The values the character's abilities publish for their look (see AbilityValues): an Animator Parameter
-        /// Translator's float parameter can show any of them. Null without a MovementController.
+        /// Translator's float parameter can show any of them. Null without a MMotionMotor.
         /// </summary>
         public AbilityValues abilityValues;
 
@@ -59,7 +59,7 @@ namespace Character
         /// <summary>Seconds since the character last touched the ground (0 while touching it).</summary>
         public float timeInAir;
         /// <summary>
-        /// Whether the character is moving across the ground faster than the AnimationController's moving threshold
+        /// Whether the character is moving across the ground faster than the MMotionAnimator's moving threshold
         /// (scaled with its size).
         /// </summary>
         public bool moving;
@@ -95,7 +95,7 @@ namespace Character
         public bool vaulting;
         /// <summary>
         /// How far through the vault (0 to 1) its animation is: the vault's progress, but no faster than plays it over
-        /// the AnimationController's Vault Min Duration, so after a fast vault it finishes as the character runs on.
+        /// the MMotionAnimator's Vault Min Duration, so after a fast vault it finishes as the character runs on.
         /// </summary>
         public float vaultProgress;
         /// <summary>
@@ -107,7 +107,7 @@ namespace Character
         public bool steppingUp;
         /// <summary>
         /// How far (m, 0 or negative) the model is being held below the character as it eases up after a step up's quick
-        /// rise: 0 once it has caught up (see AnimationController).
+        /// rise: 0 once it has caught up (see MMotionAnimator).
         /// </summary>
         public float stepUpLag;
         /// <summary>
@@ -177,10 +177,10 @@ namespace Character
         /// the way the character rides. Zero otherwise.
         /// </summary>
         public Vector3 gripDirection;
-        /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See ACCharacterController.SetScale.</summary>
+        /// <summary>The character's scale (x width, y height, z depth; 1, 1, 1 as authored). See MMotionCharacter.SetScale.</summary>
         public Vector3 scale;
         /// <summary>
-        /// What the character's speeds are multiplied by at its size (see MovementController.SpeedScale; 1 as authored).
+        /// What the character's speeds are multiplied by at its size (see MMotionMotor.SpeedScale; 1 as authored).
         /// Speeds divided by it are as the character would move at its authored size.
         /// </summary>
         public float speedScale;
@@ -238,8 +238,8 @@ namespace Character
     }
 
     /// <summary>
-    /// Something that provides a character's animation state, such as the AnimationController. Components on a model
-    /// (like FootPlacementIK) find one in their parents, so they work on any character without knowing its setup.
+    /// Something that provides a character's animation state, such as the MMotionAnimator. Components on a model
+    /// (like HumanoidFootPlacementIK) find one in their parents, so they work on any character without knowing its setup.
     /// </summary>
     public interface ICharacterAnimationStateSource
     {
@@ -248,7 +248,7 @@ namespace Character
     }
 
     /// <summary>Helpers for what reads the animation state.</summary>
-    public static class CharacterAnimationStates
+    public static class AnimationStateTiming
     {
         /// <summary>
         /// The time the Animator's update that IK is solving in covers, for the IK to ease by. An Animator that updates

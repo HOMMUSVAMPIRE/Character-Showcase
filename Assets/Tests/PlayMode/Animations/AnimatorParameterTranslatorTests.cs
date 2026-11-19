@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
     /// Tests of an Animator Parameter Translator's bool parameters, set in its inspector: one showing a character's state

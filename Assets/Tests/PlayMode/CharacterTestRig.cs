@@ -3,16 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
-    /// Builds a tiny physics world around a character prefab and drives its MovementController directly with scripted
+    /// Builds a tiny physics world around a character prefab and drives its MMotionMotor directly with scripted
     /// inputs, one call per physics step, so tests don't depend on input devices or the input manager. The prefab is
     /// the one a CharacterTestSettings asset names, or else the package's own. Tests size their worlds from the
     /// character (its capsule, step height, slope limit and speeds, below), so they hold for any character's tuning.
@@ -39,20 +39,20 @@ namespace CharacterShowcase.Tests
         public const float MaxFrameTime = 0.05f;
 
         public GameObject Character { get; private set; }
-        public MovementController Movement { get; private set; }
+        public MMotionMotor Movement { get; private set; }
         public Rigidbody Body { get; private set; }
 
         /// <summary>The character's physics position (its feet), not the interpolated render position.</summary>
         public Vector3 Position => Body.position;
-        public bool Grounded => Movement.lastFrameMovementData != null
-                                && ((Movement.lastFrameMovementData.state & CharacterState.Grounded) != 0);
+        public bool Grounded => Movement.lastStep != null
+                                && ((Movement.lastStep.state & CharacterState.Grounded) != 0);
 
         public CharacterTestRig()
         {
             // The level's clock is the rig's: it counts the physics steps the rig steps its character in (see LevelTicker),
             // so a test's moving platforms start their trips as its character starts moving, however many physics steps
             // passed before (loading the model takes as many frames as it takes).
-            Level.LevelClock.TickSource = () => levelTick;
+            MeridianMotion.Levels.LevelClock.TickSource = () => levelTick;
 
             // Run the simulation faster than real time. Physics steps stay the same size, so results are unchanged.
             previousTimeScale = Time.timeScale;
@@ -74,7 +74,7 @@ namespace CharacterShowcase.Tests
 
         public void SpawnCharacter(Vector3 position) => SpawnCharacter(position, null);
 
-        /// <summary>Spawns the given character prefab (another than the one tested, a creature's, say), or the tested one if null.</summary>
+        /// <summary>Spawns the given character prefab (another than the one tested, a generic-rig character's, say), or the tested one if null.</summary>
         public void SpawnCharacter(Vector3 position, GameObject prefab)
         {
             prefab ??= CharacterPrefab();
@@ -83,8 +83,8 @@ namespace CharacterShowcase.Tests
             Character = Object.Instantiate(prefab, position, Quaternion.identity);
             created.Add(Character);
             // The tests drive movement themselves; the controller would otherwise read the (absent) input manager.
-            Character.GetComponent<ACCharacterController>().enabled = false;
-            Movement = Character.GetComponent<MovementController>();
+            Character.GetComponent<MMotionCharacter>().enabled = false;
+            Movement = Character.GetComponent<MMotionMotor>();
             Body = Character.GetComponent<Rigidbody>();
             ClearEvents();
             Movement.MovementEventRaised += (movementEvent, _) =>
@@ -95,10 +95,10 @@ namespace CharacterShowcase.Tests
             // The character moves with its own copy of its movement mode, so a test can change settings on it (see
             // SetMovementSetting) without changing the asset: in the editor, a change to the asset itself would stay.
             // The copy starts from the asset, so the tests still check the movement as it's tuned.
-            if (Movement.movementHandler != null)
+            if (Movement.movementMode != null)
             {
-                Movement.movementHandler = Object.Instantiate(Movement.movementHandler);
-                created.Add(Movement.movementHandler);
+                Movement.movementMode = Object.Instantiate(Movement.movementMode);
+                created.Add(Movement.movementMode);
             }
         }
 
@@ -156,9 +156,9 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>The character prefab's body as authored (before it's spawned, to build a world around it).</summary>
-        public static BodyShape PrefabBody() => CharacterPrefab().GetComponent<MovementController>().AuthoredBody;
+        public static BodyShape PrefabBody() => CharacterPrefab().GetComponent<MMotionMotor>().AuthoredBody;
         /// <summary>The character prefab's step height at its authored size (before it's spawned).</summary>
-        public static float PrefabStepHeight() => CharacterPrefab().GetComponent<MovementController>().MaxStepHeight;
+        public static float PrefabStepHeight() => CharacterPrefab().GetComponent<MMotionMotor>().MaxStepHeight;
 
         // ---- The character's size and tuning, as it is now (at its current size) ----
 
@@ -211,7 +211,7 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>Whether the character's body, as it is now, overlaps nothing (more than the skin width).</summary>
-        public bool BodyFits => Movement.Body.Fits(Body.position, MovementController.Attitude(Body.rotation, Movement.BodyPitch), Movement.Scale, Movement.Posture);
+        public bool BodyFits => Movement.Body.Fits(Body.position, MMotionMotor.Attitude(Body.rotation, Movement.BodyPitch), Movement.Scale, Movement.Posture);
 
         /// <summary>How far (m) the character's body reaches out in front of its feet (see CharacterBody.FrontExtent).</summary>
         public float FrontExtent => Movement.Body.FrontExtent;
@@ -228,27 +228,27 @@ namespace CharacterShowcase.Tests
         /// <summary>The character's sprinting speed (its run speed) at its current size.</summary>
         public float RunSpeed => Component<WalkingAndRunning>().RunSpeed * Movement.SpeedScale;
         /// <summary>How many jumps the character gets before landing (its Jumping's Max Jumps; 0 with Jumping turned off).</summary>
-        public int MaxJumps => MovementHelpers.MaxJumps(Movement);
+        public int MaxJumps => MovementRules.MaxJumps(Movement);
         /// <summary>Seconds to walk the given distance at full stick, plus a margin for speeding up and settling.</summary>
         public float SecondsToWalk(float metres, float margin = 0.5f) => metres / WalkSpeed + margin;
 
         /// <summary>
-        /// The character's movement mode as the given interface or type (ComposedMovementMode, BasicMovementMode). Ignores the test if it
+        /// The character's movement mode as the given interface or type (AbilityMovementMode, StandardMovementMode). Ignores the test if it
         /// isn't one: a test of dashing has nothing to test on a character that can't dash.
         /// </summary>
         public T Mode<T>() where T : class
         {
-            if (Movement.movementHandler is T mode) { return mode; }
-            Assert.Ignore($"The character's movement mode ({Movement.movementHandler?.GetType().Name ?? "none"}) isn't a {typeof(T).Name}.");
+            if (Movement.movementMode is T mode) { return mode; }
+            Assert.Ignore($"The character's movement mode ({Movement.movementMode?.GetType().Name ?? "none"}) isn't a {typeof(T).Name}.");
             return null;
         }
 
-        /// <summary>The character's AnimationController, which animates its model.</summary>
-        public AnimationController Animation => Character.GetComponent<AnimationController>();
-        /// <summary>The character's ACCharacterController (disabled: the rig steps its movement and scale itself).</summary>
-        public ACCharacterController Controller => Character.GetComponent<ACCharacterController>();
-        /// <summary>The character's CharacterModelHost, which loads its model at runtime.</summary>
-        public CharacterModelHost Models => Character.GetComponent<CharacterModelHost>();
+        /// <summary>The character's MMotionAnimator, which animates its model.</summary>
+        public MMotionAnimator Animation => Character.GetComponent<MMotionAnimator>();
+        /// <summary>The character's MMotionCharacter (disabled: the rig steps its movement and scale itself).</summary>
+        public MMotionCharacter Controller => Character.GetComponent<MMotionCharacter>();
+        /// <summary>The character's CharacterModelSlot, which loads its model at runtime.</summary>
+        public CharacterModelSlot Models => Character.GetComponent<CharacterModelSlot>();
 
         /// <summary>Waits (in real frames, not physics steps) for the character's model to finish loading.</summary>
         public IEnumerator WaitForModel(float timeoutSeconds = 10f)
@@ -285,20 +285,20 @@ namespace CharacterShowcase.Tests
             return obj;
         }
 
-        public bool Dashing => Movement.lastFrameMovementData != null
-                               && ((Movement.lastFrameMovementData.state & CharacterState.Dashing) != 0);
+        public bool Dashing => Movement.lastStep != null
+                               && ((Movement.lastStep.state & CharacterState.Dashing) != 0);
 
         /// <summary>Whether the character was in the given state (crouching, sliding, wall-running...) in the last step.</summary>
-        public bool InState(CharacterState state) => Movement.lastFrameMovementData != null
-                                                     && (Movement.lastFrameMovementData.state & state) != 0;
+        public bool InState(CharacterState state) => Movement.lastStep != null
+                                                     && (Movement.lastStep.state & state) != 0;
 
         /// <summary>The character's horizontal speed in the last step, in m/s.</summary>
         public float HorizontalSpeed
         {
             get
             {
-                if (Movement.lastFrameMovementData == null) { return 0f; }
-                Vector3 v = Movement.lastFrameMovementData.finalVelocity;
+                if (Movement.lastStep == null) { return 0f; }
+                Vector3 v = Movement.lastStep.finalVelocity;
                 return new Vector2(v.x, v.z).magnitude;
             }
         }
@@ -308,9 +308,9 @@ namespace CharacterShowcase.Tests
         /// <summary>How tall the character stands, in metres at its size (see CharacterBody.StandingHeight).</summary>
         public float StandingHeight => Movement.Body.StandingHeight;
         /// <summary>The character's velocity (m/s) as its last step left it.</summary>
-        public Vector3 Velocity => Movement.lastFrameMovementData.finalVelocity;
-        /// <summary>The character's gravity (m/s²) at its size: Fall &amp; Air Handling's Gravity Strength, scaled.</summary>
-        public float Gravity => MovementSetting<float>("gravityStrength") * Movement.AccelerationScale;
+        public Vector3 Velocity => Movement.lastStep.finalVelocity;
+        /// <summary>The character's gravity (m/s²) at its size: Fall &amp; Air Handling's Gravity, scaled.</summary>
+        public float Gravity => MovementSetting<float>("gravity") * Movement.AccelerationScale;
         /// <summary>How low (as a share of its standing height) the character crouches: Crouching's Crouch Height.</summary>
         public float CrouchHeight => Component<Crouching>().CrouchHeight;
         /// <summary>How fast (m/s) the character climbs a climbable surface at full input, at its size.</summary>
@@ -343,7 +343,7 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Moves the character's feet to the given position at once, between steps (for placing it where its own size
-        /// decides, which isn't known until it's spawned and its model has loaded). See MovementController.Teleport.
+        /// decides, which isn't known until it's spawned and its model has loaded). See MMotionMotor.Teleport.
         /// </summary>
         public void Teleport(Vector3 feet)
         {
@@ -352,7 +352,7 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>Sets the character moving at the given velocity (for one step, before its movement takes over), with the given input.</summary>
-        public IEnumerator Launch(Vector3 velocity, Inputs inputs)
+        public IEnumerator Launch(Vector3 velocity, StepInputs inputs)
         {
             Movement.OverrideVelocity(velocity);
             yield return Run(1, _ => inputs);
@@ -366,7 +366,7 @@ namespace CharacterShowcase.Tests
             }
             created.Clear();
             Time.timeScale = previousTimeScale;
-            Level.LevelClock.TickSource = null;
+            MeridianMotion.Levels.LevelClock.TickSource = null;
         }
     }
 }

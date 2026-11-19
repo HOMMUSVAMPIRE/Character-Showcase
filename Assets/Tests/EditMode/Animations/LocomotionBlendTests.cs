@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Animations
+namespace MeridianMotion.Tests.EditMode.Animations
 {
     /// <summary>
     /// Checks of the shared Animator Controller's Locomotion blend tree, as its layout builds it, played on the
@@ -23,10 +23,10 @@ namespace CharacterShowcase.Tests.EditMode.Animations
     {
         private static (BlendTree tree, GameObject mannequin) Load()
         {
-            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(CharacterModelImporter.ControllerPath);
-            if (controller == null) { Assert.Ignore($"There's no Animator Controller at {CharacterModelImporter.ControllerPath}."); }
-            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterModelImporter.MannequinPrefabPath);
-            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {CharacterModelImporter.MannequinPrefabPath} to play the loops on."); }
+            var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(HumanoidModelImporter.ControllerPath);
+            if (controller == null) { Assert.Ignore($"There's no Animator Controller at {HumanoidModelImporter.ControllerPath}."); }
+            var mannequin = AssetDatabase.LoadAssetAtPath<GameObject>(HumanoidModelImporter.MannequinPrefabPath);
+            if (mannequin == null) { Assert.Ignore($"There's no mannequin at {HumanoidModelImporter.MannequinPrefabPath} to play the loops on."); }
             AnimatorState locomotion = controller.layers[0].stateMachine.states.Select(s => s.state).FirstOrDefault(s => s.name == "Locomotion");
             if (locomotion == null || locomotion.motion is not BlendTree tree) { Assert.Ignore("The controller has no Locomotion blend tree."); return default; }
             return (tree, mannequin);

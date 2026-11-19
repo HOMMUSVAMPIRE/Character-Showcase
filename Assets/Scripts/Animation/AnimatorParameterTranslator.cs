@@ -1,15 +1,15 @@
 using System;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Drives an Animator Controller from the character's animation state: each value goes to the Animator parameter
     /// named for it, and movement events can fire triggers. Parameters left blank, or that the controller doesn't have,
     /// are skipped, so one translator works with controllers that only use some of them.
     /// </summary>
-    [CreateAssetMenu(fileName = "AnimatorParameterTranslator", menuName = "Character Showcase/Animation/Animator Parameter Translator")]
-    public class AnimatorParameterTranslator : CharacterAnimationTranslator
+    [CreateAssetMenu(fileName = "Animator Parameter Translator", menuName = "Meridian Motion/Animation/Animator Parameter Translator")]
+    public class AnimatorParameterTranslator : AnimationTranslator
     {
         // The parameter names the mannequin's Animator Controller is built with
         /// <summary>
@@ -282,7 +282,7 @@ namespace Character
         public static readonly (string name, StateValue value)[] AnimationFloats =
         {
             ("Speed", (in CharacterAnimationState s) => s.horizontalSpeed / s.StrideScale),
-            // Jump speeds scale with the character's speeds (see MovementController.SpeedScale), so this keeps the rising
+            // Jump speeds scale with the character's speeds (see MMotionMotor.SpeedScale), so this keeps the rising
             // and falling poses at the same points of a jump at any size.
             ("Vertical Speed", (in CharacterAnimationState s) => s.verticalSpeed / (s.speedScale > 0f ? s.speedScale : 1f)),
             ("Forward Speed", (in CharacterAnimationState s) => s.localVelocity.z / ModelScale(s).z),
@@ -361,7 +361,7 @@ namespace Character
         /// <summary>
         /// The animation state's own bools a bool parameter can show, by name (its source): each worked out from the
         /// movement as the animation should show it (grounded keeps a grace period over small step-offs, crouching counts a
-        /// roll that ends crouched, ...: see AnimationController.BuildState). A character's state as the movement has it is
+        /// roll that ends crouched, ...: see MMotionAnimator.BuildState). A character's state as the movement has it is
         /// a source too, with no row here (StatePrefix).
         /// </summary>
         public static readonly (string name, StateFlag value)[] AnimationBools =
@@ -423,11 +423,11 @@ namespace Character
         public static bool TryResolve(string source, out int animationBool, out CharacterState state)
         {
             animationBool = -1;
-            state = CharacterState.Idle;
+            state = CharacterState.None;
             if (string.IsNullOrEmpty(source)) { return false; }
             if (source.StartsWith(StatePrefix, StringComparison.Ordinal))
             {
-                return Enum.TryParse(source.Substring(StatePrefix.Length), out state) && state != CharacterState.Idle;
+                return Enum.TryParse(source.Substring(StatePrefix.Length), out state) && state != CharacterState.None;
             }
             for (int i = 0; i < AnimationBools.Length; i++)
             {

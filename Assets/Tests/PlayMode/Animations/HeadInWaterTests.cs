@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
-    /// Tests of the hook for the head going under the water and coming up (AnimationController's HeadSubmerged and
+    /// Tests of the hook for the head going under the water and coming up (MMotionAnimator's HeadSubmerged and
     /// HeadSurfaced, for breath and the like), on the character's own model: swimming at the surface (the stroke's head
     /// bobbing at the water line) nothing's raised; diving raises HeadSubmerged once, its head under the surface, and rising back up raises
     /// HeadSurfaced once, its head above it; falling in from high, the head goes under with the plunge and comes up again;
@@ -18,10 +18,10 @@ namespace CharacterShowcase.Tests.Animations
     [Category(TestArea.Animation)]
     public class HeadInWaterTests : AnimationTestsBase
     {
-        private Water water;
-        private readonly List<(bool submerged, Water water, float headAboveSurface)> raised = new();
-        private System.Action<Water> onSubmerged, onSurfaced;
-        private AnimationController watched;
+        private SwimmableWater water;
+        private readonly List<(bool submerged, SwimmableWater water, float headAboveSurface)> raised = new();
+        private System.Action<SwimmableWater> onSubmerged, onSurfaced;
+        private MMotionAnimator watched;
 
         // The fixture lives on from test to test, and a test's character goes on raising events for a frame while it's
         // destroyed: so each test stops listening to its character, and starts with an empty record.
@@ -37,7 +37,7 @@ namespace CharacterShowcase.Tests.Animations
             watched = null;
         }
 
-        private float Margin => animation.HeadWaterMargin * rig.Controller.Scale.y;
+        private float Margin => animation.HeadWaterMargin * rig.Controller.CurrentScale.y;
 
         private float HeadAboveSurface => animator.GetBoneTransform(HumanBodyBones.Head).position.y - water.SurfaceHeight;
 

@@ -2,7 +2,7 @@
 
 The Calibration Annex, the complex's measured test ground, is graybox in `MeridianComplex.unity`, from the sheet
 `MeridianComplex-RemainingAreas.png`. Level geometry only, in the placeholder smooth-concrete material. It's built by
-`Assets/Editor/Level/MeridianCalibrationAnnexBuilder.cs`, as part of **Tools > Character Showcase > Level > Build
+`Assets/Editor/Level/MeridianCalibrationAnnexBuilder.cs`, as part of **Tools > Meridian Motion > Showcase > Levels > Build
 Meridian Complex**. It's laid out in world coordinates.
 
 ## Where it is, and how it joins

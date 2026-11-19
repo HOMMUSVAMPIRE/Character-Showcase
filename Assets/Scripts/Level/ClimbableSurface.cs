@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
     /// Marks colliders a character can climb (see the movement mode's WallClimbing component): this object's colliders and
@@ -11,6 +11,7 @@ namespace Level
     /// part of one), paint them with a PaintedClimbableSurface instead.
     /// </summary>
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/Levels/Climbable Surface")]
     public class ClimbableSurface : MonoBehaviour
     {
         [Tooltip("How fast a character climbs on it, as a share of its climbing speed: lower for a hard climb, higher for " +

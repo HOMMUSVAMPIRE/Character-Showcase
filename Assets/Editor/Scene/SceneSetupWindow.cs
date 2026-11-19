@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
-using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// Sets up the open scene to spawn a character (see SceneGameSetup): choose the character prefab, the model it
-    /// uses (any prepared by Prepare Character Models, or the prefab's own) and its movement mode asset, then confirm.
-    /// The scene gets a Game Setup object with a CharacterSpawner, using the scene's own camera rig and input manager
+    /// Sets up the open scene to spawn a character (see CharacterSceneSetup): choose the character prefab, the model it
+    /// uses (any prepared by Prepare Humanoid Models, or the prefab's own) and its movement mode asset, then confirm.
+    /// The scene gets a Meridian Motion Setup object with a CharacterSpawner, using the scene's own camera rig and input manager
     /// or instances of the Camera Rig and Input Manager prefabs. Its changes can be undone, and are left for you to save.
     /// </summary>
     public sealed class SceneSetupWindow : EditorWindow
@@ -26,18 +26,18 @@ namespace CharacterShowcase.EditorTools
         // The scene the choices were started from, so opening another scene starts from its own.
         private Scene choicesScene;
 
-        // The project's character prefabs (those with an ACCharacterController), for the Character Prefab dropdown: Unity's
+        // The project's character prefabs (those with an MMotionCharacter), for the Character Prefab dropdown: Unity's
         // object picker searches assets by type, and can't find prefabs by a component on them, so it lists none.
         private readonly List<GameObject> characterPrefabs = new();
-        private readonly List<DirectCharacterModelSource> readyModels = new();
+        private readonly List<PrefabModelSource> readyModels = new();
         private readonly List<string> unavailableModels = new();
         // Heights by model prefab: measuring means instantiating the model, so it isn't redone on every refresh.
         private readonly Dictionary<GameObject, float> heights = new();
         private Vector2 scroll;
 
-        /// <summary>Opens the Scene Setup window on the open scene.</summary>
-        [MenuItem("Tools/Character Showcase/Set Up Scene…", priority = 3)]
-        public static void Open() => GetWindow<SceneSetupWindow>("Scene Setup").Refresh();
+        /// <summary>Opens the Set Up Scene window on the open scene.</summary>
+        [MenuItem("Tools/Meridian Motion/Set Up Scene…", priority = 3)]
+        public static void Open() => GetWindow<SceneSetupWindow>("Set Up Scene").Refresh();
 
         private void OnEnable()
         {
@@ -69,23 +69,23 @@ namespace CharacterShowcase.EditorTools
             foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets" }))
             {
                 var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
-                if (prefab != null && prefab.GetComponent<ACCharacterController>() != null) { characterPrefabs.Add(prefab); }
+                if (prefab != null && prefab.GetComponent<MMotionCharacter>() != null) { characterPrefabs.Add(prefab); }
             }
             characterPrefabs.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             readyModels.Clear();
-            readyModels.AddRange(CharacterModelImporter.FindReadyDefinitions());
+            readyModels.AddRange(HumanoidModelImporter.FindPreparedSources());
             unavailableModels.Clear();
-            foreach (string modelPath in CharacterModelImporter.FindModelFiles())
+            foreach (string modelPath in HumanoidModelImporter.FindModelFiles())
             {
-                string name = CharacterModelImporter.DisplayName(modelPath);
-                var definition = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(CharacterModelImporter.DefinitionPathFor(modelPath, name));
-                string problem = definition == null ? "not prepared yet" : CharacterModelImporter.Validate(definition);
+                string name = HumanoidModelImporter.NameOf(modelPath);
+                var definition = AssetDatabase.LoadAssetAtPath<PrefabModelSource>(HumanoidModelImporter.SourcePathFor(modelPath, name));
+                string problem = definition == null ? "not prepared yet" : HumanoidModelImporter.Validate(definition);
                 if (problem != null) { unavailableModels.Add($"{name}: {problem}"); }
             }
 
             Scene scene = SceneManager.GetActiveScene();
             if (characterPrefab == null || scene != choicesScene) { StartChoices(scene); }
-            if (modelSource is DirectCharacterModelSource direct && !readyModels.Contains(direct)) { modelSource = null; }
+            if (modelSource is PrefabModelSource direct && !readyModels.Contains(direct)) { modelSource = null; }
             if (movementMode == null) { movementMode = PrefabMovementMode(); }
             Repaint();
         }
@@ -101,8 +101,8 @@ namespace CharacterShowcase.EditorTools
             modelSource = null;
             movementMode = null;
 
-            CharacterSpawner existing = SceneGameSetup.FindSpawner(scene);
-            ACCharacterController placed = SceneGameSetup.PlacedCharacters(scene).FirstOrDefault();
+            CharacterSpawner existing = CharacterSceneSetup.FindSpawner(scene);
+            MMotionCharacter placed = CharacterSceneSetup.PlacedCharacters(scene).FirstOrDefault();
             if (existing != null && existing.CharacterPrefab != null)
             {
                 characterPrefab = existing.CharacterPrefab;
@@ -110,24 +110,24 @@ namespace CharacterShowcase.EditorTools
                 movementMode = existing.MovementMode;
             }
             else if (placed != null && PrefabUtility.GetCorrespondingObjectFromSource(placed.gameObject) is GameObject source &&
-                     source.GetComponent<ACCharacterController>() != null)
+                     source.GetComponent<MMotionCharacter>() != null)
             {
                 characterPrefab = source;
-                if (placed.TryGetComponent(out CharacterModelHost host)) { modelSource = host.ModelSource; }
-                if (placed.TryGetComponent(out MovementController movement)) { movementMode = movement.movementHandler; }
+                if (placed.TryGetComponent(out CharacterModelSlot host)) { modelSource = host.ModelSource; }
+                if (placed.TryGetComponent(out MMotionMotor movement)) { movementMode = movement.movementMode; }
             }
-            if (characterPrefab == null) { characterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath); }
-            if (modelSource == PrefabModelSource()) { modelSource = null; }
+            if (characterPrefab == null) { characterPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath); }
+            if (modelSource == CharacterPrefabModelSource()) { modelSource = null; }
         }
 
         private void OnGUI()
         {
             Scene scene = SceneManager.GetActiveScene();
             if (scene != choicesScene) { StartChoices(scene); } // Another scene was opened.
-            string sceneProblem = SceneGameSetup.Problem(scene);
+            string sceneProblem = CharacterSceneSetup.Problem(scene);
 
-            EditorGUILayout.LabelField($"Set up '{SceneGameSetup.SceneName(scene)}' to spawn a character", EditorStyles.boldLabel);
-            EditorGUILayout.LabelField("Adds a Game Setup object to the open scene, with a Character Spawner that spawns the " +
+            EditorGUILayout.LabelField($"Set up '{CharacterSceneSetup.SceneName(scene)}' to spawn a character", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Adds a Meridian Motion Setup object to the open scene, with a Character Spawner that spawns the " +
                                        "character below when the scene starts, and a camera to follow it.",
                                        EditorStyles.wordWrappedMiniLabel);
             EditorGUILayout.Space();
@@ -145,10 +145,10 @@ namespace CharacterShowcase.EditorTools
             EditorGUILayout.Space();
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button(new GUIContent("Prepare Character Models", "Sets up the model files in " +
-                                                    CharacterModelImporter.ModelsFolder + " (Tools > Character Showcase > Prepare Character Models).")))
+                if (GUILayout.Button(new GUIContent("Prepare Humanoid Models", "Sets up the model files in " +
+                                                    HumanoidModelImporter.ModelsFolder + " (Tools > Meridian Motion > Prepare > Humanoid Models).")))
                 {
-                    CharacterModelImporter.PrepareAllFromMenu();
+                    HumanoidModelImporter.PrepareAllFromMenu();
                     Refresh();
                 }
                 if (GUILayout.Button(new GUIContent("Prepare Animations", "Sets up the animation files (the Quaternius libraries in " +
@@ -165,7 +165,7 @@ namespace CharacterShowcase.EditorTools
             if (problem != null) { EditorGUILayout.HelpBox(problem, MessageType.Warning); }
             using (new EditorGUI.DisabledScope(problem != null))
             {
-                if (GUILayout.Button($"Set Up '{SceneGameSetup.SceneName(scene)}'", GUILayout.Height(30f))) { Confirm(scene); }
+                if (GUILayout.Button($"Set Up '{CharacterSceneSetup.SceneName(scene)}'", GUILayout.Height(30f))) { Confirm(scene); }
             }
             EditorGUILayout.Space();
         }
@@ -175,15 +175,15 @@ namespace CharacterShowcase.EditorTools
             EditorGUILayout.LabelField("Character", EditorStyles.boldLabel);
             using (new EditorGUILayout.HorizontalScope())
             {
-                // A field for dropping a prefab on (as its ACCharacterController, so only characters are taken) and finding
+                // A field for dropping a prefab on (as its MMotionCharacter, so only characters are taken) and finding
                 // it, and beside it the project's character prefabs to choose from (see characterPrefabs).
-                ACCharacterController shown = characterPrefab != null ? characterPrefab.GetComponent<ACCharacterController>() : null;
+                MMotionCharacter shown = characterPrefab != null ? characterPrefab.GetComponent<MMotionCharacter>() : null;
                 using (var check = new EditorGUI.ChangeCheckScope())
                 {
-                    var dropped = (ACCharacterController)EditorGUILayout.ObjectField(
-                        new GUIContent("Character Prefab", "The character the scene spawns: a prefab with an ACCharacterController. " +
+                    var dropped = (MMotionCharacter)EditorGUILayout.ObjectField(
+                        new GUIContent("Character Prefab", "The character the scene spawns: a prefab with an MMotionCharacter. " +
                                                            "Choose one from the list beside it, or drop one here."),
-                        shown, typeof(ACCharacterController), false);
+                        shown, typeof(MMotionCharacter), false);
                     if (check.changed) { ChooseCharacter(dropped != null ? dropped.gameObject : null); }
                 }
                 if (EditorGUILayout.DropdownButton(new GUIContent("Choose", "The project's character prefabs."), FocusType.Keyboard, GUILayout.Width(64f)))
@@ -195,7 +195,7 @@ namespace CharacterShowcase.EditorTools
                         menu.AddItem(new GUIContent($"{prefab.name}  ({AssetDatabase.GetAssetPath(prefab)})".Replace('/', '\u2215')),
                                      prefab == characterPrefab, () => ChooseCharacter(choice));
                     }
-                    if (characterPrefabs.Count == 0) { menu.AddDisabledItem(new GUIContent("No prefabs with an ACCharacterController")); }
+                    if (characterPrefabs.Count == 0) { menu.AddDisabledItem(new GUIContent("No prefabs with an MMotionCharacter")); }
                     menu.ShowAsContext();
                 }
             }
@@ -214,27 +214,27 @@ namespace CharacterShowcase.EditorTools
         private void DrawModels()
         {
             EditorGUILayout.LabelField("Model", EditorStyles.boldLabel);
-            CharacterModelSource prefabModel = PrefabModelSource();
-            var prefabDirect = prefabModel as DirectCharacterModelSource;
+            CharacterModelSource prefabModel = CharacterPrefabModelSource();
+            var prefabDirect = prefabModel as PrefabModelSource;
             DrawModelEntry(null, prefabModel != null ? $"The prefab's own ({prefabModel.name})" : "The prefab's own",
                            prefabDirect, "Keeps the model the prefab has.");
-            foreach (DirectCharacterModelSource definition in readyModels)
+            foreach (PrefabModelSource definition in readyModels)
             {
                 if (definition == prefabModel) { continue; } // Listed as the prefab's own.
                 DrawModelEntry(definition, definition.name, definition, AssetDatabase.GetAssetPath(definition));
             }
             if (readyModels.Count == 0)
             {
-                EditorGUILayout.HelpBox($"No other models are ready. Put rigged models in subfolders of {CharacterModelImporter.ModelsFolder}, " +
-                                        "then press Prepare Character Models.", MessageType.Info);
+                EditorGUILayout.HelpBox($"No other models are ready. Put rigged models in subfolders of {HumanoidModelImporter.ModelsFolder}, " +
+                                        "then press Prepare Humanoid Models.", MessageType.Info);
             }
             if (unavailableModels.Count > 0)
             {
-                EditorGUILayout.HelpBox("Not available (press Prepare Character Models):\n" + string.Join("\n", unavailableModels), MessageType.Warning);
+                EditorGUILayout.HelpBox("Not available (press Prepare Humanoid Models):\n" + string.Join("\n", unavailableModels), MessageType.Warning);
             }
         }
 
-        private void DrawModelEntry(CharacterModelSource source, string label, DirectCharacterModelSource shown, string detail)
+        private void DrawModelEntry(CharacterModelSource source, string label, PrefabModelSource shown, string detail)
         {
             bool selected = source == modelSource;
             GameObject model = shown != null ? shown.ModelPrefab : null;
@@ -264,9 +264,9 @@ namespace CharacterShowcase.EditorTools
         /// How tall a ready model stands at the character's authored size, sized as its source sizes it (Scale or Fit
         /// To Height), or 0 if it isn't ready.
         /// </summary>
-        private float Height(DirectCharacterModelSource definition)
+        private float Height(PrefabModelSource definition)
         {
-            if (definition == null || CharacterModelImporter.Validate(definition) != null) { return 0f; }
+            if (definition == null || HumanoidModelImporter.Validate(definition) != null) { return 0f; }
             if (!heights.TryGetValue(definition.ModelPrefab, out float height))
             {
                 height = heights[definition.ModelPrefab] = CharacterModelSource.MeasureHeight(definition.ModelPrefab, definition.ModelPrefab.transform);
@@ -295,7 +295,7 @@ namespace CharacterShowcase.EditorTools
         {
             EditorGUILayout.LabelField("Scene", EditorStyles.boldLabel);
 
-            List<ACCharacterController> placed = SceneGameSetup.PlacedCharacters(scene);
+            List<MMotionCharacter> placed = CharacterSceneSetup.PlacedCharacters(scene);
             if (placed.Count > 0)
             {
                 replacePlacedCharacters = EditorGUILayout.ToggleLeft(
@@ -305,7 +305,7 @@ namespace CharacterShowcase.EditorTools
                     replacePlacedCharacters);
             }
 
-            List<SpawnPoint> found = SceneGameSetup.FindSpawnPoints(scene, replacePlacedCharacters, out string source);
+            List<SpawnPoint> found = CharacterSceneSetup.FindSpawnPoints(scene, replacePlacedCharacters, out string source);
             if (found.Count > 0)
             {
                 EditorGUILayout.HelpBox($"The character spawns at one of {found.Count} spawn point{(found.Count == 1 ? "" : "s")}, " +
@@ -318,12 +318,12 @@ namespace CharacterShowcase.EditorTools
                                         "or add more spawn points, on the Character Spawner afterwards.", MessageType.Info);
             }
 
-            var rig = SceneGameSetup.FindOwnCameraRig(scene);
+            var rig = CharacterSceneSetup.FindOwnCameraRig(scene);
             EditorGUILayout.LabelField(rig != null
                     ? $"The scene's own camera rig ('{rig.name}') follows the character."
                     : "The Camera Rig prefab follows the character.",
                 EditorStyles.wordWrappedMiniLabel);
-            List<Camera> cameras = SceneGameSetup.OtherCameras(scene);
+            List<Camera> cameras = CharacterSceneSetup.OtherCameras(scene);
             if (cameras.Count > 0)
             {
                 turnOffOtherCameras = EditorGUILayout.ToggleLeft(
@@ -331,7 +331,7 @@ namespace CharacterShowcase.EditorTools
                                    "Their objects are deactivated, not deleted. Left on, they compete with the setup's camera."),
                     turnOffOtherCameras);
             }
-            EditorGUILayout.LabelField(SceneGameSetup.InputManagersOutsideSetup(scene).Count > 0
+            EditorGUILayout.LabelField(CharacterSceneSetup.InputManagersOutsideSetup(scene).Count > 0
                     ? "The scene's own input manager is kept."
                     : "The Input Manager prefab reads the player's input.",
                 EditorStyles.wordWrappedMiniLabel);
@@ -340,9 +340,9 @@ namespace CharacterShowcase.EditorTools
         private string CharacterProblem()
         {
             if (characterPrefab == null) { return "Choose a character prefab."; }
-            if (characterPrefab.GetComponent<ACCharacterController>() == null)
+            if (characterPrefab.GetComponent<MMotionCharacter>() == null)
             {
-                return $"'{characterPrefab.name}' isn't a character: it has no {nameof(ACCharacterController)}.";
+                return $"'{characterPrefab.name}' isn't a character: it has no {nameof(MMotionCharacter)}.";
             }
             if (movementMode == null) { return "Choose a movement mode asset."; }
             return null;
@@ -350,19 +350,19 @@ namespace CharacterShowcase.EditorTools
 
         private void Confirm(Scene scene)
         {
-            var settings = new SceneGameSetup.Settings
+            var settings = new CharacterSceneSetup.Settings
             {
                 characterPrefab = characterPrefab,
                 // Only what differs from the prefab is stored as an override, so later changes to the prefab carry through.
-                modelSource = modelSource != null && modelSource != PrefabModelSource() ? modelSource : null,
+                modelSource = modelSource != null && modelSource != CharacterPrefabModelSource() ? modelSource : null,
                 movementMode = movementMode != PrefabMovementMode() ? movementMode : null,
                 defaultSpawnPoint = DefaultSpawnPoint(scene),
                 replacePlacedCharacters = replacePlacedCharacters,
                 turnOffOtherCameras = turnOffOtherCameras,
             };
-            if (SceneGameSetup.SetUp(scene, settings, withUndo: true))
+            if (CharacterSceneSetup.SetUp(scene, settings, withUndo: true))
             {
-                CharacterSpawner spawner = SceneGameSetup.FindSpawner(scene);
+                CharacterSpawner spawner = CharacterSceneSetup.FindSpawner(scene);
                 if (spawner != null) { Selection.activeObject = spawner.gameObject; }
                 ShowNotification(new GUIContent("Scene set up. Save it to keep it."));
             }
@@ -376,7 +376,7 @@ namespace CharacterShowcase.EditorTools
         {
             SceneView view = SceneView.lastActiveSceneView;
             if (view == null) { return new SpawnPoint(Vector3.zero, Quaternion.identity); }
-            Vector3 position = SceneGameSetup.GroundBelow(view.pivot, scene) + Vector3.up * 0.05f;
+            Vector3 position = CharacterSceneSetup.GroundBelow(view.pivot, scene) + Vector3.up * 0.05f;
             Vector3 forward = Vector3.ProjectOnPlane(view.rotation * Vector3.forward, Vector3.up);
             Quaternion facing = forward.sqrMagnitude > 1e-4f ? Quaternion.LookRotation(forward, Vector3.up) : Quaternion.identity;
             return new SpawnPoint(position, facing);
@@ -390,9 +390,9 @@ namespace CharacterShowcase.EditorTools
         }
 
         private MovementMode PrefabMovementMode() =>
-            characterPrefab != null && characterPrefab.TryGetComponent(out MovementController movement) ? movement.movementHandler : null;
+            characterPrefab != null && characterPrefab.TryGetComponent(out MMotionMotor movement) ? movement.movementMode : null;
 
-        private CharacterModelSource PrefabModelSource() =>
-            characterPrefab != null && characterPrefab.TryGetComponent(out CharacterModelHost host) ? host.ModelSource : null;
+        private CharacterModelSource CharacterPrefabModelSource() =>
+            characterPrefab != null && characterPrefab.TryGetComponent(out CharacterModelSlot host) ? host.ModelSource : null;
     }
 }

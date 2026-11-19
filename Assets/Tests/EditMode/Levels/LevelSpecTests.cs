@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
-using CharacterShowcase.EditorTools.Level;
+using MeridianMotion.Showcase.Levels;
+using MeridianMotion.Tests;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Levels
+namespace MeridianMotion.Showcase.Tests.Levels
 {
     /// <summary>
     /// Checks of level specs (LevelSpec, LevelSpecTools): every level recorded from its builder, written as JSON, read

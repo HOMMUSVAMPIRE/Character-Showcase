@@ -1,13 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests.Spawning
+namespace MeridianMotion.Tests.Spawning
 {
     /// <summary>
     /// Tests of CharacterSpawner: it spawns its prefab at one of its spawn points, facing the way that point does, on
@@ -183,7 +183,7 @@ namespace CharacterShowcase.Tests.Spawning
         private GameObject SpawnCharacter(CharacterSpawner spawner)
         {
             GameObject character = Track(spawner.Spawn());
-            character.GetComponent<ACCharacterController>().enabled = false;
+            character.GetComponent<MMotionCharacter>().enabled = false;
             return character;
         }
 
@@ -195,23 +195,23 @@ namespace CharacterShowcase.Tests.Spawning
             template.name = "Cube Model";
             Object.Destroy(template.GetComponent<Collider>());
             template.SetActive(false);
-            var model = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            var model = Track(ScriptableObject.CreateInstance<PrefabModelSource>());
             model.ModelPrefab = template;
-            var mode = Track(ScriptableObject.CreateInstance<BasicMovementMode>());
+            var mode = Track(ScriptableObject.CreateInstance<StandardMovementMode>());
             CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity));
             spawner.ModelSource = model;
             spawner.MovementMode = mode;
 
             GameObject character = SpawnCharacter(spawner);
-            var host = character.GetComponent<CharacterModelHost>();
+            var host = character.GetComponent<CharacterModelSlot>();
 
-            Assert.AreSame(mode, character.GetComponent<MovementController>().movementHandler);
+            Assert.AreSame(mode, character.GetComponent<MMotionMotor>().movementMode);
             Assert.AreSame(model, host.ModelSource, "The chosen model should be the one loaded on Start.");
             float giveUp = Time.realtimeSinceStartup + 10f;
             while (!host.IsModelReady && Time.realtimeSinceStartup < giveUp) { yield return null; }
             Assert.IsTrue(host.IsModelReady, "The chosen model didn't load.");
             Assert.AreSame(model, host.ModelSource);
-            StringAssert.StartsWith("Cube Model", host.Model.name);
+            StringAssert.StartsWith("Cube Model", host.ModelRoot.name);
         }
 
         [Test]
@@ -223,7 +223,7 @@ namespace CharacterShowcase.Tests.Spawning
             spawner.OnCameraTargetSpawned.AddListener((target, eyes, size) => (heardTarget, heardEyes, heardSize) = (target, eyes, size));
 
             GameObject character = SpawnCharacter(spawner);
-            var host = character.GetComponent<CharacterModelHost>();
+            var host = character.GetComponent<CharacterModelSlot>();
 
             Assert.AreSame(character.transform, heardTarget);
             Assert.AreSame(host.EyePoint, heardEyes);
@@ -232,7 +232,7 @@ namespace CharacterShowcase.Tests.Spawning
         }
 
         /// <summary>
-        /// Spawning the local player's character and an AI's: each is told who it's for (ACCharacterController.Owner), and
+        /// Spawning the local player's character and an AI's: each is told who it's for (MMotionCharacter.Owner), and
         /// only the local player's is handed to the camera, so the camera follows the player whatever else is spawned.
         /// </summary>
         [Test]
@@ -245,19 +245,19 @@ namespace CharacterShowcase.Tests.Spawning
             spawner.OnCameraTargetSpawned.AddListener((target, _, _) => followed.Add(target));
 
             GameObject player = Track(spawner.SpawnAt(0));
-            GameObject npc = Track(spawner.SpawnAt(1, CharacterOwner.AI));
+            GameObject npc = Track(spawner.SpawnAt(1, ControlledBy.Npc));
             // Not stepped here (as SpawnCharacter's aren't).
-            player.GetComponent<ACCharacterController>().enabled = false;
-            npc.GetComponent<ACCharacterController>().enabled = false;
+            player.GetComponent<MMotionCharacter>().enabled = false;
+            npc.GetComponent<MMotionCharacter>().enabled = false;
 
-            Assert.That(player.GetComponent<ACCharacterController>().Owner, Is.EqualTo(CharacterOwner.LocalPlayer));
-            Assert.That(npc.GetComponent<ACCharacterController>().Owner, Is.EqualTo(CharacterOwner.AI));
+            Assert.That(player.GetComponent<MMotionCharacter>().ControlledBy, Is.EqualTo(ControlledBy.LocalPlayer));
+            Assert.That(npc.GetComponent<MMotionCharacter>().ControlledBy, Is.EqualTo(ControlledBy.Npc));
             Assert.That(followed, Is.EqualTo(new[] { player.transform }), "Only the local player's character should be handed to the camera.");
             Assert.AreSame(npc, spawner.Character, "The spawner's Character is still the latest spawned.");
         }
 
         /// <summary>
-        /// An NPC spawned from a route is an AI's character (CharacterOwner.AI) walking it (a WaypointInputSource, its
+        /// An NPC spawned from a route is an AI's character (ControlledBy.Npc) walking it (a WaypointInputSource, its
         /// input source), not handed to the camera; the spawner's PlayerCharacter stays the player's.
         /// </summary>
         [Test]
@@ -272,11 +272,11 @@ namespace CharacterShowcase.Tests.Spawning
 
             GameObject player = Track(spawner.SpawnAt(0));
             GameObject npc = Track(spawner.SpawnNpc(route));
-            player.GetComponent<ACCharacterController>().enabled = false;
-            var controller = npc.GetComponent<ACCharacterController>();
+            player.GetComponent<MMotionCharacter>().enabled = false;
+            var controller = npc.GetComponent<MMotionCharacter>();
             controller.enabled = false;
 
-            Assert.That(controller.Owner, Is.EqualTo(CharacterOwner.AI));
+            Assert.That(controller.ControlledBy, Is.EqualTo(ControlledBy.Npc));
             var walker = npc.GetComponent<WaypointInputSource>();
             Assert.That(walker, Is.Not.Null, "The NPC should have an AI walking its route.");
             Assert.AreSame(walker, controller.InputSource, "The AI should drive the NPC's input.");
@@ -296,8 +296,8 @@ namespace CharacterShowcase.Tests.Spawning
 
             GameObject character = SpawnCharacter(spawner);
 
-            Assert.AreSame(prefab.GetComponent<MovementController>().movementHandler, character.GetComponent<MovementController>().movementHandler);
-            Assert.AreSame(prefab.GetComponent<CharacterModelHost>().ModelSource, character.GetComponent<CharacterModelHost>().ModelSource);
+            Assert.AreSame(prefab.GetComponent<MMotionMotor>().movementMode, character.GetComponent<MMotionMotor>().movementMode);
+            Assert.AreSame(prefab.GetComponent<CharacterModelSlot>().ModelSource, character.GetComponent<CharacterModelSlot>().ModelSource);
         }
 
         [Test]

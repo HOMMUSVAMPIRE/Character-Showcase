@@ -2,12 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Models
+namespace MeridianMotion.Tests.Models
 {
     /// <summary>
     /// Tests of how the character's model is kept separate from the character: it's created at runtime by a
@@ -38,13 +38,13 @@ namespace CharacterShowcase.Tests.Models
         }
 
         /// <summary>A source whose model is a plain cube: no Animator, no humanoid rig.</summary>
-        private DirectCharacterModelSource CubeSource()
+        private PrefabModelSource CubeSource()
         {
             GameObject template = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
             template.name = "Cube Model";
             Object.Destroy(template.GetComponent<Collider>());
             template.SetActive(false); // Only a template to copy; copies are activated below.
-            var source = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            var source = Track(ScriptableObject.CreateInstance<PrefabModelSource>());
             source.ModelPrefab = template;
             return source;
         }
@@ -52,7 +52,7 @@ namespace CharacterShowcase.Tests.Models
         /// <summary>
         /// A character left without its model (never loaded, as on a server) moves exactly as one with it, step for step,
         /// bit for bit: its body is the one its model would give it from its first step (fitted from its source's prepared
-        /// body, not measured once the model arrives: see CharacterModelHost.FitBodyFromSource), and nothing of the model
+        /// body, not measured once the model arrives: see CharacterModelSlot.FitBodyFromSource), and nothing of the model
         /// (its animation, IK, hitboxes) touches the movement.
         /// </summary>
         [UnityTest]
@@ -97,15 +97,15 @@ namespace CharacterShowcase.Tests.Models
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
-            AnimationController animation = rig.Animation;
+            CharacterModelSlot models = rig.Models;
+            MMotionAnimator animation = rig.Animation;
             int loadedEvents = 0;
             models.ModelLoaded += _ => loadedEvents++;
             Assert.That(models.ModelSource, Is.Not.Null, "The Character prefab should name a model source.");
 
             yield return rig.WaitForModel();
 
-            GameObject model = models.Model;
+            GameObject model = models.ModelRoot;
             Assert.That(loadedEvents, Is.EqualTo(1), "ModelLoaded should be raised once.");
             Assert.That(model.transform.parent, Is.Not.Null);
             Assert.That(model.transform.IsChildOf(rig.Character.transform), Is.True, "The model should be created on the character.");
@@ -114,8 +114,8 @@ namespace CharacterShowcase.Tests.Models
             Assert.That(models.Animator.runtimeAnimatorController, Is.Not.Null);
             Assert.That(models.Animator.isHuman, Is.True);
             Assert.That(models.Animator.applyRootMotion, Is.False);
-            Assert.That(models.IK, Is.Not.Null, "The model should have CharacterIK.");
-            Assert.That(models.Animator.GetComponent<FootPlacementIK>(), Is.Not.Null, "The model should have foot placement.");
+            Assert.That(models.IK, Is.Not.Null, "The model should have HumanoidIK.");
+            Assert.That(models.Animator.GetComponent<HumanoidFootPlacementIK>(), Is.Not.Null, "The model should have foot placement.");
         }
 
         [UnityTest]
@@ -123,12 +123,12 @@ namespace CharacterShowcase.Tests.Models
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
-            AnimationController animation = rig.Animation;
+            CharacterModelSlot models = rig.Models;
+            MMotionAnimator animation = rig.Animation;
             yield return rig.WaitForModel();
-            GameObject oldModel = models.Model;
+            GameObject oldModel = models.ModelRoot;
 
-            DirectCharacterModelSource cube = CubeSource();
+            PrefabModelSource cube = CubeSource();
             bool loaded = false;
             yield return CharacterTestRig.WaitFor(models.LoadModelAsync(cube), l => loaded = l);
             yield return null; // Destroy takes effect at the end of the frame.
@@ -136,19 +136,19 @@ namespace CharacterShowcase.Tests.Models
             Assert.That(loaded, Is.True);
 
             Assert.That(oldModel == null, Is.True, "The old model should be destroyed.");
-            Assert.That(models.Model, Is.Not.Null);
-            Assert.That(models.Model.name, Does.StartWith("Cube Model"));
-            Assert.That(models.Model.transform.IsChildOf(rig.Character.transform), Is.True);
+            Assert.That(models.ModelRoot, Is.Not.Null);
+            Assert.That(models.ModelRoot.name, Does.StartWith("Cube Model"));
+            Assert.That(models.ModelRoot.transform.IsChildOf(rig.Character.transform), Is.True);
             Assert.That(models.ModelSource, Is.SameAs(cube));
             Assert.That(models.Animator, Is.Null);
             Assert.That(models.IK, Is.Null);
 
             // The character carries on as normal without an Animator.
-            models.Model.SetActive(true);
+            models.ModelRoot.SetActive(true);
             float startZ = rig.Position.z;
             const float walkTime = 0.3f;
             yield return rig.Run(walkTime, _ => CharacterTestRig.Move(Vector3.forward), _ =>
-                animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime));
+                animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime));
             Assert.That(rig.Position.z - startZ, Is.GreaterThan(0.5f * rig.WalkSpeed * walkTime), "The character should still move.");
             Assert.That(animation.AnimationState.moving, Is.True, "The animation state should still be worked out.");
         }
@@ -162,7 +162,7 @@ namespace CharacterShowcase.Tests.Models
             public bool cleanedUp;
             public int released;
 
-            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
+            public override async Awaitable<LoadedCharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
             {
                 try
                 {
@@ -175,10 +175,10 @@ namespace CharacterShowcase.Tests.Models
                 }
                 var model = new GameObject("Slow Model");
                 await SetUpModelAsync(model, context, cancellationToken);
-                return new CharacterModel(model, Translator);
+                return new LoadedCharacterModel(model, Translator);
             }
 
-            public override void ReleaseModel(CharacterModel model)
+            public override void ReleaseModel(LoadedCharacterModel model)
             {
                 released++;
                 base.ReleaseModel(model);
@@ -192,7 +192,7 @@ namespace CharacterShowcase.Tests.Models
         [UnityTest]
         public IEnumerator DestroyingTheCharacterWhileItsModelLoads_CancelsTheLoad_AndLeavesNoModelBehind()
         {
-            DirectCharacterModelSource cube = CubeSource();
+            PrefabModelSource cube = CubeSource();
             for (int i = 0; i < 5; i++)
             {
                 rig.SpawnCharacter(new Vector3(i * 3f, 0f, 0f));
@@ -233,7 +233,7 @@ namespace CharacterShowcase.Tests.Models
 
             Assert.That(slow.cleanedUp, Is.True, "Replacing a model mid-load should cancel the first load.");
             Assert.That(slowLoaded, Is.False, "The first load should report that it didn't load.");
-            Assert.That(rig.Models.Model.name, Does.StartWith("Cube Model"));
+            Assert.That(rig.Models.ModelRoot.name, Does.StartWith("Cube Model"));
             for (int i = 0; i < 40; i++) { yield return null; }
             Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
         }
@@ -246,8 +246,8 @@ namespace CharacterShowcase.Tests.Models
             bool loaded = false;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(slow), l => loaded = l);
             Assert.That(loaded, Is.True);
-            Assert.That(rig.Models.Model.name, Is.EqualTo("Slow Model"));
-            Assert.That(rig.Models.Model.transform.IsChildOf(rig.Character.transform), Is.True, "SetUpModelAsync should place it on the character.");
+            Assert.That(rig.Models.ModelRoot.name, Is.EqualTo("Slow Model"));
+            Assert.That(rig.Models.ModelRoot.transform.IsChildOf(rig.Character.transform), Is.True, "SetUpModelAsync should place it on the character.");
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(CubeSource()));
             Assert.That(slow.released, Is.EqualTo(1), "The replaced model should go back to the source that made it.");
@@ -263,7 +263,7 @@ namespace CharacterShowcase.Tests.Models
         {
             public GameObject template;
 
-            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
+            public override async Awaitable<LoadedCharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
             {
                 GameObject model = Instantiate(template, context.Parent);
                 model.name = "Slow Setup Model";
@@ -271,14 +271,14 @@ namespace CharacterShowcase.Tests.Models
                 Assert.That(model.activeInHierarchy, Is.False, "The context's parent should keep a new model hidden.");
                 await SetUpModelAsync(model, context, cancellationToken);
                 for (int i = 0; i < 10; i++) { await Awaitable.NextFrameAsync(cancellationToken); }
-                return new CharacterModel(model, Translator);
+                return new LoadedCharacterModel(model, Translator);
             }
         }
 
         /// <summary>Never manages to create a model.</summary>
         private class FailingSource : CharacterModelSource
         {
-            public override async Awaitable<CharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
+            public override async Awaitable<LoadedCharacterModel> CreateModelAsync(CharacterModelContext context, CancellationToken cancellationToken)
             {
                 await Awaitable.NextFrameAsync(cancellationToken);
                 return null;
@@ -290,9 +290,9 @@ namespace CharacterShowcase.Tests.Models
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             yield return rig.WaitForModel();
-            GameObject oldModel = models.Model;
+            GameObject oldModel = models.ModelRoot;
 
             var slow = Track(ScriptableObject.CreateInstance<SlowSetupSource>());
             slow.template = CubeSource().ModelPrefab;
@@ -337,9 +337,9 @@ namespace CharacterShowcase.Tests.Models
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             yield return rig.WaitForModel();
-            DirectCharacterModelSource cube = CubeSource();
+            PrefabModelSource cube = CubeSource();
             models.FallbackSource = cube;
 
             bool loaded = false;
@@ -348,25 +348,25 @@ namespace CharacterShowcase.Tests.Models
             yield return CharacterTestRig.WaitFor(models.LoadModelAsync(Track(ScriptableObject.CreateInstance<FailingSource>())), l => loaded = l);
 
             Assert.That(loaded, Is.True, "The fallback should load in its place.");
-            Assert.That(models.Model.name, Does.StartWith("Cube Model"));
+            Assert.That(models.ModelRoot.name, Does.StartWith("Cube Model"));
         }
 
         /// <summary>
         /// The character's own model's source, which these tests copy to try its settings out on the same model; skips the
         /// test if the source doesn't reference its model directly (it loads it from somewhere else, say).
         /// </summary>
-        private DirectCharacterModelSource OwnSource()
+        private PrefabModelSource OwnSource()
         {
-            if (rig.Models.ModelSource is DirectCharacterModelSource own && own.ModelPrefab != null) { return own; }
+            if (rig.Models.ModelSource is PrefabModelSource own && own.ModelPrefab != null) { return own; }
             Assert.Ignore("The character's model source doesn't reference its model directly.");
             return null;
         }
 
         /// <summary>A source for the character's own model, fitted to the given height.</summary>
-        private DirectCharacterModelSource Fitted(float height)
+        private PrefabModelSource Fitted(float height)
         {
-            DirectCharacterModelSource own = OwnSource();
-            var fitted = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            PrefabModelSource own = OwnSource();
+            var fitted = Track(ScriptableObject.CreateInstance<PrefabModelSource>());
             fitted.ModelPrefab = own.ModelPrefab;
             fitted.Translator = own.Translator;
             fitted.AnimatorController = own.AnimatorController;
@@ -388,7 +388,7 @@ namespace CharacterShowcase.Tests.Models
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
             float ownEyes = models.EyeHeight, ownHeight = models.ModelHeightMeters;
@@ -398,7 +398,7 @@ namespace CharacterShowcase.Tests.Models
 
             // The same model fitted to a smaller height: everything about its size should follow.
             const float fit = 1.2f;
-            DirectCharacterModelSource fitted = Fitted(fit);
+            PrefabModelSource fitted = Fitted(fit);
             yield return CharacterTestRig.WaitFor(models.LoadModelAsync(fitted));
 
             Assert.That(models.ModelHeightMeters, Is.EqualTo(fit * size).Within(0.01f * size), $"The model should be fitted to {fit} m, times the character's size.");
@@ -469,9 +469,9 @@ namespace CharacterShowcase.Tests.Models
             Assert.That(rig.BodyNow.height, Is.EqualTo(1.2f).Within(0.01f), "It shouldn't grow into the ceiling.");
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f), "It shouldn't be pushed through the floor.");
 
-            AnimationController animation = rig.Animation;
+            MMotionAnimator animation = rig.Animation;
             // The rig moves the character itself; the animation is fed each step, as the character's own update would.
-            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime);
             yield return rig.Run(rig.SecondsToWalk(3f + rig.FrontExtent, 1f), _ => CharacterTestRig.Move(Vector3.forward), Feed);
             Assert.That(rig.Position.z, Is.GreaterThan(3f), "Test setup: it should have walked out from under the ceiling.");
             Assert.That(rig.Models.IsFittingBody, Is.False);
@@ -490,7 +490,7 @@ namespace CharacterShowcase.Tests.Models
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
             rig.Models.BodyFit = BodyFit.ModelsBody;
-            DirectCharacterModelSource source = OwnCopy();
+            PrefabModelSource source = OwnCopy();
             const float modelScale = 1.25f;
             source.Scale = modelScale;
             var size = new Vector3(0.6f, 1.6f, 0.4f);
@@ -519,7 +519,7 @@ namespace CharacterShowcase.Tests.Models
             rig.Models.BodyFit = BodyFit.ModelsBody;
             var failing = Track(ScriptableObject.CreateInstance<FailingSource>());
             failing.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(new Vector3(0.9f, 1.2f, 0.9f))));
-            DirectCharacterModelSource fallback = OwnCopy();
+            PrefabModelSource fallback = OwnCopy();
             var fallbackSize = new Vector3(0.5f, 1.7f, 0.3f);
             fallback.BodyDefinition = Track(BodyDefinition.Of(BodyShape.Box(fallbackSize)));
             rig.Models.FallbackSource = fallback;
@@ -537,10 +537,10 @@ namespace CharacterShowcase.Tests.Models
         }
 
         /// <summary>A source for the character's own model (or the given prefab), as its own, but a separate asset.</summary>
-        private DirectCharacterModelSource OwnCopy(GameObject prefab = null)
+        private PrefabModelSource OwnCopy(GameObject prefab = null)
         {
-            DirectCharacterModelSource own = OwnSource();
-            var copy = Track(ScriptableObject.CreateInstance<DirectCharacterModelSource>());
+            PrefabModelSource own = OwnSource();
+            var copy = Track(ScriptableObject.CreateInstance<PrefabModelSource>());
             copy.ModelPrefab = prefab != null ? prefab : own.ModelPrefab;
             copy.Translator = own.Translator;
             copy.AnimatorController = own.AnimatorController;
@@ -562,13 +562,13 @@ namespace CharacterShowcase.Tests.Models
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             if (models.Animator == null || models.Animator.runtimeAnimatorController == null) { Assert.Ignore("The character's model isn't animated."); }
             // Every float parameter the controller has (the speed, for the package's), to check they carry over.
             int[] floats = models.Animator.parameters.Where(p => p.type == AnimatorControllerParameterType.Float).Select(p => p.nameHash).ToArray();
-            AnimationController animation = rig.Animation;
+            MMotionAnimator animation = rig.Animation;
             // The rig moves the character itself; the animation is fed each step, as the character's own update would.
-            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+            void Feed(int _) => animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime);
             yield return rig.Run(1.5f, _ => CharacterTestRig.Move(Vector3.forward), Feed);
 
             AnimatorStateInfo was = default;
@@ -680,17 +680,17 @@ namespace CharacterShowcase.Tests.Models
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
-            DirectCharacterModelSource own = OwnSource();
-            if (rig.Models.Animator == null || rig.Models.Animator.GetComponent<FootPlacementIK>() == null) { Assert.Ignore("The character's model has no foot placement to measure for."); }
+            PrefabModelSource own = OwnSource();
+            if (rig.Models.Animator == null || rig.Models.Animator.GetComponent<HumanoidFootPlacementIK>() == null) { Assert.Ignore("The character's model has no foot placement to measure for."); }
             GameObject template = Track(Object.Instantiate(own.ModelPrefab));
             template.SetActive(false);
-            DirectCharacterModelSource source = OwnCopy(template);
+            PrefabModelSource source = OwnCopy(template);
             source.MeasureGroundOnLoad = true;
-            float FloorOffset() => rig.Models.Animator.GetComponent<FootPlacementIK>().FloorOffset;
+            float FloorOffset() => rig.Models.Animator.GetComponent<HumanoidFootPlacementIK>().FloorOffset;
 
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(source));
             float first = FloorOffset();
-            if (!own.MeasureGroundOnLoad) { Assert.That(first, Is.EqualTo(own.GroundOffset).Within(1e-4f), "Test setup: measured as Prepare Character Models measured it."); }
+            if (!own.MeasureGroundOnLoad) { Assert.That(first, Is.EqualTo(own.GroundOffset).Within(1e-4f), "Test setup: measured as Prepare Humanoid Models measured it."); }
 
             // A block under the model's feet: its lowest point, so its soles would be measured there.
             GameObject block = GameObject.CreatePrimitive(PrimitiveType.Cube);

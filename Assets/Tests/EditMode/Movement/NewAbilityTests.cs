@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace MeridianMotion.Tests.EditMode.Movement
 {
     /// <summary>
     /// Tests of New Ability (AbilityScaffold), worked out against the project's own files without writing any: what it
@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
 
         private static readonly (string label, AbilityScaffold.Answers answers)[] Cases =
         {
-            ("TakesOverOnGrab", new AbilityScaffold.Answers { name = "ZzHovering", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.Grab, after = "Rolling", needsIK = true }),
+            ("TakesOverOnInteract", new AbilityScaffold.Answers { name = "ZzHovering", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.Interact, after = "Rolling", needsIK = true }),
             ("OnTopOfWalkingOnJump", new AbilityScaffold.Answers { name = "ZzBoosting", kind = AbilityScaffold.Kind.OnTopOfWalking, button = AbilityScaffold.StartButton.Jump, after = "Dashing" }),
             ("AtALevelElement", new AbilityScaffold.Answers { name = "ZzFloating", kind = AbilityScaffold.Kind.TakesOver, button = AbilityScaffold.StartButton.None, levelElement = true, after = null, area = AbilityScaffold.Area.Traversal }),
         };
@@ -71,7 +71,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void ItsStateAndEvents_TakeTheNextUnusedBits_AtTheEnumsNewAbilityLines()
         {
-            List<AbilityScaffold.Change> changes = Plan(AnswersFor("TakesOverOnGrab"));
+            List<AbilityScaffold.Change> changes = Plan(AnswersFor("TakesOverOnInteract"));
             string states = NewAbilityWindow.ReadProjectFile(AbilityScaffold.StatePath);
             string events = NewAbilityWindow.ReadProjectFile(AbilityScaffold.EventsPath);
             int stateBit = AbilityScaffold.HighestBit(states.Substring(0, states.IndexOf(AbilityScaffold.EnumAnchor, StringComparison.Ordinal))) + 1;
@@ -89,7 +89,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void ItGoesJustAfterTheComponentChosen_InTheModesOrder_AndTheTestsCopyOfIt()
         {
-            List<AbilityScaffold.Change> changes = Plan(AnswersFor("TakesOverOnGrab"));
+            List<AbilityScaffold.Change> changes = Plan(AnswersFor("TakesOverOnInteract"));
             string mode = Changed(changes, AbilityScaffold.ModePath).text;
             Assert.That(Regex.IsMatch(mode, @"yield return new Rolling\(\);\s*\n\s*yield return new ZzHovering\(\);"), Is.True, "It should follow Rolling in DefaultComponents.");
             string test = Changed(changes, AbilityScaffold.CompositionTestPath).text;

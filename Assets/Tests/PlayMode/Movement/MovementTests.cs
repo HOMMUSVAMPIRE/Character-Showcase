@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Physics-level tests of the character controller, using the real Character prefab and movement tuning.
@@ -89,9 +89,9 @@ namespace CharacterShowcase.Tests.Movement
             float dt = Time.fixedDeltaTime;
             // The grounded tolerance (how far below the feet the floor still counts as ground: the movement's own, with no
             // setting) and the skin width, per step.
-            var groundedTolerance = typeof(MovementController).GetProperty("GroundedTolerance",
+            var groundedTolerance = typeof(MMotionMotor).GetProperty("GroundedTolerance",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            Assert.That(groundedTolerance, Is.Not.Null, "Test setup: MovementController.GroundedTolerance should exist.");
+            Assert.That(groundedTolerance, Is.Not.Null, "Test setup: MMotionMotor.GroundedTolerance should exist.");
             float snapAllowance = ((float)groundedTolerance.GetValue(rig.Movement) + rig.Movement.Skin) / dt;
             float? previousY = null;
             int dropStartStep = -1;
@@ -141,7 +141,7 @@ namespace CharacterShowcase.Tests.Movement
                 if (airborneSteps == window + 1)
                 {
                     yAfterCoyoteWindow = rig.Position.y;
-                    timeSinceGroundedAfterWindow = rig.Movement.lastFrameMovementData.timeSinceGrounded;
+                    timeSinceGroundedAfterWindow = rig.Movement.lastStep.timeSinceGrounded;
                 }
             });
 
@@ -254,11 +254,11 @@ namespace CharacterShowcase.Tests.Movement
             float highestAfterLanding = 0f;
             yield return rig.Run(2.5f, step => pressing ? CharacterTestRig.Jump() : CharacterTestRig.Idle(), step =>
             {
-                Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
+                Vector3 v = rig.Movement.lastStep.finalVelocity;
                 // Press jump while falling, shortly before touching down.
                 if (!pressing && !landed && v.y < 0f && rig.Position.y < 0.25f) { pressing = true; pressStart = step + 1; }
                 // Started the step on the ground. (Not rig.Grounded: a jump clears the Grounded state on the step it starts.)
-                landed |= rig.Movement.lastFrameMovementData.initialGrounded;
+                landed |= rig.Movement.lastStep.initialGrounded;
                 if (landed) { highestAfterLanding = Mathf.Max(highestAfterLanding, rig.Position.y); }
             });
 
@@ -345,7 +345,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), _ =>
             {
                 // Grounded as the step started: where the last step left it.
-                if (rig.Movement.lastFrameMovementData.initialGrounded) { highestGrounded = Mathf.Max(highestGrounded, previous.y); }
+                if (rig.Movement.lastStep.initialGrounded) { highestGrounded = Mathf.Max(highestGrounded, previous.y); }
                 previous = rig.Position;
             });
 
@@ -374,7 +374,7 @@ namespace CharacterShowcase.Tests.Movement
             // from different starting points and headings, so the character's path crosses the treads differently.
             rig.Floor(0f, 200f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelSlot's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             if (sprint && !(rig.RunSpeed > rig.WalkSpeed)) { Assert.Ignore("The character doesn't sprint."); }
             const int steps = 40;

@@ -2,7 +2,7 @@
 
 The Kinetic Gardens, the complex's open-air traversal district, is graybox in `MeridianComplex.unity`, alongside the
 Concourse, from the blockout plan `MeridianComplex-KineticGardens.png`. Level geometry only, in the placeholder smooth-concrete material (see Concourse_Blockout_Notes.md). The
-scene is built by **Tools > Character Showcase > Level > Build Meridian Complex**, which builds the gardens with
+scene is built by **Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex**, which builds the gardens with
 `Assets/Editor/Level/MeridianKineticGardensBuilder.cs`; rebuilding replaces the scene. The gardens share the
 Concourse's world coordinates.
 

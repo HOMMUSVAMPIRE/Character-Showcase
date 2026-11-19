@@ -1,7 +1,7 @@
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Ascension Spire (03), the vertical-traversal district north of the
@@ -48,7 +48,7 @@ namespace CharacterShowcase.EditorTools.Level
 
             // The central core, and the west and east platforms, each up a stair to it.
             Vector2[] core = Octagon(CoreApothem);
-            Prism(masses, "2 Central Core (+20)", core, 0f, Core, Surface.Panel);
+            Prism(masses, "2 Central Core (+20)", core, 0f, Core, GrayboxMaterial.Panel);
             float stairFoot = CoreApothem + FlightLength(Platform, Core);
             BoxXZ(masses, "3 West Platform (+12)", new Vector2(-(PlatformEnd + stairFoot) / 2f, 0f), new Vector2(PlatformEnd - stairFoot, PlatformWidth), 0f, Platform);
             BoxXZ(masses, "4 East Platform (+12)", new Vector2((PlatformEnd + stairFoot) / 2f, 0f), new Vector2(PlatformEnd - stairFoot, PlatformWidth), 0f, Platform);
@@ -78,13 +78,13 @@ namespace CharacterShowcase.EditorTools.Level
             Flight(stairs, "Stair (South Terrace to Core)", new Vector2(0f, -CoreApothem - FlightLength(Lower, Core)), Vector2.up, StairWidth, Lower, Core);
             RailAround(rails, Rect(-wingHalf, wingSouth, wingHalf, -CoreApothem), Lower, (new Vector2(0f, wingSouth), StairWidth), (new Vector2(0f, -CoreApothem), StairWidth));
             BoxXZ(masses, "5 Entry Bridge (±0)", new Vector2(0f, entryFoot - 5.5f), new Vector2(20f, 11f), -0.5f, 0.05f);
-            Column(landmarks, "Entry Pylon (West)", new Vector2(-12f, entryFoot - 5.5f), new Vector2(4f, 4f), 0f, 12f, 0f, Surface.Graphite, accent: true);
-            Column(landmarks, "Entry Pylon (East)", new Vector2(12f, entryFoot - 5.5f), new Vector2(4f, 4f), 0f, 12f, 0f, Surface.Graphite, accent: true);
+            Column(landmarks, "Entry Pylon (West)", new Vector2(-12f, entryFoot - 5.5f), new Vector2(4f, 4f), 0f, 12f, 0f, GrayboxMaterial.Graphite, accent: true);
+            Column(landmarks, "Entry Pylon (East)", new Vector2(12f, entryFoot - 5.5f), new Vector2(4f, 4f), 0f, 12f, 0f, GrayboxMaterial.Graphite, accent: true);
             Marker(connections, "Entry (S, ±0)", new Vector2(0f, entryFoot - 11f), 0f);
             AreaSign(landmarks, new Vector2(StairWidth / 2f + 4f, wingSouth), 2.5f, Vector2.down, "03", "Ascension Spire"); // On the south terrace's face.
 
             // The summit tower, north of the core, and the gallery from the core round to the foot of its stair.
-            Prism(landmarks, "1 Spire Summit Tower (+56)", Rect(-TowerHalf, TowerSouth, TowerHalf, TowerNorth), 0f, Summit, Surface.Panel);
+            Prism(landmarks, "1 Spire Summit Tower (+56)", Rect(-TowerHalf, TowerSouth, TowerHalf, TowerNorth), 0f, Summit, GrayboxMaterial.Panel);
             // The concept art's orange bands up the tower (on the west and north faces: the switchback stair hides the
             // east), and a banner down its south face.
             TowerBands(landmarks, -TowerHalf, TowerHalf, TowerSouth, TowerNorth, Core + 2f, Summit - 2f, Vector2.left, Vector2.up);
@@ -124,13 +124,13 @@ namespace CharacterShowcase.EditorTools.Level
             foreach (Vector2 corner in new[] { new Vector2(-1f, -1f), new Vector2(1f, -1f), new Vector2(1f, 1f), new Vector2(-1f, 1f) })
             {
                 Vector2 at = new Vector2(0f, (TowerSouth + TowerNorth) / 2f) + new Vector2(corner.x * (TowerHalf - 1f), corner.y * (TowerHalf - 1f));
-                BoxXZ(landmarks, "Crown Post", at, new Vector2(2f, 2f), Summit, Crown, 0f, Surface.Steel);
+                BoxXZ(landmarks, "Crown Post", at, new Vector2(2f, 2f), Summit, Crown, 0f, GrayboxMaterial.Steel);
             }
             float mid = (TowerSouth + TowerNorth) / 2f, span = 2f * TowerHalf - 2f;
-            BoxXZ(landmarks, "Crown Beam (South)", new Vector2(0f, TowerSouth + 1f), new Vector2(span, 1f), Crown - 1f, Crown, 0f, Surface.Steel);
-            BoxXZ(landmarks, "Crown Beam (North)", new Vector2(0f, TowerNorth - 1f), new Vector2(span, 1f), Crown - 1f, Crown, 0f, Surface.Steel);
-            BoxXZ(landmarks, "Crown Beam (West)", new Vector2(-TowerHalf + 1f, mid), new Vector2(1f, span), Crown - 1f, Crown, 0f, Surface.Steel);
-            BoxXZ(landmarks, "Crown Beam (East)", new Vector2(TowerHalf - 1f, mid), new Vector2(1f, span), Crown - 1f, Crown, 0f, Surface.Steel);
+            BoxXZ(landmarks, "Crown Beam (South)", new Vector2(0f, TowerSouth + 1f), new Vector2(span, 1f), Crown - 1f, Crown, 0f, GrayboxMaterial.Steel);
+            BoxXZ(landmarks, "Crown Beam (North)", new Vector2(0f, TowerNorth - 1f), new Vector2(span, 1f), Crown - 1f, Crown, 0f, GrayboxMaterial.Steel);
+            BoxXZ(landmarks, "Crown Beam (West)", new Vector2(-TowerHalf + 1f, mid), new Vector2(1f, span), Crown - 1f, Crown, 0f, GrayboxMaterial.Steel);
+            BoxXZ(landmarks, "Crown Beam (East)", new Vector2(TowerHalf - 1f, mid), new Vector2(1f, span), Crown - 1f, Crown, 0f, GrayboxMaterial.Steel);
             Marker(landmarks, "Spire Summit (+56)", new Vector2(0f, mid), Summit);
 
             // A narrow balcony high on the tower's west face, reached by a ladder from the core and left by a climbable
@@ -144,7 +144,7 @@ namespace CharacterShowcase.EditorTools.Level
                 new Vector2(walkEast + TowerHalf + 6f, TowerSouth - walkSouth), Balcony - Deck, Balcony);
             BoxXZ(masses, "Balcony Walk (+40, West)", new Vector2(-TowerHalf - 3f, (TowerSouth + mid - 8f) / 2f),
                 new Vector2(6f, mid - 8f - TowerSouth), Balcony - Deck, Balcony);
-            Block(masses, "Balcony Ladder Pier", pierWest, walkEast, walkSouth, TowerSouth, Core, Balcony - Deck, Surface.Steel);
+            Block(masses, "Balcony Ladder Pier", pierWest, walkEast, walkSouth, TowerSouth, Core, Balcony - Deck, GrayboxMaterial.Steel);
             float ladderX = walkEast - 1f;
             Ladder(mechanics, new Vector2(ladderX, walkSouth), Core, Balcony - Core, Vector2.down);
             Rail(rails, new Vector2(-TowerHalf - 6f, walkSouth), new Vector2(walkEast, walkSouth), Balcony, (new Vector2(ladderX, walkSouth), 1.8f));

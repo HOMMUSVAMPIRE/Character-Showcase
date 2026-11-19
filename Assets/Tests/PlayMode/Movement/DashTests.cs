@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of the dash: its burst distance and direction, ignoring gravity, momentum afterwards, the cooldown, the
@@ -22,7 +22,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
         }
 
-        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Dash(Vector3.forward) : CharacterTestRig.Idle();
 
         protected override string OffSetting => "dashDuration";
 
@@ -53,7 +53,7 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator ADashOfAWholeNumberOfSteps_LastsExactlyThatMany([Values(5, 10, 15)] int steps)
         {
             // Floating point once left a sliver of such a dash's time after its last step (0.2 s less ten 0.02 s steps
-            // isn't exactly 0), so it took a step more than it was set to: see MovementHelpers.CountDown.
+            // isn't exactly 0), so it took a step more than it was set to: see MovementRules.CountDown.
             yield return Settle();
             rig.SetMovementSetting("dashDuration", steps * Time.fixedDeltaTime / rig.Movement.DurationScale);
             int dashing = 0;
@@ -98,7 +98,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return DashOnce(Vector3.right, _ => { });
 
             float justAfter = 0f;
-            yield return rig.Run(1, _ => CharacterTestRig.Idle(), _ => justAfter = rig.Movement.lastFrameMovementData.finalVelocity.x);
+            yield return rig.Run(1, _ => CharacterTestRig.Idle(), _ => justAfter = rig.Movement.lastStep.finalVelocity.x);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             Vector3 rest = rig.Position;
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
@@ -218,7 +218,7 @@ namespace CharacterShowcase.Tests.Movement
                 {
                     if (step < jumpAt) { return; }
                     dashingAfterJump |= rig.Dashing;
-                    Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
+                    Vector3 v = rig.Movement.lastStep.finalVelocity;
                     if (step == jumpAt + 2) { riseSpeed = v.y; horizontalSpeed = new Vector2(v.x, v.z).magnitude; }
                 });
 
@@ -238,7 +238,7 @@ namespace CharacterShowcase.Tests.Movement
             int dashingSteps = 0;
             yield return rig.Run(DashSteps + 1, step =>
                 {
-                    Inputs inputs = CharacterTestRig.Jump(Vector3.right);
+                    StepInputs inputs = CharacterTestRig.Jump(Vector3.right);
                     inputs.dash = CharacterTestRig.Dash().dash;
                     return inputs;
                 },
@@ -256,13 +256,13 @@ namespace CharacterShowcase.Tests.Movement
             float fastestRiseDuringDash = float.NegativeInfinity, fastestRiseAfterDash = float.NegativeInfinity;
             yield return rig.Run(dashAt + DashSteps + 10, step =>
                 {
-                    Inputs inputs = CharacterTestRig.Jump();
+                    StepInputs inputs = CharacterTestRig.Jump();
                     if (step >= dashAt) { inputs.dash = CharacterTestRig.Dash().dash; }
                     return inputs;
                 },
                 step =>
                 {
-                    float vy = rig.Movement.lastFrameMovementData.finalVelocity.y;
+                    float vy = rig.Movement.lastStep.finalVelocity.y;
                     if (step >= dashAt && step < dashAt + DashSteps) { fastestRiseDuringDash = Mathf.Max(fastestRiseDuringDash, vy); }
                     if (step >= dashAt + DashSteps) { fastestRiseAfterDash = Mathf.Max(fastestRiseAfterDash, vy); }
                 });

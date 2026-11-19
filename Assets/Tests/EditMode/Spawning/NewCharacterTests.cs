@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using Character;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Spawning
+namespace MeridianMotion.Tests.EditMode.Spawning
 {
     /// <summary>
     /// Tests of New Character (NewCharacter): it makes a prefab variant of Character.prefab wearing the chosen model, in
@@ -31,8 +31,8 @@ namespace CharacterShowcase.Tests.EditMode.Spawning
             if (madeCharactersFolder) { AssetDatabase.DeleteAsset(NewCharacter.CharactersFolder); }
         }
 
-        private static GameObject CharacterPrefab => AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
-        private static CharacterModelSource Mannequin => AssetDatabase.LoadAssetAtPath<CharacterModelSource>("Assets/Models/CharacterModels/Mannequin/Mannequin.asset");
+        private static GameObject CharacterPrefab => AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath);
+        private static CharacterModelSource Mannequin => AssetDatabase.LoadAssetAtPath<CharacterModelSource>("Assets/Models/Humanoid/Mannequin/Mannequin.asset");
 
         [Test]
         public void ItMakes_AVariantOfTheCharacterPrefab_WearingTheModel_WithItsOwnMovement()
@@ -45,10 +45,10 @@ namespace CharacterShowcase.Tests.EditMode.Spawning
 
             Assert.That(AssetDatabase.GetAssetPath(prefab), Is.EqualTo($"{NewCharacter.FolderOf(Name)}/{Name}.prefab"));
             Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(prefab), Is.SameAs(CharacterPrefab), "It's a variant of Character.prefab.");
-            Assert.That(prefab.GetComponent<CharacterModelHost>().ModelSource, Is.SameAs(Mannequin));
-            MovementMode mode = prefab.GetComponent<MovementController>().movementHandler;
+            Assert.That(prefab.GetComponent<CharacterModelSlot>().ModelSource, Is.SameAs(Mannequin));
+            MovementMode mode = prefab.GetComponent<MMotionMotor>().movementMode;
             Assert.That(AssetDatabase.GetAssetPath(mode), Is.EqualTo($"{NewCharacter.FolderOf(Name)}/{Name} Movement.asset"), "Its movement is its own copy.");
-            Assert.That(mode, Is.Not.SameAs(CharacterPrefab.GetComponent<MovementController>().movementHandler));
+            Assert.That(mode, Is.Not.SameAs(CharacterPrefab.GetComponent<MMotionMotor>().movementMode));
             Assert.That(made, Is.Not.Empty, "It lists what it made.");
         }
 
@@ -56,7 +56,7 @@ namespace CharacterShowcase.Tests.EditMode.Spawning
         public void SharingTheDefaultMovement_UsesTheDefaultsAsset()
         {
             GameObject prefab = NewCharacter.Make(new NewCharacter.Answers { name = Name, modelSource = Mannequin, movement = NewCharacter.Movement.ShareTheDefault }, new List<string>());
-            Assert.That(prefab.GetComponent<MovementController>().movementHandler, Is.SameAs(CharacterPrefab.GetComponent<MovementController>().movementHandler));
+            Assert.That(prefab.GetComponent<MMotionMotor>().movementMode, Is.SameAs(CharacterPrefab.GetComponent<MMotionMotor>().movementMode));
         }
 
         [Test]
@@ -64,12 +64,12 @@ namespace CharacterShowcase.Tests.EditMode.Spawning
         {
             AssetDatabase.CreateFolder("Assets", "ZzNewCharacterTests");
             var set = ScriptableObject.CreateInstance<CharacterAnimationSet>();
-            set.layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(CharacterModelImporter.LayoutPath);
+            set.layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(HumanoidModelImporter.LayoutPath);
             AssetDatabase.CreateAsset(set, "Assets/ZzNewCharacterTests/Set.asset");
             RuntimeAnimatorController shared = Mannequin.AnimatorController;
 
             GameObject prefab = NewCharacter.Make(new NewCharacter.Answers { name = Name, modelSource = Mannequin, animationSet = set }, new List<string>());
-            CharacterModelSource own = prefab.GetComponent<CharacterModelHost>().ModelSource;
+            CharacterModelSource own = prefab.GetComponent<CharacterModelSlot>().ModelSource;
             Assert.That(own, Is.Not.SameAs(Mannequin), "Its model is a source of its own.");
             Assert.That(own.AnimatorController, Is.SameAs(set.controller).And.Not.Null, "It plays the set's controller.");
             Assert.That(Mannequin.AnimatorController, Is.SameAs(shared), "The shared source is left as it was.");

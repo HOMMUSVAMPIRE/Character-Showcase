@@ -1,0 +1,26 @@
+{
+    "name": "MeridianMotion.Tests.PlayMode",
+    "rootNamespace": "MeridianMotion.Tests.PlayMode",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.Tests.Shared",
+        "MeridianMotion.Cameras",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "MeridianMotion.PhysicsQueries",
+        "MeridianMotion.Levels"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

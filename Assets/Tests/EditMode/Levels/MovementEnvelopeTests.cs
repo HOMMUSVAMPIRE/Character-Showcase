@@ -2,10 +2,12 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using CharacterShowcase.EditorTools;
+using MeridianMotion.EditorTools;
+using MeridianMotion.Showcase.LevelChecks;
+using MeridianMotion.Tests;
 using NUnit.Framework;
 
-namespace CharacterShowcase.Tests.EditMode.Levels
+namespace MeridianMotion.Showcase.Tests.Levels
 {
     /// <summary>
     /// Checks that Tools/LevelSpec/envelope.json (the limits the levelspec tool's movement checks hold levels to) is what

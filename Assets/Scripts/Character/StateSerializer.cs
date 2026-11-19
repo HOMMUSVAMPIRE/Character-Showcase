@@ -4,18 +4,18 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Writes a character's movement state, or the level's moving parts' (its ropes and pushables), to bytes, and reads
     /// them back into a character or level built the same way, on another machine even: what a server sends so a client
     /// can put its character exactly where the server has it (and step on from there identically), or a player joining
     /// can start a character mid-ability. The state is what MovementStateSnapshot saves in this process (the controller and
-    /// every plain object it reaches, its ACCharacterController's, its input source's if that's on it, its Rigidbody's
+    /// every plain object it reaches, its MMotionCharacter's, its input source's if that's on it, its Rigidbody's
     /// pose), written out. A reference to one of the character's own objects is written as its path from the character;
     /// to a level object (its ground, a rope it holds) as the object's StableId; an asset or a setting (its movement
     /// mode) isn't written, the reader keeping its own. Shared objects stay shared. Every float is written as its bits,
@@ -33,7 +33,7 @@ namespace Character
         private const int FormatVersion = 1;
 
         /// <summary>Writes the character's state (see the class summary). Between steps.</summary>
-        public static byte[] WriteCharacter(MovementController character)
+        public static byte[] WriteCharacter(MMotionMotor character)
         {
             using var stream = new MemoryStream();
             using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
@@ -54,7 +54,7 @@ namespace Character
         /// between its steps: afterwards it steps on exactly as the written one did. Throws InvalidDataException for what
         /// isn't one.
         /// </summary>
-        public static void ReadCharacter(MovementController character, byte[] state)
+        public static void ReadCharacter(MMotionMotor character, byte[] state)
         {
             using var stream = new MemoryStream(state);
             using var reader = new BinaryReader(stream, Encoding.UTF8);
@@ -73,11 +73,11 @@ namespace Character
             Physics.SyncTransforms();
         }
 
-        /// <summary>The objects a character's state is read from: its controller, its ACCharacterController, and its input source if that's on it.</summary>
-        private static IEnumerable<object> Roots(MovementController character)
+        /// <summary>The objects a character's state is read from: its controller, its MMotionCharacter, and its input source if that's on it.</summary>
+        private static IEnumerable<object> Roots(MMotionMotor character)
         {
             yield return character;
-            ACCharacterController controller = character.GetComponent<ACCharacterController>();
+            MMotionCharacter controller = character.GetComponent<MMotionCharacter>();
             if (controller == null) { yield break; }
             yield return controller;
             if (controller.InputSource is CharacterInputSource source && source != null && source.transform.IsChildOf(character.transform))
@@ -104,7 +104,7 @@ namespace Character
                 foreach (MonoBehaviour part in parts)
                 {
                     writer.Write(StableId.Of(part.transform));
-                    writer.Write(part is Rope);
+                    writer.Write(part is SwingRope);
                     graph.WriteRoot(part, typeof(MonoBehaviour));
                     Rigidbody body = part.GetComponent<Rigidbody>();
                     GraphWriter.Write(writer, body != null ? body.position : part.transform.position);
@@ -127,7 +127,7 @@ namespace Character
                 ulong id = reader.ReadUInt64();
                 bool rope = reader.ReadBoolean();
                 Transform found = StableId.Resolve(id);
-                MonoBehaviour part = found == null ? null : rope ? found.GetComponent<Rope>() : found.GetComponent<PushableObject>();
+                MonoBehaviour part = found == null ? null : rope ? found.GetComponent<SwingRope>() : found.GetComponent<PushableBlock>();
                 if (part == null) { throw new InvalidDataException($"The level has no {(rope ? "rope" : "pushable object")} with ID {id:X16}: it isn't built the same way."); }
                 graph.ReadRoot(part, typeof(MonoBehaviour));
                 Vector3 position = GraphReader.ReadVector3(reader);
@@ -186,7 +186,7 @@ namespace Character
         private static bool IsKept(Type type)
         {
             if (typeof(Delegate).IsAssignableFrom(type) || typeof(MemberInfo).IsAssignableFrom(type)) { return true; }
-            if (type.Namespace == "PhysicsQueries") { return true; }
+            if (type.Namespace == "MeridianMotion.PhysicsQueries") { return true; }
             return HoldsPointer(type);
         }
 

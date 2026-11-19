@@ -1,13 +1,13 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
-    /// Tests of the fox's paw placement (PawPlacementIK, on Fox Model.prefab): standing on a ramp, uphill or down, its paws
+    /// Tests of the fox's paw placement (LegPlacementIK, on Fox Model.prefab): standing on a ramp, uphill or down, its paws
     /// are on the ramp and its body pitched with it; standing over a step's edge, its hind paws reach down to the floor
     /// below; and walking, along the flat or up a ramp, each paw comes down onto the ground and none sinks into it. The
     /// model's animation is stepped with the physics, and its paws placed after each step, as they are each frame in the
@@ -26,7 +26,7 @@ namespace CharacterShowcase.Tests.Animations
         {
             Ramp(15f);
             yield return SpawnFox(new Vector3(0f, 0.05f, 0f));
-            PawPlacementIK old = paws;
+            LegPlacementIK old = paws;
             Assume.That(old.ActiveWeight, Is.GreaterThan(0.9f), "Test setup: the fox's paw placement should be faded in.");
             Assume.That(Mathf.Abs(old.BodyPitch), Is.GreaterThan(5f), "Test setup: the fox should be pitched on the ramp.");
             // The old model's, as it's replaced.
@@ -40,12 +40,12 @@ namespace CharacterShowcase.Tests.Animations
             };
 
             // Read as the new model is swapped in, before its first update: what it starts from.
-            PawPlacementIK swapped = null;
+            LegPlacementIK swapped = null;
             float swappedWeight = 0f, swappedPitch = 0f;
             float[] swappedLocks = new float[locks.Length];
             rig.Models.ModelLoaded += model =>
             {
-                swapped = model.Root.GetComponentInChildren<PawPlacementIK>();
+                swapped = model.Root.GetComponentInChildren<LegPlacementIK>();
                 if (swapped == null) { return; }
                 swappedWeight = swapped.ActiveWeight;
                 swappedPitch = swapped.BodyPitch;
@@ -68,7 +68,7 @@ namespace CharacterShowcase.Tests.Animations
             Ramp(slope);
             yield return SpawnFox(new Vector3(0f, 0.05f, 0f));
             Assume.That(rig.Grounded, Is.True, "Test setup: the fox should stand on the ramp.");
-            foreach (PawPlacementIK.Leg leg in paws.Legs)
+            foreach (LegPlacementIK.Leg leg in paws.Legs)
             {
                 float above = AboveGround(Contact(leg));
                 TestContext.WriteLine($"{leg.foot.name}: {above * 1000f:0} mm above the ramp.");
@@ -88,7 +88,7 @@ namespace CharacterShowcase.Tests.Animations
             rig.Box("Step", new Vector3(0f, stepHeight / 2f, 5f), new Vector3(8f, stepHeight, 10f));
             yield return SpawnFox(new Vector3(0f, stepHeight + 0.02f, 0.1f));
             Assume.That(rig.Position.y, Is.EqualTo(stepHeight).Within(0.02f), "Test setup: the fox should stand on the step.");
-            foreach (PawPlacementIK.Leg leg in paws.Legs)
+            foreach (LegPlacementIK.Leg leg in paws.Legs)
             {
                 Vector3 contact = Contact(leg);
                 float above = AboveGround(contact);
@@ -131,10 +131,10 @@ namespace CharacterShowcase.Tests.Animations
         /// Turns the fox on the spot by the given angle, and gives how far a planted paw slid, while planted, as the model
         /// came round (a paw lifted and put down again, stepping round, starts again from where it's put down).
         /// </summary>
-        private IEnumerator TurnOnTheSpot(float pawLock, float degrees, System.Action<float> slid)
+        private IEnumerator TurnOnTheSpot(float footLock, float degrees, System.Action<float> slid)
         {
-            var field = typeof(PawPlacementIK).GetField("pawLock", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            field.SetValue(paws, pawLock);
+            var field = typeof(LegPlacementIK).GetField("footLock", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            field.SetValue(paws, footLock);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), TurnStepAndPlace);
             var putDown = new Vector3?[paws.Legs.Length];
             float most = 0f;
@@ -214,7 +214,7 @@ namespace CharacterShowcase.Tests.Animations
         [DefaultExecutionOrder(10000)]
         private class PawHeightRecorder : MonoBehaviour
         {
-            public PawPlacementIK paws;
+            public LegPlacementIK paws;
             public Transform platform;
             public float platformHalfHeight;
             public readonly System.Collections.Generic.List<float[]> frames = new();
@@ -242,7 +242,7 @@ namespace CharacterShowcase.Tests.Animations
             GameObject prefab = CharacterTestRig.LoadPrefab(FoxPrefabPath);
             if (prefab == null) { Assert.Ignore($"There's no fox ('{FoxPrefabPath}'): the fox is the showcase's, not part of the package."); }
             var size = new Vector3(4f, 0.3f, 4f);
-            Level.MovingPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
+            MeridianMotion.Levels.TickedPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
             platform.enabled = false; // Held still while the fox's model loads (frames in which the fox isn't stepped).
             Physics.SyncTransforms();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f), prefab);
@@ -250,8 +250,8 @@ namespace CharacterShowcase.Tests.Animations
             yield return rig.WaitForModel();
             platform.enabled = true;
             animator = rig.Models.Animator;
-            paws = animator.GetComponent<PawPlacementIK>();
-            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (PawPlacementIK): regenerate it.");
+            paws = animator.GetComponent<LegPlacementIK>();
+            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (LegPlacementIK): regenerate it.");
             // The Animator plays and the paws are placed each frame, as in the game; only the movement is fed to it here.
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), FeedAnimator);
             var recorder = new GameObject("Paw Height Recorder").AddComponent<PawHeightRecorder>();

@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of wall-running: moving fast along a wall in mid-air while steering along it runs along the wall, falling
@@ -37,7 +37,7 @@ namespace CharacterShowcase.Tests.Abilities
             rig.Movement.OverrideVelocity(Vector3.forward * WallRunSpeed);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         protected override string OffSetting => "wallRunMaxDuration";
 
@@ -90,7 +90,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return rig.Run(WallRunMaxDuration + 0.4f, _ => CharacterTestRig.Move(Vector3.forward), _ => { if (WallRunning) { wallRunningSteps++; } });
             Assert.That(wallRunningSteps, Is.EqualTo(CharacterTestRig.StepsFor(WallRunMaxDuration)).Within(2), "A wall run should last its longest time, then end.");
             Assert.That(WallRunning, Is.False);
-            Assert.That(rig.Movement.lastFrameMovementData.finalVelocity.y, Is.LessThan(-1f), "After a wall run the character should fall.");
+            Assert.That(rig.Movement.lastStep.finalVelocity.y, Is.LessThan(-1f), "After a wall run the character should fall.");
         }
 
         [UnityTest]
@@ -105,7 +105,7 @@ namespace CharacterShowcase.Tests.Abilities
             var events = rig.EventsRaised;
             Vector3 velocity = Vector3.zero;
             yield return rig.Run(3, step => CharacterTestRig.Jump(Vector3.forward),
-                step => { if (step == 0) { velocity = rig.Movement.lastFrameMovementData.finalVelocity; } });
+                step => { if (step == 0) { velocity = rig.Movement.lastStep.finalVelocity; } });
 
             float away = rig.MovementSetting<float>("wallJumpAwaySpeed") * rig.Movement.SpeedScale;
             float up = rig.MovementSetting<float>("wallJumpUpSpeed") * rig.Movement.SpeedScale;
@@ -188,7 +188,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return rig.Run((wallLength + 1f) / WallRunSpeed + 0.2f, _ => CharacterTestRig.Move(Vector3.forward));
             Assert.That(rig.Position.z - rig.BackExtent, Is.GreaterThan(wallEnd), "Test setup: the character should be past the wall.");
             Assert.That(WallRunning, Is.False, "Past the end of the wall, the wall run should end.");
-            Assert.That(rig.Movement.lastFrameMovementData.finalVelocity.z, Is.GreaterThan(0.8f * WallRunSpeed), "The character should keep its momentum.");
+            Assert.That(rig.Movement.lastStep.finalVelocity.z, Is.GreaterThan(0.8f * WallRunSpeed), "The character should keep its momentum.");
         }
 
         [UnityTest]

@@ -1,12 +1,12 @@
-using PhysicsQueries;
+using MeridianMotion.PhysicsQueries;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// The ray foot and paw placement (FootPlacementIK, PawPlacementIK) find the ground with: straight down, the closest
+    /// The ray foot and paw placement (HumanoidFootPlacementIK, LegPlacementIK) find the ground with: straight down, the closest
     /// hit that's on the given layers, not the character's own (under the ignored root) and no steeper than the slope
-    /// limit, moved to where the ground is drawn (see CharacterUtilities.ToDrawnPose). Each component keeps its own
+    /// limit, moved to where the ground is drawn (see HumanoidIKGoals.ToDrawnPose). Each component keeps its own
     /// settings and gives them here; the probe holds only the hit buffer, so it allocates nothing per frame (unless a query fills it: see QueryBuffer).
     /// </summary>
     public sealed class GroundProbe
@@ -42,7 +42,7 @@ namespace Character
             }
             if (best == float.PositiveInfinity) { return false; }
             // Where the ground is drawn: placed where physics has a moving platform, feet and paws jumped up and down on it.
-            CharacterUtilities.ToDrawnPose(ref closest);
+            HumanoidIKGoals.ToDrawnPose(ref closest);
             return true;
         }
     }

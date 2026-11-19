@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>
     /// Hides the followed target's renderers when the camera is inside or right next to it, and restores them

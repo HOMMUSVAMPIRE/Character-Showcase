@@ -1,12 +1,12 @@
 using System;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Jumping: a fresh press of Jump on the ground (or just after walking off it), or with a jump left in mid-air,
     /// launches the character up to a height between the min jump height (a tap) and the max (held). It runs once the
-    /// character has walked and dashed (see MovementComponent.AfterWalking), and not while it's dashing or crouched with
+    /// character has walked and dashed (see MovementComponent.AfterLocomotion), and not while it's dashing or crouched with
     /// no room to stand. Other abilities jump through it (a jump out of a slide: see Crouching).
     /// </summary>
     [Serializable]
@@ -42,7 +42,7 @@ namespace Character
         /// velocity override would make the jump use up a jump without any effect), nor while crouched with no room to
         /// stand up for it (see Crouching).
         /// </summary>
-        public override void AfterWalking(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AfterLocomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             if ((movementData.state & CharacterState.Dashing) != 0 || controller.crouch.IsCrouched) { return; }
             Jump(movementData, inputs, controller);
@@ -55,10 +55,10 @@ namespace Character
         /// rises all the way; let go of while rising, it's cut short, to what's left of the min jump height above where it
         /// started (or straight to falling, if it's already past that), so a tap rises the min jump height and a press
         /// held longer anything up to the max. Bumping a ceiling ends the rise (the collision takes its momentum).
-        /// Heights scale with the character's size, and with the square of the MovementController's jump strength
+        /// Heights scale with the character's size, and with the square of the MMotionMotor's jump strength
         /// modifier (a multiplier on the launch speed).
         /// </summary>
-        public void Jump(MovementData movementData, Inputs inputs, MovementController controller)
+        public void Jump(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             // If we're on the ground, or just walked off it (coyote time), and not already in a jump, reset the number of
             // jumps available to us. Not if we left the ground by jumping, though: a quick tap jump would otherwise land
@@ -66,15 +66,15 @@ namespace Character
             if ((movementData.previousState & CharacterState.Jumping) == 0 && (movementData.timeSinceGrounded <= coyoteTime)
                 && (movementData.initialGrounded || !controller.HasJumpedSinceGrounded))
             {
-                MovementHelpers.GiveBackJumps(controller);
+                MovementRules.GiveBackJumps(controller);
             }
 
             float g = Mode.GravityAcceleration(controller);
-            float heightScale = controller.HeightScale * controller.jumpStrengthModifier * controller.jumpStrengthModifier;
+            float heightScale = controller.HeightScale * controller.jumpSpeedMultiplier * controller.jumpSpeedMultiplier;
             // A jump from the ground or within coyote time, rather than in mid-air (checked before the jump is used)
             bool fromGround = movementData.initialGrounded || (movementData.timeSinceGrounded <= coyoteTime && !controller.HasJumpedSinceGrounded);
             // Check the jump has height first, since starting one uses up a jump.
-            bool startingJump = maxJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller) && MovementHelpers.TryUseJump(controller);
+            bool startingJump = maxJumpHeight > 0f && Mode.HasFreshJumpPress(inputs, controller) && MovementRules.TryUseJump(controller);
             Vector3 inertia = movementData.initialInertia;
             if (startingJump)
             {
@@ -94,7 +94,7 @@ namespace Character
                           && !movementData.previousCollisions.HasFlag(CollisionFlags.Above);
             if (!rising) { return; }
             movementData.state |= CharacterState.Jumping;
-            if (inputs.jump != null && inputs.jump.value) { return; }
+            if (inputs.jump != null && inputs.jump.held) { return; }
 
             // Let go of: no faster than it takes to rise the rest of the min jump height. Once cut, the rise under
             // gravity keeps to that from step to step on its own (see LaunchSpeedFor), so this changes it only once.
@@ -114,7 +114,7 @@ namespace Character
         /// gravity no speed reaches a height, so a jump then launches as it would under Earth's, and drifts on.
         /// </summary>
         private static float JumpSpeedFor(float height, float g, float deltaTime) =>
-            g > 0f ? MovementHelpers.LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * EarthGravity * Mathf.Max(0f, height));
+            g > 0f ? MovementRules.LaunchSpeedFor(height, g, deltaTime) : Mathf.Sqrt(2f * EarthGravity * Mathf.Max(0f, height));
 
         // Earth's gravity (m/s²), which a jump's launch speed is worked out under when the character has none.
         private const float EarthGravity = 9.81f;
@@ -123,26 +123,26 @@ namespace Character
     /// <summary>
     /// The character's jumps: how many it has left before landing, when it last started one (and from what height, for
     /// cutting it short), and whether the current press of Jump has started something already. Jumps off walls, ropes and
-    /// ziplines, and bounce pads, use and give back the same jumps (see MovementHelpers.TryUseJump and GiveBackJumps).
+    /// ziplines, and bounce pads, use and give back the same jumps (see MovementRules.TryUseJump and GiveBackJumps).
     /// </summary>
     public class JumpState
     {
         /// <summary>How many more times the character can start a jump before landing (given back on the ground).</summary>
         public int remaining;
-        /// <summary>The step (MovementController.StepTick) the character last started a jump in (NeverTick if it never has).</summary>
-        public long lastJumpTick = MovementController.NeverTick;
+        /// <summary>The step (MMotionMotor.StepIndex) the character last started a jump in (NeverTick if it never has).</summary>
+        public long lastJumpTick = MMotionMotor.NeverTick;
         /// <summary>How high the character's feet were when it last started a jump (for cutting a jump short: see Jumping).</summary>
         public float startHeight;
         /// <summary>
         /// The press of Jump: one press starts one thing, never two (for example when a jump ends early against a ceiling
         /// while the press is still within the jump buffer), and only within Jumping's Jump Input Buffer of being made.
         /// </summary>
-        public readonly ButtonPress press = new();
+        public readonly PressBuffer press = new();
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's jumping state (Jumping).</summary>
         public JumpState jump { get; } = new JumpState();

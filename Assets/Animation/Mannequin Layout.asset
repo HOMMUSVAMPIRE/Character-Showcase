@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: baa6d5b3ec5140868a275394ef40cc1a, type: 3}
   m_Name: Mannequin Layout
-  m_EditorClassIdentifier: CharacterShowcase::Character.AnimatorLayout
+  m_EditorClassIdentifier: MeridianMotion.Characters::MeridianMotion.Characters.AnimatorLayout
   controller: {fileID: 9100000, guid: 0e62825eea9ca44eda12def1fb1dd704, type: 2}
   measuringModel: {fileID: 5392532283294212038, guid: ef978c06d96cd4a0fa7ca8e8ab8b5c2d, type: 3}
   ikPass: 1

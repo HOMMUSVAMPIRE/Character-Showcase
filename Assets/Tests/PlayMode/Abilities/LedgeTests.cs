@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of ledges: a character in mid-air heading toward a ledge within reach of its hands catches hold and hangs
@@ -35,7 +35,7 @@ namespace CharacterShowcase.Tests.Abilities
             BuildLedge(1f);
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         protected override string OffSetting => "ledgeClimbDuration";
 
@@ -141,7 +141,7 @@ namespace CharacterShowcase.Tests.Abilities
             bool hungWhileRisingFast = false;
             yield return rig.Run(0.15f, _ => CharacterTestRig.Move(Vector3.forward), _ =>
             {
-                if (Hanging && rig.Movement.lastFrameMovementData.initialVelocity.y > maxRise) { hungWhileRisingFast = true; }
+                if (Hanging && rig.Movement.lastStep.initialVelocity.y > maxRise) { hungWhileRisingFast = true; }
             });
             Assert.That(hungWhileRisingFast, Is.False, "A ledge shouldn't be grabbed while rising fast.");
         }

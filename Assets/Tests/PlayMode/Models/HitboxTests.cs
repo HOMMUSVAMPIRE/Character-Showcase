@@ -1,13 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Models
+namespace MeridianMotion.Tests.Models
 {
     /// <summary>
     /// Tests of the character's hitboxes (see CharacterHitboxes), for the tested character and the fox: its model brings
@@ -40,7 +40,7 @@ namespace CharacterShowcase.Tests.Models
             get
             {
                 CharacterHitboxes hitboxes = rig.Models.Hitboxes;
-                Assert.That(hitboxes, Is.Not.Null, "The character's model should have hitboxes (run Tools > Character Showcase > Fit Hitboxes).");
+                Assert.That(hitboxes, Is.Not.Null, "The character's model should have hitboxes (run Tools > Meridian Motion > Fit Hitboxes).");
                 return hitboxes;
             }
         }
@@ -53,7 +53,7 @@ namespace CharacterShowcase.Tests.Models
             CharacterHitboxes hitboxes = Hitboxes;
             Assert.That(hitboxes.Hitboxes.Count, Is.GreaterThanOrEqualTo(10), "A hitbox for each part of the body.");
             Assert.That(CharacterHitboxes.Layer, Is.GreaterThanOrEqualTo(0), $"The project should have a '{CharacterHitboxes.LayerName}' layer.");
-            foreach (Hitbox hitbox in hitboxes.Hitboxes)
+            foreach (BoneHitbox hitbox in hitboxes.Hitboxes)
             {
                 Assert.That(hitbox.gameObject.layer, Is.EqualTo(CharacterHitboxes.Layer), $"'{hitbox.name}' should be on the {CharacterHitboxes.LayerName} layer.");
                 Assert.That(hitbox.Collider.isTrigger, Is.True, $"Detecting (as they do unless set otherwise), '{hitbox.name}' should be a trigger.");
@@ -82,7 +82,7 @@ namespace CharacterShowcase.Tests.Models
             var baked = new Mesh();
             try
             {
-                foreach (SkinnedMeshRenderer skin in rig.Models.CurrentModel.Root.GetComponentsInChildren<SkinnedMeshRenderer>())
+                foreach (SkinnedMeshRenderer skin in rig.Models.LoadedModel.Root.GetComponentsInChildren<SkinnedMeshRenderer>())
                 {
                     skin.BakeMesh(baked, true);
                     Matrix4x4 toWorld = Matrix4x4.TRS(skin.transform.position, skin.transform.rotation, Vector3.one);
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests.Models
             float share = (float)covered / vertices;
             Assert.That(share, Is.GreaterThan(0.9f), $"The hitboxes should cover the model: only {share:P0} of its mesh is within {near:0.###} m of one.");
             bounds.Expand(2f * near);
-            foreach (Hitbox hitbox in hitboxes.Hitboxes)
+            foreach (BoneHitbox hitbox in hitboxes.Hitboxes)
             {
                 Bounds own = hitbox.Collider.bounds;
                 Assert.That(bounds.Contains(own.min) && bounds.Contains(own.max), Is.True,
@@ -117,7 +117,7 @@ namespace CharacterShowcase.Tests.Models
         private Rigidbody DropABall(out float top)
         {
             top = rig.StandingHeight;
-            Hitbox broadest = rig.Models.Hitboxes.Hitboxes.OrderByDescending(h => h.Collider.radius * h.transform.lossyScale.x).First();
+            BoneHitbox broadest = rig.Models.Hitboxes.Hitboxes.OrderByDescending(h => h.Collider.radius * h.transform.lossyScale.x).First();
             Vector3 over = broadest.Collider.bounds.center;
             over.y = rig.Position.y + top + 0.5f;
             GameObject ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -137,7 +137,7 @@ namespace CharacterShowcase.Tests.Models
         {
             yield return Spawn(character);
             CharacterHitboxes hitboxes = Hitboxes;
-            var hits = new List<(Hitbox hitbox, Collider other)>();
+            var hits = new List<(BoneHitbox hitbox, Collider other)>();
             hitboxes.HitStarted += (hitbox, other) => hits.Add((hitbox, other));
             Rigidbody ball = DropABall(out float top);
             Collider ballCollider = ball.GetComponent<Collider>();

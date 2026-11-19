@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.InputAndDeterminism
+namespace MeridianMotion.Tests.InputAndDeterminism
 {
     /// <summary>
     /// Tests of recording and replaying a character's input (InputRecording): a run's frames, recorded as it's stepped,
@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
         }
 
         /// <summary>A run that walks, jumps (onto the block), sprints, dashes and crouches, turning as it goes.</summary>
-        private static Inputs Script(int step)
+        private static StepInputs Script(int step)
         {
             Vector3 heading = Quaternion.Euler(0f, step * 0.5f, 0f) * Vector3.forward;
             if (step >= 20 && step < 30) { return CharacterTestRig.Jump(heading); }
@@ -39,7 +39,7 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
         private const int Steps = 200;
 
         private (Vector3 position, Quaternion rotation, Vector3 velocity) Pose() =>
-            (rig.Position, rig.Body.rotation, rig.Movement.lastFrameMovementData.finalVelocity);
+            (rig.Position, rig.Body.rotation, rig.Movement.lastStep.finalVelocity);
 
         [UnityTest]
         public IEnumerator ARecordedRun_SavedAndReplayed_MovesExactlyTheSame()
@@ -48,11 +48,11 @@ namespace CharacterShowcase.Tests.InputAndDeterminism
             var recording = new InputRecording(Steps, Time.fixedDeltaTime, rig.Movement.TuningFingerprint());
             rig.Recording = recording;
             var first = new List<(Vector3, Quaternion, Vector3)>();
-            CharacterState did = CharacterState.Idle;
+            CharacterState did = CharacterState.None;
             yield return rig.Run(Steps, Script, _ =>
             {
                 first.Add(Pose());
-                did |= rig.Movement.lastFrameMovementData.state;
+                did |= rig.Movement.lastStep.state;
             });
             rig.Recording = null;
             Assume.That((did & CharacterState.Jumping) != 0 && ((did & CharacterState.Dashing) != 0) && ((did & CharacterState.Crouching) != 0), Is.True,

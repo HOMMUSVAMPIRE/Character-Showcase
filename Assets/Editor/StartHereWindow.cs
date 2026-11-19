@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Character;
-using UnityEditor;
+using MeridianMotion.Characters;
 using UnityEditor.SceneManagement;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// Start Here (Tools > Character Showcase > Start Here): one window for every everyday task, in sections (play it,
+    /// Start Here (Tools > Meridian Motion > Start Here): one window for every everyday task, in sections (play it,
     /// characters, abilities, checking your work, learning), each button with a line saying what it does; the test and
     /// hygiene scripts (in Tools/), run in a terminal, are named with their commands. What isn't in the project (those
     /// scripts, the docs, the levels, in a package without them) is left out, not greyed. It opens by itself the first time a project is opened on a machine, unless its Open On First
@@ -30,7 +30,7 @@ namespace CharacterShowcase.EditorTools
         private Vector2 scroll;
         private GUIStyle descriptionStyle;
 
-        [MenuItem("Tools/Character Showcase/Start Here", priority = 0)]
+        [MenuItem("Tools/Meridian Motion/Start Here", priority = 0)]
         public static void Open() => GetWindow<StartHereWindow>(false, Title).minSize = new Vector2(420f, 480f);
 
         [InitializeOnLoadMethod]
@@ -51,8 +51,8 @@ namespace CharacterShowcase.EditorTools
         {
             descriptionStyle ??= new GUIStyle(EditorStyles.wordWrappedMiniLabel);
             scroll = EditorGUILayout.BeginScrollView(scroll);
-            EditorGUILayout.LabelField("Character Showcase", EditorStyles.largeLabel);
-            EditorGUILayout.LabelField("Everything you'll use most, in one place. Every tool here is also under Tools > Character Showcase.", EditorStyles.wordWrappedLabel);
+            EditorGUILayout.LabelField("Meridian Motion", EditorStyles.largeLabel);
+            EditorGUILayout.LabelField("Everything you'll use most, in one place. Every tool here is also under Tools > Meridian Motion.", EditorStyles.wordWrappedLabel);
 
             Section("Play");
             foreach (string scene in Levels())
@@ -64,8 +64,8 @@ namespace CharacterShowcase.EditorTools
             Section("Characters");
             Button("New Character…", "Makes a character of your own from a model: its prefab, movement and body, ready to play.", NewCharacterWindow.Open);
             Button("Character Doctor", "Checks a character prefab and says what's wrong, with a fix where a tool can make one.", CharacterDoctorWindow.Open);
-            Button("Prepare Character Models", "Makes every humanoid model in Assets/Models/CharacterModels ready to wear (it runs by itself when one's added).", CharacterModelImporter.PrepareAllFromMenu);
-            Button("Prepare Creatures", "Makes every creature in Assets/Models/Creatures ready (it runs by itself when one's added).", CreatureModelImporter.PrepareAllFromMenu);
+            Button("Prepare Humanoid Models", "Makes every humanoid model in Assets/Models/Humanoid ready to wear (it runs by itself when one's added).", HumanoidModelImporter.PrepareAllFromMenu);
+            Button("Prepare Generic Rig Models", "Makes every generic-rig character in Assets/Models/Generic ready (it runs by itself when one's added).", GenericRigModelImporter.PrepareAllFromMenu);
 
             Section("Abilities");
             Button("New Ability…", "Makes a small working ability to build on, with its tests and docs.", NewAbilityWindow.Open);
@@ -91,7 +91,7 @@ namespace CharacterShowcase.EditorTools
             var docs = new List<(string label, string page, string what)>
             {
                 ("Unity Basics", "unity-basics.md", "The Unity words the docs use, for anyone new to Unity."),
-                ("Adding a Character", "adding-a-character.md", "A new look, a character of your own, or a creature: step by step."),
+                ("Adding a Character", "adding-a-character.md", "A new look, a character of your own, or a generic-rig character: step by step."),
                 ("Your First Ability", "tutorial-first-ability.md", "Builds one small ability (Ground Pound) from start to finish."),
                 ("Adding a Movement Ability", "adding-an-ability.md", "The full reference for every part of an ability."),
                 ("Troubleshooting", "troubleshooting.md", "When something's wrong."),
@@ -145,8 +145,8 @@ namespace CharacterShowcase.EditorTools
 
         private static MovementMode DefaultMovementMode()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
-            return prefab != null && prefab.TryGetComponent(out MovementController movement) ? movement.movementHandler : null;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath);
+            return prefab != null && prefab.TryGetComponent(out MMotionMotor movement) ? movement.movementMode : null;
         }
 
         private static void Select(UnityEngine.Object asset)

@@ -1,12 +1,12 @@
-using Level;
 using System;
+using MeridianMotion.Levels;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Pushing and pulling: holding the grab button by a large object (a Level.PushableObject) takes hold of it, and
+    /// Pushing and pulling: holding the grab button by a large object (a MeridianMotion.Levels.PushableBlock) takes hold of it, and
     /// movement input toward or away from it pushes or pulls it along the ground.
     /// </summary>
     [Serializable]
@@ -28,19 +28,19 @@ namespace Character
         /// <summary>How fast (m/s) the character pushes or pulls an object, before the object's own speed multiplier.</summary>
         public float PushPullSpeed { get => pushPullSpeed; set => pushPullSpeed = value; }
 
-        public override bool IsActive(MovementController controller) => controller.grab.IsGrabbing;
+        public override bool IsActive(MMotionMotor controller) => controller.pushPull.IsGrabbing;
         /// <summary>Pushing or pulling, the character holds on to the crate.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsOn;
+        public override AbilityTraits Traits => AbilityTraits.Attached;
         /// <summary>The events of Grabbing starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Grabbing, MovementEvents.GrabStarted, MovementEvents.GrabEnded),
         };
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
-            if (controller.grab.IsGrabbing) { LetGo(controller); }
+            if (controller.pushPull.IsGrabbing) { LetGo(controller); }
         }
 
         /// <summary>
@@ -50,10 +50,10 @@ namespace Character
         /// crouch or roll while holding it. Letting go of the button, leaving the ground, or the object losing the
         /// ground under it (pushed off an edge, it falls) lets go.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            GrabState grab = controller.grab;
-            bool held = inputs.grab != null && inputs.grab.value;
+            PushPullState grab = controller.pushPull;
+            bool held = inputs.interact != null && inputs.interact.held;
             if (!grab.IsGrabbing)
             {
                 if (!TryGrab(movementData, held, controller)) { return false; }
@@ -64,7 +64,7 @@ namespace Character
                 return false;
             }
 
-            PushableObject target = grab.target;
+            PushableBlock target = grab.target;
             Vector3 toward = -grab.faceNormal;
             // Where the character holds the object, which it keeps to as the object moves.
             Vector3 drift = target.Position + target.Rotation * grab.localHoldOffset - movementData.initialPosition;
@@ -96,9 +96,9 @@ namespace Character
         /// Moves the held object with the character, by however far the character moved toward or away from it this step
         /// (it may have been blocked; the object goes no further than it can either).
         /// </summary>
-        public override void AfterMovementResolved(MovementData movementData, MovementController controller)
+        public override void AfterMovementResolved(MovementStep movementData, MMotionMotor controller)
         {
-            GrabState grab = controller.grab;
+            PushPullState grab = controller.pushPull;
             if (!grab.IsGrabbing || ((movementData.state & CharacterState.Grabbing) == 0)) { return; }
             Vector3 toward = -grab.faceNormal;
             float along = Vector3.Dot(movementData.finalMovementVector - grab.holdCorrection, toward);
@@ -109,7 +109,7 @@ namespace Character
         /// Takes hold of an object if the grab button is held on the ground and the character faces one of its sides,
         /// close enough to reach it.
         /// </summary>
-        private bool TryGrab(MovementData movementData, bool held, MovementController controller)
+        private bool TryGrab(MovementStep movementData, bool held, MMotionMotor controller)
         {
             if (!held || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
             // A reach of 0 turns it off, as every ability's 0 does (the sweep's skin would otherwise still find a touching object).
@@ -117,7 +117,7 @@ namespace Character
             Vector3 feet = movementData.initialPosition;
             Vector3 facing = Facing(movementData);
             if (!controller.SweepBody(feet, facing, grabReach * controller.HeightScale + controller.Skin, out RaycastHit hit)) { return false; }
-            PushableObject target = hit.collider.GetComponentInParent<PushableObject>();
+            PushableBlock target = hit.collider.GetComponentInParent<PushableBlock>();
             if (target == null || !target.isActiveAndEnabled) { return false; }
 
             // The side held is the object's face nearest the hit's normal (a hit on an edge or corner has a normal
@@ -125,7 +125,7 @@ namespace Character
             Vector3 normal = NearestSide(target.Rotation, hit.normal);
             if (Vector3.Angle(facing, -normal) > grabMaxAngle) { return false; }
 
-            GrabState grab = controller.grab;
+            PushPullState grab = controller.pushPull;
             grab.target = target;
             grab.faceNormal = normal;
             grab.localHoldOffset = Quaternion.Inverse(target.Rotation) * (feet - target.Position);
@@ -153,9 +153,9 @@ namespace Character
             return best;
         }
 
-        private static void LetGo(MovementController controller)
+        private static void LetGo(MMotionMotor controller)
         {
-            GrabState grab = controller.grab;
+            PushPullState grab = controller.pushPull;
             if (grab.target != null) { grab.target.SetHolder(null); }
             grab.target = null;
             controller.IgnoredCollisionRoot = null;
@@ -163,10 +163,10 @@ namespace Character
     }
 
     /// <summary>An object held to push or pull.</summary>
-    public class GrabState
+    public class PushPullState
     {
         /// <summary>The object held (null when not grabbing).</summary>
-        public Level.PushableObject target;
+        public MeridianMotion.Levels.PushableBlock target;
         /// <summary>The normal of the object's face the character holds (horizontal, unit length, pointing toward the character).</summary>
         public Vector3 faceNormal;
         /// <summary>Where the character's feet are relative to the object, in the object's space: kept while holding it.</summary>
@@ -178,11 +178,11 @@ namespace Character
         public bool IsGrabbing => target != null;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's state grabbing an object to push or pull it (PushingAndPulling).</summary>
-        public GrabState grab { get; } = new GrabState();
+        public PushPullState pushPull { get; } = new PushPullState();
     }
 }

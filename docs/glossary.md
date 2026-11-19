@@ -7,27 +7,25 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Ability value.** A number an ability publishes for its look during its step (`AbilityValues`, named in the component's `AbilityValueNames`), which an Animator Parameter Translator's float parameter can show with no animation code. See [Character Model and Animations](animation.md#replacing-the-model).
 
-**Animation set.** A character's own clips in some roles (its idle, its run), over an Animator layout's, built into a controller of its own (`CharacterAnimationSet`). See [Animation sets](animation.md#animation-sets).
+**Animation set.** A character's own clips in some slots (its idle, its run), over an Animator layout's, built into a controller of its own (`CharacterAnimationSet`). See [Animation sets](animation.md#animation-sets).
 
-**Animation translator.** What turns the character's animation state into a particular model's Animator parameters (`CharacterAnimationTranslator`), so movement never needs to know which model it's animating. See [Character Model and Animations](animation.md).
+**Animation translator.** What turns the character's animation state into a particular model's Animator parameters (`AnimationTranslator`), so movement never needs to know which model it's animating. See [Character Model and Animations](animation.md).
 
 **Animator layout.** An asset describing a character's Animator Controller as data (clip slots, parameters, blend trees, states, transitions, with measured numbers and notes), which Build Animator Controllers builds it from. See [Animator layouts](animation.md#animator-layouts).
 
-**Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MovementController's Body Definition; the Character prefab's is Assets/ScriptableObjects/Character Body.asset, and Prepare Character Models writes one beside each model's source. See [Collision](movement.md#collision).
+**Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MMotionMotor's Body Definition; the Character prefab's is Assets/ScriptableObjects/Character Body.asset, and Prepare Humanoid Models writes one beside each model's source. See [Collision](movement.md#collision).
 
-**Body Fit.** The CharacterModelHost setting that fits the character's body to its model (by height, or the model's own Body Definition). The body its source was prepared with is fitted in `Start`, before the first step, so the character moves the same body before its model arrives, or without one (`LoadModelOnStart` off). See [Replacing the model](animation.md#replacing-the-model).
+**Body Fit.** The CharacterModelSlot setting that fits the character's body to its model (by height, or the model's own Body Definition). The body its source was prepared with is fitted in `Start`, before the first step, so the character moves the same body before its model arrives, or without one (`LoadModelOnStart` off). See [Replacing the model](animation.md#replacing-the-model).
 
 **Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](levels.md).
 
-**Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MovementController.Capabilities`). See [Capabilities](movement.md#capabilities).
+**Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MMotionMotor.Capabilities`). See [Capabilities](movement.md#capabilities).
 
 **Character Doctor.** The editor window that checks a character prefab (its model, rig, measurements, hitboxes, body, eye point and animation) and fixes what it can (`CharacterChecks`). See [Adding a Character](adding-a-character.md).
 
 **Character state.** The flags saying what the character is doing in a physics step (grounded, jumping, wall running, ...): `CharacterState`. Changes in them raise movement events.
 
 **Component.** See movement component.
-
-**Creature Setup.** What a creature (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`CreatureSetup`, beside its model in Assets/Models/Creatures). Made by Prepare Creatures with its bones guessed from their names, then checked; Prepare Creatures makes the creature from it. See [A creature of your own](creatures.md#a-creature-of-your-own).
 
 **Envelope.** *(showcase levels)* The default character's capabilities written to a file (Tools/LevelSpec/envelope.json) for the levelspec tool, which checks levels against it. Written again whenever the tuning is saved in the editor. See [Tuning the Character](tuning.md#what-changes-when-you-save).
 
@@ -37,29 +35,31 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Generated asset.** An asset written by an editor tool (the mannequin, the level scenes, the envelope, ...), changed by changing its generator and running it again, never by hand. The table in AGENTS.md lists them.
 
+**Generic Rig Setup.** What a generic-rig character (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`GenericRigSetup`, beside its model in Assets/Models/Generic). Made by Prepare Generic Rig Models with its bones guessed from their names, then checked; Prepare Generic Rig Models makes the generic-rig character from it. See [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own).
+
 **Graybox.** *(showcase levels)* The untextured blockout style of the levels, and the library of pieces they're built from (`Graybox`).
 
 **Ground probes.** What keeps a hovering character's feet on the ground: a ray straight down under the feet (or a few round them), and the ground check's sphere for an edge beside them. See [Collision](movement.md#collision).
 
 **Hitbox.** One of the capsules on a model's bones that meet the world for the character (thrown things, triggers), which has no collider of its own: `CharacterHitboxes`, on the model. The movement never uses them. See [Hitboxes](animation.md#hitboxes).
 
-**Hover Over Steps.** The MovementController setting holding the body's bottom a step's height above the feet, which probes keep on the ground: steps pass under the body, which never rests on an edge or a corner. See [Collision](movement.md#collision).
+**Hover Over Steps.** The MMotionMotor setting holding the body's bottom a step's height above the feet, which probes keep on the ground: steps pass under the body, which never rests on an edge or a corner. See [Collision](movement.md#collision).
 
 **Hygiene check.** A quick check of the project that needs no Unity (`Tools/CI/check_project_hygiene.py`): `.meta` files, GUIDs, assembly dependencies and the code the camera, the level elements and the level builders may use, setting names and types, test fixtures, and the component classes movement assets name. See [Troubleshooting](troubleshooting.md#the-tests).
 
 **Input frame.** What a character's input does in one physics step (`CharacterInputFrame`): the move input, the look and the buttons held, tagged with the step's tick. Unmanaged, so it can be recorded, saved and sent as it is; presses and hold durations aren't in it (see input state). See [Input](movement.md#input).
 
-**Input latch.** What turns the player's device, read every render frame, into one input frame per physics step (`InputLatch`, in `ACInputManager`), so a tap shorter than a step still counts and one render frame running two steps doesn't press a button twice. See [Input](movement.md#input).
+**Input latch.** What turns the player's device, read every render frame, into one input frame per physics step (`InputLatch`, in `PlayerInputReader`), so a tap shorter than a step still counts and one render frame running two steps doesn't press a button twice. See [Input](movement.md#input).
 
-**Input recording.** A character's input frames, oldest first, with the step length and the tuning they were recorded with (`InputRecording`, made by an `InputRecorder`), saved to a file and replayed to move the character exactly as it moved. See [Input](movement.md#input).
+**Input recording.** A character's input frames, oldest first, with the step length and the tuning they were recorded with (`InputRecording`, made by an `CharacterInputRecorder`), saved to a file and replayed to move the character exactly as it moved. See [Input](movement.md#input).
 
-**Input source and owner.** What gives a character its input frames (`ICharacterInputSource`: `PlayerInputSource`, `ScriptedInputSource`, `WaypointInputSource`), set on its ACCharacterController or found on the character. Without one, its owner (`CharacterOwner`) decides: the local player's reads the device, an AI's stands idle, and a remote one isn't stepped. See [NPCs and input sources](spawning.md#npcs-and-input-sources).
+**Input source and owner.** What gives a character its input frames (`ICharacterInputSource`: `PlayerInputSource`, `ScriptedInputSource`, `WaypointInputSource`), set on its MMotionCharacter or found on the character. Without one, its owner (`ControlledBy`) decides: the local player's reads the device, an AI's stands idle, and a remote one isn't stepped. See [NPCs and input sources](spawning.md#npcs-and-input-sources).
 
-**Input state.** The character's input as its movement reads it (`InputState`, read through `Inputs`), worked out each step from the input frames: which buttons went down or came up, and how long each has been held, counted in steps. Part of the character's state. See [Input](movement.md#input).
+**Input state.** The character's input as its movement reads it (`InputState`, read through `StepInputs`), worked out each step from the input frames: which buttons went down or came up, and how long each has been held, counted in steps. Part of the character's state. See [Input](movement.md#input).
 
-**Level clock.** The tick the level's moving mechanics (platforms, pushables, ropes) go by (`Level.LevelClock`): Unity's fixed steps, unless something sets it (a networked game's tick, the test rig's). The test rig owns it while it's in use (`LevelClock.TickSource`) and resets it when it's disposed; a test that sets it without the rig must set it back to null.
+**Level clock.** The tick the level's moving mechanics (platforms, pushables, ropes) go by (`MeridianMotion.Levels.LevelClock`): Unity's fixed steps, unless something sets it (a networked game's tick, the test rig's). The test rig owns it while it's in use (`LevelClock.TickSource`) and resets it when it's disposed; a test that sets it without the rig must set it back to null.
 
-**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/Scripts/Level, the `CharacterShowcase.LevelElements` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
+**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/Scripts/Level, the `MeridianMotion.Levels` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
 
 **Level spec.** *(showcase levels)* A level recorded as data: the list of pieces its builder called, with their settings, which builds the same level again. Edited in the Level Editor or by the levelspec tool. See [Level Specs](level-specs.md).
 
@@ -71,7 +71,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Movement events.** One-off happenings in a physics step (jumped, landed, a ledge grabbed): `MovementEvents`, which animation and other systems listen for.
 
-**Movement mode.** The ScriptableObject asset that defines how characters move, made of movement components (`BasicMovementMode`, at Assets/ScriptableObjects/BasicMovementMode.asset). Shared by every character using it.
+**Movement mode.** The ScriptableObject asset that defines how characters move, made of movement components (`StandardMovementMode`, at Assets/ScriptableObjects/StandardMovementMode.asset). Shared by every character using it.
 
 **Movement simulation.** A copy of the character stepped faster than real time in a world of its own, far below everything else (`MovementSimulation`), used to measure its capabilities.
 
@@ -79,19 +79,19 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Posture.** How the character's body is held (`BodyPosture`): standing; low, lowered to the crouch height while crouched, sliding or rolling, and raised again where there's room; or lying, laid flat along the way it faces while swimming underwater.
 
-**Query buffer.** A reused buffer for a physics query that grows and runs the query again when it fills (`RaycastHitBuffer`, `ColliderBuffer`; `PhysicsQueries.QueryBuffer`), since Unity's results come in no order and a full one may leave out the nearest hit. Its own assembly, shared by the character and the camera. See [Automated Tests](testing.md) (`QueryBufferTests`).
+**Query buffer.** A reused buffer for a physics query that grows and runs the query again when it fills (`RaycastHitBuffer`, `ColliderBuffer`; `MeridianMotion.PhysicsQueries.QueryBuffer`), since Unity's results come in no order and a full one may leave out the nearest hit. Its own assembly, shared by the character and the camera. See [Automated Tests](testing.md) (`QueryBufferTests`).
 
-**Set Up Scene.** The editor tool that makes a level playable (`SceneGameSetup`): it adds the spawner, with the level's spawn markers as its spawn points, the input manager and the camera, and tells the course timers who's racing. It runs `LevelFixtureSetup` too, for fixtures not set up yet. See [Spawning the Character](spawning.md).
+**Set Up Scene.** The editor tool that makes a level playable (`CharacterSceneSetup`): it adds the spawner, with the level's spawn markers as its spawn points, the input manager and the camera, and tells the course timers who's racing. It runs `LevelFixtureSetup` too, for fixtures not set up yet. See [Spawning the Character](spawning.md).
 
-**Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MovementController's Size Scaling. See [Character Size](movement.md#character-size).
+**Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MMotionMotor's Size Scaling. See [Character Size](movement.md#character-size).
 
-**Stable ID.** An ID for a level object that's the same on every machine that loads the level (`Level.StableId`): a hash of its scene and path of names. What a character's written state names the ground it's on, or the rope it holds, by.
+**Stable ID.** An ID for a level object that's the same on every machine that loads the level (`MeridianMotion.Levels.StableId`): a hash of its scene and path of names. What a character's written state names the ground it's on, or the rope it holds, by.
 
-**Start Here.** The editor window (Tools > Character Showcase > Start Here, `StartHereWindow`) with every everyday tool in sections (play it, characters, abilities, checking your work, learning), each with a line saying what it does, and the commands for the test and hygiene scripts. It opens by itself the first time a project is opened on a machine (its Open On First Load turns that off).
+**Start Here.** The editor window (Tools > Meridian Motion > Start Here, `StartHereWindow`) with every everyday tool in sections (play it, characters, abilities, checking your work, learning), each with a line saying what it does, and the commands for the test and hygiene scripts. It opens by itself the first time a project is opened on a machine (its Open On First Load turns that off).
 
-**State snapshot.** A character's movement state saved between steps, to be put back (`MovementController.SaveState`, `RestoreState`: a `MovementStateSnapshot`, in this process only), with the level's ropes and pushables saved beside it (`WorldStateSnapshot`). `MovementStateSummary` is its compact, unmanaged part (pose, momentum, state, clock, latest input frame). `StateSerializer` writes either to bytes and reads them into a character or level built the same way, naming the level's objects by their stable IDs. See [Automated Tests](testing.md) (`DeterminismTests`).
+**State snapshot.** A character's movement state saved between steps, to be put back (`MMotionMotor.SaveState`, `RestoreState`: a `MovementStateSnapshot`, in this process only), with the level's ropes and pushables saved beside it (`WorldStateSnapshot`). `MovementStateSummary` is its compact, unmanaged part (pose, momentum, state, clock, latest input frame). `StateSerializer` writes either to bytes and reads them into a character or level built the same way, naming the level's objects by their stable IDs. See [Automated Tests](testing.md) (`DeterminismTests`).
 
-**Step tick.** The character's own clock, in whole steps, which movement times things by, so a movement simulation stepped faster than real time behaves the same. It has two counts: `MovementController.Tick`, the steps the character has taken, which its input frames are tagged with; and `StepTick`, the step under way (inside a step, one more than `Tick`), which timing goes by (keep the tick something happened at and ask `SecondsSince`; `StepTime` is it in seconds). `SetClock` starts both anywhere. See [State and assets](architecture.md#state-and-assets).
+**Step tick.** The character's own clock, in whole steps, which movement times things by, so a movement simulation stepped faster than real time behaves the same. It has two counts: `MMotionMotor.InputTick`, the steps the character has taken, which its input frames are tagged with; and `StepIndex`, the step under way (inside a step, one more than `InputTick`), which timing goes by (keep the tick something happened at and ask `SecondsSince`; `StepTime` is it in seconds). `SetClock` starts both anywhere. See [State and assets](architecture.md#state-and-assets).
 
 **Step trace.** A record of a test run step by step (`StepTrace`): where the character was, how it was found on the ground, what collision did and how far its feet were above the ground under them, written to Logs/StepTraces by the ground contact tests. See [Testing](testing.md).
 

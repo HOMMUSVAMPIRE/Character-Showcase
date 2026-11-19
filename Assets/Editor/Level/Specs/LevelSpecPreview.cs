@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// A level spec built in an unsaved scene for the level editor to show and edit: as a build makes it (the same
@@ -62,8 +62,8 @@ namespace CharacterShowcase.EditorTools.Level
         {
             var preview = new LevelSpecPreview { spec = spec };
             preview.Scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            preview.palette = GrayboxScene.Palette();
-            preview.concrete = preview.palette[(int)Graybox.Surface.Concrete];
+            preview.palette = LevelDefinition.Palette();
+            preview.concrete = preview.palette[(int)Graybox.GrayboxMaterial.Concrete];
             preview.Root = new GameObject(spec.Name).transform;
             preview.BuildAll();
             return preview;

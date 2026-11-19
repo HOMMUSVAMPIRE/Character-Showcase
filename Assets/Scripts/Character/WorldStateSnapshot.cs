@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// The level's moving parts' own state, saved (Save) to be put back later (Restore), in this process: each rope's (how
@@ -19,8 +19,8 @@ namespace Character
         public static List<MonoBehaviour> MovingParts()
         {
             var found = new List<MonoBehaviour>();
-            foreach (Rope rope in Rope.All) { if (rope != null) { found.Add(rope); } }
-            foreach (PushableObject pushable in Object.FindObjectsByType<PushableObject>()) { if (pushable.isActiveAndEnabled) { found.Add(pushable); } }
+            foreach (SwingRope rope in SwingRope.All) { if (rope != null) { found.Add(rope); } }
+            foreach (PushableBlock pushable in Object.FindObjectsByType<PushableBlock>()) { if (pushable.isActiveAndEnabled) { found.Add(pushable); } }
             found.Sort((a, b) => StableId.Of(a.transform).CompareTo(StableId.Of(b.transform)));
             return found;
         }

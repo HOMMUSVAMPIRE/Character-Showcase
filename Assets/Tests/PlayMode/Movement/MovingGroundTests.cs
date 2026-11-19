@@ -3,7 +3,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>Tests that the character rides moving and spinning platforms and keeps their momentum when leaving.</summary>
     [Category(TestArea.Movement)]
@@ -26,13 +26,13 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator APlatformEnabledLate_IsWhereAnEarlyOneIs_AtTheSameTick()
         {
             // Unity's own clock (its fixed steps), which these raw physics steps advance; the rig's counts only its character's steps.
-            Level.LevelClock.TickSource = null;
+            MeridianMotion.Levels.LevelClock.TickSource = null;
             var top = new Vector3(0f, 1f, 0f);
             var size = new Vector3(2f, 0.2f, 2f);
             const float loopSeconds = 3f;
-            Level.MovingPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
+            MeridianMotion.Levels.TickedPlatform early = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
             for (int i = 0; i < 37; i++) { yield return new WaitForFixedUpdate(); }
-            Level.MovingPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
+            MeridianMotion.Levels.TickedPlatform late = rig.Platform(top, size, new Vector3(0f, 0f, 4f), loopSeconds, new Vector3(0f, 30f, 0f));
             for (int i = 0; i < 3; i++) { yield return new WaitForFixedUpdate(); }
             Rigidbody a = early.GetComponent<Rigidbody>(), b = late.GetComponent<Rigidbody>();
             // Their pose is a function of Unity's tick, which depends on how far into the suite this test runs, so they can
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests.Movement
 
         /// <summary>
         /// Ground that jumps further in a step than the most the character is carried (Max Ground Carry Per Step, on the
-        /// MovementController) has been teleported: the character isn't dragged across the level with it.
+        /// MMotionMotor) has been teleported: the character isn't dragged across the level with it.
         /// </summary>
         [UnityTest]
         public IEnumerator GroundThatTeleports_DoesntDragTheCharacterWithIt()
@@ -122,7 +122,7 @@ namespace CharacterShowcase.Tests.Movement
 
         /// <summary>
         /// A teleport shorter than the most the character is carried in a step, made standing, stays where it's put: the
-        /// ground it stood on doesn't carry it back to where it stood on it (see MovementController.Teleport).
+        /// ground it stood on doesn't carry it back to where it stood on it (see MMotionMotor.Teleport).
         /// </summary>
         [UnityTest]
         public IEnumerator TeleportingAShortWay_WhileStanding_StaysWhereItsPut()

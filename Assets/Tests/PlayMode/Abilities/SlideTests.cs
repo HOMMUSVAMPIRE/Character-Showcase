@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of sliding: pressing Crouch while sprinting slides on the sprint's momentum, low enough to pass under things
@@ -24,7 +24,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return SprintUpToSpeed();
         }
 
-        protected override Inputs InputsFor(int step) => SprintCrouching(step);
+        protected override StepInputs InputsFor(int step) => SprintCrouching(step);
 
         protected override string OffSetting => "slideMaxDuration";
 
@@ -52,9 +52,9 @@ namespace CharacterShowcase.Tests.Abilities
         }
 
         /// <summary>Sprint forward with Crouch pressed on the first step (and held for the given number of steps).</summary>
-        private static Inputs SprintCrouching(int step, int crouchSteps = 1)
+        private static StepInputs SprintCrouching(int step, int crouchSteps = 1)
         {
-            Inputs inputs = CharacterTestRig.Sprint(Vector3.forward);
+            StepInputs inputs = CharacterTestRig.Sprint(Vector3.forward);
             if (step < crouchSteps) { inputs.crouch = CharacterTestRig.Held(); }
             return inputs;
         }
@@ -123,7 +123,7 @@ namespace CharacterShowcase.Tests.Abilities
             bool slidAtJump = false;
             yield return rig.Run(jumpAt + 10, step =>
             {
-                Inputs inputs = SprintCrouching(step);
+                StepInputs inputs = SprintCrouching(step);
                 if (step >= jumpAt) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, step =>
@@ -156,7 +156,7 @@ namespace CharacterShowcase.Tests.Abilities
             const int pressAgainAt = 6;
             yield return rig.Run(pressAgainAt + 3, step =>
             {
-                Inputs inputs = SprintCrouching(step);
+                StepInputs inputs = SprintCrouching(step);
                 if (step == pressAgainAt) { inputs.crouch = CharacterTestRig.Held(); }
                 return inputs;
             });
@@ -166,7 +166,7 @@ namespace CharacterShowcase.Tests.Abilities
         }
 
         /// <summary>
-        /// Sliding turned off, either way (Sliding Enabled off, or a Slide Max Duration of 0), crouching while sprinting
+        /// Sliding turned off, either way (Can Slide off, or a Slide Max Duration of 0), crouching while sprinting
         /// crouches instead.
         /// </summary>
         [UnityTest]
@@ -179,7 +179,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
             Assert.That(slid, Is.False, byMaxDurationOfZero
                 ? "With no slide length, crouching while sprinting shouldn't slide."
-                : "With Sliding Enabled off, crouching while sprinting shouldn't slide.");
+                : "With Can Slide off, crouching while sprinting shouldn't slide.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
         }
 

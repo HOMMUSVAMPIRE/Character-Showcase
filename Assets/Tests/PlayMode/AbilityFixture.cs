@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// A fixture of tests on one ability (the movement component T), which gets the checks every ability should pass from
@@ -35,24 +35,24 @@ namespace CharacterShowcase.Tests
         /// The ability's state and the events it raises starting and ending: by default, those its component declares for
         /// AbilityState (its StateEvents). A component that raises its own (Dashing does) overrides this.
         /// </summary>
-        protected virtual StateEvent AbilityEvents => EventsOf(AbilityState);
+        protected virtual StateEventPair AbilityEvents => EventsOf(AbilityState);
 
         /// <summary>How many steps into the ability the save-and-put-back check saves the character.</summary>
         protected virtual int StepsBeforeSaving => 3;
 
-        private StateEvent FirstStateEvent
+        private StateEventPair FirstStateEvent
         {
             get
             {
-                StateEvent[] events = Component.StateEvents;
+                StateEventPair[] events = Component.StateEvents;
                 Assert.That(events, Is.Not.Empty, $"{typeof(T).Name} declares no states (StateEvents): give it one, or override AbilityState and AbilityEvents.");
                 return events[0];
             }
         }
 
-        private StateEvent EventsOf(CharacterState state)
+        private StateEventPair EventsOf(CharacterState state)
         {
-            foreach (StateEvent pair in Component.StateEvents)
+            foreach (StateEventPair pair in Component.StateEvents)
             {
                 if (pair.state == state) { return pair; }
             }
@@ -118,7 +118,7 @@ namespace CharacterShowcase.Tests
             Assume.That(UnderWay, Is.True, "Test setup: the ability should be under way.");
             Component.Enabled = false;
             // Within a step or two (the mode ends a component turned off as the next step starts: see
-            // ComposedMovementMode.AdvanceComponentTimers), not when it would have ended by itself.
+            // AbilityMovementMode.AdvanceComponentTimers), not when it would have ended by itself.
             yield return RunInputs(2);
             Assert.That(Component.IsActive(rig.Movement), Is.False, $"Turned off, {typeof(T).Name} should let go of the character at once.");
             Assert.That(UnderWay, Is.False, $"Turned off, the character shouldn't be {AbilityState} any more.");
@@ -136,9 +136,9 @@ namespace CharacterShowcase.Tests
             yield return RunInputs(CharacterTestRig.StepsFor(1f));
             Component.Enabled = false;
             yield return RunInputs(CharacterTestRig.StepsFor(0.1f));
-            var pairs = new List<StateEvent>(Component.StateEvents);
+            var pairs = new List<StateEventPair>(Component.StateEvents);
             if (!pairs.Exists(p => p.state == AbilityEvents.state)) { pairs.Add(AbilityEvents); }
-            foreach (StateEvent pair in pairs)
+            foreach (StateEventPair pair in pairs)
             {
                 Assert.That(rig.Count(pair.ended), Is.EqualTo(rig.Count(pair.started)),
                     $"{pair.state} started {rig.Count(pair.started)} times and ended {rig.Count(pair.ended)}: each start should have its end.");

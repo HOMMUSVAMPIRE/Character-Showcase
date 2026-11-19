@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of crouching: Crouch lowers the character's body and slows it to its crouch speed, pressing again stands
@@ -51,7 +51,7 @@ namespace CharacterShowcase.Tests.Abilities
         public IEnumerator Crouching_LowersTheEyePoint_WithTheBody_AndStandingRaisesIt()
         {
             yield return rig.StandOnFloor();
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             if (models.EyePoint == null) { Assert.Ignore("The character has no eye point."); }
             void Visuals(int _) => rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, Quaternion.identity);
             yield return rig.Run(0.1f, _ => CharacterTestRig.Idle(), Visuals);
@@ -191,7 +191,7 @@ namespace CharacterShowcase.Tests.Abilities
             int dashingAfterJump = 0;
             yield return rig.Run(dashSteps, step =>
             {
-                Inputs inputs = CharacterTestRig.Dash(Vector3.forward);
+                StepInputs inputs = CharacterTestRig.Dash(Vector3.forward);
                 if (step >= 2) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, step => { if (step >= 2 && rig.Dashing) { dashingAfterJump++; } });

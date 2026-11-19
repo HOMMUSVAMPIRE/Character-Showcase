@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
-    /// Tests of a movement mode's components (ComposedMovementMode): a component turned off, or removed, is left out of
+    /// Tests of a movement mode's components (AbilityMovementMode): a component turned off, or removed, is left out of
     /// the movement as if it weren't there, and one turned off while it has the character lets go of it (how the rig
     /// changes their settings is CharacterTestRigTests'). Bounce pads and ziplines stand in for any component that
     /// takes over the character; jumping and dashing, which act on top of walking, and walking and falling themselves,
@@ -22,7 +22,7 @@ namespace CharacterShowcase.Tests.Movement
         private IEnumerator UnderAZipline()
         {
             rig.Floor();
-            Zipline line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
+            ZiplineCable line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
             yield return rig.SpawnSettled(Vector3.zero, settleSeconds: 0f);
             rig.Teleport(line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f));
             rig.ClearEvents();

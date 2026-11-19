@@ -10,7 +10,7 @@ Checks:
   3. Every assembly references only what AGENTS.md's assembly table allows it (ALLOWED_REFERENCES), and no
      assembly is missing from the table.
   4. The camera uses no character or level code, and the level elements and the level builders no character code:
-     no `using Character` or the like (the level builders may use the level elements, `Level`).
+     no `using MeridianMotion.Characters` or the like (the level builders may use the level elements, `MeridianMotion.Levels`).
   5. Every serialized field the tests read or set by name (rig.MovementSetting<T>("name"),
      rig.SetMovementSetting("name", value), an ability fixture's OffSetting => "name") still exists, and is of
      the type the test asks for it as (<T>).
@@ -34,7 +34,7 @@ Checks:
          ability's fixture derives from a test kit: AbilityFixture<X>, or MomentFixture<X> for one of a moment.
      15. docs/movement.md's component list, and abilities.md or traversal.md, name it by its inspector name (as
          MovementComponent.DisplayNameOf gives it).
-     16. It's in BasicMovementMode.DefaultComponents.
+     16. It's in StandardMovementMode.DefaultComponents.
      17. No HasFlag on a CharacterState or MovementEvents anywhere in Assets/Scripts: it boxes the 64-bit enum, an
          allocation every step.
      Where a component legitimately differs, it's in a named allow-list below (with why), and an entry that's no longer
@@ -87,28 +87,28 @@ def check_guids():
 # reference Unity's test runner, which every test assembly needs.
 TEST_RUNNER = {"UnityEngine.TestRunner", "UnityEditor.TestRunner"}
 ALLOWED_REFERENCES = {
-    "PhysicsQueries": set(),
-    "CharacterShowcase.LevelElements": {"PhysicsQueries"},
-    "CharacterShowcase.LevelElements.Editor": {"CharacterShowcase.LevelElements"},
-    "CharacterShowcase": {"Unity.InputSystem", "PhysicsQueries", "CharacterShowcase.LevelElements"},
-    "CameraSystem": {"Unity.InputSystem", "PhysicsQueries"},
-    "CharacterShowcase.Editor": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.LevelElements",
-                                 "CharacterShowcase.LevelElements.Editor"},
-    "CharacterShowcase.Pipeline.Editor": {"CharacterShowcase", "CharacterShowcase.Editor"},
-    "CharacterShowcase.LevelChecks.Editor": {"CharacterShowcase", "CharacterShowcase.Editor"},
-    "CharacterShowcase.Level.Editor": {"Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime",
-                                       "Unity.TextMeshPro", "CharacterShowcase.LevelElements",
-                                       "CharacterShowcase.LevelElements.Editor"},
-    "CharacterShowcase.Tests.EditMode": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Tests.Shared",
-                                         "PhysicsQueries", "CharacterShowcase.LevelElements",
-                                         "CharacterShowcase.LevelElements.Editor"} | TEST_RUNNER,
-    "CharacterShowcase.Tests.EditMode.Levels": {"CharacterShowcase", "CharacterShowcase.Editor", "CharacterShowcase.Tests.Shared",
-                                                "CharacterShowcase.Level.Editor", "CharacterShowcase.LevelChecks.Editor",
-                                                "CharacterShowcase.LevelElements",
-                                                "CharacterShowcase.LevelElements.Editor"} | TEST_RUNNER,
-    "CharacterShowcase.Tests.PlayMode": {"CharacterShowcase", "CameraSystem", "CharacterShowcase.Tests.Shared",
-                                         "PhysicsQueries", "CharacterShowcase.LevelElements"} | TEST_RUNNER,
-    "CharacterShowcase.Tests.Shared": {"CharacterShowcase"} | TEST_RUNNER,
+    "MeridianMotion.PhysicsQueries": set(),
+    "MeridianMotion.Levels": {"MeridianMotion.PhysicsQueries"},
+    "MeridianMotion.Levels.EditorTools": {"MeridianMotion.Levels"},
+    "MeridianMotion.Characters": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels"},
+    "MeridianMotion.Cameras": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries"},
+    "MeridianMotion.EditorTools": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Levels",
+                                   "MeridianMotion.Levels.EditorTools"},
+    "MeridianMotion.Showcase.Pipeline": {"MeridianMotion.Characters", "MeridianMotion.EditorTools"},
+    "MeridianMotion.Showcase.LevelChecks": {"MeridianMotion.Characters", "MeridianMotion.EditorTools"},
+    "MeridianMotion.Showcase.Levels": {"Unity.RenderPipelines.Core.Runtime", "Unity.RenderPipelines.Universal.Runtime",
+                                       "Unity.TextMeshPro", "MeridianMotion.Levels",
+                                       "MeridianMotion.Levels.EditorTools"},
+    "MeridianMotion.Tests.EditMode": {"MeridianMotion.Characters", "MeridianMotion.EditorTools", "MeridianMotion.Tests.Shared",
+                                      "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels",
+                                      "MeridianMotion.Levels.EditorTools"} | TEST_RUNNER,
+    "MeridianMotion.Showcase.Tests.Levels": {"MeridianMotion.Characters", "MeridianMotion.EditorTools", "MeridianMotion.Tests.Shared",
+                                             "MeridianMotion.Showcase.Levels", "MeridianMotion.Showcase.LevelChecks",
+                                             "MeridianMotion.Levels",
+                                             "MeridianMotion.Levels.EditorTools"} | TEST_RUNNER,
+    "MeridianMotion.Tests.PlayMode": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Tests.Shared",
+                                      "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels"} | TEST_RUNNER,
+    "MeridianMotion.Tests.Shared": {"MeridianMotion.Characters"} | TEST_RUNNER,
 }
 
 
@@ -138,9 +138,9 @@ def check_assembly_references():
 
 # Folders whose code must know nothing of the character's: the namespaces they may not use. The camera uses nothing of the
 # character's or the level's; the level elements (Assets/Scripts/Level) and the level builders, which equip levels with
-# them, use the level elements (Level) but nothing of the character's or the camera's.
-CHARACTER_AND_LEVEL = r"(Character|Level|CameraSystem|CharacterShowcase\.EditorTools)\s*;|(Character|Level)\."
-CHARACTER_ONLY = r"(Character|CameraSystem|CharacterShowcase\.EditorTools)\s*;|Character\."
+# them, use the level elements (MeridianMotion.Levels) but nothing of the character's or the camera's.
+CHARACTER_AND_LEVEL = r"MeridianMotion\.(Characters|Levels|EditorTools|Showcase)\b"
+CHARACTER_ONLY = r"MeridianMotion\.(Characters|Cameras|EditorTools)\b"
 INDEPENDENT_FOLDERS = {
     ASSETS / "Scripts" / "CameraSystem": ("the camera follows a plain Transform", CHARACTER_AND_LEVEL),
     ASSETS / "Scripts" / "Level": ("the level elements are the level's, used by the character", CHARACTER_ONLY),
@@ -154,19 +154,16 @@ def check_independent_folders():
             text = source.read_text(errors="replace")
             for match in re.finditer(rf"^\s*using\s+(?:static\s+)?(?:\w+\s*=\s*)?(?:{forbidden})", text, re.M):
                 used = match.group(0).strip()
-                # A folder's own namespace is its to use (CameraSystem's camera code is in CameraSystem).
-                if folder.name == "CameraSystem" and re.search(r"\bCameraSystem\b", used):
-                    continue
                 problems.append(f"{source.relative_to(ROOT)}: '{used}': {why}, so it uses no character code")
 
 
 def movement_setting_sources():
-    # BasicMovementMode is a partial class: its fields are spread over BasicMovementMode.cs and
-    # BasicMovementMode.<Ability>.cs. Its components (MovementModes/Components) hold the rest, and the base
-    # classes (MovementComponent, ComposedMovementMode) a few more.
+    # StandardMovementMode is a partial class: its fields are spread over StandardMovementMode.cs and
+    # StandardMovementMode.<Ability>.cs. Its components (MovementModes/Components) hold the rest, and the base
+    # classes (MovementComponent, AbilityMovementMode) a few more.
     modes = ASSETS / "Scripts" / "MovementModes"
-    return (sorted(modes.glob("BasicMovementMode*.cs")) + sorted((modes / "Components").glob("*.cs"))
-            + [modes / "MovementComponent.cs", modes / "ComposedMovementMode.cs"])
+    return (sorted(modes.glob("StandardMovementMode*.cs")) + sorted((modes / "Components").glob("*.cs"))
+            + [modes / "MovementComponent.cs", modes / "AbilityMovementMode.cs"])
 
 
 # C#'s keyword names for types, as a field may be declared with either.
@@ -187,7 +184,7 @@ def check_reflected_settings():
             if not declared:
                 problems.append(
                     f"{test.relative_to(ROOT)} reads or sets movement setting '{name}' by reflection, but no such "
-                    f"field is declared in BasicMovementMode (or its BasicMovementMode.*.cs parts) or its components"
+                    f"field is declared in StandardMovementMode (or its StandardMovementMode.*.cs parts) or its components"
                 )
                 continue
             # Asked for as a type (MovementSetting<float>("name")), it must be the field's: as another, the rig fails
@@ -361,12 +358,12 @@ def see(section):
 
 # Components that take the character over (TakeOver) without declaring Traits: AbilityTraits.None, the default, is what
 # they do with it. Declaring it (`public override AbilityTraits Traits => AbilityTraits.None;`) would say so outright.
-TAKEOVER_WITH_DEFAULT_TRAITS = {}  # Every takeover declares its Traits now (task 79): a new one may not leave them out.
+TAKEOVER_WITH_DEFAULT_TRAITS = {}  # Every takeover declares its Traits now (task D18): a new one may not leave them out.
 # The states the movement as a whole sets, not one ability: any component may set them without listing them.
 SHARED_STATES = {"Idle", "Moving", "Grounded", "Running", "Dead"}
 # Components no PlayMode fixture names (rig.Component<X>(), AbilityFixture<X> or typeof(X)) yet, though one tests them by
 # their settings' names. Each comes off as its fixture moves to the kit (AbilityFixture<X> names it).
-NOT_NAMED_BY_A_FIXTURE = {}  # Every component's fixture names it now (task 79): a new one's must.
+NOT_NAMED_BY_A_FIXTURE = {}  # Every component's fixture names it now (task D18): a new one's must.
 # Components documented in movement.md's own sections, as the character's basic movement, rather than in abilities.md or
 # traversal.md: movement.md must mention them outside its component list too.
 DOCUMENTED_IN_MOVEMENT_MD = {
@@ -386,7 +383,7 @@ NOT_AN_ABILITY = {
 # Components whose PlayMode fixture doesn't derive from the ability test kit (AbilityFixture<X>) yet. Every new ability
 # starts on the kit (the check fails without it); each of these comes off the list as its fixture moves to the kit (the
 # check fails if one has and is still listed). See docs/adding-an-ability.md, The ability test kit.
-NOT_YET_ON_THE_KIT = set()  # Every ability's fixture is on a kit now (tasks 79 and 80): a new one's must be.
+NOT_YET_ON_THE_KIT = set()  # Every ability's fixture is on a kit now (tasks D18 and D19): a new one's must be.
 
 # The kinds of setting a tuning preset can copy (MovementSettings.Copy; MovementTuningPresetTests fails on any other):
 # a primitive (C#'s IsPrimitive: the numbers, bool and char), an enum, or an AnimationCurve (copied key by key).
@@ -606,12 +603,12 @@ def check_component_takeovers(components):
             continue
         if not overrides(code, start, end, r"AbilityTraits", "Traits") and cls not in TAKEOVER_WITH_DEFAULT_TRAITS:
             problems.append(f"{where(path)}: {cls} overrides TakeOver but not Traits: add `public override AbilityTraits "
-                            f"Traits => ...;` (HoldsUp if the character isn't falling while it has it, HoldsOn if it "
+                            f"Traits => ...;` (Supported if the character isn't falling while it has it, Attached if it "
                             f"holds on to something, None if neither): {see(THE_COMPONENT)}")
         # One of a moment (a bounce: OneOffEvents) has no state to start and end.
-        if not overrides(code, start, end, r"StateEvent\s*\[\s*\]", "StateEvents") and not overrides(code, start, end, r"MovementEvents", "OneOffEvents"):
+        if not overrides(code, start, end, r"StateEventPair\s*\[\s*\]", "StateEvents") and not overrides(code, start, end, r"MovementEvents", "OneOffEvents"):
             problems.append(f"{where(path)}: {cls} overrides TakeOver but not StateEvents: add `public override "
-                            f"StateEvent[] StateEvents => stateEvents;` and a static array of StateEvent(its "
+                            f"StateEventPair[] StateEvents => stateEvents;` and a static array of StateEventPair(its "
                             f"CharacterState, its started event, its ended event): {see(ITS_STATE_FLAG)}")
     for listed, why in (("TAKEOVER_WITH_DEFAULT_TRAITS", TAKEOVER_WITH_DEFAULT_TRAITS),):
         member, name = r"AbilityTraits", "Traits"
@@ -631,18 +628,18 @@ STATE_SET = r"\bstate\s*(?:\|=|=(?![=>]))([^;]*)"
 
 def check_component_states(components):
     # Each state in a component's StateEvents is set somewhere (else its events are never raised): in its own file, or
-    # in the movement code (Crouching's is set by BasicMovementMode, which holds the posture). And each state a component
+    # in the movement code (Crouching's is set by StandardMovementMode, which holds the posture). And each state a component
     # sets that's its own (not one the movement as a whole sets: SHARED_STATES) is in its StateEvents, so the mode raises
     # its events, unless its events are of a moment (OneOffEvents: Jumping's state is a jump's rise, its events the jump).
     movement_code = sorted((ASSETS / "Scripts" / "MovementModes").rglob("*.cs")) + \
-        sorted((ASSETS / "Scripts" / "Character").glob("MovementController*.cs"))
+        sorted((ASSETS / "Scripts" / "Character").glob("MMotionMotor*.cs"))
     set_anywhere = set()
     for source in movement_code:
         for rhs in re.findall(STATE_SET, blank_code(source.read_text(encoding="utf-8"))):
             set_anywhere.update(re.findall(r"\bCharacterState\.(\w+)", rhs))
     for cls, (path, _, code, start, end, _) in components.items():
         body = code[start:end]
-        listed = set(re.findall(r"\bnew\s*(?:StateEvent)?\s*\(\s*CharacterState\.(\w+)", body))
+        listed = set(re.findall(r"\bnew\s*(?:StateEventPair)?\s*\(\s*CharacterState\.(\w+)", body))
         for state in sorted(listed - set_anywhere):
             problems.append(f"{where(path)}: {cls}'s StateEvents names CharacterState.{state}, which nothing sets, so its "
                             f"events are never raised: set it on the steps it's under way "
@@ -656,10 +653,10 @@ def check_component_states(components):
         if missing and not moments:
             for state in sorted(missing):
                 problems.append(f"{where(path)}: {cls} sets CharacterState.{state} but its StateEvents doesn't list it, "
-                                f"so the mode raises no events as it starts and ends: add StateEvent(CharacterState.{state}, "
+                                f"so the mode raises no events as it starts and ends: add StateEventPair(CharacterState.{state}, "
                                 f"its started event, its ended event) to {cls}'s StateEvents: {see(ITS_STATE_FLAG)}")
         # The events it raises by hand are its moments, and it declares them (OneOffEvents): `events |= MovementEvents.X`,
-        # a jump off something (MovementHelpers.JumpOff(..., MovementEvents.X)), or off a wall (JumpOffWall: WallJumped).
+        # a jump off something (MovementRules.JumpOff(..., MovementEvents.X)), or off a wall (JumpOffWall: WallJumped).
         raised = set()
         for rhs in re.findall(r"\bevents\s*\|=([^;]*)", body):
             raised.update(re.findall(r"\bMovementEvents\.(\w+)", rhs))
@@ -765,9 +762,9 @@ def check_component_docs(components):
 
 
 def check_default_components(components):
-    # A new mode starts with every component (BasicMovementMode.DefaultComponents), and the inspector offers what a
+    # A new mode starts with every component (StandardMovementMode.DefaultComponents), and the inspector offers what a
     # mode lacks from that list.
-    path = ASSETS / "Scripts" / "MovementModes" / "BasicMovementMode.cs"
+    path = ASSETS / "Scripts" / "MovementModes" / "StandardMovementMode.cs"
     code = blank_code(path.read_text(encoding="utf-8"))
     match = re.search(r"\bDefaultComponents\s*\(\s*\)\s*\{", code)
     if not match:
@@ -777,7 +774,7 @@ def check_default_components(components):
     body = code[match.end(): matching_brace(code, match.end() - 1)]
     for cls, (component_path, *_) in components.items():
         if not re.search(rf"\bnew\s+{cls}\s*\(", body):
-            problems.append(f"{where(component_path)}: {cls} isn't in BasicMovementMode.DefaultComponents: add "
+            problems.append(f"{where(component_path)}: {cls} isn't in StandardMovementMode.DefaultComponents: add "
                             f"`yield return new {cls}();` at its place in the order ({where(path)}): {see(IN_THE_MODE)}")
 
 
@@ -828,8 +825,8 @@ UNSHIPPED_FOLDERS = ("Editor/Pipeline/", "Editor/LevelChecks/", "Editor/Level/",
 # Mentions that ship on purpose: how FBX files exported from Blender are put right (a buyer's model may be one), which
 # require nothing of Blender. Each is (the file, a phrase on its line).
 PIPELINE_NAMES_ALLOWED = (
-    ("Editor/Models/CharacterModelImporter.cs", "Blender's \"Armature\""),
-    ("Editor/Models/CharacterModelImporter.Pose.cs", "Blender's FBX export"),
+    ("Editor/Models/HumanoidModelImporter.cs", "Blender's \"Armature\""),
+    ("Editor/Models/HumanoidModelImporter.Pose.cs", "Blender's FBX export"),
     ("Tests/EditMode/Models/PreparedModelTests.cs", "Blender's axis conversion"),
 )
 

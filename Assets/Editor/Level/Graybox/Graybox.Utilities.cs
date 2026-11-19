@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Utilities, after the style sheet's utility and industrial details: pipe runs on hangers along underground
     // ceilings, and utility stations on walls (a cabinet, a conduit up from it, a vent at its top). Pipes run well above
@@ -17,7 +17,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void CellUtilities(Transform parent, IEnumerable<Cell> cells)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CellUtilities), parent, cells);
-            GrayboxSettings.UtilitySettings u = Settings.utilities;
+            LevelBuilderSettings.UtilitySettings u = Settings.utilities;
             foreach (Cell cell in cells)
             {
                 UnityEngine.Rect a = cell.Area;
@@ -32,8 +32,8 @@ namespace CharacterShowcase.EditorTools.Level
                     alongX ? new Vector3(a.xMin + along, height, a.yMin + fromWall) : new Vector3(a.xMin + fromWall, height, a.yMin + along);
                 float mainOut = u.pipeWallOffset, secondOut = mainOut + main + second + 0.12f;
                 var mesh = new GrayboxMesh();
-                mesh.Tube(Surface.Steel, At(0f, mainOut, y), At(length, mainOut, y), main, u.pipeSides, ends: true);
-                mesh.Tube(Surface.Accent, At(0f, secondOut, y), At(length, secondOut, y), second, u.pipeSides, ends: true);
+                mesh.Tube(GrayboxMaterial.Steel, At(0f, mainOut, y), At(length, mainOut, y), main, u.pipeSides, ends: true);
+                mesh.Tube(GrayboxMaterial.Accent, At(0f, secondOut, y), At(length, secondOut, y), second, u.pipeSides, ends: true);
                 int hangers = Mathf.Max(1, Mathf.FloorToInt(length / u.hangerSpacing));
                 for (int i = 0; i < hangers; i++)
                 {
@@ -42,10 +42,10 @@ namespace CharacterShowcase.EditorTools.Level
                     foreach (float rod in new[] { mainOut - main - 0.04f, secondOut + second + 0.04f })
                     {
                         Vector3 bottom = At(along, rod, y - main - 0.03f), top = At(along, rod, cell.Ceiling);
-                        mesh.Box(Surface.Graphite, bottom - new Vector3(0.015f, 0f, 0.015f), top + new Vector3(0.015f, 0f, 0.015f), top: false);
+                        mesh.Box(GrayboxMaterial.Graphite, bottom - new Vector3(0.015f, 0f, 0.015f), top + new Vector3(0.015f, 0f, 0.015f), top: false);
                     }
                     Vector3 from = At(along, mainOut - main - 0.055f, y - main - 0.06f), to = At(along, secondOut + second + 0.055f, y - main - 0.03f);
-                    mesh.Box(Surface.Graphite, Vector3.Min(from, to) - (alongX ? new Vector3(0.03f, 0f, 0f) : new Vector3(0f, 0f, 0.03f)),
+                    mesh.Box(GrayboxMaterial.Graphite, Vector3.Min(from, to) - (alongX ? new Vector3(0.03f, 0f, 0f) : new Vector3(0f, 0f, 0.03f)),
                         Vector3.Max(from, to) + (alongX ? new Vector3(0.03f, 0f, 0f) : new Vector3(0f, 0f, 0.03f)));
                 }
                 var pipes = new GameObject($"Pipes ({cell.Name})");
@@ -64,7 +64,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject UtilityStation(Transform parent, Vector2 wallPoint, Vector2 outward, float floor)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(UtilityStation), parent, wallPoint, outward, floor);
-            GrayboxSettings.UtilitySettings u = Settings.utilities;
+            LevelBuilderSettings.UtilitySettings u = Settings.utilities;
             var station = new GameObject("Utility Station");
             station.transform.SetParent(parent, false);
             station.transform.SetLocalPositionAndRotation(new Vector3(wallPoint.x, floor, wallPoint.y),
@@ -74,17 +74,17 @@ namespace CharacterShowcase.EditorTools.Level
             Vector3 cabinet = u.utilityPanelSize;
             float lift = u.utilityPanelLift, cabinetTop = lift + cabinet.y, w = cabinet.x / 2f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, new Vector3(-w, lift, 0f), new Vector3(w, cabinetTop, cabinet.z));
-            mesh.Box(Surface.Accent, new Vector3(-w, cabinetTop - 0.2f * cabinet.y, cabinet.z), new Vector3(w, cabinetTop - 0.14f * cabinet.y, cabinet.z + 0.01f));
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-w, lift, 0f), new Vector3(w, cabinetTop, cabinet.z));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-w, cabinetTop - 0.2f * cabinet.y, cabinet.z), new Vector3(w, cabinetTop - 0.14f * cabinet.y, cabinet.z + 0.01f));
 
             Vector2 vent = u.ventSize;
             float conduit = u.conduit.x / 2f, ventBottom = u.conduit.y - vent.y / 2f, ventTop = ventBottom + vent.y;
-            mesh.Tube(Surface.Graphite, new Vector3(0f, cabinetTop, conduit + 0.01f), new Vector3(0f, ventBottom, conduit + 0.01f), conduit, 6);
+            mesh.Tube(GrayboxMaterial.Graphite, new Vector3(0f, cabinetTop, conduit + 0.01f), new Vector3(0f, ventBottom, conduit + 0.01f), conduit, 6);
             const float frame = 0.06f, slat = 0.02f, edge = 0.04f;
-            mesh.Box(Surface.Graphite, new Vector3(-vent.x / 2f, ventBottom, 0f), new Vector3(vent.x / 2f, ventTop, frame));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-vent.x / 2f, ventBottom, 0f), new Vector3(vent.x / 2f, ventTop, frame));
             for (float y = ventBottom + edge + u.ventSlatSpacing / 2f; y < ventTop - edge; y += u.ventSlatSpacing)
             {
-                mesh.Box(Surface.Steel, new Vector3(-vent.x / 2f + edge, y - slat / 2f, frame), new Vector3(vent.x / 2f - edge, y + slat / 2f, frame + 0.03f));
+                mesh.Box(GrayboxMaterial.Steel, new Vector3(-vent.x / 2f + edge, y - slat / 2f, frame), new Vector3(vent.x / 2f - edge, y + slat / 2f, frame + 0.03f));
             }
             mesh.AddTo(station, station.name);
 

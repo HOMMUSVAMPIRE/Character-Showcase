@@ -1,9 +1,9 @@
 using System;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Shows an AnimatorParameterTranslator's bool parameter with its source as a menu: the animation state's own bools
@@ -43,7 +43,7 @@ namespace CharacterShowcase.EditorTools
                 foreach ((string name, _) in AnimatorParameterTranslator.AnimationBools) { Add("Animation State/" + name, name); }
                 foreach (CharacterState state in Enum.GetValues(typeof(CharacterState)))
                 {
-                    if (state == CharacterState.Idle) { continue; }
+                    if (state == CharacterState.None) { continue; }
                     Add("Character State/" + ObjectNames.NicifyVariableName(state.ToString()), AnimatorParameterTranslator.SourceOf(state));
                 }
                 menu.DropDown(field);

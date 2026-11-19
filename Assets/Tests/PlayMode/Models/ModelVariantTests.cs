@@ -2,13 +2,13 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests.Models
+namespace MeridianMotion.Tests.Models
 {
     /// <summary>
     /// Tests with models made differently from the prepared ones, to check the character copes with how models come:
@@ -37,7 +37,7 @@ namespace CharacterShowcase.Tests.Models
         /// A source for a copy of the basis source's model, posed in its avatar's reference pose with the node above its
         /// skeleton changed, and an avatar built from that.
         /// </summary>
-        private DirectCharacterModelSource Variant(DirectCharacterModelSource basis, Action<Transform> changeArmature)
+        private PrefabModelSource Variant(PrefabModelSource basis, Action<Transform> changeArmature)
         {
             GameObject template = Object.Instantiate(basis.ModelPrefab);
             created.Add(template);
@@ -62,7 +62,7 @@ namespace CharacterShowcase.Tests.Models
             created.Add(avatar);
             Assert.That(avatar.isValid && avatar.isHuman, Is.True, "Test setup: the variant's avatar should build.");
 
-            var source = ScriptableObject.CreateInstance<DirectCharacterModelSource>();
+            var source = ScriptableObject.CreateInstance<PrefabModelSource>();
             created.Add(source);
             source.ModelPrefab = template;
             source.Avatar = avatar;
@@ -80,13 +80,13 @@ namespace CharacterShowcase.Tests.Models
             yield return rig.WaitForModel();
             yield return new WaitForFixedUpdate();
             // Variants of the character's own model, which has to be a humanoid its source references directly.
-            if (rig.Models.ModelSource is not DirectCharacterModelSource own || own.ModelPrefab == null
+            if (rig.Models.ModelSource is not PrefabModelSource own || own.ModelPrefab == null
                 || rig.Models.Animator == null || !rig.Models.Animator.isHuman)
             {
                 Assert.Ignore("The character's model isn't a humanoid its source references directly.");
                 yield break;
             }
-            DirectCharacterModelSource variant = Variant(own, changeArmature);
+            PrefabModelSource variant = Variant(own, changeArmature);
             bool loaded = false;
             yield return CharacterTestRig.WaitFor(rig.Models.LoadModelAsync(variant), l => loaded = l);
             Assert.That(loaded, Is.True);
@@ -96,7 +96,7 @@ namespace CharacterShowcase.Tests.Models
             animator.enabled = false;
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), _ =>
             {
-                rig.Animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+                rig.Animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime);
                 animator.Update(Time.fixedDeltaTime);
             });
         }
@@ -108,7 +108,7 @@ namespace CharacterShowcase.Tests.Models
         {
             float bottom = float.PositiveInfinity, top = float.NegativeInfinity;
             var baked = new Mesh();
-            foreach (SkinnedMeshRenderer skinned in rig.Models.Model.GetComponentsInChildren<SkinnedMeshRenderer>())
+            foreach (SkinnedMeshRenderer skinned in rig.Models.ModelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 skinned.BakeMesh(baked, false);
                 Matrix4x4 toWorld = Matrix4x4.TRS(skinned.transform.position, skinned.transform.rotation, Vector3.one);

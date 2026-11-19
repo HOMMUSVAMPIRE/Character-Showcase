@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of the character's splashes and ripples (WaterEffects): falling in splashes once, on the surface, as strong
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Traversal
         // Ripples come every frame (Update), so these need Unity's frames.
         protected override bool MovementOnly => false;
 
-        private Water water;
+        private SwimmableWater water;
         private WaterEffects effects;
         private readonly List<WaterEffectContext> splashes = new(), ripples = new();
 

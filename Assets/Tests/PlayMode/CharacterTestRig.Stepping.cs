@@ -3,13 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     // The rig's stepping: running the character for steps or seconds, until something happens, as the game does.
     public sealed partial class CharacterTestRig
@@ -19,16 +19,16 @@ namespace CharacterShowcase.Tests
         /// input and which buttons are down count: the character times presses and holds itself, from the steps);
         /// afterStep is called after each step's movement has been simulated by physics.
         /// </summary>
-        public IEnumerator Run(int steps, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
+        public IEnumerator Run(int steps, Func<int, StepInputs> inputsForStep, Action<int> afterStep = null) =>
             RunFrames(steps, Frames(inputsForStep), afterStep);
 
         /// <summary>
         /// Scripted inputs as the frames the character is given (see CharacterInputFrame.Holding), tagged with its tick and
         /// looking along Look.
         /// </summary>
-        private Func<int, CharacterInputFrame> Frames(Func<int, Inputs> inputsForStep) => step => Frame(inputsForStep(step));
+        private Func<int, CharacterInputFrame> Frames(Func<int, StepInputs> inputsForStep) => step => Frame(inputsForStep(step));
 
-        private CharacterInputFrame Frame(Inputs inputs) => CharacterInputFrame.Holding(inputs, Movement.Tick).LookingAlong(Look);
+        private CharacterInputFrame Frame(StepInputs inputs) => CharacterInputFrame.Holding(inputs, Movement.InputTick).LookingAlong(Look);
 
         /// <summary>
         /// The way the scripted inputs look (each frame's look: see CharacterInputFrame), which their move input is relative
@@ -42,7 +42,7 @@ namespace CharacterShowcase.Tests
 
         /// <summary>
         /// Runs the character for a number of physics steps driven by the input source given (an AI's, say), as its
-        /// ACCharacterController steps it in the game: the source is asked for each step's frame.
+        /// MMotionCharacter steps it in the game: the source is asked for each step's frame.
         /// </summary>
         public IEnumerator RunWithSource(int steps, ICharacterInputSource source, Action<int> afterStep = null) =>
             RunSources(steps, _ => source, afterStep);
@@ -54,7 +54,7 @@ namespace CharacterShowcase.Tests
         private sealed class ScriptedFrame : ICharacterInputSource
         {
             public CharacterInputFrame next;
-            public CharacterInputFrame FrameFor(uint tick, MovementController character) => next;
+            public CharacterInputFrame FrameFor(uint tick, MMotionMotor character) => next;
         }
 
         private readonly ScriptedFrame scripted = new();
@@ -76,7 +76,7 @@ namespace CharacterShowcase.Tests
             {
                 int step = i;
                 // Stepped in the coming physics step's FixedUpdate, after the level's moving platforms have moved (see
-                // FixedStepper), as ACCharacterController steps it in the game.
+                // FixedStepper), as MMotionCharacter steps it in the game.
                 stepper.Next = () => Step(step, sourceForStep(step));
                 yield return new WaitForFixedUpdate();
                 // The step's Rigidbody.Move has now been simulated, so Position reflects it.
@@ -104,8 +104,8 @@ namespace CharacterShowcase.Tests
             RunFrames(recording.Count, step => recording[step], afterStep);
 
         /// <summary>
-        /// One physics step of the character, through its ACCharacterController as the game steps it
-        /// (ACCharacterController.StepMovement: any change of size, then movement), driven by the source given.
+        /// One physics step of the character, through its MMotionCharacter as the game steps it
+        /// (MMotionCharacter.StepMovement: any change of size, then movement), driven by the source given.
         /// </summary>
         private void Step(int step, ICharacterInputSource source)
         {
@@ -131,7 +131,7 @@ namespace CharacterShowcase.Tests
         /// platforms move to the tick (their MoveOrder): so in the first step a platform is at tick 1, its first step's
         /// pose, as it was when platforms counted their own time from when they were made.
         /// </summary>
-        [DefaultExecutionOrder(Level.MovingPlatform.MoveOrder - 10)]
+        [DefaultExecutionOrder(MeridianMotion.Levels.TickedPlatform.MoveOrder - 10)]
         private sealed class LevelTicker : MonoBehaviour
         {
             public CharacterTestRig rig;
@@ -143,12 +143,12 @@ namespace CharacterShowcase.Tests
         }
 
         /// <summary>
-        /// Runs the rig's next character step in FixedUpdate, after the level's moving platforms (MovingPlatform.MoveOrder)
-        /// have moved and before the physics step, as ACCharacterController does in the game. Stepped after the physics
+        /// Runs the rig's next character step in FixedUpdate, after the level's moving platforms (TickedPlatform.MoveOrder)
+        /// have moved and before the physics step, as MMotionCharacter does in the game. Stepped after the physics
         /// step instead (on resuming from WaitForFixedUpdate), the character read the platforms a step before they moved,
         /// and rode them a step behind.
         /// </summary>
-        [DefaultExecutionOrder(Level.MovingPlatform.MoveOrder + 200)]
+        [DefaultExecutionOrder(MeridianMotion.Levels.TickedPlatform.MoveOrder + 200)]
         private sealed class FixedStepper : MonoBehaviour
         {
             /// <summary>The step to run in the next FixedUpdate, once.</summary>
@@ -162,13 +162,13 @@ namespace CharacterShowcase.Tests
             }
         }
 
-        public IEnumerator Run(float seconds, Func<int, Inputs> inputsForStep, Action<int> afterStep = null) =>
+        public IEnumerator Run(float seconds, Func<int, StepInputs> inputsForStep, Action<int> afterStep = null) =>
             Run(StepsFor(seconds), inputsForStep, afterStep);
 
         /// <summary>
         /// Whether the rig may step the physics itself (Physics.Simulate, in a loop) rather than wait for each of
         /// Unity's physics steps, which takes real time even sped up: far faster, and the same steps, since the movement
-        /// times everything by its own clock (MovementController.StepTime). For tests of the movement alone: a test that
+        /// times everything by its own clock (MMotionMotor.StepTime). For tests of the movement alone: a test that
         /// needs Unity's frames (animation, IK, the model's or camera's per-frame updates) leaves it off. Even on, the rig
         /// waits for Unity's steps while the world has something that moves in them (a moving platform, a pushable
         /// object, a rope). It does what Unity's steps would for the character itself (fitting its collider to its model).
@@ -189,7 +189,7 @@ namespace CharacterShowcase.Tests
             {
                 // Objects made or moved since the last step reach the physics scene first, as Unity's own step would.
                 Physics.SyncTransforms();
-                CharacterModelHost models = Models;
+                CharacterModelSlot models = Models;
                 for (int i = 0; i < steps; i++)
                 {
                     Step(i, sourceForStep(i));
@@ -210,7 +210,7 @@ namespace CharacterShowcase.Tests
         /// long as the movement takes, however it's tuned, rather than a time chosen for one tuning. Doesn't fail by
         /// itself on the timeout: assert what should then be true.
         /// </summary>
-        public IEnumerator RunUntil(Func<bool> done, Func<int, Inputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
+        public IEnumerator RunUntil(Func<bool> done, Func<int, StepInputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
         {
             for (int step = 0; step < StepsFor(timeoutSeconds) && !done(); step++)
             {
@@ -233,7 +233,7 @@ namespace CharacterShowcase.Tests
         /// Runs the character with the given inputs until it has left the ground and landed again (a jump, from the
         /// ground), or the timeout passes; afterStep, if given, is called after each step.
         /// </summary>
-        public IEnumerator RunUntilBackOnTheGround(Func<int, Inputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
+        public IEnumerator RunUntilBackOnTheGround(Func<int, StepInputs> inputsForStep, Action<int> afterStep = null, float timeoutSeconds = DefaultTimeout)
         {
             bool left = false;
             yield return RunUntil(() => left && Grounded, inputsForStep, step => { left |= !Grounded; afterStep?.Invoke(step); }, timeoutSeconds);
@@ -243,7 +243,7 @@ namespace CharacterShowcase.Tests
         public const float DefaultTimeout = 10f;
 
         /// <summary>The character's horizontal speed (m/s), averaged over the steps of the given time with the given inputs, passed to result.</summary>
-        public IEnumerator MeanSpeed(float seconds, Func<int, Inputs> inputsForStep, Action<float> result)
+        public IEnumerator MeanSpeed(float seconds, Func<int, StepInputs> inputsForStep, Action<float> result)
         {
             float total = 0f;
             int steps = 0;

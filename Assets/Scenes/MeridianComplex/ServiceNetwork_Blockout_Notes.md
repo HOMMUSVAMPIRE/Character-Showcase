@@ -3,7 +3,7 @@
 The Service Network, the complex's underground maintenance level, is graybox in `MeridianComplex.unity`, from the
 sheet `MeridianComplex-RemainingAreas.png`. Level geometry only, in the placeholder smooth-concrete material, plus
 simple lighting (below). It's built by `Assets/Editor/Level/MeridianServiceNetworkBuilder.cs`, as part of **Tools >
-Character Showcase > Level > Build Meridian Complex**. It's laid out in world coordinates.
+Meridian Motion > Showcase > Levels > Build Meridian Complex**. It's laid out in world coordinates.
 
 ## Where it is, and how it joins
 

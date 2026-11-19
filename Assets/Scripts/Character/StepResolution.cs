@@ -1,8 +1,8 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
-    /// <summary>How the ground check found the character on the ground (see MovementController.CheckGrounded).</summary>
+    /// <summary>How the ground check found the character on the ground (see MMotionMotor.CheckGrounded).</summary>
     public enum GroundedBy
     {
         /// <summary>It wasn't on the ground.</summary>
@@ -16,7 +16,7 @@ namespace Character
     }
 
     /// <summary>
-    /// What collision did to the character in a step (see MovementData.resolution): how it pushed the body out of the
+    /// What collision did to the character in a step (see MovementStep.resolution): how it pushed the body out of the
     /// world, how it found it on the ground, how far it stepped it up, and how it snapped it to the ground. Changes
     /// nothing: it's there to see why the character moved as it did (the tests measure jitter by it).
     /// </summary>

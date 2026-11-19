@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Spawning
+namespace MeridianMotion.Tests.Spawning
 {
     /// <summary>
-    /// Every character prefab in the project (one with an ACCharacterController: the Character prefab, the fox, and any
+    /// Every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any
     /// made with New Character) spawns, stands on the ground and walks: so a character made by hand or by New Character is
     /// tested from the moment it's in the project.
     /// </summary>
@@ -20,7 +20,7 @@ namespace CharacterShowcase.Tests.Spawning
         {
 #if UNITY_EDITOR
             return UnityEditor.AssetDatabase.FindAssets("t:Prefab").Select(UnityEditor.AssetDatabase.GUIDToAssetPath)
-                .Where(path => path.StartsWith("Assets/") && UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path)?.GetComponent<ACCharacterController>() != null)
+                .Where(path => path.StartsWith("Assets/") && UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(path)?.GetComponent<MMotionCharacter>() != null)
                 .OrderBy(path => path, System.StringComparer.Ordinal);
 #else
             return Enumerable.Empty<string>();

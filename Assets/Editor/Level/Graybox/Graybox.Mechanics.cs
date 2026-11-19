@@ -1,10 +1,10 @@
 using System.Globalization;
+using MeridianMotion.Levels.EditorTools;
 using TMPro;
-using Level.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Mechanics: the level's fixtures that move or count (moving platforms, pushable crates, timing gates, ladders, ropes,
     // ziplines, bounce pads, water), and low beams to slide under. The level can't reference runtime code, so a fixture is its geometry, named for what it is
@@ -38,7 +38,7 @@ namespace CharacterShowcase.EditorTools.Level
         public const string WaterPrefix = LevelFixtureSetup.WaterPrefix;
         /// <summary>How a climbable panel's name starts.</summary>
         public const string ClimbablePrefix = LevelFixtureSetup.ClimbablePrefix;
-        /// <summary>The name of a bounce pad's springy top, the child its BouncePad squashes as it launches someone.</summary>
+        /// <summary>The name of a bounce pad's springy top, the child its LaunchPad squashes as it launches someone.</summary>
         public const string BouncePadSpringName = LevelFixtureSetup.BouncePadSpringName;
 
         private static string F(float v) => v.ToString("0.###", CultureInfo.InvariantCulture);
@@ -61,9 +61,9 @@ namespace CharacterShowcase.EditorTools.Level
             Vector3 h = size / 2f;
             float band = Settings.mechanics.edgeBand;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, -h, new Vector3(h.x, h.y - band, h.z), top: false);
-            mesh.Box(Surface.Accent, new Vector3(-h.x, h.y - band, -h.z), new Vector3(h.x, h.y, h.z), bottom: false, top: false);
-            mesh.Box(Surface.Steel, new Vector3(-h.x, h.y - 0.001f, -h.z), h, sides: false, ends: false, bottom: false);
+            mesh.Box(GrayboxMaterial.Steel, -h, new Vector3(h.x, h.y - band, h.z), top: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-h.x, h.y - band, -h.z), new Vector3(h.x, h.y, h.z), bottom: false, top: false);
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-h.x, h.y - 0.001f, -h.z), h, sides: false, ends: false, bottom: false);
             mesh.AddTo(platform, platform.name);
             platform.AddComponent<BoxCollider>().size = size;
             return platform;
@@ -82,9 +82,9 @@ namespace CharacterShowcase.EditorTools.Level
             crate.transform.localPosition = new Vector3(at.x, floor + size / 2f, at.y);
             float h = size / 2f, b = Settings.mechanics.edgeBand;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, new Vector3(-h, -h, -h), new Vector3(h, h, h), bottom: false);
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-h, -h, -h), new Vector3(h, h, h), bottom: false);
             // Orange bands round its middle, standing proud.
-            mesh.Box(Surface.Accent, new Vector3(-h - 0.01f, -b, -h - 0.01f), new Vector3(h + 0.01f, b, h + 0.01f), top: false, bottom: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-h - 0.01f, -b, -h - 0.01f), new Vector3(h + 0.01f, b, h + 0.01f), top: false, bottom: false);
             mesh.AddTo(crate, crate.name);
             crate.AddComponent<BoxCollider>().size = Vector3.one * size;
             return crate;
@@ -93,7 +93,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>
         /// A ladder height tall standing on a floor at floor, its back against whatever is at "at" (a wall's face, say),
         /// climbed from the side facing points to: two orange rails width apart with steel rungs between them, every rung
-        /// spacing from a spacing up (Ladder.RungCountFor's layout, so the game's Ladder finds them where they are). A box
+        /// spacing from a spacing up (ClimbableLadder.RungCountFor's layout, so the game's ClimbableLadder finds them where they are). A box
         /// collider round the whole ladder. The game setup makes it climbable (see LevelFixtureSetup). Its top should be
         /// level with the floor it's climbed onto: a ladder is only climbed off its top onto a floor there.
         /// </summary>
@@ -101,7 +101,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject Ladder(Transform parent, Vector2 at, float floor, float height, Vector2 facing, float width = 0.6f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ladder), parent, at, floor, height, facing, width);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float spacing = m.ladderRungSpacing, rail = m.ladderRail, rung = m.ladderRung;
             var ladder = new GameObject($"{LadderPrefix} | height={F(height)} | width={F(width)} | spacing={F(spacing)} | rail={F(rail)} | rung={F(rung)}");
             ladder.transform.SetParent(parent, false);
@@ -113,13 +113,13 @@ namespace CharacterShowcase.EditorTools.Level
             // In its own space: up +Y, climbed from +Z, rails at the sides, rungs between them.
             float h = width / 2f, r = rail / 2f, s = rung / 2f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Accent, new Vector3(-h, 0f, -r), new Vector3(-h + rail, height, r), bottom: false);
-            mesh.Box(Surface.Accent, new Vector3(h - rail, 0f, -r), new Vector3(h, height, r), bottom: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-h, 0f, -r), new Vector3(-h + rail, height, r), bottom: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(h - rail, 0f, -r), new Vector3(h, height, r), bottom: false);
             int rungs = Mathf.Max(0, Mathf.FloorToInt((height - 0.5f * spacing) / spacing + 1e-4f));
             for (int k = 0; k < rungs; k++)
             {
                 float y = (k + 1) * spacing;
-                mesh.Box(Surface.Steel, new Vector3(-h + rail, y - s, -s), new Vector3(h - rail, y + s, s), ends: false);
+                mesh.Box(GrayboxMaterial.Steel, new Vector3(-h + rail, y - s, -s), new Vector3(h - rail, y + s, s), ends: false);
             }
             mesh.AddTo(ladder, ladder.name);
             var collider = ladder.AddComponent<BoxCollider>();
@@ -139,13 +139,13 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject Rope(Transform parent, Vector3 anchor, float length)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Rope), parent, anchor, length);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float b = m.ropeBracket / 2f, t = m.ropeThickness / 2f;
             var bracket = new GameObject("Rope Bracket");
             bracket.transform.SetParent(parent, false);
             bracket.transform.localPosition = anchor;
             var bracketMesh = new GrayboxMesh();
-            bracketMesh.Box(Surface.Graphite, new Vector3(-b, 0f, -b), new Vector3(b, 2f * b, b));
+            bracketMesh.Box(GrayboxMaterial.Graphite, new Vector3(-b, 0f, -b), new Vector3(b, 2f * b, b));
             bracketMesh.AddTo(bracket, bracket.name);
             MakeStatic(bracket, occluder: false);
 
@@ -153,7 +153,7 @@ namespace CharacterShowcase.EditorTools.Level
             rope.transform.SetParent(parent, false);
             rope.transform.localPosition = anchor;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Accent, new Vector3(-t, -length, -t), new Vector3(t, 0f, t), top: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-t, -length, -t), new Vector3(t, 0f, t), top: false);
             mesh.AddTo(rope, rope.name, uv2: false);
             return rope;
         }
@@ -168,7 +168,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject Zipline(Transform parent, Vector3 start, Vector3 end, float startFloor, float endFloor, float speed = 16f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Zipline), parent, start, end, startFloor, endFloor, speed);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             Vector3 along = end - start;
             float length = along.magnitude;
             Vector3 direction = length > 1e-4f ? along / length : Vector3.forward;
@@ -181,7 +181,7 @@ namespace CharacterShowcase.EditorTools.Level
             line.transform.SetLocalPositionAndRotation(start, Quaternion.LookRotation(direction, Vector3.up));
             float c = m.cableThickness / 2f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, new Vector3(-c, -c, 0f), new Vector3(c, c, length));
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-c, -c, 0f), new Vector3(c, c, length));
             mesh.AddTo(line, line.name, uv2: false);
             MakeStatic(line, occluder: false);
 
@@ -191,7 +191,7 @@ namespace CharacterShowcase.EditorTools.Level
             foreach ((Vector3 at, Vector2 outward, float floor) in new[] { (start, -flat, startFloor), (end, flat, endFloor) })
             {
                 Vector2 centre = new Vector2(at.x, at.z) + outward * (p / 2f + 0.05f);
-                BoxXZ(posts, "Zipline Post", centre, new Vector2(p, p), floor, at.y + reachOver, Mathf.Atan2(flat.x, flat.y) * Mathf.Rad2Deg, Surface.Graphite);
+                BoxXZ(posts, "Zipline Post", centre, new Vector2(p, p), floor, at.y + reachOver, Mathf.Atan2(flat.x, flat.y) * Mathf.Rad2Deg, GrayboxMaterial.Graphite);
             }
             return line;
         }
@@ -205,14 +205,14 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject BouncePad(Transform parent, Vector2 at, float floor, float size, float height)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(BouncePad), parent, at, floor, size, height);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float h = size / 2f, tall = m.bouncePad.x, top = Mathf.Min(m.bouncePad.y, tall * 0.8f), inset = 0.1f;
             var pad = new GameObject($"{BouncePadPrefix} | height={F(height)}");
             pad.transform.SetParent(parent, false);
             pad.transform.localPosition = new Vector3(at.x, floor, at.y);
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, new Vector3(-h, 0f, -h), new Vector3(h, tall - top, h), bottom: false);
-            mesh.Box(Surface.Accent, new Vector3(-h - 0.01f, 0f, -h - 0.01f), new Vector3(h + 0.01f, Settings.mechanics.edgeBand, h + 0.01f), top: false, bottom: false);
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-h, 0f, -h), new Vector3(h, tall - top, h), bottom: false);
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-h - 0.01f, 0f, -h - 0.01f), new Vector3(h + 0.01f, Settings.mechanics.edgeBand, h + 0.01f), top: false, bottom: false);
             mesh.AddTo(pad, pad.name);
             var collider = pad.AddComponent<BoxCollider>();
             collider.center = new Vector3(0f, tall / 2f, 0f);
@@ -224,7 +224,7 @@ namespace CharacterShowcase.EditorTools.Level
             spring.transform.SetParent(pad.transform, false);
             spring.transform.localPosition = new Vector3(0f, tall - top, 0f);
             var springMesh = new GrayboxMesh();
-            springMesh.Box(Surface.Cyan, new Vector3(-h + inset, 0f, -h + inset), new Vector3(h - inset, top, h - inset), bottom: false);
+            springMesh.Box(GrayboxMaterial.Cyan, new Vector3(-h + inset, 0f, -h + inset), new Vector3(h - inset, top, h - inset), bottom: false);
             springMesh.AddTo(spring, spring.name);
             GameObjectUtility.SetStaticEditorFlags(spring, 0);
             return pad;
@@ -256,7 +256,7 @@ namespace CharacterShowcase.EditorTools.Level
                 {
                     float x0 = (c / (float)columns - 0.5f) * size.x, x1 = ((c + 1) / (float)columns - 0.5f) * size.x;
                     float z0 = (r / (float)rows - 0.5f) * size.y, z1 = ((r + 1) / (float)rows - 0.5f) * size.y;
-                    mesh.Quad(Surface.Water, Vector3.up, new Vector3(x0, 0f, z0), new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1), new Vector3(x1, 0f, z0));
+                    mesh.Quad(GrayboxMaterial.Water, Vector3.up, new Vector3(x0, 0f, z0), new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1), new Vector3(x1, 0f, z0));
                 }
             }
             mesh.AddTo(water, water.name, uv2: false);
@@ -276,7 +276,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static GameObject ClimbablePanel(Transform parent, Vector2 a, Vector2 b, float y0, float y1, Vector2 facing, float speed = 1f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(ClimbablePanel), parent, a, b, y0, y1, facing, speed);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float width = Vector2.Distance(a, b), half = width / 2f, depth = m.climbablePanelDepth, height = y1 - y0;
             Vector2 along = width > 1e-4f ? (b - a) / width : Vector2.right;
             Vector2 outward = facing.sqrMagnitude > 1e-8f ? facing.normalized : new Vector2(-along.y, along.x);
@@ -288,7 +288,7 @@ namespace CharacterShowcase.EditorTools.Level
                 Quaternion.LookRotation(new Vector3(outward.x, 0f, outward.y), Vector3.up));
             float d = depth / 2f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Steel, new Vector3(-half, 0f, -d), new Vector3(half, height, d));
+            mesh.Box(GrayboxMaterial.Steel, new Vector3(-half, 0f, -d), new Vector3(half, height, d));
             // Holds on a grid, every other row shifted half a spacing across, kept a hold's size in from the edges.
             Vector2 spacing = m.climbableHoldSpacing;
             Vector3 hold = m.climbableHold;
@@ -298,7 +298,7 @@ namespace CharacterShowcase.EditorTools.Level
                 float shift = (row % 2) * spacing.x / 2f;
                 for (float x = -half + hold.x + shift; x + hold.x / 2f <= half - hold.x / 2f; x += spacing.x)
                 {
-                    mesh.Box(Surface.Accent, new Vector3(x - hold.x / 2f, y - hold.y / 2f, d), new Vector3(x + hold.x / 2f, y + hold.y / 2f, d + hold.z), ends: false);
+                    mesh.Box(GrayboxMaterial.Accent, new Vector3(x - hold.x / 2f, y - hold.y / 2f, d), new Vector3(x + hold.x / 2f, y + hold.y / 2f, d + hold.z), ends: false);
                 }
             }
             mesh.AddTo(panel, panel.name);
@@ -320,7 +320,7 @@ namespace CharacterShowcase.EditorTools.Level
             float distance = 0f, bool display = false)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(TimingGate), parent, course, role, a, b, floor, approach, distance, display);
-            GrayboxSettings.MechanicsSettings m = Settings.mechanics;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float width = Vector2.Distance(a, b), half = width / 2f, p = m.gatePost / 2f, top = m.gateHeight;
             Vector2 middle = (a + b) / 2f, across = (b - a) / width;
             // Laid out with +z along approach (the way through it), x across it.
@@ -333,14 +333,14 @@ namespace CharacterShowcase.EditorTools.Level
             var mesh = new GrayboxMesh();
             foreach (float x in new[] { -half - p, half + p })
             {
-                mesh.Box(Surface.Graphite, new Vector3(x - p, 0f, -p), new Vector3(x + p, top, p), bottom: false, top: false);
-                mesh.Box(Surface.Cyan, new Vector3(x - 0.05f, 0.4f, -p - 0.02f), new Vector3(x + 0.05f, top - 0.6f, -p), top: false, bottom: false);
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(x - p, 0f, -p), new Vector3(x + p, top, p), bottom: false, top: false);
+                mesh.Box(GrayboxMaterial.Cyan, new Vector3(x - 0.05f, 0.4f, -p - 0.02f), new Vector3(x + 0.05f, top - 0.6f, -p), top: false, bottom: false);
             }
-            mesh.Box(Surface.Accent, new Vector3(-half - 2f * p, top, -p), new Vector3(half + 2f * p, top + 0.4f, p));
+            mesh.Box(GrayboxMaterial.Accent, new Vector3(-half - 2f * p, top, -p), new Vector3(half + 2f * p, top + 0.4f, p));
             Vector2 panel = m.gatePanel;
             if (display)
             {
-                mesh.Box(Surface.Graphite, new Vector3(-panel.x / 2f, top + 0.4f, -0.06f), new Vector3(panel.x / 2f, top + 0.4f + panel.y, 0.06f));
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(-panel.x / 2f, top + 0.4f, -0.06f), new Vector3(panel.x / 2f, top + 0.4f + panel.y, 0.06f));
             }
             mesh.AddTo(gate, gate.name);
             foreach (float x in new[] { -half - p, half + p }) { AddBox(gate, new Vector3(x, top / 2f, 0f), new Vector3(2f * p, top, 2f * p)); }
@@ -378,10 +378,10 @@ namespace CharacterShowcase.EditorTools.Level
             Vector2 dir = (b - a) / length, middle = (a + b) / 2f;
             float yaw = Mathf.Atan2(dir.x, dir.y) * Mathf.Rad2Deg;
             Transform beam = Group(parent, name);
-            BoxXZ(beam, "Beam", middle, new Vector2(depth, length), floor + clear, floor + clear + 0.5f, yaw, Surface.Accent);
+            BoxXZ(beam, "Beam", middle, new Vector2(depth, length), floor + clear, floor + clear + 0.5f, yaw, GrayboxMaterial.Accent);
             foreach (Vector2 end in new[] { a + dir * (post / 2f), b - dir * (post / 2f) })
             {
-                BoxXZ(beam, "Post", end, new Vector2(post, post), floor, floor + clear, yaw, Surface.Graphite);
+                BoxXZ(beam, "Post", end, new Vector2(post, post), floor, floor + clear, yaw, GrayboxMaterial.Graphite);
             }
         }
     }

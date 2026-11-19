@@ -9,7 +9,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Edits a level spec (Assets/Levels/….level.json) and shows it as it changes: its parts and pieces in a list,
@@ -70,7 +70,7 @@ namespace CharacterShowcase.EditorTools.Level
         };
 
         /// <summary>Opens the Level Editor window.</summary>
-        [MenuItem("Tools/Character Showcase/Level/Level Editor", priority = 20)]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Level Editor", priority = 20)]
         public static void ShowWindow() => GetWindow<LevelEditorWindow>("Level Editor").Show();
 
         /// <summary>Opens the editor on a spec file.</summary>
@@ -333,7 +333,7 @@ namespace CharacterShowcase.EditorTools.Level
             Toolbar();
             if (spec == null)
             {
-                EditorGUILayout.HelpBox("Open a level spec to edit it (Assets/Levels: export the levels' specs from Tools > Character Showcase > Level > Specs), or start a new one.", MessageType.Info);
+                EditorGUILayout.HelpBox("Open a level spec to edit it (Assets/Levels: export the levels' specs from Tools > Meridian Motion > Showcase > Levels > Specs), or start a new one.", MessageType.Info);
                 foreach (string path in SpecFiles())
                 {
                     if (GUILayout.Button(path, EditorStyles.linkLabel)) { Load(path); }
@@ -417,7 +417,7 @@ namespace CharacterShowcase.EditorTools.Level
                     }
                     if (GUILayout.Button(new GUIContent("Set Up Scene…", "Make the open scene playable: the character spawner, camera and the level's mechanics."), EditorStyles.toolbarButton, GUILayout.Width(92f)))
                     {
-                        EditorApplication.ExecuteMenuItem("Tools/Character Showcase/Set Up Scene…");
+                        EditorApplication.ExecuteMenuItem("Tools/Meridian Motion/Set Up Scene…");
                     }
                     if (GUILayout.Button(new GUIContent("Schematic", "Open the level's schematic, with the movement checks (needs python3)."), EditorStyles.toolbarButton, GUILayout.Width(70f)))
                     {

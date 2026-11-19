@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// What the animation importers (QuaterniusAnimationImporter, MotionCaptureClipImporter) share: finding their files,

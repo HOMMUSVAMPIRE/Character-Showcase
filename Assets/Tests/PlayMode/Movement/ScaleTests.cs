@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
-    /// Tests of resizing the character at runtime with ACCharacterController.SetScale: only the model parent is scaled,
+    /// Tests of resizing the character at runtime with MMotionCharacter.SetScale: only the model parent is scaled,
     /// and collision, movement, the model's measurements and mass follow, for uniform and non-uniform scales alike.
     /// Growing waits for room.
     /// </summary>
@@ -38,7 +38,7 @@ namespace CharacterShowcase.Tests.Movement
 
             Assert.That(rig.Character.transform.localScale, Is.EqualTo(Vector3.one), "The character's own transform shouldn't be scaled.");
             Assert.That(ModelParent.localScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
             Assert.That(rig.BodyNow.height, Is.EqualTo(height * 2f).Within(1e-4f));
             Assert.That(rig.BodyNow.radius, Is.EqualTo(radius * 2f).Within(1e-4f));
             Assert.That(rig.BodyNow.center, Is.EqualTo(center * 2f));
@@ -55,14 +55,14 @@ namespace CharacterShowcase.Tests.Movement
             yield return Spawn();
             rig.Controller.SetScale(new Vector3(2f, 2f, 2f));
             Assert.That(rig.Controller.IsResizing, Is.True);
-            Assert.That(rig.Controller.Scale, Is.EqualTo(Vector3.one), "Nothing changes before the next physics step.");
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(Vector3.one), "Nothing changes before the next physics step.");
 
             yield return rig.Run(2, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Controller.Scale.y, Is.InRange(1.01f, 1.99f), "Partway through, the character should be between sizes.");
+            Assert.That(rig.Controller.CurrentScale.y, Is.InRange(1.01f, 1.99f), "Partway through, the character should be between sizes.");
 
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.IsResizing, Is.False);
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
         }
 
         [UnityTest]
@@ -84,7 +84,7 @@ namespace CharacterShowcase.Tests.Movement
             Object.DestroyImmediate(ceiling);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.IsResizing, Is.False);
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)), "Once there's room it should finish growing.");
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)), "Once there's room it should finish growing.");
         }
 
         [UnityTest]
@@ -121,7 +121,7 @@ namespace CharacterShowcase.Tests.Movement
         /// <summary>Running speed (horizontal) at the end of the last physics step.</summary>
         private float Speed()
         {
-            Vector3 v = rig.Movement.lastFrameMovementData.finalVelocity;
+            Vector3 v = rig.Movement.lastStep.finalVelocity;
             return new Vector2(v.x, v.z).magnitude;
         }
 
@@ -155,7 +155,7 @@ namespace CharacterShowcase.Tests.Movement
         {
             yield return Spawn();
             yield return rig.WaitForModel();
-            CharacterModelHost models = rig.Models;
+            CharacterModelSlot models = rig.Models;
             float eyes = models.EyeHeight, height = models.ModelHeightMeters;
             Transform eyePoint = models.EyePoint;
 
@@ -163,7 +163,7 @@ namespace CharacterShowcase.Tests.Movement
             Assert.That(models.EyeHeight, Is.EqualTo(eyes * 2f).Within(1e-3f));
             Assert.That(models.ModelHeightMeters, Is.EqualTo(height * 2f).Within(1e-3f));
             if (eyePoint != null) { Assert.That(eyePoint.localPosition.y, Is.EqualTo(models.EyeHeight).Within(1e-4f), "The eye point should follow."); }
-            Assert.That(CharacterModelSource.MeasureHeight(models.Model), Is.EqualTo(height * 2f).Within(0.02f),
+            Assert.That(CharacterModelSource.MeasureHeight(models.ModelRoot), Is.EqualTo(height * 2f).Within(0.02f),
                 "The model itself should be twice as tall.");
 
             // A model loaded while the character is scaled is measured at its size too.
@@ -197,11 +197,11 @@ namespace CharacterShowcase.Tests.Movement
             bool accepted = rig.Controller.SetScale(invalid, immediately: true);
 
             Assert.That(accepted, Is.False);
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)), "The scale shouldn't change.");
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)), "The scale shouldn't change.");
             Assert.That(rig.Controller.TargetScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
             Assert.That(ModelParent.localScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
         }
 
         private static readonly Vector3[] InvalidScales =
@@ -219,7 +219,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return Spawn();
             LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("smaller than the minimum"));
             Assert.That(rig.Controller.SetScale(new Vector3(0.001f, 1f, 1f), immediately: true), Is.True);
-            Assert.That(rig.Controller.Scale.x, Is.EqualTo(0.05f).Within(1e-5f));
+            Assert.That(rig.Controller.CurrentScale.x, Is.EqualTo(0.05f).Within(1e-5f));
         }
 
         [UnityTest]
@@ -283,7 +283,7 @@ namespace CharacterShowcase.Tests.Movement
             public Course(CharacterTestRig rig)
             {
                 float height = rig.StandingHeight, speed = rig.WalkSpeed;
-                Dashing dash = (rig.Movement.movementHandler as ComposedMovementMode)?.Get<Dashing>();
+                Dashing dash = (rig.Movement.movementMode as AbilityMovementMode)?.Get<Dashing>();
                 float dashDistance = dash != null ? dash.DashSpeed * rig.Movement.SpeedScale * dash.DashDuration : 0f;
                 rampAngle = Mathf.Min(20f, 0.5f * rig.MaxSlopeAngle);
                 rise = 0.5f * height;
@@ -341,7 +341,7 @@ namespace CharacterShowcase.Tests.Movement
         private IEnumerator RunCourse(float size, List<CourseStep> steps, System.Action<Course> laidOut = null)
         {
             // Spawned first, at full size, to lay the course out for it (no physics step passes before the course is in:
-            // the rig steps the character itself). With its model, whose body it may take (see CharacterModelHost's
+            // the rig steps the character itself). With its model, whose body it may take (see CharacterModelSlot's
             // Body Fit): one loading during the run changed its size midway.
             rig.SpawnCharacter(Vector3.zero);
             yield return rig.WaitForModel();
@@ -358,7 +358,7 @@ namespace CharacterShowcase.Tests.Movement
             int total = settle + walk + jump + dash + approach + stand;
             string PhaseOf(int step) => step < settle ? "settle" : step < settle + walk ? "walk" : step < settle + walk + jump ? "jump"
                 : step < settle + walk + jump + dash ? "dash" : step < settle + walk + jump + dash + approach ? "approach" : "stand";
-            Inputs InputsFor(int step)
+            StepInputs InputsFor(int step)
             {
                 int t = step;
                 if (t < settle) { return CharacterTestRig.Idle(); }
@@ -463,12 +463,12 @@ namespace CharacterShowcase.Tests.Movement
         {
             yield return Spawn();
             var inspector = new UnityEditor.SerializedObject(rig.Controller);
-            inspector.FindProperty("scale").vector3Value = new Vector3(1.5f, 0.75f, 1.5f);
+            inspector.FindProperty("requestedScale").vector3Value = new Vector3(1.5f, 0.75f, 1.5f);
             inspector.ApplyModifiedProperties(); // Calls OnValidate, as editing the field in the inspector does.
 
             Assert.That(rig.Controller.TargetScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
             yield return rig.Run(1f, _ => CharacterTestRig.Idle());
-            Assert.That(rig.Controller.Scale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
+            Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
             Assert.That(ModelParent.localScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
         }
 #endif

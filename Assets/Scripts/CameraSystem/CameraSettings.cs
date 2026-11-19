@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>The two view modes the camera rig can be in.</summary>
     public enum CameraMode
@@ -40,7 +40,7 @@ namespace CameraSystem
         TargetForward,
     }
 
-    // Each settings group below is drawn as its own foldout in the CameraRig inspector.
+    // Each settings group below is drawn as its own foldout in the MMotionCameraRig inspector.
 
     /// <summary>
     /// Where the camera reads its input from: the PlayerInput or action asset, and the names of the look, zoom, view,
@@ -290,7 +290,7 @@ namespace CameraSystem
     {
         [Tooltip("Widen the field of view as the target moves faster.")]
         public bool enabled = true;
-        [Tooltip("Horizontal speed at which the effect starts, for a target of normal size (see CameraRig.RelativeSpeed).")]
+        [Tooltip("Horizontal speed at which the effect starts, for a target of normal size (see MMotionCameraRig.RelativeSpeed).")]
         [Min(0f)] public float minSpeed = 4f;
         [Tooltip("Horizontal speed at which the effect reaches full strength, for a target of normal size.")]
         [Min(0f)] public float maxSpeed = 10f;
@@ -350,7 +350,7 @@ namespace CameraSystem
     [Serializable]
     public class CameraShakeSettings
     {
-        [Tooltip("Allow camera shake (from landings, or from other systems calling CameraRig.AddTrauma / CameraRig.ShakeAll).")]
+        [Tooltip("Allow camera shake (from landings, or from other systems calling MMotionCameraRig.AddTrauma / MMotionCameraRig.ShakeAll).")]
         public bool enabled = true;
         [Tooltip("Trauma (0-1) lost per second.")]
         [Min(0f)] public float decayPerSecond = 1.5f;

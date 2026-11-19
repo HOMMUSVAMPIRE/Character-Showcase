@@ -1,40 +1,40 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.InputAndDeterminism
+namespace MeridianMotion.Tests.InputAndDeterminism
 {
     /// <summary>
-    /// Tests of what drives a character (its ACCharacterController's input source, ICharacterInputSource): without one,
+    /// Tests of what drives a character (its MMotionCharacter's input source, ICharacterInputSource): without one,
     /// its owner decides (an AI's stands idle, a remote one isn't stepped, the local player's reads the device, idle
     /// without an input manager); a ScriptedInputSource plays timed steps, and a recording exactly as it was recorded;
     /// and a WaypointInputSource, an AI, walks a course of a gap and a block to its end, jumping where it needs to, and
     /// its run replays identically from a recording of its frames. The rig steps the character through its controller
-    /// (ACCharacterController.StepMovement), as the game does.
+    /// (MMotionCharacter.StepMovement), as the game does.
     /// </summary>
     [Category(TestArea.Movement)]
     public class InputSourceTests : CharacterRigFixture
     {
         [UnityTest]
-        public IEnumerator WithoutASource_TheOwnerDecides_AndNothingThrows([Values] CharacterOwner owner)
+        public IEnumerator WithoutASource_TheOwnerDecides_AndNothingThrows([Values] ControlledBy owner)
         {
             yield return rig.StandOnFloor();
-            rig.Controller.Owner = owner;
+            rig.Controller.ControlledBy = owner;
             Vector3 start = rig.Position;
-            uint tick = rig.Movement.Tick;
+            uint tick = rig.Movement.InputTick;
             yield return rig.RunWithSource(0.5f, null);
             int steps = CharacterTestRig.StepsFor(0.5f);
-            if (owner == CharacterOwner.Remote)
+            if (owner == ControlledBy.Remote)
             {
-                Assert.That(rig.Movement.Tick, Is.EqualTo(tick), "A remote character with no source isn't stepped: something else places it.");
+                Assert.That(rig.Movement.InputTick, Is.EqualTo(tick), "A remote character with no source isn't stepped: something else places it.");
             }
             else
             {
-                Assert.That(rig.Movement.Tick, Is.EqualTo(tick + (uint)steps), "The character should be stepped.");
+                Assert.That(rig.Movement.InputTick, Is.EqualTo(tick + (uint)steps), "The character should be stepped.");
                 // The local player's reads the device: there's no input manager here, so its frames are idle too.
                 Assert.That(Vector3.Distance(rig.Position, start), Is.LessThan(1e-3f), "With no input, the character should stand still.");
             }

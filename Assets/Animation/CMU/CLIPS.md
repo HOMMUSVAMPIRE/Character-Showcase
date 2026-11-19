@@ -18,7 +18,7 @@ redistribute, but not to sell as animations, and anything passed on must carry t
 
 - **T-pose rest pose.** Each clip's first frame is a T-pose; it's made the skeleton's rest pose, with the motion re-keyed
   against it (Tools/Animation/tpose_rest.py), so it's each avatar's reference pose in Unity.
-- **Humanoid in Unity.** Tools > Character Showcase > Prepare Motion Capture Clips makes each a Humanoid animation with its
+- **Humanoid in Unity.** Tools > Meridian Motion > Prepare > Motion Capture Clips makes each a Humanoid animation with its
   own avatar, mapped by the CMU skeleton's bone names, starting after the T-pose frame, its height and remaining sway
   baked into the pose, and facing the way the body does.
 

@@ -104,7 +104,7 @@ def cmd_build(args):
     _print_findings(findings, quiet_info=True)
     if args.unity:
         return run_unity(output, spec, args)
-    print(f"Build it in Unity with Tools > Character Showcase > Level > Specs > Build Level from Spec…, or run this again with --unity.")
+    print(f"Build it in Unity with Tools > Meridian Motion > Showcase > Levels > Specs > Build Level from Spec…, or run this again with --unity.")
     return 0
 
 
@@ -134,7 +134,7 @@ def _run(editor, method, extra, log):
     code = subprocess.call(cmd)
     with open(log, encoding="utf-8", errors="replace") as f:
         for line in f:
-            if line.startswith("[") and ("build]" in line or "[Level specs]" in line or "[SceneGameSetup]" in line):
+            if line.startswith("[") and ("build]" in line or "[Level specs]" in line or "[CharacterSceneSetup]" in line):
                 print("  " + line.rstrip())
             elif "Exception" in line or "error CS" in line:
                 print("  " + line.rstrip())
@@ -153,7 +153,7 @@ def run_unity(spec_path, spec, args):
         print(f"Unity exited with {code}: see the log. (Is the project open in Unity? Close it first.)")
         return code
     if not args.no_set_up:
-        code = _run(editor, "CharacterShowcase.EditorTools.SceneGameSetup.SetUpFromCommandLine", ["-scene", spec["scene"]],
+        code = _run(editor, "CharacterShowcase.EditorTools.SceneSetup.SetUpFromCommandLine", ["-scene", spec["scene"]],
                     os.path.join(logs, "levelspec-setup.log"))
     return code
 

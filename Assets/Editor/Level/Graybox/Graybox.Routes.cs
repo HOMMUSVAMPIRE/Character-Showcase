@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Routes: flights of stairs, ramps, bridges and walkways.
     public static partial class Graybox
@@ -54,12 +54,12 @@ namespace CharacterShowcase.EditorTools.Level
         {
             float half = width / 2f, length = steps * run;
             var mesh = new GrayboxMesh();
-            const Surface concrete = Surface.Concrete;
+            const GrayboxMaterial concrete = GrayboxMaterial.Concrete;
 
             for (int i = 0; i < steps; i++)
             {
                 float z0 = i * run, zn = z0 + Settings.stairs.nosingDepth, z1 = z0 + run, top = y0 + rise * (i + 1), below = i == 0 ? bottom : top - rise;
-                mesh.Quad(Surface.Accent, Vector3.up, new Vector3(-half, top, z0), new Vector3(half, top, z0), new Vector3(half, top, zn), new Vector3(-half, top, zn));
+                mesh.Quad(GrayboxMaterial.Accent, Vector3.up, new Vector3(-half, top, z0), new Vector3(half, top, z0), new Vector3(half, top, zn), new Vector3(-half, top, zn));
                 mesh.Quad(concrete, Vector3.up, new Vector3(-half, top, zn), new Vector3(half, top, zn), new Vector3(half, top, z1), new Vector3(-half, top, z1));
                 mesh.Quad(concrete, Vector3.back, new Vector3(-half, below, z0), new Vector3(half, below, z0), new Vector3(half, top, z0), new Vector3(-half, top, z0));
             }
@@ -166,7 +166,7 @@ namespace CharacterShowcase.EditorTools.Level
             float yaw = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
             Vector2 end = start + direction * length, side = new Vector2(direction.y, -direction.x) * (width / 2f);
             BoxXZ(parent, "Deck", start + direction * (length / 2f), new Vector2(width, length), height - Deck, height, yaw);
-            GrayboxSettings.DeckSettings decks = Settings.decks;
+            LevelBuilderSettings.DeckSettings decks = Settings.decks;
             if (!suspended)
             {
                 for (float d = decks.walkwayColumnSpacing / 2f; d < length; d += decks.walkwayColumnSpacing)

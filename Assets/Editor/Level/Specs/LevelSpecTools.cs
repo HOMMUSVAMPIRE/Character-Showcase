@@ -10,15 +10,15 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Level specs (LevelSpec) from the levels' builders and back: exports each level as a spec (recording its build:
     /// LevelSpecRecorder) and checks the spec builds the same level, object for object; builds a level from a spec,
     /// like a builder (the build window, or -executeMethod); and writes the specs' JSON Schema for other tools.
     ///
-    /// Menu: Tools > Character Showcase > Level > Specs. Command line (Unity closed):
-    /// <c>-executeMethod CharacterShowcase.EditorTools.Level.LevelSpecTools.ExportFromCommandLine [-level "Level Playground"]</c>,
+    /// Menu: Tools > Meridian Motion > Showcase > Levels > Specs. Command line (Unity closed):
+    /// <c>-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.ExportFromCommandLine [-level "Level Playground"]</c>,
     /// <c>...LevelSpecTools.BuildFromCommandLine -spec Assets/Levels/LevelPlayground.level.json</c> and
     /// <c>...LevelSpecTools.WriteSchemaFromCommandLine</c>.
     /// </summary>
@@ -29,7 +29,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// <summary>The specs' JSON Schema, for tools outside Unity (relative to the project folder).</summary>
         public const string SchemaPath = "Tools/LevelSpec/level-spec.schema.json";
 
-        private static readonly Dictionary<string, Func<GrayboxScene>> Levels = new()
+        private static readonly Dictionary<string, Func<LevelDefinition>> Levels = new()
         {
             ["Meridian Complex"] = () => MeridianComplexBuilder.Scene,
             ["Level Playground"] = () => LevelPlaygroundBuilder.Scene,
@@ -45,15 +45,15 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>
         /// Builds parts in a new scene (replacing what's open) under a root named name, in the levels' palette, as
-        /// GrayboxScene does up to its environment (no environment, saving or bakes), with each part's recording
+        /// LevelDefinition does up to its environment (no environment, saving or bakes), with each part's recording
         /// started and ended by around (null: none). Returns the root.
         /// </summary>
         private static Transform BuildParts(string name, IEnumerable<(string name, Action<Transform, Material> build)> parts,
             Action<string, Transform> before = null, Action after = null)
         {
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            Material[] palette = GrayboxScene.Palette();
-            Material concrete = palette[(int)Graybox.Surface.Concrete];
+            Material[] palette = LevelDefinition.Palette();
+            Material concrete = palette[(int)Graybox.GrayboxMaterial.Concrete];
             Transform root = new GameObject(name).transform;
             Graybox.ClearDeferred();
             foreach ((string partName, Action<Transform, Material> build) in parts)
@@ -72,7 +72,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>Records a level's build as a spec. The level's left built in the open scene; returns its root too.</summary>
-        internal static LevelSpec Record(GrayboxScene level, out Transform root)
+        internal static LevelSpec Record(LevelDefinition level, out Transform root)
         {
             var spec = new LevelSpec { Name = level.Name, Scene = level.ScenePath };
             root = BuildParts(level.Name, level.Parts,
@@ -86,8 +86,8 @@ namespace CharacterShowcase.EditorTools.Level
             return spec;
         }
 
-        /// <summary>A level built from a spec, as the builders' levels are (GrayboxScene: its steps, environment and bakes).</summary>
-        internal static GrayboxScene SceneFor(LevelSpec spec) => new(spec.Name, spec.Scene,
+        /// <summary>A level built from a spec, as the builders' levels are (LevelDefinition: its steps, environment and bakes).</summary>
+        internal static LevelDefinition SceneFor(LevelSpec spec) => new(spec.Name, spec.Scene,
             spec.Parts.Select(part => (part.Name, (Action<Transform, Material>)((root, material) =>
             {
                 Graybox.Begin(material);
@@ -98,7 +98,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// Records a level as a spec, writes it out and reads it back, and builds that: returns the spec, and how what
         /// it built differs from what the builder built (empty if it's the same, object for object).
         /// </summary>
-        internal static LevelSpec RecordAndCheck(GrayboxScene level, out List<string> differences)
+        internal static LevelSpec RecordAndCheck(LevelDefinition level, out List<string> differences)
         {
             LevelSpec spec = Record(level, out Transform built);
             List<string> expected = Snapshot(built);
@@ -204,7 +204,7 @@ namespace CharacterShowcase.EditorTools.Level
             Directory.CreateDirectory(SpecFolder);
             foreach (string name in levelNames)
             {
-                GrayboxScene level = Levels[name]();
+                LevelDefinition level = Levels[name]();
                 var timer = System.Diagnostics.Stopwatch.StartNew();
                 LevelSpec spec = RecordAndCheck(level, out List<string> differences);
                 string path = SpecPathFor(level.ScenePath);
@@ -235,7 +235,7 @@ namespace CharacterShowcase.EditorTools.Level
             return allSame;
         }
 
-        [MenuItem("Tools/Character Showcase/Level/Specs/Export Level Specs")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Specs/Export Level Specs")]
         private static void ExportFromMenu()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) { return; }
@@ -272,7 +272,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- Building from a spec ----
 
-        [MenuItem("Tools/Character Showcase/Level/Specs/Build Level from Spec…")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Specs/Build Level from Spec…")]
         private static void BuildFromMenu()
         {
             string path = EditorUtility.OpenFilePanel("Build Level from Spec", SpecFolder, "json");
@@ -303,7 +303,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         // ---- The schema ----
 
-        [MenuItem("Tools/Character Showcase/Level/Specs/Write Spec Schema")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Specs/Write Spec Schema")]
         private static void WriteSchemaFromMenu() => WriteSchema();
 
         /// <summary>For -executeMethod: writes the specs' JSON Schema, then exits.</summary>

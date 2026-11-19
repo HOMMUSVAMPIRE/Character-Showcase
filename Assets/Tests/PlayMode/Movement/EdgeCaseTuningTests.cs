@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
-    /// Tests of BasicMovementMode at the edges of its settings: zero speeds, no jumps or many, no gravity or a lot, speeds
+    /// Tests of StandardMovementMode at the edges of its settings: zero speeds, no jumps or many, no gravity or a lot, speeds
     /// fast enough to cross a wall's thickness in one physics step, dashes with no length, speed or cooldown, no air
     /// dashes, and no coyote time or input buffers. Each sets the values it needs on the rig's own copy of the
     /// character's movement mode (CharacterTestRig.SetMovementSetting), so they hold however the asset is tuned and
@@ -102,7 +102,7 @@ namespace CharacterShowcase.Tests.Movement
             const int maxJumps = 6;
             rig.SetMovementSetting("maxJumps", maxJumps);
             // Light gravity, so the character stays up through every press rather than landing and getting its jumps back.
-            rig.SetMovementSetting("gravityStrength", rig.MovementSetting<float>("gravityStrength") * 0.05f);
+            rig.SetMovementSetting("gravity", rig.MovementSetting<float>("gravity") * 0.05f);
 
             const int presses = maxJumps + 3;
             for (int press = 0; press < presses; press++)
@@ -123,7 +123,7 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator NoGravity_AJumpRisesAndDoesntComeDown_WithoutBreaking()
         {
             yield return Settle();
-            rig.SetMovementSetting("gravityStrength", 0f);
+            rig.SetMovementSetting("gravity", 0f);
 
             float lowestAfterTakeOff = float.PositiveInfinity;
             yield return rig.Run(0.2f, i => CharacterTestRig.Jump(), _ => AssertSane("Jumping without gravity"));
@@ -146,7 +146,7 @@ namespace CharacterShowcase.Tests.Movement
             rig.SpawnCharacter(new Vector3(0f, 30f, 0f));
             // Fifty times the gravity, with no fall speed limit: by the time it lands it falls several metres in each
             // physics step, more than the floor's (1 m) thickness.
-            rig.SetMovementSetting("gravityStrength", rig.MovementSetting<float>("gravityStrength") * 50f);
+            rig.SetMovementSetting("gravity", rig.MovementSetting<float>("gravity") * 50f);
             rig.SetMovementSetting("maxFallSpeed", 0f);
 
             float lowest = float.PositiveInfinity;

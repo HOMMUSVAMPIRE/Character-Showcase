@@ -1,0 +1,16 @@
+{
+    "name": "MeridianMotion.Levels",
+    "rootNamespace": "MeridianMotion.Levels",
+    "references": [
+        "MeridianMotion.PhysicsQueries"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

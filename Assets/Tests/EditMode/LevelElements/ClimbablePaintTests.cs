@@ -1,13 +1,13 @@
 using System.Collections.Generic;
-using Level;
-using Level.EditorTools;
+using MeridianMotion.Levels.EditorTools;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEditor.SceneManagement;
-using UnityEngine;
+using UnityEditor;
 using UnityEngine.Rendering;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.LevelElements
+namespace MeridianMotion.Tests.EditMode.LevelElements
 {
     /// <summary>
     /// Checks of showing painted climbable areas: the concrete shader has a climbable mask, sampled in UV2, and a climbable

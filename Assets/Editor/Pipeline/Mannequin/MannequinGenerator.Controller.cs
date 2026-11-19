@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
-using Character;
-using UnityEditor;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using UnityEditor.Animations;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.Pipeline
 {
-    // Building the shared Animator Controller: from its layout (CharacterModelImporter.LayoutPath), which holds its states,
+    // Building the shared Animator Controller: from its layout (HumanoidModelImporter.LayoutPath), which holds its states,
     // clips and transitions (edited there, not here), once the clips it plays are ready (AnimationPreparation).
     public static partial class MannequinGenerator
     {
@@ -19,7 +20,7 @@ namespace CharacterShowcase.EditorTools
             if (missing.Length > 0)
             {
                 Debug.LogError($"[MannequinGenerator] '{ModelPath}' is missing clips: {string.Join(", ", missing)}. " +
-                               "Run Tools > Character Showcase > Generate Mannequin with Blender to regenerate it. Nothing was changed.");
+                               "Run Tools > Meridian Motion > Showcase > Generate Mannequin with Blender to regenerate it. Nothing was changed.");
                 return null;
             }
 
@@ -30,10 +31,10 @@ namespace CharacterShowcase.EditorTools
                 Debug.LogError("[MannequinGenerator] Prepare Animations failed (see the Console above). Nothing more was changed.");
                 return null;
             }
-            var layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(CharacterModelImporter.LayoutPath);
+            var layout = AssetDatabase.LoadAssetAtPath<AnimatorLayout>(HumanoidModelImporter.LayoutPath);
             if (layout == null)
             {
-                Debug.LogError($"[MannequinGenerator] There's no Animator Layout at '{CharacterModelImporter.LayoutPath}' to build the controller from. Nothing was changed.");
+                Debug.LogError($"[MannequinGenerator] There's no Animator Layout at '{HumanoidModelImporter.LayoutPath}' to build the controller from. Nothing was changed.");
                 return null;
             }
             return layout.controller as AnimatorController;

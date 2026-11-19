@@ -229,7 +229,7 @@ def schema():
     global _schema
     if _schema is None:
         if not os.path.exists(SCHEMA_PATH):
-            raise SpecError(f"There's no schema at '{SCHEMA_PATH}': write it from Unity (Tools > Character Showcase > Level > "
+            raise SpecError(f"There's no schema at '{SCHEMA_PATH}': write it from Unity (Tools > Meridian Motion > Showcase > Levels > "
                             "Specs > Write Spec Schema).")
         _schema = Schema()
     return _schema

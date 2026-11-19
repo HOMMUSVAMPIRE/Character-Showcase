@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Climbs a ladder procedurally: puts the hands and feet on its rungs, over a climbing pose (the Animator's Ladder
@@ -15,11 +15,12 @@ namespace Character
     /// steps off, or climbs off the top.
     ///
     /// The ladder comes from the character's animation state (CharacterAnimationState.ladder), found in the model's
-    /// parents; limbs are placed through CharacterIK's procedural goals.
+    /// parents; limbs are placed through HumanoidIK's procedural goals.
     /// </summary>
     [HumanoidIK(30)]
-    [RequireComponent(typeof(CharacterIK))]
+    [RequireComponent(typeof(HumanoidIK))]
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/IK/Ladder IK")]
     public class LadderIK : AbilityIK
     {
         [Tooltip("How strongly the hands and feet are put on the rungs (and the body in to the ladder). 0 turns it off.")]

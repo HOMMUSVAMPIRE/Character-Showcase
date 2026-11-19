@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Shows an AnimatorParameterTranslator's event trigger with its events as a menu of movement events to tick. The

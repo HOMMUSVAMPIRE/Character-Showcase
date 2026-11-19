@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>
     /// Trauma-based camera shake: callers add trauma (0-1), which decays over time. Shake intensity is
@@ -8,7 +8,7 @@ namespace CameraSystem
     /// </summary>
     public class CameraShake
     {
-        // Chosen lazily: this object is created by CameraRig's field initializers, where Unity forbids Random calls.
+        // Chosen lazily: this object is created by MMotionCameraRig's field initializers, where Unity forbids Random calls.
         private float seed = -1f;
         private float time;
 

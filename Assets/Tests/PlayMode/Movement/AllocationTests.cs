@@ -1,17 +1,17 @@
 using System;
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests that the character's per-step and per-frame work allocates nothing on the managed heap (so never makes work
     /// for the garbage collector, whose pauses are hitches): the movement step, the animation fed from it
-    /// (AnimationController.UpdateAnimator), the Animator's update with the IK it runs, and the fox's paw placement
-    /// (PawPlacementIK.Solve). Each character runs a course once, so everything made the first time (a buffer, a lazily
+    /// (MMotionAnimator.UpdateAnimator), the Animator's update with the IK it runs, and the fox's paw placement
+    /// (LegPlacementIK.Solve). Each character runs a course once, so everything made the first time (a buffer, a lazily
     /// built table, code compiled on first use) is made, then runs it again, measured. The animation is stepped by hand
     /// with the physics, as the animation tests do.
     /// </summary>
@@ -25,7 +25,7 @@ namespace CharacterShowcase.Tests.Movement
         // Where each part of the work allocated, while measured.
         private int animationAllocations, animatorAllocations, pawAllocations;
         private bool measuring;
-        private PawPlacementIK paws;
+        private LegPlacementIK paws;
         private CharacterState seen;
 
         [SetUp]
@@ -51,7 +51,7 @@ namespace CharacterShowcase.Tests.Movement
             Measure(() => FeedAnimator(step), ref animationAllocations);
             Measure(() => animator.Update(Time.fixedDeltaTime), ref animatorAllocations);
             if (paws != null) { Measure(() => paws.Solve(Time.fixedDeltaTime), ref pawAllocations); }
-            if (measuring) { seen |= rig.Movement.lastFrameMovementData.state; }
+            if (measuring) { seen |= rig.Movement.lastStep.state; }
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace CharacterShowcase.Tests.Movement
             rig.ClearEvents();
             measuring = true;
             rig.MeasuresStepAllocations = true;
-            seen = CharacterState.Idle;
+            seen = CharacterState.None;
             yield return RunTheCourse();
             rig.MeasuresStepAllocations = false;
             measuring = false;
@@ -99,9 +99,9 @@ namespace CharacterShowcase.Tests.Movement
             Assume.That((seen & CharacterState.Moving) != 0 && ((seen & CharacterState.Jumping) != 0), Is.True,
                 $"Test setup: {who} should walk and jump (it did: {seen}).");
             Assert.That(rig.StepAllocations, Is.Zero, $"{who}'s movement steps shouldn't allocate.");
-            Assert.That(animationAllocations, Is.Zero, $"Feeding {who}'s animation (AnimationController.UpdateAnimator) shouldn't allocate.");
+            Assert.That(animationAllocations, Is.Zero, $"Feeding {who}'s animation (MMotionAnimator.UpdateAnimator) shouldn't allocate.");
             Assert.That(animatorAllocations, Is.Zero, $"{who}'s Animator update, with the IK it runs, shouldn't allocate.");
-            Assert.That(pawAllocations, Is.Zero, $"{who}'s paw placement (PawPlacementIK.Solve) shouldn't allocate.");
+            Assert.That(pawAllocations, Is.Zero, $"{who}'s paw placement (LegPlacementIK.Solve) shouldn't allocate.");
         }
 
         /// <summary>The floor, and a climbable wall a few metres ahead.</summary>
@@ -134,8 +134,8 @@ namespace CharacterShowcase.Tests.Movement
             animation = rig.Animation;
             yield return rig.WaitForModel();
             TakeOverAnimator();
-            paws = animator.GetComponent<PawPlacementIK>();
-            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (PawPlacementIK): regenerate it.");
+            paws = animator.GetComponent<LegPlacementIK>();
+            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (LegPlacementIK): regenerate it.");
             yield return RunTwiceAndAssertNoAllocation("The fox");
         }
     }

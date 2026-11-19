@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
     /// Tests of the fox's animation and what it can do beyond walking (Fox.prefab, with its movement mode, its Animator and
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Animations
 
         private const string FoxPrefabPath = "Assets/Prefabs/Fox.prefab";
 
-        private PawPlacementIK paws;
+        private LegPlacementIK paws;
 
         /// <summary>Spawns the fox at the feet position given (the world already built), and takes over its animation.</summary>
         private IEnumerator SpawnFox(Vector3 feet)
@@ -35,8 +35,8 @@ namespace CharacterShowcase.Tests.Animations
             animation = rig.Animation;
             yield return rig.WaitForModel();
             TakeOverAnimator();
-            paws = animator.GetComponent<PawPlacementIK>();
-            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (PawPlacementIK): regenerate it.");
+            paws = animator.GetComponent<LegPlacementIK>();
+            Assert.That(paws, Is.Not.Null, "The fox's model should have paw placement (LegPlacementIK): regenerate it.");
         }
 
         /// <summary>Steps the animation, as the game does each frame, then places the paws on the pose it wrote.</summary>
@@ -68,9 +68,9 @@ namespace CharacterShowcase.Tests.Animations
         }
 
         /// <summary>Deep water with no floor under it (only swimming holds the fox up), and the fox in it, swimming.</summary>
-        private IEnumerator SwimInDeepWater(System.Action<Level.Water> made)
+        private IEnumerator SwimInDeepWater(System.Action<MeridianMotion.Levels.SwimmableWater> made)
         {
-            Level.Water water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));
+            MeridianMotion.Levels.SwimmableWater water = rig.Water(new Vector3(0f, 10f, 0f), new Vector3(40f, 8f, 40f));
             made(water);
             yield return SpawnFox(new Vector3(0f, 9.5f, 0f));
             yield return rig.Run(1.5f, _ => CharacterTestRig.Idle(), StepAndPlace);
@@ -80,7 +80,7 @@ namespace CharacterShowcase.Tests.Animations
         [UnityTest]
         public IEnumerator InDeepWater_TheFoxSwimsAtItsSwimDepth_ItsHeadOutOfTheWater_Paddling()
         {
-            Level.Water water = null;
+            MeridianMotion.Levels.SwimmableWater water = null;
             yield return SwimInDeepWater(w => water = w);
             float depth = rig.SwimDepth;
             Assert.That(water.SurfaceHeight - rig.Position.y, Is.EqualTo(depth).Within(0.03f), "The fox should float with its feet the swim depth below the surface.");
@@ -96,7 +96,7 @@ namespace CharacterShowcase.Tests.Animations
         [UnityTest]
         public IEnumerator Swimming_TheFoxGoesTheWayItsSteered_AtItsSwimSpeed_AndDoesntDive()
         {
-            Level.Water water = null;
+            MeridianMotion.Levels.SwimmableWater water = null;
             yield return SwimInDeepWater(w => water = w);
             float speed = 0f;
             yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward), StepAndPlace);

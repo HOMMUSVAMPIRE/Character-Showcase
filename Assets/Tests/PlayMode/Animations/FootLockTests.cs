@@ -1,13 +1,13 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
-    /// Tests of foot placement (FootPlacementIK): the model turns after the character about its feet, which drags planted
+    /// Tests of foot placement (HumanoidFootPlacementIK): the model turns after the character about its feet, which drags planted
     /// feet round with it; locking holds a planted foot where it was put down, so the feet stay put as the model turns
     /// (compared with locking turned off on the same model). On a moving platform, the feet are placed on it as it's drawn,
     /// so they don't jitter against it from frame to frame.
@@ -24,9 +24,9 @@ namespace CharacterShowcase.Tests.Animations
         /// <summary>Turns the character on the spot by the given angle, and gives how far its feet slid while the model came round.</summary>
         private IEnumerator TurnOnTheSpot(float footLock, float degrees, System.Action<float> slid)
         {
-            var feet = animator.GetComponent<FootPlacementIK>();
+            var feet = animator.GetComponent<HumanoidFootPlacementIK>();
             if (feet == null) { Assert.Ignore("The model has no foot placement."); }
-            var field = typeof(FootPlacementIK).GetField("footLock", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var field = typeof(HumanoidFootPlacementIK).GetField("footLock", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             field.SetValue(feet, footLock);
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), TurnAndAnimate);
 
@@ -55,7 +55,7 @@ namespace CharacterShowcase.Tests.Animations
             TestContext.WriteLine($"Feet slid {unlocked * 100f:0.0} cm unlocked, {locked * 100f:0.0} cm locked, turning 60 degrees on the spot.");
             Assert.That(unlocked, Is.GreaterThan(0.05f), "Test setup: unlocked, the turn should drag the feet round.");
             Assert.That(locked, Is.LessThan(0.3f * unlocked), "Locked, planted feet should stay where they were put down as the model turns.");
-            Assert.That(locked, Is.LessThan(0.03f * rig.Controller.Scale.y), "Locked feet should barely move.");
+            Assert.That(locked, Is.LessThan(0.03f * rig.Controller.CurrentScale.y), "Locked feet should barely move.");
         }
 
         /// <summary>
@@ -68,7 +68,7 @@ namespace CharacterShowcase.Tests.Animations
         {
             yield return SpawnWithOwnModel();
             yield return rig.Run(1f, _ => CharacterTestRig.Idle(), FeedAnimator);
-            var old = rig.Models.Model.GetComponentInChildren<FootPlacementIK>();
+            var old = rig.Models.ModelRoot.GetComponentInChildren<HumanoidFootPlacementIK>();
             if (old == null) { Assert.Ignore("The model has no foot placement."); }
             Assume.That(old.ActiveWeight, Is.GreaterThan(0.9f), "Test setup: foot placement should be faded in.");
             // The old model's, as it's replaced (it keeps animating until then).
@@ -76,11 +76,11 @@ namespace CharacterShowcase.Tests.Animations
             rig.Models.ModelReplacing += _ => { weight = old.ActiveWeight; pelvis = old.PelvisOffset; };
 
             // Read as the new model is swapped in, before its first update: what it starts from.
-            FootPlacementIK swapped = null;
+            HumanoidFootPlacementIK swapped = null;
             float swappedWeight = 0f, swappedPelvis = 0f;
             rig.Models.ModelLoaded += model =>
             {
-                swapped = model.Root.GetComponentInChildren<FootPlacementIK>();
+                swapped = model.Root.GetComponentInChildren<HumanoidFootPlacementIK>();
                 if (swapped == null) { return; }
                 swappedWeight = swapped.ActiveWeight;
                 swappedPelvis = swapped.PelvisOffset;
@@ -118,20 +118,20 @@ namespace CharacterShowcase.Tests.Animations
         /// platform: their height above it barely changes from one frame to the next, and the character's (its root's) not
         /// at all. Placed where physics has the platform (its latest step), the feet jumped up and down against it; and
         /// the character, reading the platform a step late, rode it a step behind, flipping from below its top to above
-        /// it as it turned round (see MovingPlatform.FixedUpdate).
+        /// it as it turned round (see TickedPlatform.FixedUpdate).
         /// </summary>
         [UnityTest]
         public IEnumerator OnARisingAndFallingPlatform_TheFeetStayOnIt_FrameByFrame()
         {
             var size = new Vector3(4f, 0.3f, 4f);
-            Level.MovingPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
+            MeridianMotion.Levels.TickedPlatform platform = rig.Platform(Vector3.zero, size, new Vector3(0f, 1.5f, 0f), 3f, Vector3.zero);
             platform.enabled = false; // Held still while the model loads (frames in which the character isn't stepped).
             Physics.SyncTransforms();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             animation = rig.Animation;
             yield return rig.WaitForModel();
             animator = rig.Models.Animator;
-            if (animator == null || !animator.isHuman || animator.GetComponent<FootPlacementIK>() == null)
+            if (animator == null || !animator.isHuman || animator.GetComponent<HumanoidFootPlacementIK>() == null)
             {
                 Assert.Ignore("The character's model isn't a humanoid with foot placement.");
             }

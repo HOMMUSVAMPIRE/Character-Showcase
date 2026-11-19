@@ -1,11 +1,11 @@
 using System.Collections;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Traversal
+namespace MeridianMotion.Tests.Traversal
 {
     /// <summary>
     /// Tests of wading: walking (or sprinting) through water too shallow to swim in slows the character by how deep it is,
@@ -37,7 +37,7 @@ namespace CharacterShowcase.Tests.Traversal
             PlaceInWater(Mathf.Lerp(StartDepth, rig.SwimDepth, 0.5f));
         }
 
-        protected override Inputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
+        protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         // Wading isn't an ability (the hygiene check's NOT_AN_ABILITY: it's where the character stands), so it has no
         // setting whose 0 turns it off: a Wade Start Depth of 0 wades in any water, and a Wade Speed Multiplier of 1 still
@@ -61,7 +61,7 @@ namespace CharacterShowcase.Tests.Traversal
             rig.Teleport(new Vector3(0f, -under + 0.02f, 0f));
         }
 
-        private IEnumerator MeanSpeed(System.Func<int, Inputs> inputs, System.Action<float> result)
+        private IEnumerator MeanSpeed(System.Func<int, StepInputs> inputs, System.Action<float> result)
         {
             yield return rig.Run(0.5f, inputs);
             yield return rig.MeanSpeed(0.5f, inputs, result);

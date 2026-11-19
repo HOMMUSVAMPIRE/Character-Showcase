@@ -1,6 +1,6 @@
 # Camera System
 
-The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a CameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the CameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
+The camera lives in Assets/Scripts/CameraSystem, in its own assembly with no dependency on the character code. Add a MMotionCameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the MMotionCameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
 
 Features: first person (at a fixed eye height, or following an eye anchor Transform such as a character's eye point) and over-the-shoulder third person (scaled with an optional target size reference, so resized targets are framed alike) with smooth blending between them, zoom (zooming all the way in switches to first person), shoulder swapping (automatic when a wall blocks the current side), aiming, camera collision, follow damping, target interpolation for physics-driven targets, speed-based FOV, head bob, landing dips, trauma-based camera shake, optional auto-recentering, hiding the character up close, and CameraZone volumes that override camera behaviour in an area.
 
@@ -9,7 +9,7 @@ Beside a wall that blocks its shoulder even partly (running along one, say), the
 A wall alongside never pulls the camera in: each collision sweep stops a little short of what it hits, so the camera's backward sweep never starts pressed against a wall it's running parallel to.
 
 ## Its settings
-Everything is on the CameraRig component, grouped by feature in its inspector (each setting's tooltip says what it does):
+Everything is on the MMotionCameraRig component, grouped by feature in its inspector (each setting's tooltip says what it does):
 
 | Section | What it covers |
 | --- | --- |
@@ -38,7 +38,7 @@ Given a Target Size Reference (a spawned character hands it its model parent, wh
 - Every other distance and speed the camera uses scales with the target too: follow lag, landing dip and its speed threshold, collision probe and minimum distance, hide distance, shake, teleport distance and the clip planes (near always, far only for a bigger target, so a small one still sees the world).
 
 ## Connecting it to something
-The camera follows a plain Transform: `CameraRig.Follow(target)`, or `Follow(target, eyeAnchor, sizeReference)` to give it an eye point for first person and a size reference too (`SetTarget` changes only the target). Nothing in it knows what it follows, so it works the same on a character, a vehicle or a moving prop.
+The camera follows a plain Transform: `MMotionCameraRig.Follow(target)`, or `Follow(target, eyeAnchor, sizeReference)` to give it an eye point for first person and a size reference too (`SetTarget` changes only the target). Nothing in it knows what it follows, so it works the same on a character, a vehicle or a moving prop.
 
 From code, the rig can also be steered: `SetMode(mode)` and `ToggleMode()` change the view (each returns false for a mode that isn't allowed), `SetLookRotation(yaw, pitch)` points it (the pitch clamped to the mode's limits), `SetDistance(distance, instant)` zooms, `SetShoulder(right)` picks the third-person shoulder, and `Snap()` skips this frame's smoothing, jumping straight to where it should be.
 
@@ -50,7 +50,7 @@ In the levels, the character and the camera are connected in the scene: Set Up S
 A CameraZone is a volume (a trigger collider for its shape: a primitive or a convex mesh) that changes the camera while its target is inside: forcing first or third person (in a cramped vent, say), capping the third person distance (in a narrow corridor), or adding to or taking from the field of view (eased in and out over its Fov Blend Time). Where zones overlap, the one with the highest Priority wins. It checks whether the target is inside by itself, so the target needs no Rigidbody.
 
 ## Shake
-`CameraRig.AddTrauma(amount)` shakes one camera, and `CameraRig.ShakeAll(amount)` every camera rig, by adding trauma (0 to 1), which fades over time (the Shake section). Landings add some by themselves. A landing is a stop after falling fast (Landing's Min Impact Speed) for at least its Min Fall Time, judged from the target's height each physics step (not each frame, which at a low frame rate can average several steps' drops into what looks like a fall), so stepping down stairs, which drops the target onto each step in a physics step or two, doesn't dip or shake the camera at any frame rate.
+`MMotionCameraRig.AddTrauma(amount)` shakes one camera, and `MMotionCameraRig.ShakeAll(amount)` every camera rig, by adding trauma (0 to 1), which fades over time (the Shake section). Landings add some by themselves. A landing is a stop after falling fast (Landing's Min Impact Speed) for at least its Min Fall Time, judged from the target's height each physics step (not each frame, which at a low frame rate can average several steps' drops into what looks like a fall), so stepping down stairs, which drops the target onto each step in a physics step or two, doesn't dip or shake the camera at any frame rate.
 
 ## Adding a camera feature that needs the character
 The camera assembly references nothing of the character's (see [Architecture](architecture.md#what-may-know-about-what)), and a feature mustn't change that. If a feature needs something only the character knows (that it's wall running, say), the camera exposes a generic way to be told: a public method or settable value (as `Follow`, `SetMode`, `SetDistance` and `AddTrauma` are), an event, or an interface the camera defines. The character's side then calls it, from the character's code or wired in the scene (as the spawner's event is wired to `Follow`).

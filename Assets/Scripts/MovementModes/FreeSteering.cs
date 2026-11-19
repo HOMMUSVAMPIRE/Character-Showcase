@@ -1,14 +1,14 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Steering free of the ground, in all three dimensions: swimming underwater now (see Swimming), and a way of moving
-    /// through the air later. The movement input points the way the input looks (MovementData.look: the player's camera,
+    /// through the air later. The movement input points the way the input looks (MovementStep.look: the player's camera,
     /// for the player), pitch and all (looking down and pushing forward heads down); holding Jump rises and Crouch sinks,
     /// whichever way it looks. The character turns
     /// (about the vertical) to face the way it heads across, and its body pitches along the way it heads, up or down, as
-    /// far as a component allows (see MovementController.BodyPitch). Like MovementHelpers, nothing here reads settings:
+    /// far as a component allows (see MMotionMotor.BodyPitch). Like MovementRules, nothing here reads settings:
     /// the component using it passes its own speeds and limits.
     /// </summary>
     public static class FreeSteering
@@ -20,16 +20,16 @@ namespace Character
         /// The way the movement input steers, in the world, no longer than 1: the stick (flat, relative to the look) turned
         /// by the whole of the look, so its pitch tips it up or down.
         /// </summary>
-        public static Vector3 Direction(MovementData movementData, Inputs inputs) =>
+        public static Vector3 Direction(MovementStep movementData, StepInputs inputs) =>
             Vector3.ClampMagnitude(movementData.look * inputs.movementVector, 1f);
 
         /// <summary>Whether the direction (see Direction) steers anywhere.</summary>
         public static bool IsSteering(Vector3 direction) => direction.sqrMagnitude >= SteeringThreshold;
 
         /// <summary>Up (1) while Jump is held, down (-1) while Crouch is, otherwise (or both) 0.</summary>
-        public static float UpOrDown(Inputs inputs) => (Held(inputs.jump) ? 1f : 0f) - (Held(inputs.crouch) ? 1f : 0f);
+        public static float UpOrDown(StepInputs inputs) => (Held(inputs.jump) ? 1f : 0f) - (Held(inputs.crouch) ? 1f : 0f);
 
-        private static bool Held(InputButton button) => button != null && button.value;
+        private static bool Held(InputButton button) => button != null && button.held;
 
         /// <summary>
         /// The velocity (m/s) to head for: along the direction at speed (its length a share of full input); rising or
@@ -45,7 +45,7 @@ namespace Character
         }
 
         /// <summary>Turns the character (about the vertical) to face the way the direction heads across, if it heads across at all.</summary>
-        public static void FaceAcross(MovementData movementData, Vector3 direction)
+        public static void FaceAcross(MovementStep movementData, Vector3 direction)
         {
             Vector3 across = new Vector3(direction.x, 0f, direction.z);
             if (across.sqrMagnitude > SteeringThreshold) { movementData.targetRotation = Quaternion.LookRotation(across.normalized, Vector3.up); }
@@ -63,12 +63,12 @@ namespace Character
 
         /// <summary>
         /// Pitches the character's body along heading (see ClimbAngle), up or down by no more than maxPitch degrees, for
-        /// this step (see MovementData.targetPitch: unless held so each step, the body levels out). Only along what of it
+        /// this step (see MovementStep.targetPitch: unless held so each step, the body levels out). Only along what of it
         /// the world let the character go last step: heading down onto a floor it's on (or up into a ceiling), it stays
         /// level that way. Otherwise its nose, pitched down into the floor ahead, was stepped up onto, which let it pitch
         /// further and lifted it, step by step, off a floor it was being steered into.
         /// </summary>
-        public static void PitchAlong(MovementData movementData, Vector3 heading, float maxPitch)
+        public static void PitchAlong(MovementStep movementData, Vector3 heading, float maxPitch)
         {
             CollisionFlags blocked = movementData.previousCollisions;
             if ((heading.y < 0f && (blocked & CollisionFlags.Below) != 0) || (heading.y > 0f && (blocked & CollisionFlags.Above) != 0)) { heading.y = 0f; }

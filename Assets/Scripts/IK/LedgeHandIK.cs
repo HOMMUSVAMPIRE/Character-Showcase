@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Places a hanging character's hands on the ledge it holds, and its body against the wall below. The character's
@@ -15,11 +15,12 @@ namespace Character
     /// rode the character's collider, held clear of the top, and floated over it.
     ///
     /// The ledge comes from the character's animation state (CharacterAnimationState.ledgeEdge and ledgeNormal), found
-    /// in the model's parents, as FootPlacementIK finds it; hands are placed through CharacterIK's procedural goals.
+    /// in the model's parents, as HumanoidFootPlacementIK finds it; hands are placed through HumanoidIK's procedural goals.
     /// </summary>
     [HumanoidIK(10)]
-    [RequireComponent(typeof(CharacterIK))]
+    [RequireComponent(typeof(HumanoidIK))]
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/IK/Ledge Hand IK")]
     public class LedgeHandIK : AbilityIK
     {
         [Tooltip("How strongly the hands are placed on the ledge (and the body against the wall). 0 turns it off.")]
@@ -118,7 +119,7 @@ namespace Character
             Quaternion leftRotation = facingWall * Quaternion.Euler(0f, 90f, 0f);
             Quaternion rightRotation = facingWall * Quaternion.Euler(0f, -90f, 0f);
             float rotationWeight = handRotationWeight * activeWeight;
-            // World positions: CharacterIK corrects them for a stretched model.
+            // World positions: HumanoidIK corrects them for a stretched model.
             ik.SetProceduralGoal(IKLimb.LeftHand, leftHand, leftRotation, activeWeight, rotationWeight);
             ik.SetProceduralGoal(IKLimb.RightHand, rightHand, rightRotation, activeWeight, rotationWeight);
         }

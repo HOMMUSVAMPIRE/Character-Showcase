@@ -3,22 +3,22 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     // The rig's settings: reading and changing the movement mode's settings and components, for a test only.
     public sealed partial class CharacterTestRig
     {
         /// <summary>
-        /// Reads a tuning value the movement mode interfaces don't have (BasicMovementMode's gravity, coyote time and dash
+        /// Reads a tuning value the movement mode interfaces don't have (StandardMovementMode's gravity, coyote time and dash
         /// cooldown, say) from the character's movement mode, or one of its components, by name (setting names are unique
         /// across a mode and its components). Ignores the test if the mode has no such value: it tests a behaviour of
-        /// BasicMovementMode, which another mode may not have. Fails it if the value is there but of another type than T.
+        /// StandardMovementMode, which another mode may not have. Fails it if the value is there but of another type than T.
         /// </summary>
         public T MovementSetting<T>(string fieldName)
         {
@@ -40,9 +40,9 @@ namespace CharacterShowcase.Tests
         private (object owner, FieldInfo field) FindSetting<T>(string fieldName)
         {
             const BindingFlags Fields = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-            object handler = Movement.movementHandler;
+            object handler = Movement.movementMode;
             var owners = new List<object> { handler };
-            if (handler is ComposedMovementMode composed) { owners.AddRange(composed.Components.Where(c => c != null)); }
+            if (handler is AbilityMovementMode composed) { owners.AddRange(composed.Components.Where(c => c != null)); }
             FieldInfo otherType = null;
             object otherOwner = null;
             foreach (object owner in owners)
@@ -74,12 +74,12 @@ namespace CharacterShowcase.Tests
         /// </summary>
         public T Component<T>() where T : MovementComponent
         {
-            T component = (Movement.movementHandler as ComposedMovementMode)?.Get<T>(includeDisabled: true);
+            T component = (Movement.movementMode as AbilityMovementMode)?.Get<T>(includeDisabled: true);
             if (component == null) { Assert.Ignore($"The character's movement mode has no {typeof(T).Name} component."); }
             return component;
         }
 
         /// <summary>The rig's own copy of the character's movement mode, as one made of components (ignores the test if it isn't).</summary>
-        public ComposedMovementMode ComposedMode => Mode<ComposedMovementMode>();
+        public AbilityMovementMode ComposedMode => Mode<AbilityMovementMode>();
     }
 }

@@ -1,15 +1,15 @@
 using System.Collections;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of the movement events animation, effects and sound hook into: each is raised once, at the right moment.
-    /// (That the AnimationController passes them on is AnimationEventTests'; that each ability's state has its events,
+    /// (That the MMotionAnimator passes them on is AnimationEventTests'; that each ability's state has its events,
     /// declared once, is MovementCompositionTests'.)
     /// </summary>
     [Category(TestArea.Movement)]

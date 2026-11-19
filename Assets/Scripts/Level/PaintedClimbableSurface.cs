@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
     /// Makes parts of this object's colliders (and its children's) climbable: only the regions painted onto them, rather
@@ -24,6 +24,7 @@ namespace Level
     /// </summary>
     [DisallowMultipleComponent]
     [ExecuteAlways]
+    [AddComponentMenu("Meridian Motion/Levels/Painted Climbable Surface")]
     public class PaintedClimbableSurface : MonoBehaviour, ISerializationCallbackReceiver
     {
         /// <summary>The name of the texture property a material shows climbable areas with, white where they are.</summary>

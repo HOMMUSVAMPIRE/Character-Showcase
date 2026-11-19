@@ -7,7 +7,7 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// An Animator Controller described as text, for telling whether two controllers work the same: its parameters and

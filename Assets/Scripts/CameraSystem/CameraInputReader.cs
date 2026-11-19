@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace CameraSystem
+namespace MeridianMotion.Cameras
 {
     /// <summary>
     /// One frame of camera input, already converted to camera units (degrees, zoom distance).
@@ -59,7 +59,7 @@ namespace CameraSystem
 
             if (asset == null)
             {
-                Debug.LogWarning("[CameraRig] No PlayerInput or action asset found; camera input is disabled.");
+                Debug.LogWarning("[MMotionCameraRig] No PlayerInput or action asset found; camera input is disabled.");
                 return;
             }
 
@@ -93,7 +93,7 @@ namespace CameraSystem
             InputAction action = asset.FindAction(name, throwIfNotFound: false);
             if (action == null && required)
             {
-                Debug.LogWarning($"[CameraRig] Input action '{name}' was not found in '{asset.name}'.");
+                Debug.LogWarning($"[MMotionCameraRig] Input action '{name}' was not found in '{asset.name}'.");
             }
             return action;
         }

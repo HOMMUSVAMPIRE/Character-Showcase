@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Fabrication Hall (04), the industrial district east of the
@@ -213,8 +213,8 @@ namespace CharacterShowcase.EditorTools.Level
             CatwalkDeck(catwalks, "Workshop Ring (East)", wx1 - ring, wx1, wz0 + ring, wz1 - ring);
             // An overhead crane over the workshop, its runway rails on the column walls' tops.
             const float railTop = WallTop + 0.3f;
-            Block(catwalks, "Crane Runway (West)", CentreX0 - 0.7f, CentreX0 - 0.3f, wz0, wz1, WallTop, railTop, Surface.Steel);
-            Block(catwalks, "Crane Runway (East)", CentreX1 + 0.3f, CentreX1 + 0.7f, wz0, wz1, WallTop, railTop, Surface.Steel);
+            Block(catwalks, "Crane Runway (West)", CentreX0 - 0.7f, CentreX0 - 0.3f, wz0, wz1, WallTop, railTop, GrayboxMaterial.Steel);
+            Block(catwalks, "Crane Runway (East)", CentreX1 + 0.3f, CentreX1 + 0.7f, wz0, wz1, WallTop, railTop, GrayboxMaterial.Steel);
             OverheadCrane(catwalks, new Vector2(CentreX0 - 0.5f, 4f), new Vector2(CentreX1 + 0.5f, 4f), railTop, Catwalk + 1f);
 
             Flight(stairs, "Stair (Workshop to Ring)", new Vector2(-4f, wz1 - ring - FlightLength(8f, Catwalk)), Vector2.up, StairWidth, 8f, Catwalk);
@@ -227,7 +227,7 @@ namespace CharacterShowcase.EditorTools.Level
 
         /// <summary>A catwalk deck at +12, 1 m thick, hung from the walls.</summary>
         private static void CatwalkDeck(Transform parent, string name, float x0, float x1, float z0, float z1) =>
-            Block(parent, name, x0, x1, z0, z1, Catwalk - Deck, Catwalk, Surface.Steel);
+            Block(parent, name, x0, x1, z0, z1, Catwalk - Deck, Catwalk, GrayboxMaterial.Steel);
 
         /// <summary>
         /// Crates, shelves and machinery. The west rooms' crates and the workshop's are pushable (in the crate store, one
@@ -237,7 +237,7 @@ namespace CharacterShowcase.EditorTools.Level
         private static void BuildObjects(Transform objects, Transform mechanics, Transform future)
         {
             void Crate(string where, float x, float z, float floor) =>
-                BoxXZ(objects, $"Crate ({where})", new Vector2(x, z), new Vector2(CrateSize, CrateSize), floor, floor + CrateSize, 0f, Surface.Steel);
+                BoxXZ(objects, $"Crate ({where})", new Vector2(x, z), new Vector2(CrateSize, CrateSize), floor, floor + CrateSize, 0f, GrayboxMaterial.Steel);
             void Pushable(float x, float z, float floor) => PushableCrate(mechanics, new Vector2(x, z), floor, CrateSize, speed: 0.8f);
             Pushable(-50f, 25f, 4f);   // Loading bay.
             Pushable(-52f, -10f, 4f);
@@ -264,19 +264,19 @@ namespace CharacterShowcase.EditorTools.Level
             const float passage = -17f, passageWidth = 2.4f;
             foreach ((float x0, float x1, float z) in new[] { (-26f, passage - passageWidth / 2f, 31f), (passage + passageWidth / 2f, -8f, 31f), (8f, 18f, 31f), (-26f, -9f, 46.5f), (3f, 18f, 46.5f) })
             {
-                BoxXZ(objects, "Storage Shelf", new Vector2((x0 + x1) / 2f, z), new Vector2(x1 - x0, 1.5f), 8f, 10.5f, 0f, Surface.Graphite);
+                BoxXZ(objects, "Storage Shelf", new Vector2((x0 + x1) / 2f, z), new Vector2(x1 - x0, 1.5f), 8f, 10.5f, 0f, GrayboxMaterial.Graphite);
             }
             LowBeam(objects, "Crouch Passage (Storage Shelf)", new Vector2(passage - passageWidth / 2f, 31f), new Vector2(passage + passageWidth / 2f, 31f), 8f, 1.2f);
             Marker(objects, "Crouch Passage: through the west shelf in storage, under its 1.2 m beam", new Vector2(passage, 31f), 8f);
-            BoxXZ(objects, "Assembly Line", new Vector2(42f, 12f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
-            BoxXZ(objects, "Assembly Line", new Vector2(42f, -4f), new Vector2(24f, 3f), 4f, 5f, 0f, Surface.Steel);
+            BoxXZ(objects, "Assembly Line", new Vector2(42f, 12f), new Vector2(24f, 3f), 4f, 5f, 0f, GrayboxMaterial.Steel);
+            BoxXZ(objects, "Assembly Line", new Vector2(42f, -4f), new Vector2(24f, 3f), 4f, 5f, 0f, GrayboxMaterial.Steel);
             foreach (Vector2 at in new[] { new Vector2(30f, -40f), new Vector2(42f, -40f), new Vector2(52f, -24f) })
             {
-                BoxXZ(objects, "Machinery", at, new Vector2(CrateSize, CrateSize), Basement, Basement + CrateSize, 0f, Surface.Graphite);
+                BoxXZ(objects, "Machinery", at, new Vector2(CrateSize, CrateSize), Basement, Basement + CrateSize, 0f, GrayboxMaterial.Graphite);
             }
             foreach (Vector2 at in new[] { new Vector2(-52f, -42f), new Vector2(-52f, -26f) })
             {
-                BoxXZ(objects, "Tank", at, new Vector2(5f, 5f), Basement, Basement + 6f, 0f, Surface.Steel);
+                BoxXZ(objects, "Tank", at, new Vector2(5f, 5f), Basement, Basement + 6f, 0f, GrayboxMaterial.Steel);
             }
 
             Marker(future, "Sliding Door (future): Storage", new Vector2(4f, 28.5f), 8f);
@@ -310,7 +310,7 @@ namespace CharacterShowcase.EditorTools.Level
             // and east walls (whose tops it's level with, to walk out along), up a ladder on its south face from the
             // catwalk, through a gap in the catwalk's guardrail and in the platform's own.
             const float px0 = 53f, pz0 = 42f, ladderX = 56f;
-            Block(catwalks, "Roofline Platform (+16)", px0, EastX1, pz0, NorthZ1, Roofline - Deck, Roofline, Surface.Steel);
+            Block(catwalks, "Roofline Platform (+16)", px0, EastX1, pz0, NorthZ1, Roofline - Deck, Roofline, GrayboxMaterial.Steel);
             Rail(rails, new Vector2(px0, pz0), new Vector2(EastX1, pz0), Roofline, (new Vector2(ladderX, pz0), LadderGap));
             Rail(rails, new Vector2(px0, pz0), new Vector2(px0, NorthZ1), Roofline);
             Ladder(mechanics, new Vector2(ladderX, pz0), Catwalk, Roofline - Catwalk, Vector2.down);

@@ -1,11 +1,11 @@
 using System;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Swimming (see Level.Water): in water deep enough, the character swims at the surface, its feet hanging the swim
+    /// Swimming (see MeridianMotion.Levels.SwimmableWater): in water deep enough, the character swims at the surface, its feet hanging the swim
     /// depth below it, the way the movement input points (faster with Sprint held). Falling or jumping in, it plunges and
     /// floats back up. Crouch dives, to swim underwater (steered by the input's look, or up and down with Jump and Crouch held),
     /// back to the surface by drifting or swimming up. Jump jumps out; swimming into something low sticking out of the water vaults over or onto it, and
@@ -78,14 +78,14 @@ namespace Character
 
         /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump out of the water.</summary>
         public override MovementEvents OneOffEvents => MovementEvents.Jumped;
-        public override bool IsActive(MovementController controller) => controller.swim.IsSwimming;
+        public override bool IsActive(MMotionMotor controller) => controller.swim.IsSwimming;
         /// <summary>Swimming, the water holds the character up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        public override AbilityTraits Traits => AbilityTraits.Supported;
         /// <summary>It dives only with a Swim Dive Speed (0 turns diving off).</summary>
-        public override bool Enters(CharacterState state) => state != CharacterState.Diving || swimDiveSpeed > 0f;
+        public override bool AllowsState(CharacterState state) => state != CharacterState.Diving || swimDiveSpeed > 0f;
         /// <summary>The events of Swimming and Diving starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Swimming, MovementEvents.SwimStarted, MovementEvents.SwimEnded),
             new(CharacterState.Diving, MovementEvents.DiveStarted, MovementEvents.DiveEnded),
@@ -95,12 +95,12 @@ namespace Character
         /// Underwater, the character's body lies flat along the way it swims, resting on its feet (the bottom of its body),
         /// so it fits through what a swimmer would: along the pool's floor, under an arch. (The swimming animations float
         /// the body the swim depth above the feet, as treading water at the surface does, so underwater the model is drawn
-        /// lowered to the body: see MovementData.modelDrop.) At the surface it treads water, upright.
+        /// lowered to the body: see MovementStep.modelDrop.) At the surface it treads water, upright.
         /// </summary>
-        public override BodyPosture? Posture(MovementController controller) =>
+        public override BodyPosture? Posture(MMotionMotor controller) =>
             controller.swim.IsUnderwater ? BodyPosture.Lying : null;
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.swim.IsSwimming) { StopSwimming(controller); }
         }
@@ -112,14 +112,14 @@ namespace Character
         /// it stands on a floor shallow enough, or leaves the water; Jump jumps out. Getting into the water gives back the
         /// character's jumps and air dashes, as touching the ground does.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             SwimState swim = controller.swim;
             Vector3 feet = movementData.initialPosition;
             float depth = swimDepth * controller.Body.StandingHeight;
             // Looked for a skin's width above the feet: standing on the floor of the water (a pool's, where its water
             // ends), they rest a hair into it, below the water, and the character swimming there stopped.
-            Water water = depth > 0f ? Water.At(feet + Vector3.up * controller.Skin) : null;
+            SwimmableWater water = depth > 0f ? SwimmableWater.At(feet + Vector3.up * controller.Skin) : null;
             float under = water != null ? water.SurfaceHeight - feet.y : float.NegativeInfinity;
             float surfacingSpeed = swimSurfacingSpeed * controller.SpeedScale;
 
@@ -152,13 +152,13 @@ namespace Character
             if (swim.underwater && under < depth) { swim.underwater = false; }
             if (swim.underwater) { return SwimUnderwater(movementData, inputs, controller, water, depth, verticalSpeed); }
 
-            if (swimJumpHeight > 0f && Mode.IsNewJumpPress(inputs, controller))
+            if (swimJumpHeight > 0f && Mode.HasFreshJumpPress(inputs, controller))
             {
                 // Out of the water: up fast enough that the feet rise the jump height above the surface, from where they are.
                 StopSwimming(controller);
                 float rise = under + swimJumpHeight * controller.HeightScale;
-                float up = MovementHelpers.LaunchSpeedFor(rise, Mode.GravityAcceleration(controller), dt);
-                MovementHelpers.JumpOff(movementData, controller, new Vector3(velocity.x, up, velocity.z), MovementEvents.Jumped);
+                float up = MovementRules.LaunchSpeedFor(rise, Mode.GravityAcceleration(controller), dt);
+                MovementRules.JumpOff(movementData, controller, new Vector3(velocity.x, up, velocity.z), MovementEvents.Jumped);
                 return true;
             }
 
@@ -170,12 +170,12 @@ namespace Character
             }
 
             // Swimming into an edge within reach of the hands (a pool's side), up onto it, as climbing over a ledge's top.
-            Vector3 input = MovementHelpers.InputDirection(movementData, inputs);
+            Vector3 input = MovementRules.InputDirection(movementData, inputs);
             if (TryClimbOut(movementData, inputs, controller, input, under)) { return true; }
 
             // Across the water: speeding up toward the input's way and speed (relative to the look), or slowing to a
             // stop, facing the way it swims.
-            float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier;
+            float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.speedMultiplier;
             Vector3 horizontal = Vector3.MoveTowards(new Vector3(velocity.x, 0f, velocity.z), input * topSpeed,
                 swimAcceleration * controller.AccelerationScale * dt);
             if (input.sqrMagnitude > 1e-4f && topSpeed > 0f) { movementData.targetRotation = Quaternion.LookRotation(input.normalized, Vector3.up); }
@@ -208,15 +208,15 @@ namespace Character
         /// the swim acceleration; it faces the way it swims across, and, steered, its body pitches along the way it's
         /// steered to swim, up to the swim max pitch.
         /// </summary>
-        private bool SwimUnderwater(MovementData movementData, Inputs inputs, MovementController controller, Water water, float depth,
+        private bool SwimUnderwater(MovementStep movementData, StepInputs inputs, MMotionMotor controller, SwimmableWater water, float depth,
             float verticalSpeed)
         {
             SwimState swim = controller.swim;
             float dt = movementData.deltaTime;
-            if (Mode.IsNewJumpPress(inputs, controller)) { controller.jump.press.Use(); }
+            if (Mode.HasFreshJumpPress(inputs, controller)) { controller.jump.press.Use(); }
 
             Vector3 steer = FreeSteering.Direction(movementData, inputs);
-            float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.movementSpeedMultiplier;
+            float topSpeed = SwimSpeedFor(inputs) * controller.SpeedScale * controller.speedMultiplier;
             Vector3 target = FreeSteering.TargetVelocity(steer, FreeSteering.UpOrDown(inputs), topSpeed,
                 swimVerticalSpeed * controller.SpeedScale, swimBuoyancy * controller.SpeedScale);
 
@@ -256,25 +256,25 @@ namespace Character
         /// The speed (m/s) to swim at for these inputs, at full movement input and the character's authored size: the
         /// sprint speed while Sprint is held (if it's the faster), otherwise the swim speed.
         /// </summary>
-        public float SwimSpeedFor(Inputs inputs) =>
-            inputs.sprint != null && inputs.sprint.value && swimSprintSpeed > swimSpeed ? swimSprintSpeed : swimSpeed;
+        public float SwimSpeedFor(StepInputs inputs) =>
+            inputs.sprint != null && inputs.sprint.held && swimSprintSpeed > swimSpeed ? swimSprintSpeed : swimSpeed;
 
         /// <summary>
         /// Starts swimming in water: it counts as touching the ground (the character's jumps and air dashes come back), it
         /// ends whatever else had the character (a dash, a roll, a slide), and it's done standing.
         /// </summary>
-        private void StartSwimming(MovementData movementData, MovementController controller, Water water)
+        private void StartSwimming(MovementStep movementData, MMotionMotor controller, SwimmableWater water)
         {
             controller.swim.water = water;
             // Falling in, the plunge carries on; walking in, the step's vertical speed is only the ground's push.
             controller.swim.verticalSpeed = movementData.initialGrounded ? 0f : movementData.initialVelocity.y;
-            MovementHelpers.GiveBackAirMoves(controller);
+            MovementRules.GiveBackAirMoves(controller);
             Mode.InterruptOthers(movementData, controller, this);
             controller.crouch.IsCrouched = false;
             controller.crouch.wantsToStand = false;
         }
 
-        private static void StopSwimming(MovementController controller)
+        private static void StopSwimming(MMotionMotor controller)
         {
             controller.swim.water = null;
             controller.swim.underwater = false;
@@ -287,7 +287,7 @@ namespace Character
         /// within reach of its hands and something to stand on, it climbs out onto it (handed to Ledges' climb over a
         /// top). Without those components, there's no getting out but by jumping. Returns whether it did.
         /// </summary>
-        private bool TryClimbOut(MovementData movementData, Inputs inputs, MovementController controller, Vector3 input, float under)
+        private bool TryClimbOut(MovementStep movementData, StepInputs inputs, MMotionMotor controller, Vector3 input, float under)
         {
             if (input.sqrMagnitude < ClimbOutInput * ClimbOutInput || (movementData.previousCollisions & CollisionFlags.Sides) == 0) { return false; }
             Vaulting vaulting = Mode.Get<Vaulting>();
@@ -303,7 +303,7 @@ namespace Character
     public class SwimState
     {
         /// <summary>The body of water the character is swimming in (null when it isn't swimming).</summary>
-        public Level.Water water;
+        public MeridianMotion.Levels.SwimmableWater water;
         /// <summary>How fast (m/s) the character is rising (positive) or sinking in the water.</summary>
         public float verticalSpeed;
         /// <summary>Whether the character is swimming underwater (dived), rather than at the surface.</summary>
@@ -315,9 +315,9 @@ namespace Character
         public bool IsSwimming => water != null;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's swimming state (Swimming).</summary>
         public SwimState swim { get; } = new SwimState();

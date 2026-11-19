@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Wall-running: running along a wall in mid-air, falling slowly, and jumping off it.
@@ -70,25 +70,25 @@ namespace Character
         /// <summary>The steepest a wall can lean (degrees from vertical) to be run along (and slid down: see WallSliding).</summary>
         public float WallRunMaxWallTilt => wallRunMaxWallTilt;
 
-        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementHelpers.JumpOffWall).</summary>
+        /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementRules.JumpOffWall).</summary>
         public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
-        public override bool IsActive(MovementController controller) => controller.wallRun.IsWallRunning;
+        public override bool IsActive(MMotionMotor controller) => controller.wallRun.IsWallRunning;
         /// <summary>Running along it, the wall holds the character up.</summary>
-        public override AbilityTraits Traits => AbilityTraits.HoldsUp;
+        public override AbilityTraits Traits => AbilityTraits.Supported;
         /// <summary>The events of WallRunning starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.WallRunning, MovementEvents.WallRunStarted, MovementEvents.WallRunEnded),
         };
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            controller.wallRun.cooldownRemaining = MovementHelpers.CountDown(controller.wallRun.cooldownRemaining, movementData.deltaTime);
+            controller.wallRun.cooldownRemaining = MovementRules.CountDown(controller.wallRun.cooldownRemaining, movementData.deltaTime);
             if (movementData.initialGrounded) { controller.wallRun.hasLastWall = false; }
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.wallRun.IsWallRunning) { EndWallRun(controller); }
         }
@@ -102,7 +102,7 @@ namespace Character
         /// gives back the character's air jumps, and takes away air steering for a moment. The same wall can't be run along twice without touching the ground
         /// in between (another wall can, after a short cooldown: wall jumps can chain between facing walls).
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallRunState run = controller.wallRun;
             if (!run.IsWallRunning && !TryStartWallRun(movementData, inputs, controller)) { return false; }
@@ -146,7 +146,7 @@ namespace Character
                 return false;
             }
 
-            if (Mode.IsNewJumpPress(inputs, controller))
+            if (Mode.HasFreshJumpPress(inputs, controller))
             {
                 WallJump(movementData, controller, tangent * speed, normal);
                 return true;
@@ -168,7 +168,7 @@ namespace Character
         /// Starts a wall run if the character is in mid-air, high enough above the ground, moving fast enough along a wall
         /// beside it (not straight into it), and steering along the wall (within the steering angle), the way it's moving.
         /// </summary>
-        private bool TryStartWallRun(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartWallRun(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             WallRunState run = controller.wallRun;
             if (wallRunMaxDuration <= 0f || movementData.initialGrounded || run.cooldownRemaining > 0f
@@ -230,7 +230,7 @@ namespace Character
         /// (a share of its standing height) less how far its body reaches to the side; 0 if that's less (it's pressed
         /// against the wall). No more than most of the check distance, so the wall it's held out from is still found.
         /// </summary>
-        private float HoldGap(MovementController controller) =>
+        private float HoldGap(MMotionMotor controller) =>
             Mathf.Clamp(wallRunClearance * controller.Body.StandingHeight - controller.Body.SideExtent, 0f,
                 WallRunMaxHoldShare * wallRunCheckDistance * controller.HeightScale);
 
@@ -241,7 +241,7 @@ namespace Character
         /// and is drawn in to its clearance (see TowardWall), the wall kept within reach as it is. (A capsule reaches as
         /// far ahead as to the side: no further.)
         /// </summary>
-        private float Reach(MovementController controller)
+        private float Reach(MMotionMotor controller)
         {
             CharacterBody body = controller.Body;
             return wallRunCheckDistance * controller.HeightScale + Mathf.Max(0f, Mathf.Max(body.FrontExtent, body.BackExtent) - body.SideExtent);
@@ -254,14 +254,14 @@ namespace Character
         /// corner, and held out by that, it was pushed off the wall as it turned along it. (For a body that reaches as far
         /// to the side however it's turned, a capsule, they're the same.)
         /// </summary>
-        private static float AlongsideGap(MovementController controller, Vector3 feet, Vector3 wallPoint, Vector3 normal) =>
+        private static float AlongsideGap(MMotionMotor controller, Vector3 feet, Vector3 wallPoint, Vector3 normal) =>
             Vector3.Dot(feet - wallPoint, normal) - controller.Body.SideExtent;
 
         /// <summary>
         /// How fast (m/s) to move toward the wall this step, the body's side gap (m) from it: pressed lightly against it,
         /// or, held out from it (see HoldGap), closing in on that gap (or easing out to it) over the hold time.
         /// </summary>
-        private float TowardWall(MovementController controller, float gap)
+        private float TowardWall(MMotionMotor controller, float gap)
         {
             float stick = WallStickSpeed * controller.SpeedScale;
             float hold = HoldGap(controller);
@@ -273,17 +273,17 @@ namespace Character
         /// Whether there's a wall to run along beside the character in the given direction (within the check distance,
         /// and upright enough), and its normal, flattened (pointing away from the wall).
         /// </summary>
-        private bool FindWall(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance) =>
+        private bool FindWall(MMotionMotor controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance) =>
             FindWall(controller, feet, direction, out normal, out distance, out _);
 
         /// <summary>The same, and the point on the wall the body's sweep hit (distance includes the skin width).</summary>
-        private bool FindWall(MovementController controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance, out Vector3 point)
+        private bool FindWall(MMotionMotor controller, Vector3 feet, Vector3 direction, out Vector3 normal, out float distance, out Vector3 point)
         {
             normal = Vector3.zero;
             distance = 0f;
             point = Vector3.zero;
             float reach = Reach(controller) + controller.Skin;
-            if (!MovementHelpers.FindUprightWall(controller, feet, direction, reach, wallRunMaxWallTilt, out RaycastHit hit, out normal)) { return false; }
+            if (!MovementRules.FindUprightWall(controller, feet, direction, reach, wallRunMaxWallTilt, out RaycastHit hit, out normal)) { return false; }
             // Facing the character, not a surface it would only graze.
             if (Vector3.Dot(normal, -direction.normalized) < 0.5f) { return false; }
             distance = hit.distance;
@@ -296,7 +296,7 @@ namespace Character
         /// above them), for them to run on: the capsule sweep that finds the wall also finds one beside its upper body,
         /// and the character kept running along a wall with its feet below the bottom edge.
         /// </summary>
-        private bool WallReachesFeet(MovementController controller, Vector3 feet, Vector3 normal)
+        private bool WallReachesFeet(MMotionMotor controller, Vector3 feet, Vector3 normal)
         {
             float reach = controller.Body.SideExtent + Reach(controller) + 2f * controller.Skin;
             return controller.Raycast(feet + Vector3.up * (wallRunFootHeight * controller.Body.StandingHeight), -normal, reach, out _);
@@ -306,15 +306,15 @@ namespace Character
         /// Jumps off the wall: away from it and upward, keeping the run's speed along it. Gives back the character's
         /// jumps, less the one this uses, and takes away air steering, which comes back over the mode's wall jump steering recovery time.
         /// </summary>
-        private void WallJump(MovementData movementData, MovementController controller, Vector3 alongWall, Vector3 normal)
+        private void WallJump(MovementStep movementData, MMotionMotor controller, Vector3 alongWall, Vector3 normal)
         {
             EndWallRun(controller);
             Vector3 velocity = alongWall + normal * (wallJumpAwaySpeed * controller.SpeedScale) + Vector3.up * (wallJumpUpSpeed * controller.SpeedScale);
             // Facing the way it's launched.
-            MovementHelpers.JumpOffWall(movementData, controller, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
+            MovementRules.JumpOffWall(movementData, controller, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
         }
 
-        private void EndWallRun(MovementController controller)
+        private void EndWallRun(MMotionMotor controller)
         {
             WallRunState run = controller.wallRun;
             run.IsWallRunning = false;
@@ -357,7 +357,7 @@ namespace Character
                     simulation.Run(MovementSimulation.StepsFor(MovementSimulation.MeasureRunUp), _ => MovementSimulation.Move(Vector3.forward, true));
                     MeasureRun(simulation, i =>
                     {
-                        Inputs inputs = MovementSimulation.Move(input, true);
+                        StepInputs inputs = MovementSimulation.Move(input, true);
                         inputs.jump = MovementSimulation.Held(i);
                         return inputs;
                     }, groundedFrom: 3, ref length, ref drop);
@@ -389,7 +389,7 @@ namespace Character
         /// wall and the largest fall over one seen so far in length and drop), or it gives up: on the ground from step
         /// groundedFrom on (before it, it may still be taking off), or after the measuring timeout.
         /// </summary>
-        private static void MeasureRun(MovementSimulation simulation, Func<int, Inputs> inputsFor, int groundedFrom, ref float length, ref float drop)
+        private static void MeasureRun(MovementSimulation simulation, Func<int, StepInputs> inputsFor, int groundedFrom, ref float length, ref float drop)
         {
             float startZ = float.NaN, startY = float.NaN;
             for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
@@ -423,7 +423,7 @@ namespace Character
         public float cooldownRemaining;
         /// <summary>The wall's normal (horizontal, unit length, pointing away from the wall toward the character).</summary>
         public Vector3 wallNormal;
-        /// <summary>A point on the wall's face, where the character's body was nearest it (for the feet on it: see WallSlideIK).</summary>
+        /// <summary>A point on the wall's face, where the character's body was nearest it (for the feet on it: see WallContactIK).</summary>
         public Vector3 wallPoint;
         /// <summary>Which side of the character the wall is on: 1 = right, -1 = left (0 when not wall-running).</summary>
         public float side;
@@ -433,9 +433,9 @@ namespace Character
         public bool hasLastWall;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's wall running state (WallRunning).</summary>
         public WallRunState wallRun { get; } = new WallRunState();

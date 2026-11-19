@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// The level editor's spec as Unity can undo it: its JSON, which every edit records (Undo.RecordObject) before

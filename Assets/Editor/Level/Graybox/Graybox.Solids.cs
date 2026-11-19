@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Prisms: convex solids, filled with box colliders that cover their footprints exactly.
     public static partial class Graybox
@@ -12,7 +12,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// colliders to stand on (see FootprintBoxes), on child objects named "Collider".
         /// </summary>
         [Piece]
-        public static GameObject Prism(Transform parent, string name, Vector2[] shape, float y0, float y1, Surface surface = Surface.Concrete)
+        public static GameObject Prism(Transform parent, string name, Vector2[] shape, float y0, float y1, GrayboxMaterial surface = GrayboxMaterial.Concrete)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Prism), parent, name, shape, y0, y1, surface);
             var vertices = new List<Vector3>();

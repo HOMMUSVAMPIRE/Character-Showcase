@@ -2,9 +2,9 @@
 Choices about how the project is built, why they were made, and what was decided against. Read this before undoing one: each had a reason. Add an entry when a decision like these is made.
 
 ## Movement is a list of components, not one class (November 2026)
-**Decided:** a movement mode (`ComposedMovementMode`) is a list of `MovementComponent`s, each part of the movement with its own settings, which can be turned off, removed, added and reordered on the asset. Every part is a component, walking and falling included: `BasicMovementMode` keeps only what they share.
+**Decided:** a movement mode (`AbilityMovementMode`) is a list of `MovementComponent`s, each part of the movement with its own settings, which can be turned off, removed, added and reordered on the asset. Every part is a component, walking and falling included: `StandardMovementMode` keeps only what they share.
 
-**Why:** `BasicMovementMode` had grown into one class holding every ability, where each new ability touched the same files. As components, an ability is one file, a designer can turn it off or take it out without code, and another kind of movement reuses the same components in a different list.
+**Why:** `StandardMovementMode` had grown into one class holding every ability, where each new ability touched the same files. As components, an ability is one file, a designer can turn it off or take it out without code, and another kind of movement reuses the same components in a different list.
 
 **Against:** inheritance (a mode subclass per combination of abilities), which multiplies classes and can't be changed on an asset.
 
@@ -14,7 +14,7 @@ Choices about how the project is built, why they were made, and what was decided
 **Why:** turning an ability off should remove that ability, not quietly change the others.
 
 ## Crouching and sliding are one component (November 2026)
-**Decided:** sliding is part of Crouching, with a Sliding Enabled toggle, rather than a component of its own.
+**Decided:** sliding is part of Crouching, with a Can Slide toggle, rather than a component of its own.
 
 **Why:** a slide starts from the crouch press and ends crouched, and the two share their settings: apart, each would need the other.
 
@@ -76,52 +76,52 @@ Choices about how the project is built, why they were made, and what was decided
 **Against:** pitching the body along the ground (as its model is), which would keep a long body off the steps behind it going down a flight too, but turn the character's own queries with every stride; it's still open, if how little it rests on them there matters. And dropping the long-body rules (WallRunning's reach and alongside gap): they're about a body being longer than it's wide, which a rounded one still is, not about corners.
 
 ## Input is a frame per step, and the character works out its presses (November 2026)
-**Decided:** a character is given one input frame each physics step (`CharacterInputFrame`): unmanaged, saying only the move input, the look and which buttons are held. The character works out presses and hold durations itself, counted in steps (`InputState`), and its components read them as `Inputs`.
+**Decided:** a character is given one input frame each physics step (`CharacterInputFrame`): unmanaged, saying only the move input, the look and which buttons are held. The character works out presses and hold durations itself, counted in steps (`InputState`), and its components read them as `StepInputs`.
 
 **Why:** the same frames then give the same movement at any frame rate, and a frame can be copied, recorded, compared and sent as it is. A press worked out from the frames can't disagree with them.
 
-**Against:** the input manager's own `Inputs`, updated in place each render frame, with presses and durations timed by it: what the movement saw depended on the frame rate, and there was nothing to record or send.
+**Against:** the input manager's own `StepInputs`, updated in place each render frame, with presses and durations timed by it: what the movement saw depended on the frame rate, and there was nothing to record or send.
 
 ## The movement never reads a camera (November 2026)
-**Decided:** the move input is relative to the input frame's look (`MovementData.look`), which the player's input manager fills from the main camera, and an AI from its own aim.
+**Decided:** the move input is relative to the input frame's look (`MovementStep.look`), which the player's input manager fills from the main camera, and an AI from its own aim.
 
 **Why:** a character steps the same on a machine with no camera (a server), and an NPC moves by where it looks, not where the player's camera does.
 
 **Against:** the movement reading `Camera.main` (or a camera set on it), which tied every character to the player's view.
 
 ## Movement keeps time in ticks (November 2026)
-**Decided:** movement times things by its own clock in whole steps (`MovementController.StepTick`), keeping the tick something happened at and asking `SecondsSince`, rather than adding a float of seconds each step or reading Unity's time.
+**Decided:** movement times things by its own clock in whole steps (`MMotionMotor.StepIndex`), keeping the tick something happened at and asking `SecondsSince`, rather than adding a float of seconds each step or reading Unity's time.
 
 **Why:** a float added to step by step drifts, and loses its fractions as it grows: in ticks, timing is exact however long a character runs, and a copy stepped faster than real time, or restored and replayed, times things the same.
 
 ## Deterministic on one build, corrected across machines (November 2026)
-**Decided:** the same state, input frames and world give bit-identical steps on one build: ties go by where things are (`StableOrder`), the level's moving parts by the level's clock (`Level.LevelClock`), and PhysX's Enhanced Determinism is on. Across machines, a server corrects its clients (from a saved or written state: `SaveState`, `StateSerializer`).
+**Decided:** the same state, input frames and world give bit-identical steps on one build: ties go by where things are (`StableOrder`), the level's moving parts by the level's clock (`MeridianMotion.Levels.LevelClock`), and PhysX's Enhanced Determinism is on. Across machines, a server corrects its clients (from a saved or written state: `SaveState`, `StateSerializer`).
 
 **Why:** a networked game's prediction and rollback need a character restored to a step to step on exactly as it did, and replays and the golden path tests need the same. Floating point isn't reproducible across platforms, so agreement between machines comes from correction, not from the arithmetic.
 
 **Against:** breaking ties by the order Unity gives results in, or by instance IDs, which differ between runs and machines; and mechanics timed by their own time since they were enabled.
 
 ## What drives a character is its input source and owner (November 2026)
-**Decided:** a character is driven by an input source (`ICharacterInputSource`: the player's device, a script, a recording, an AI walking a route), else by what its owner (`CharacterOwner`) gives: the local player's reads the device, an AI's stands idle, a remote one isn't stepped.
+**Decided:** a character is driven by an input source (`ICharacterInputSource`: the player's device, a script, a recording, an AI walking a route), else by what its owner (`ControlledBy`) gives: the local player's reads the device, an AI's stands idle, a remote one isn't stepped.
 
 **Why:** the player's character, an NPC, a replay and another machine's character are then the same character with the same movement, only fed differently; the controller reading the input manager itself was what kept NPCs out.
 
 ## Physics query buffers are their own assembly, and grow (November 2026)
-**Decided:** the reused buffers for physics queries (`QueryBuffer`, `RaycastHitBuffer`, `ColliderBuffer`) are in `PhysicsQueries`, an assembly that references nothing, and a buffer that a query fills grows and runs the query again.
+**Decided:** the reused buffers for physics queries (`QueryBuffer`, `RaycastHitBuffer`, `ColliderBuffer`) are in `MeridianMotion.PhysicsQueries`, an assembly that references nothing, and a buffer that a query fills grows and runs the query again.
 
 **Why:** Unity's results come in no order, so a full buffer may have left out the nearest hit. The character and the camera both need the buffers, and neither may know the other, so they live apart from both.
 
 **Against:** bare arrays sized generously, which still fill and then miss hits without a sign; and queries that allocate, every step.
 
 ## The body is fitted from the model's source at Start (November 2026)
-**Decided:** with Body Fit on, `CharacterModelHost` fits the body its source was prepared with in `Start`, before the first step, and keeps it when the model arrives (`LoadModelOnStart` off, it never does).
+**Decided:** with Body Fit on, `CharacterModelSlot` fits the body its source was prepared with in `Start`, before the first step, and keeps it when the model arrives (`LoadModelOnStart` off, it never does).
 
 **Why:** the character moves the same body from its first step, with its model, before it loads, or without one (a server), so its movement doesn't depend on when, or whether, a model loaded.
 
 **Against:** fitting the body only once the model has loaded, which moved a character with one body and then another.
 
 ## Moving ground moves first, its pose set at once (November 2026)
-**Decided:** each physics step a moving platform sets its pose directly (where the level's clock has it), before the characters step (`MovingPlatform.MoveOrder`), and draws itself interpolated.
+**Decided:** each physics step a moving platform sets its pose directly (where the level's clock has it), before the characters step (`TickedPlatform.MoveOrder`), and draws itself interpolated.
 
 **Why:** a character then rides the platform and queries it where it will be after the step.
 
@@ -129,16 +129,16 @@ Choices about how the project is built, why they were made, and what was decided
 
 ## The level elements are their own assembly, and the builders attach them (November 2026)
 **Decided:**
-- The level elements (Assets/Scripts/Level: water, ropes, ladders, platforms and the rest) are an assembly of their own, `CharacterShowcase.LevelElements`, which references only `PhysicsQueries`. The character uses it for traversal, and the level builders use it to equip their levels.
+- The level elements (Assets/Scripts/Level: water, ropes, ladders, platforms and the rest) are an assembly of their own, `MeridianMotion.Levels`, which references only `MeridianMotion.PhysicsQueries`. The character uses it for traversal, and the level builders use it to equip their levels.
 - Its editor assembly holds the climbable paint tool and `LevelFixtureSetup`, which turns named fixtures into level elements and holds their names. Each level build runs it before saving, so a level comes out of its build with its mechanics working. Set Up Scene keeps the character's jobs (the spawner, the camera, the input manager, who's racing the course timers) and runs it again, finding what's set up, for a scene built some other way.
-- The mannequin and fox generators with their Blender runner (`CharacterShowcase.Pipeline.Editor`), the movement envelope's writer (`CharacterShowcase.LevelChecks.Editor`) and the level builders' tests (`CharacterShowcase.Tests.EditMode.Levels`) are assemblies of their own, as the level builders already were.
+- The mannequin and fox generators with their Blender runner (`MeridianMotion.Showcase.Pipeline`), the movement envelope's writer (`MeridianMotion.Showcase.LevelChecks`) and the level builders' tests (`MeridianMotion.Showcase.Tests.Levels`) are assemblies of their own, as the level builders already were.
 
 **Why:** the character is meant to ship as a package without the showcase's level builders or its Blender tooling. With them in assemblies of their own, and the level elements (which traversal needs) apart from the builders, the line between what ships and what doesn't is the assemblies' (AGENTS.md, The package line), and the hygiene check holds it.
 
 **Against:** the level elements staying in the character's assembly, with only Set Up Scene turning a level's markers into them. The builders, which couldn't reference the character's code, then named the markers by constants of their own that had to match Set Up Scene's: a names contract duplicated across two assemblies, held by a test, and a level that didn't work until Set Up Scene had been run on it.
 
 ## Ability states and events stay global flag enums, 64 bits wide (November 2026)
-**Decided:** `CharacterState` is 64 bits wide (`long`), as `MovementEvents` already was. Each ability still takes bits of both by hand, and the hygiene check fails if two members share a bit or one isn't a single bit. No field of either is serialized by Unity (which drops enum fields wider than 32 bits): `MovementData`'s are `[NonSerialized]`, and a saved set of events is a `long`.
+**Decided:** `CharacterState` is 64 bits wide (`long`), as `MovementEvents` already was. Each ability still takes bits of both by hand, and the hygiene check fails if two members share a bit or one isn't a single bit. No field of either is serialized by Unity (which drops enum fields wider than 32 bits): `MovementStep`'s are `[NonSerialized]`, and a saved set of events is a `long`.
 
 **Why:** with 22 of its 32 bits taken, `CharacterState` would have run out about ten abilities on. One flags value per step stays cheap to copy, compare and keep in `MovementStateSummary` (which stays unmanaged), and every reader (animation, effects, AIs, tests) keeps testing bits as before.
 
@@ -149,7 +149,7 @@ Choices about how the project is built, why they were made, and what was decided
 ## Animator Controllers are built from layouts; the animation's own floats stay the animation's (November 2026)
 **Decided:**
 - Each character's Animator Controller is built from an Animator Layout asset (`AnimatorControllerBuilder`), not written by its generator's code: the mannequin's and the fox's controllers moved over with nothing changed (their structures, every parameter the tests step through, and their poses compared before and after). The reasons the generators' code carried as comments are the layouts' notes.
-- The translator's parameters are lists in its inspector, each with a source. A source is the animation state's own value (worked out by the AnimationController for how it should look) or what the movement has (a character's state, or a value an ability publishes, `AbilityValues`).
+- The translator's parameters are lists in its inspector, each with a source. A source is the animation state's own value (worked out by the MMotionAnimator for how it should look) or what the movement has (a character's state, or a value an ability publishes, `AbilityValues`).
 
 **Why:** a new ability's look then needs no code (a state in the layout, a translator entry), the controllers can be changed and rebuilt without Blender, and the package has one way to build a controller, for a buyer's characters too.
 

@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A copy of a character's movement, run in a world of its own, faster than real time, to measure what it does (see
-    /// MovementController.Capabilities). The copy is a bare collider and MovementController with the character's settings,
+    /// MMotionMotor.Capabilities). The copy is a bare collider and MMotionMotor with the character's settings,
     /// movement mode, collider and size, and none of its state; the world is a large floor far below everything else, and
     /// whatever a measurement adds to it (walls, ledges). It's stepped one physics step at a time with scripted inputs,
     /// moving exactly as the character would (the movement is deterministic: a fixed step, no randomness), but without
@@ -27,7 +27,7 @@ namespace Character
         /// <summary>How long (s) the character runs up before a move is measured: long enough to be at full speed.</summary>
         public const float MeasureRunUp = 0.8f;
 
-        private readonly MovementController source;
+        private readonly MMotionMotor source;
         private readonly BodyShape? authoredBody;
         private readonly GameObject root;
         private readonly List<GameObject> obstacles = new();
@@ -36,39 +36,39 @@ namespace Character
         private Rigidbody body;
 
         /// <summary>The copy of the character's movement being stepped (made again by Reset).</summary>
-        public MovementController Controller { get; private set; }
+        public MMotionMotor Controller { get; private set; }
         /// <summary>The movement events the last step raised.</summary>
         public MovementEvents LastEvents { get; private set; }
         /// <summary>The character's feet, relative to the origin.</summary>
         public Vector3 Position => body.position - WorldOrigin;
         /// <summary>The character's state in the last step.</summary>
-        public CharacterState State => Controller.lastFrameMovementData != null ? Controller.lastFrameMovementData.state : CharacterState.Idle;
+        public CharacterState State => Controller.lastStep != null ? Controller.lastStep.state : CharacterState.None;
         /// <summary>Whether the character was on the ground in the last step.</summary>
         public bool Grounded => (State & CharacterState.Grounded) != 0;
         /// <summary>The character's velocity in the last step (m/s).</summary>
-        public Vector3 Velocity => Controller.lastFrameMovementData != null ? Controller.lastFrameMovementData.finalVelocity : Vector3.zero;
+        public Vector3 Velocity => Controller.lastStep != null ? Controller.lastStep.finalVelocity : Vector3.zero;
         /// <summary>The physics step (s).</summary>
         public static float DeltaTime => Time.fixedDeltaTime;
 
         /// <summary>
         /// A world to simulate source's movement in. Its body is the one source has, unless a body as authored is given: the
-        /// one a model would give it (see CharacterModelHost.BodyFor).
+        /// one a model would give it (see CharacterModelSlot.BodyFor).
         /// </summary>
-        public MovementSimulation(MovementController source, BodyShape? authoredBody = null)
+        public MovementSimulation(MMotionMotor source, BodyShape? authoredBody = null)
         {
             this.source = source;
             this.authoredBody = authoredBody;
             root = new GameObject("Movement Simulation") { hideFlags = HideFlags.HideAndDontSave };
             root.transform.position = WorldOrigin;
             Box(new Vector3(0f, -0.5f, 0f), new Vector3(FloorSize, 1f, FloorSize));
-            Reset(Vector3.zero, source.movementHandler);
+            Reset(Vector3.zero, source.movementMode);
         }
 
-        /// <summary>Measures what source can do (see MovementController.Capabilities), with the given body if any.</summary>
-        public static MovementCapabilities Measure(MovementController source, BodyShape? authoredBody = null)
+        /// <summary>Measures what source can do (see MMotionMotor.Capabilities), with the given body if any.</summary>
+        public static MovementCapabilities Measure(MMotionMotor source, BodyShape? authoredBody = null)
         {
             using var simulation = new MovementSimulation(source, authoredBody);
-            MovementController copy = simulation.Controller;
+            MMotionMotor copy = simulation.Controller;
             var capabilities = new MovementCapabilities
             {
                 StepHeight = copy.MaxStepHeight * copy.HeightScale,
@@ -76,7 +76,7 @@ namespace Character
                 StandHeight = copy.Body.StandingHeight,
                 HalfWidth = copy.Body.SideExtent,
             };
-            if (source.movementHandler != null) { source.movementHandler.MeasureCapabilities(simulation, capabilities); }
+            if (source.movementMode != null) { source.movementMode.MeasureCapabilities(simulation, capabilities); }
             return capabilities;
         }
 
@@ -95,8 +95,8 @@ namespace Character
             body.isKinematic = true;
             body.useGravity = false;
             body.interpolation = RigidbodyInterpolation.None;
-            Controller = character.AddComponent<MovementController>();
-            Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementHandler, authoredBody);
+            Controller = character.AddComponent<MMotionMotor>();
+            Controller.CopyForSimulation(source, body, mode != null ? mode : source.movementMode, authoredBody);
             Controller.MovementEventRaised += (e, _) => LastEvents |= e;
             character.SetActive(true);
             Place(feet);
@@ -148,14 +148,14 @@ namespace Character
         /// One physics step of movement with the given inputs (the move input and which buttons are down: the character
         /// times its presses itself); the character ends where its movement took it.
         /// </summary>
-        public void Step(Inputs inputs)
+        public void Step(StepInputs inputs)
         {
             LastEvents = MovementEvents.None;
-            Controller.ProcessMovementInputs(CharacterInputFrame.Holding(inputs, Controller.Tick), DeltaTime);
-            MovementData data = Controller.currentMovementData;
+            Controller.Step(CharacterInputFrame.Holding(inputs, Controller.InputTick), DeltaTime);
+            MovementStep data = Controller.currentStep;
             Vector3 position = data.initialPosition + data.finalMovementVector;
             Quaternion rotation = data.finalRotation;
-            Controller.MovementCleanup();
+            Controller.FinishStep();
             // Rigidbody.Move (which the controller used) only moves the body at the next physics simulation, which this
             // world doesn't run: the body is put there directly.
             body.position = position;
@@ -164,7 +164,7 @@ namespace Character
         }
 
         /// <summary>Steps with the given inputs (by step index) the given number of steps, or until stop says so.</summary>
-        public void Run(int steps, Func<int, Inputs> inputs, Func<int, bool> stop = null)
+        public void Run(int steps, Func<int, StepInputs> inputs, Func<int, bool> stop = null)
         {
             for (int i = 0; i < steps; i++)
             {
@@ -182,10 +182,10 @@ namespace Character
         /// A button down from the step of its press (step 0) on, or up (a negative step): the character works out the press
         /// and how long it's held from the steps it's down in (see InputState).
         /// </summary>
-        public static InputButton Held(int step) => new() { value = step >= 0 };
+        public static InputButton Held(int step) => new() { held = step >= 0 };
 
         /// <summary>Movement input along direction (relative to the simulation: +Z forward), sprinting or not.</summary>
-        public static Inputs Move(Vector3 direction, bool sprint = false) => new()
+        public static StepInputs Move(Vector3 direction, bool sprint = false) => new()
         {
             movementVector = direction,
             jump = new InputButton(),
@@ -199,7 +199,7 @@ namespace Character
         /// </summary>
         public sealed class Snapshot
         {
-            internal MovementController controller;
+            internal MMotionMotor controller;
             internal ObjectGraphSnapshot state;
             internal Vector3 position;
             internal Quaternion rotation;

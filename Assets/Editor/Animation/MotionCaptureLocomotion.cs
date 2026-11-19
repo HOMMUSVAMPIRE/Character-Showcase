@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// The character's walk, run, rise and fall animations, cut from the motion-capture clips in Assets/Animation/CMU,

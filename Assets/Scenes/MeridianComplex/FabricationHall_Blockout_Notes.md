@@ -3,7 +3,7 @@
 The Fabrication Hall, the complex's industrial district, is graybox in `MeridianComplex.unity`, from the sheets
 `MeridianComplex-ZoneLayouts.png` (its detailed layout) and `MeridianComplex-RemainingAreas.png`. Level geometry only,
 in the placeholder smooth-concrete material. It's built by `Assets/Editor/Level/MeridianFabricationHallBuilder.cs`, as
-part of **Tools > Character Showcase > Level > Build Meridian Complex**.
+part of **Tools > Meridian Motion > Showcase > Levels > Build Meridian Complex**.
 
 The hall is laid out in its own coordinates (its middle at 0, +Z north) under a group at world (126, 0, 0): 120 × 100 m,
 from x 66 to 186.

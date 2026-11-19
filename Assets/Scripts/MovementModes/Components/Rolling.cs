@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Rolling: a quick, committed roll along the ground, low (at the crouch height: see Crouching), by pressing Roll or
@@ -35,29 +35,29 @@ namespace Character
         /// <summary>How long a roll lasts, in seconds. 0 turns rolling off.</summary>
         public float RollDuration { get => rollDuration; set => rollDuration = value; }
 
-        public override bool IsActive(MovementController controller) => controller.roll.IsRolling;
+        public override bool IsActive(MMotionMotor controller) => controller.roll.IsRolling;
         /// <summary>A roll is on the ground: the character is neither held up nor holding on.</summary>
         public override AbilityTraits Traits => AbilityTraits.None;
         /// <summary>The events of Rolling starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Rolling, MovementEvents.RollStarted, MovementEvents.RollEnded),
         };
 
         /// <summary>Rolling, low at the crouch height (Crouching's, whether or not it's turned on).</summary>
-        public override BodyPosture? Posture(MovementController controller) =>
+        public override BodyPosture? Posture(MMotionMotor controller) =>
             controller.roll.IsRolling ? BodyPosture.Low(SettingsOf<Crouching>().CrouchHeight) : null;
 
         /// <summary>Frees the next press of Roll once it's released, advances the cooldown, and keeps track of falls (see TrackFall).</summary>
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             controller.roll.press.Track(inputs.roll);
-            controller.roll.cooldownRemaining = MovementHelpers.CountDown(controller.roll.cooldownRemaining, movementData.deltaTime);
+            controller.roll.cooldownRemaining = MovementRules.CountDown(controller.roll.cooldownRemaining, movementData.deltaTime);
             TrackFall(movementData, controller);
         }
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.roll.IsRolling) { EndRoll(controller); }
         }
@@ -69,7 +69,7 @@ namespace Character
         /// roll's speed, low, facing the roll, and can't steer, jump or dash until it's over. Rolling off an edge ends
         /// the roll, keeping its momentum. Afterwards the character stands, or stays crouched where there isn't room.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             RollState roll = controller.roll;
             if (!roll.IsRolling && !TryLandingRoll(movementData, inputs, controller))
@@ -91,11 +91,11 @@ namespace Character
                 return false;
             }
 
-            // The roll's speed and length follow the character's size (see MovementController.SpeedScale).
+            // The roll's speed and length follow the character's size (see MMotionMotor.SpeedScale).
             float duration = rollDuration * controller.DurationScale;
             float progress = 1f - roll.timeRemaining / Mathf.Max(duration, 1e-4f);
             float speed = rollSpeed * controller.SpeedScale * rollSpeedCurve.Evaluate(progress);
-            roll.timeRemaining = MovementHelpers.CountDown(roll.timeRemaining, movementData.deltaTime);
+            roll.timeRemaining = MovementRules.CountDown(roll.timeRemaining, movementData.deltaTime);
             if (!roll.IsRolling) { roll.cooldownRemaining = rollCooldown; }
 
             // Momentum rather than a velocity override, so gravity keeps the character on the ground (down slopes too),
@@ -114,11 +114,11 @@ namespace Character
         /// (or, slower, the way it's steered). The cooldown and the button don't matter: it rolls on impact. Not with a
         /// jump pressed for the landing (within the jump's input buffer): that jumps instead.
         /// </summary>
-        private bool TryLandingRoll(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryLandingRoll(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             RollState roll = controller.roll;
             if (rollDuration <= 0f || landingRollMinFall <= 0f || !movementData.initialGrounded || Mode.AbilityInProgress(controller)) { return false; }
-            if (roll.landingFall < landingRollMinFall * controller.Body.StandingHeight || Mode.IsNewJumpPress(inputs, controller)) { return false; }
+            if (roll.landingFall < landingRollMinFall * controller.Body.StandingHeight || Mode.HasFreshJumpPress(inputs, controller)) { return false; }
             Vector3 inertia = movementData.initialInertia;
             Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
             Vector3 steer = InputDirection(movementData, inputs);
@@ -136,19 +136,19 @@ namespace Character
 
         /// <summary>
         /// Keeps track of how far the character falls, for rolling on landing: where the current fall started (its feet,
-        /// on the last step it wasn't falling, or was on the ground or held up by an ability (AbilityTraits.HoldsUp: a wall,
+        /// on the last step it wasn't falling, or was on the ground or held up by an ability (AbilityTraits.Supported: a wall,
         /// a ledge, a rope, a cable, water): so a drop from a ledge is measured from the ledge, and a dash or a jump just
         /// before landing starts the fall again from there), and on the step it lands, how far below that it is. Every
         /// step, whichever ability has the character.
         /// </summary>
-        private void TrackFall(MovementData movementData, MovementController controller)
+        private void TrackFall(MovementStep movementData, MMotionMotor controller)
         {
             RollState roll = controller.roll;
             float y = movementData.initialPosition.y;
             bool landed = movementData.initialGrounded && ((movementData.previousState & CharacterState.Grounded) == 0);
             roll.landingFall = landed && roll.hasFallTop ? Mathf.Max(0f, roll.fallTop - y) : 0f;
-            // Whatever holds the character up (see AbilityTraits.HoldsUp): a ride down a sloped zipline, say, isn't a fall.
-            bool held = movementData.initialGrounded || Mode.AbilityInProgressWith(AbilityTraits.HoldsUp, controller);
+            // Whatever holds the character up (see AbilityTraits.Supported): a ride down a sloped zipline, say, isn't a fall.
+            bool held = movementData.initialGrounded || Mode.AbilityInProgressWith(AbilityTraits.Supported, controller);
             bool falling = movementData.initialVelocity.y < -FallStartSpeed * controller.SpeedScale;
             if (held || !falling || !roll.hasFallTop) { roll.fallTop = y; }
             roll.hasFallTop = true;
@@ -161,11 +161,11 @@ namespace Character
         /// a sudden burst of speed (and a lurch in the animations) as the roll ends. Without input, the momentum is
         /// kept, to ease out.
         /// </summary>
-        private void HandOverToWalking(MovementData movementData, Inputs inputs, MovementController controller, float rollSpeedNow)
+        private void HandOverToWalking(MovementStep movementData, StepInputs inputs, MMotionMotor controller, float rollSpeedNow)
         {
             Vector3 steer = InputDirection(movementData, inputs);
             if (steer.sqrMagnitude < 0.01f) { return; }
-            float walkSpeed = Mode.MoveSpeed(inputs, controller) * controller.SpeedScale * controller.movementSpeedMultiplier * steer.magnitude;
+            float walkSpeed = Mode.MoveSpeed(inputs, controller) * controller.SpeedScale * controller.speedMultiplier * steer.magnitude;
             Vector3 walkDirection = steer.normalized;
             float beyond = Mathf.Max(0f, Vector3.Dot(controller.roll.direction * rollSpeedNow, walkDirection) - walkSpeed);
             Vector3 inertia = movementData.initialInertia;
@@ -174,7 +174,7 @@ namespace Character
             movementData.targetRotation = Quaternion.LookRotation(walkDirection, Vector3.up);
         }
 
-        private void EndRoll(MovementController controller)
+        private void EndRoll(MMotionMotor controller)
         {
             controller.roll.timeRemaining = 0f;
             controller.roll.cooldownRemaining = rollCooldown;
@@ -195,7 +195,7 @@ namespace Character
             for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
             {
                 float before = simulation.Position.z;
-                Inputs inputs = MovementSimulation.Move(Vector3.forward);
+                StepInputs inputs = MovementSimulation.Move(Vector3.forward);
                 inputs.roll = MovementSimulation.Held(i);
                 simulation.Step(inputs);
                 bool rolling = (simulation.State & CharacterState.Rolling) != 0;
@@ -218,7 +218,7 @@ namespace Character
         /// <summary>How long the current roll lasts, in seconds.</summary>
         public float duration;
         /// <summary>The Roll button's presses, so each press starts at most one roll.</summary>
-        public readonly ButtonPress press = new();
+        public readonly PressBuffer press = new();
         /// <summary>
         /// Where the character's current fall started (its feet's y, m: where it last wasn't falling, or was on the
         /// ground or held by a wall or a ledge), for rolling on landing.
@@ -235,9 +235,9 @@ namespace Character
         public float Progress => duration > 0f ? Mathf.Clamp01(1f - timeRemaining / duration) : 0f;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's rolling state (Rolling).</summary>
         public RollState roll { get; } = new RollState();

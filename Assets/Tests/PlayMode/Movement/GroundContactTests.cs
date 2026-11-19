@@ -1,12 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// How steadily the character keeps to the ground, for each character (the tested one, and the fox): standing, walking,
@@ -88,7 +88,7 @@ namespace CharacterShowcase.Tests.Movement
         }
 
         /// <summary>Runs the character with the given inputs, recording each step, and writes the record out.</summary>
-        private IEnumerator Record(string name, float seconds, Func<int, Inputs> inputs, Action<StepTrace> done)
+        private IEnumerator Record(string name, float seconds, Func<int, StepInputs> inputs, Action<StepTrace> done)
         {
             var trace = new StepTrace(rig);
             yield return rig.Run(seconds, inputs, trace.Record);

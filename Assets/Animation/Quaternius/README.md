@@ -15,7 +15,7 @@ Each file is Quaternius's mannequin with every animation as a take of its own, o
 instead). The packs' glTF copies and setup images aren't included. Browse every animation in Quaternius's
 [Animation Viewer](https://quaternius.com/animviewer.html).
 
-**Tools > Character Showcase > Prepare Quaternius Animations** (`QuaterniusAnimationImporter`) sets every FBX here up
+**Tools > Meridian Motion > Prepare > Quaternius Library** (`QuaterniusAnimationImporter`) sets every FBX here up
 as Humanoid animations, as Quaternius's own Unity setup does: the axis conversion baked in, a Humanoid avatar (its
 reference pose straightened into a T-pose, as every model's is), and a clip per take, named for it (`Walk_Loop`),
 looping if its name ends in `_Loop`. It runs when the mannequin is generated, and skips files already set up.
@@ -26,6 +26,6 @@ floor (their root height offsets): don't reset them by hand.
 
 **The Pro editions** (paid, on itch.io) add more animations to each library: the first library's is installed (in place of
 its Standard edition, which it contains). Drop a Pro edition's Unity FBX (the in-place one, not `_RM`) in this folder,
-in place of the edition it contains, and run Prepare Quaternius Animations: every FBX here is set up the same way.
+in place of the edition it contains, and run Prepare Quaternius Library: every FBX here is set up the same way.
 
-The libraries' female and male mannequins (CC0 too) are in `Assets/Models/CharacterModels/Quaternius`, as character models. The male one is the mannequin in these files, taken out without its animations by `Tools/Animation/extract_mannequin.py`.
+The libraries' female and male mannequins (CC0 too) are in `Assets/Models/Humanoid/Quaternius`, as character models. The male one is the mannequin in these files, taken out without its animations by `Tools/Animation/extract_mannequin.py`.

@@ -6,13 +6,13 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Character;
-using Level;
+using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Golden paths: the character's exact movement, step by step, through scripted runs over every part of its movement
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Movement
     /// happens to it, at any step, fails, naming the first step and what differs.
     ///
     /// The runs use their own tuning, recorded with the paths (GoldenPaths/Tuning.json: every movement component's
-    /// settings, and the MovementController's and its collider's), not the movement asset's, so retuning the asset
+    /// settings, and the MMotionMotor's and its collider's), not the movement asset's, so retuning the asset
     /// doesn't fail them. When a change to the movement is meant to change the paths, record them again (all of them at
     /// once, so they share one tuning): run this fixture with the environment variable CHARACTER_SHOWCASE_RECORD_GOLDEN_PATHS=1
     /// (see docs/testing.md). Each run must also visit the states and raise the events it's there for, recording or
@@ -57,10 +57,10 @@ namespace CharacterShowcase.Tests.Movement
             public Func<CharacterTestRig, Vector3> build;
             /// <summary>The character's velocity as the run starts (from a launch), or zero.</summary>
             public Func<CharacterTestRig, Vector3> launch;
-            /// <summary>The character's size (see ACCharacterController.SetScale).</summary>
+            /// <summary>The character's size (see MMotionCharacter.SetScale).</summary>
             public float scale = 1f;
             /// <summary>The inputs: each phase's length (s) and its inputs, by the step within it.</summary>
-            public (float seconds, Func<int, Inputs> inputs)[] phases;
+            public (float seconds, Func<int, StepInputs> inputs)[] phases;
             /// <summary>The states the run is there to exercise: it must be in each at some step.</summary>
             public CharacterState[] states = Array.Empty<CharacterState>();
             /// <summary>The events it's there to raise.</summary>
@@ -68,17 +68,17 @@ namespace CharacterShowcase.Tests.Movement
         }
 
         private static readonly Vector3 Forward = Vector3.forward, Right = Vector3.right;
-        private static Inputs Idle(int _) => CharacterTestRig.Idle();
-        private static Func<int, Inputs> Walk(Vector3 direction) => _ => CharacterTestRig.Move(direction);
-        private static Func<int, Inputs> Sprint(Vector3 direction) => step => CharacterTestRig.Sprint(direction);
+        private static StepInputs Idle(int _) => CharacterTestRig.Idle();
+        private static Func<int, StepInputs> Walk(Vector3 direction) => _ => CharacterTestRig.Move(direction);
+        private static Func<int, StepInputs> Sprint(Vector3 direction) => step => CharacterTestRig.Sprint(direction);
         // A press: the button down for the phase's steps (from its first), with the given movement.
-        private static Func<int, Inputs> Jump(Vector3 direction = default) => step => CharacterTestRig.Jump(direction);
-        private static Func<int, Inputs> Crouch(Vector3 direction = default) => step => CharacterTestRig.Crouch(direction);
-        private static Func<int, Inputs> Dash(Vector3 direction = default) => step => CharacterTestRig.Dash(direction);
-        private static Func<int, Inputs> Roll(Vector3 direction = default) => step => CharacterTestRig.Roll(direction);
-        private static Func<int, Inputs> SprintAndCrouch(Vector3 direction) => step =>
+        private static Func<int, StepInputs> Jump(Vector3 direction = default) => step => CharacterTestRig.Jump(direction);
+        private static Func<int, StepInputs> Crouch(Vector3 direction = default) => step => CharacterTestRig.Crouch(direction);
+        private static Func<int, StepInputs> Dash(Vector3 direction = default) => step => CharacterTestRig.Dash(direction);
+        private static Func<int, StepInputs> Roll(Vector3 direction = default) => step => CharacterTestRig.Roll(direction);
+        private static Func<int, StepInputs> SprintAndCrouch(Vector3 direction) => step =>
         {
-            Inputs inputs = CharacterTestRig.Crouch(direction);
+            StepInputs inputs = CharacterTestRig.Crouch(direction);
             inputs.sprint = CharacterTestRig.Held();
             return inputs;
         };
@@ -93,14 +93,14 @@ namespace CharacterShowcase.Tests.Movement
             {
                 name = "WalkSprintTurn",
                 build = rig => { rig.Floor(); return new Vector3(0f, 0.05f, 0f); },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (1.5f, Walk(Forward)), (1f, Walk(Right)), (1.5f, Sprint((Forward + Right).normalized)), (1f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (1.5f, Walk(Forward)), (1f, Walk(Right)), (1.5f, Sprint((Forward + Right).normalized)), (1f, Idle) },
                 states = new[] { CharacterState.Moving },
             },
             new Scenario
             {
                 name = "Jumps",
                 build = rig => { rig.Floor(); return new Vector3(0f, 0.05f, 0f); },
-                phases = new (float, Func<int, Inputs>)[]
+                phases = new (float, Func<int, StepInputs>)[]
                 {
                     (0.3f, Idle), (2 * OneStep, Jump()), (1f, Idle),       // A tap.
                     (0.5f, Jump(Forward)), (0.8f, Walk(Forward)),           // Held, moving.
@@ -125,7 +125,7 @@ namespace CharacterShowcase.Tests.Movement
                     Ramp(rig, new Vector3(0f, 2f, 12f), new Vector3(0f, 0f, 17.5f), 4f);
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (5f, Walk(Forward)), (1f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (5f, Walk(Forward)), (1f, Idle) },
                 states = new[] { CharacterState.Grounded },
             },
             new Scenario
@@ -139,7 +139,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Tunnel Ceiling", new Vector3(0f, clear + 0.5f, 6f), new Vector3(4f, 1f, 4f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[]
+                phases = new (float, Func<int, StepInputs>)[]
                 {
                     (0.3f, Idle), (OneStep, Crouch()), (0.2f, Idle), (4.5f, Walk(Forward)),  // Crouched, through the tunnel.
                     (OneStep, Crouch()), (0.5f, Idle),                                       // Stood up.
@@ -152,7 +152,7 @@ namespace CharacterShowcase.Tests.Movement
             {
                 name = "Dashes",
                 build = rig => { rig.Floor(); return new Vector3(0f, 0.05f, 0f); },
-                phases = new (float, Func<int, Inputs>)[]
+                phases = new (float, Func<int, StepInputs>)[]
                 {
                     (0.3f, Idle), (OneStep, Dash(Forward)), (0.8f, Walk(Forward)),
                     (2 * OneStep, Jump(Forward)), (0.15f, Walk(Forward)), (OneStep, Dash(Forward)), (1.5f, Walk(Forward)),
@@ -172,7 +172,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Ledge Block", new Vector3(0f, top / 2f, face + 2f), new Vector3(10f, top, 4f));
                     return new Vector3(0f, feet, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.6f, Walk(Forward)), (2 * OneStep, Jump()), (1.5f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.6f, Walk(Forward)), (2 * OneStep, Jump()), (1.5f, Walk(Forward)) },
                 states = new[] { CharacterState.LedgeHanging, CharacterState.LedgeClimbing },
             },
             new Scenario
@@ -185,7 +185,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Low Wall", new Vector3(0f, top / 2f, 3.2f), new Vector3(10f, top, 0.4f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (2.5f, Sprint(Forward)), (0.5f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (2.5f, Sprint(Forward)), (0.5f, Idle) },
                 states = new[] { CharacterState.Vaulting },
             },
             new Scenario
@@ -200,7 +200,7 @@ namespace CharacterShowcase.Tests.Movement
                     return new Vector3(0f, 12f, -25f);
                 },
                 launch = rig => Forward * (rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale),
-                phases = new (float, Func<int, Inputs>)[] { (0.6f, Walk(Forward)), (2 * OneStep, Jump(Forward)), (3f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.6f, Walk(Forward)), (2 * OneStep, Jump(Forward)), (3f, Walk(Forward)) },
                 states = new[] { CharacterState.WallRunning },
                 events = new[] { MovementEvents.WallJumped },
             },
@@ -214,7 +214,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.ClimbableBox("Wall", new Vector3(0f, 1.5f, face + 1f), new Vector3(10f, 3f, 2f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (4f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (4f, Walk(Forward)) },
                 states = new[] { CharacterState.WallClimbing, CharacterState.LedgeClimbing },
             },
             new Scenario
@@ -230,7 +230,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Platform", new Vector3(0f, height / 2f, face + 0.06f + 15f), new Vector3(6f, height, 30f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (5f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (5f, Walk(Forward)) },
                 states = new[] { CharacterState.WallClimbing },
             },
             new Scenario
@@ -242,7 +242,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.BouncePad(new Vector3(0f, 0.3f, 3f), new Vector3(2f, 0.3f, 2f), 5f);
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (0.6f, Walk(Forward)), (2.5f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (0.6f, Walk(Forward)), (2.5f, Idle) },
                 events = new[] { MovementEvents.Bounced },
             },
             new Scenario
@@ -252,10 +252,10 @@ namespace CharacterShowcase.Tests.Movement
                 {
                     rig.Floor();
                     // As ZiplineTests: just under the cable, falling onto it.
-                    Zipline line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
+                    ZiplineCable line = rig.Zipline(new Vector3(0f, 8f, 0f), new Vector3(0f, 4f, 24f));
                     return line.PointAt(2f) - Vector3.up * (rig.ZiplineHangHeight - 0.15f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (1f, Idle), (2 * OneStep, Jump()), (2f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (1f, Idle), (2 * OneStep, Jump()), (2f, Idle) },
                 states = new[] { CharacterState.Ziplining },
                 events = new[] { MovementEvents.Jumped },
             },
@@ -270,7 +270,7 @@ namespace CharacterShowcase.Tests.Movement
                     return new Vector3(0f, 6f - rig.MovementSetting<float>("ropeGripHeight") * rig.StandingHeight, -1.5f);
                 },
                 launch = _ => new Vector3(0f, 0f, 6f),
-                phases = new (float, Func<int, Inputs>)[] { (2f, Idle), (2 * OneStep, Jump(Forward)), (2f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (2f, Idle), (2 * OneStep, Jump(Forward)), (2f, Walk(Forward)) },
                 states = new[] { CharacterState.RopeSwinging },
             },
             new Scenario
@@ -284,7 +284,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Pool Side", new Vector3(0f, (0.4f - 5f) / 2f, 12f + 15f), new Vector3(40f, 5.4f, 30f));
                     return new Vector3(0f, 1f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[]
+                phases = new (float, Func<int, StepInputs>)[]
                 {
                     (1.5f, Idle), (1f, Walk(Forward)),                     // Fallen in, and swimming.
                     (OneStep, Crouch()), (0.8f, step => CharacterTestRig.Crouch()), // Dived and sunk.
@@ -307,7 +307,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Box("Low Wall", new Vector3(0f, top / 2f, 9f), new Vector3(10f, top, 0.3f));
                     return new Vector3(0f, 0.05f, 0f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (0.3f, Idle), (5f, Walk(Forward)) },
+                phases = new (float, Func<int, StepInputs>)[] { (0.3f, Idle), (5f, Walk(Forward)) },
                 states = new[] { CharacterState.Wading, CharacterState.Vaulting },
             },
             new Scenario
@@ -319,7 +319,7 @@ namespace CharacterShowcase.Tests.Movement
                     rig.Platform(new Vector3(0f, 1f, 4f), new Vector3(4f, 0.5f, 4f), new Vector3(0f, 0f, 6f), 4f, new Vector3(0f, 20f, 0f));
                     return new Vector3(0f, 1.05f, 4f);
                 },
-                phases = new (float, Func<int, Inputs>)[] { (3f, Idle), (1f, Walk(Forward)), (1f, Idle) },
+                phases = new (float, Func<int, StepInputs>)[] { (3f, Idle), (1f, Walk(Forward)), (1f, Idle) },
                 states = new[] { CharacterState.Grounded },
             },
             ScaledRun("Small", 0.5f),
@@ -338,7 +338,7 @@ namespace CharacterShowcase.Tests.Movement
                 rig.Box("Tunnel Ceiling", new Vector3(0f, clear + 0.5f * scale, 8f * scale), new Vector3(4f * scale, scale, 4f * scale));
                 return new Vector3(0f, 0.05f * scale, 0f);
             },
-            phases = new (float, Func<int, Inputs>)[]
+            phases = new (float, Func<int, StepInputs>)[]
             {
                 (0.3f, Idle), (1f, Walk(Forward)), (0.4f, Jump(Forward)), (1f, Walk(Forward)),
                 (OneStep, Crouch(Forward)), (3f, Walk(Forward)), (OneStep, Crouch()), (0.5f, Idle),
@@ -406,7 +406,7 @@ namespace CharacterShowcase.Tests.Movement
             int[] phaseStarts = PhaseStarts(scenario, out int steps);
             yield return rig.Run(steps, step => InputsAt(scenario, phaseStarts, step), step =>
             {
-                MovementData data = rig.Movement.lastFrameMovementData;
+                MovementStep data = rig.Movement.lastStep;
                 visited |= data.state;
                 raised |= data.events;
                 trace.Add(Line(step, data));
@@ -440,7 +440,7 @@ namespace CharacterShowcase.Tests.Movement
             return starts;
         }
 
-        private static Inputs InputsAt(Scenario scenario, int[] phaseStarts, int step)
+        private static StepInputs InputsAt(Scenario scenario, int[] phaseStarts, int step)
         {
             int phase = phaseStarts.Length - 1;
             while (phase > 0 && phaseStarts[phase] > step) { phase--; }
@@ -451,7 +451,7 @@ namespace CharacterShowcase.Tests.Movement
 
         private const string Header = "step,x,y,z,yaw,vx,vy,vz,state,events,height";
 
-        private string Line(int step, MovementData data)
+        private string Line(int step, MovementStep data)
         {
             Vector3 p = rig.Position, v = data.finalVelocity;
             float yaw = rig.Body.rotation.eulerAngles.y;
@@ -502,12 +502,12 @@ namespace CharacterShowcase.Tests.Movement
 
         // ---- The tuning the paths are recorded with ----
 
-        // The MovementController's settings that shape the movement (by field name: a field renamed or moved fails the
+        // The MMotionMotor's settings that shape the movement (by field name: a field renamed or moved fails the
         // tests loudly, as the harness must follow it).
         private static readonly string[] ControllerSettings =
         {
-            "maxStepHeight", "hoverOverSteps", "maxSlopeAngle", "skinWidth", "groundSnapDistance", "groundCheckRadius", "movementSpeedMultiplier",
-            "jumpStrengthModifier", "sizeScaling", "moveWithGround", "rotateWithGround", "inheritGroundVelocity", "maxGroundCarryPerStep",
+            "maxStepHeight", "hoverOverSteps", "maxSlopeAngle", "skinWidth", "groundSnapDistance", "groundCheckRadius", "speedMultiplier",
+            "jumpSpeedMultiplier", "sizeScaling", "moveWithGround", "rotateWithGround", "inheritGroundVelocity", "maxGroundCarryPerStep",
         };
 
         [Serializable] private sealed class PinnedTuning
@@ -524,10 +524,10 @@ namespace CharacterShowcase.Tests.Movement
 
         private static FieldInfo ControllerField(string name)
         {
-            FieldInfo field = typeof(MovementController).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            FieldInfo field = typeof(MMotionMotor).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
             if (field == null)
             {
-                Assert.Fail($"The golden paths pin the MovementController's '{name}', which no longer exists: update GoldenPathTests.ControllerSettings.");
+                Assert.Fail($"The golden paths pin the MMotionMotor's '{name}', which no longer exists: update GoldenPathTests.ControllerSettings.");
             }
             return field;
         }
@@ -559,7 +559,7 @@ namespace CharacterShowcase.Tests.Movement
         private void ApplyTuning()
         {
             var pinned = JsonUtility.FromJson<PinnedTuning>(File.ReadAllText(TuningPath));
-            ComposedMovementMode mode = rig.ComposedMode;
+            AbilityMovementMode mode = rig.ComposedMode;
             var pinnedTypes = new HashSet<string>();
             foreach (PinnedComponent part in pinned.components)
             {

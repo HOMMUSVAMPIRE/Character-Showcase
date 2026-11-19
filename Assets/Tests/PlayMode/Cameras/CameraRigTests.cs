@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
-using CameraSystem;
+using MeridianMotion.Cameras;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Cameras
+namespace MeridianMotion.Tests.Cameras
 {
     /// <summary>
     /// Tests of the camera rig's placement and features. The rig follows a plain Transform rather than the character,
@@ -38,7 +38,7 @@ namespace CharacterShowcase.Tests.Cameras
         private readonly List<Object> created = new();
         private FrameTimeLimit timeLimit;
         private Transform target;
-        private CameraRig rig;
+        private MMotionCameraRig rig;
         private Camera cam;
 
         [SetUp]
@@ -50,7 +50,7 @@ namespace CharacterShowcase.Tests.Cameras
             target = Track(new GameObject("Camera Target")).transform;
             var cameraObject = Track(new GameObject("Test Camera"));
             cam = cameraObject.AddComponent<Camera>();
-            rig = cameraObject.AddComponent<CameraRig>();
+            rig = cameraObject.AddComponent<MMotionCameraRig>();
             rig.SetTarget(target);
         }
 
@@ -525,12 +525,12 @@ namespace CharacterShowcase.Tests.Cameras
         {
             var second = Track(new GameObject("Second Camera"));
             second.AddComponent<Camera>();
-            var secondRig = second.AddComponent<CameraRig>();
+            var secondRig = second.AddComponent<MMotionCameraRig>();
             secondRig.SetTarget(target);
             secondRig.Shake.enabled = false;
             yield return Frames(2);
 
-            CameraRig.ShakeAll(0.5f);
+            MMotionCameraRig.ShakeAll(0.5f);
             Assert.That(rig.Trauma, Is.EqualTo(0.5f).Within(1e-4f));
             // The rig updates after this, this frame: its trauma decays over this frame's time, however long it is (a
             // frame's game time varies, in the editor especially).

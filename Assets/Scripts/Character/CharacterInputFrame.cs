@@ -2,7 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>The buttons a character's input can hold, as flags (see CharacterInputFrame.held).</summary>
     [Flags]
@@ -14,7 +14,7 @@ namespace Character
         Sprint = 1 << 2,
         Crouch = 1 << 3,
         Roll = 1 << 4,
-        Grab = 1 << 5,
+        Interact = 1 << 5,
         /// <summary>Defined in the input actions, read by nothing yet.</summary>
         Attack = 1 << 6,
     }
@@ -33,7 +33,7 @@ namespace Character
     [StructLayout(LayoutKind.Sequential)]
     public struct CharacterInputFrame : IEquatable<CharacterInputFrame>
     {
-        /// <summary>The physics step it's for (the character's MovementController.Tick when it's stepped).</summary>
+        /// <summary>The physics step it's for (the character's MMotionMotor.Tick when it's stepped).</summary>
         public uint tick;
         /// <summary>The move input on the ground plane (x right, y forward, each -1 to 1), relative to the look (turned by its yaw).</summary>
         public Vector2 move;
@@ -67,7 +67,7 @@ namespace Character
         /// A frame of scripted input: the move input and which of its buttons are down. Its buttons' timings (presses, hold
         /// durations) aren't carried: the character works them out from successive frames. Allocates nothing.
         /// </summary>
-        public static CharacterInputFrame Holding(Inputs inputs, uint tick)
+        public static CharacterInputFrame Holding(StepInputs inputs, uint tick)
         {
             var frame = new CharacterInputFrame { tick = tick };
             if (inputs == null) { return frame; }
@@ -77,11 +77,11 @@ namespace Character
             if (Down(inputs.sprint)) { frame.held |= InputButtons.Sprint; }
             if (Down(inputs.crouch)) { frame.held |= InputButtons.Crouch; }
             if (Down(inputs.roll)) { frame.held |= InputButtons.Roll; }
-            if (Down(inputs.grab)) { frame.held |= InputButtons.Grab; }
+            if (Down(inputs.interact)) { frame.held |= InputButtons.Interact; }
             return frame;
         }
 
-        private static bool Down(InputButton button) => button != null && button.value;
+        private static bool Down(InputButton button) => button != null && button.held;
 
         public readonly bool Equals(CharacterInputFrame other) =>
             tick == other.tick && move.Equals(other.move) && lookYaw.Equals(other.lookYaw) && lookPitch.Equals(other.lookPitch) && held == other.held;

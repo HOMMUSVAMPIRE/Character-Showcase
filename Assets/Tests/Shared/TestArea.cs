@@ -1,4 +1,4 @@
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// The areas tests are grouped in, as the docs are (a fixture says which: [Category(TestArea.Movement)]), so one area

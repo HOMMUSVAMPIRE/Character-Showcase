@@ -1,71 +1,71 @@
 {
     "components": [
         {
-            "type": "Character.BouncePads",
+            "type": "MeridianMotion.Characters.BouncePads",
             "settings": "{\"enabled\":true,\"bounceHeightMultiplier\":1.0,\"bounceJumpBoost\":1.5}"
         },
         {
-            "type": "Character.Ziplines",
+            "type": "MeridianMotion.Characters.Ziplines",
             "settings": "{\"enabled\":true,\"ziplineGrabReach\":0.6000000238418579,\"ziplineHangHeight\":1.149999976158142,\"ziplineMinSpeed\":3.0,\"ziplineDrag\":0.10000000149011612,\"ziplineSnapSpeed\":6.0,\"ziplineJumpUpSpeed\":8.0,\"ziplineRegrabDelay\":0.5}"
         },
         {
-            "type": "Character.RopeSwinging",
+            "type": "MeridianMotion.Characters.RopeSwinging",
             "settings": "{\"enabled\":true,\"ropeGrabReach\":0.5,\"ropeGripHeight\":1.0499999523162842,\"ropeMinGripDistance\":1.0,\"ropeSwingAcceleration\":6.0,\"ropeSwingDamping\":0.15000000596046448,\"ropeMaxSwingAngle\":70.0,\"ropeMaxSwingSpeed\":14.0,\"ropeJumpUpSpeed\":8.0,\"ropeRegrabDelay\":0.6000000238418579}"
         },
         {
-            "type": "Character.Ledges",
+            "type": "MeridianMotion.Characters.Ledges",
             "settings": "{\"enabled\":true,\"ledgeClimbDuration\":0.699999988079071,\"ledgeGrabMinHeight\":0.699999988079071,\"ledgeGrabMaxHeight\":1.2999999523162842,\"ledgeHangHeight\":1.100000023841858,\"ledgeGrabReach\":0.30000001192092896,\"ledgeMaxGrabRiseSpeed\":2.0,\"ledgeMaxGrabAngle\":50.0,\"ledgeSnapSpeed\":12.0,\"ledgeClimbInset\":0.10000000149011612,\"ledgeRegrabDelay\":0.4000000059604645}"
         },
         {
-            "type": "Character.Vaulting",
+            "type": "MeridianMotion.Characters.Vaulting",
             "settings": "{\"enabled\":true,\"vaultRiseDuration\":0.25,\"vaultSpeedRetention\":0.75,\"vaultTakeOffSpeed\":0.5,\"vaultMinSpeed\":3.0,\"vaultFromGround\":true,\"vaultGroundMaxAngle\":25.0,\"vaultMaxDrop\":1.0,\"vaultStepUpHeight\":0.5}"
         },
         {
-            "type": "Character.PushingAndPulling",
+            "type": "MeridianMotion.Characters.PushingAndPulling",
             "settings": "{\"enabled\":true,\"pushPullSpeed\":1.7999999523162842,\"grabReach\":0.25,\"grabMaxAngle\":50.0}"
         },
         {
-            "type": "Character.WallClimbing",
+            "type": "MeridianMotion.Characters.WallClimbing",
             "settings": "{\"enabled\":true,\"wallClimbSpeed\":2.5,\"wallClimbStartMaxAngle\":80.0,\"wallClimbStartReach\":0.10000000149011612,\"wallClimbMinApproachSpeed\":1.0,\"wallClimbGripHeight\":0.6000000238418579,\"wallClimbMaxLeanBack\":30.0,\"wallClimbMaxOverhang\":30.0,\"wallClimbSnapSpeed\":3.0,\"wallClimbJumpAwaySpeed\":7.0,\"wallClimbJumpUpSpeed\":8.0,\"wallClimbRegrabDelay\":0.4000000059604645,\"wallClimbEnterDuration\":0.699999988079071,\"wallClimbExitDuration\":0.699999988079071}"
         },
         {
-            "type": "Character.Swimming",
+            "type": "MeridianMotion.Characters.Swimming",
             "settings": "{\"enabled\":true,\"swimDepth\":0.75,\"swimSurfacingSpeed\":3.0,\"swimPlungeDrag\":1.5,\"swimSpeed\":3.0,\"swimSprintSpeed\":5.0,\"swimAcceleration\":8.0,\"swimJumpHeight\":1.2000000476837158,\"swimVaultHeight\":0.30000001192092896,\"swimDiveSpeed\":4.0,\"swimVerticalSpeed\":2.5,\"swimBuoyancy\":0.0,\"swimMaxPitch\":60.0}"
         },
         {
-            "type": "Character.WallRunning",
+            "type": "MeridianMotion.Characters.WallRunning",
             "settings": "{\"enabled\":true,\"wallRunSpeed\":9.0,\"wallRunMinSpeed\":4.0,\"wallRunMaxDuration\":1.2000000476837158,\"wallRunGravity\":5.0,\"wallRunMaxRiseSpeed\":4.0,\"wallRunMaxSteerAngle\":60.0,\"wallRunCheckDistance\":0.30000001192092896,\"wallRunClearance\":0.25,\"wallRunMinHeight\":0.75,\"wallRunMaxWallTilt\":45.0,\"wallRunCooldown\":0.3499999940395355,\"wallRunFootHeight\":0.20000000298023224,\"wallRunReleaseDelay\":0.25,\"wallJumpAwaySpeed\":10.0,\"wallJumpUpSpeed\":10.0}"
         },
         {
-            "type": "Character.WallSliding",
+            "type": "MeridianMotion.Characters.WallSliding",
             "settings": "{\"enabled\":true,\"wallSlideSpeed\":2.5,\"wallSlideBraking\":30.0,\"wallSlideMaxDuration\":3.0,\"wallSlideMaxAngle\":15.0,\"wallSlideCheckDistance\":0.20000000298023224,\"wallSlideMinHeight\":0.5,\"wallSlideJumpUpSpeed\":12.0,\"wallSlideJumpAwaySpeed\":9.0,\"wallSlideMaxJumps\":3,\"wallSlideCooldown\":0.25,\"wallSlideReleaseDelay\":0.25,\"wallSlideMinApproachSpeed\":1.0,\"wallSlideMaxStartRiseSpeed\":3.0}"
         },
         {
-            "type": "Character.Rolling",
+            "type": "MeridianMotion.Characters.Rolling",
             "settings": "{\"enabled\":true,\"rollSpeed\":11.0,\"rollDuration\":0.550000011920929,\"rollSpeedCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":1.0,\"inSlope\":0.0,\"outSlope\":-0.3999999761581421,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0},{\"serializedVersion\":\"3\",\"time\":1.0,\"value\":0.6000000238418579,\"inSlope\":-0.3999999761581421,\"outSlope\":0.0,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"rollCooldown\":0.20000000298023224,\"rollInputBuffer\":0.15000000596046448,\"landingRollMinFall\":2.0,\"landingRollMinSpeed\":2.0}"
         },
         {
-            "type": "Character.Crouching",
-            "settings": "{\"enabled\":true,\"crouchSpeed\":3.0,\"crouchHeight\":0.550000011920929,\"holdToCrouch\":false,\"crouchInputBuffer\":0.10000000149011612,\"slidingEnabled\":true,\"slideMinStartSpeed\":4.5,\"slideStartSpeed\":12.0,\"slideDeceleration\":5.0,\"slideEndSpeed\":3.0,\"slideMaxDuration\":2.0,\"slideSteering\":90.0}"
+            "type": "MeridianMotion.Characters.Crouching",
+            "settings": "{\"enabled\":true,\"crouchSpeed\":3.0,\"crouchHeight\":0.550000011920929,\"holdToCrouch\":false,\"crouchInputBuffer\":0.10000000149011612,\"canSlide\":true,\"slideMinStartSpeed\":4.5,\"slideStartSpeed\":12.0,\"slideDeceleration\":5.0,\"slideEndSpeed\":3.0,\"slideMaxDuration\":2.0,\"slideSteering\":90.0}"
         },
         {
-            "type": "Character.Wading",
+            "type": "MeridianMotion.Characters.Wading",
             "settings": "{\"enabled\":true,\"wadeStartDepth\":0.10000000149011612,\"wadeSpeedMultiplier\":0.5}"
         },
         {
-            "type": "Character.FallAndAirHandling",
-            "settings": "{\"enabled\":true,\"gravityStrength\":40.0,\"maxFallSpeed\":100.0,\"coyoteTimeGravityCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":0.0,\"inSlope\":0.0,\"outSlope\":0.0,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0},{\"serializedVersion\":\"3\",\"time\":0.12498552352190018,\"value\":0.0468529611825943,\"inSlope\":1.1236662864685059,\"outSlope\":1.1236662864685059,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.3333333432674408,\"outWeight\":0.10813780874013901},{\"serializedVersion\":\"3\",\"time\":0.20000000298023224,\"value\":1.0,\"inSlope\":13.350977897644043,\"outSlope\":13.350977897644043,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.37343502044677734,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"airSteeringStrength\":0.699999988079071,\"airSteeringStrengthCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":0.0,\"inSlope\":1.0,\"outSlope\":1.0,\"tangentMode\":34,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.3333333432674408},{\"serializedVersion\":\"3\",\"time\":0.10000000149011612,\"value\":0.10000000149011612,\"inSlope\":2.3549249172210693,\"outSlope\":2.3549249172210693,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.05117051303386688,\"outWeight\":0.3333333432674408},{\"serializedVersion\":\"3\",\"time\":0.17000000178813934,\"value\":1.0,\"inSlope\":20.52045249938965,\"outSlope\":20.52045249938965,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.031806740909814835,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"airAcceleration\":80.0,\"airDrag\":4.0,\"wallJumpSteeringRecovery\":0.6000000238418579,\"groundedDampenHorizontalInertia\":10.0}"
+            "type": "MeridianMotion.Characters.FallAndAirHandling",
+            "settings": "{\"enabled\":true,\"gravity\":40.0,\"maxFallSpeed\":100.0,\"coyoteTimeGravityCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":0.0,\"inSlope\":0.0,\"outSlope\":0.0,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0},{\"serializedVersion\":\"3\",\"time\":0.12498552352190018,\"value\":0.0468529611825943,\"inSlope\":1.1236662864685059,\"outSlope\":1.1236662864685059,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.3333333432674408,\"outWeight\":0.10813780874013901},{\"serializedVersion\":\"3\",\"time\":0.20000000298023224,\"value\":1.0,\"inSlope\":13.350977897644043,\"outSlope\":13.350977897644043,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.37343502044677734,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"airSteeringStrength\":0.699999988079071,\"airControlCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":0.0,\"inSlope\":1.0,\"outSlope\":1.0,\"tangentMode\":34,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.3333333432674408},{\"serializedVersion\":\"3\",\"time\":0.10000000149011612,\"value\":0.10000000149011612,\"inSlope\":2.3549249172210693,\"outSlope\":2.3549249172210693,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.05117051303386688,\"outWeight\":0.3333333432674408},{\"serializedVersion\":\"3\",\"time\":0.17000000178813934,\"value\":1.0,\"inSlope\":20.52045249938965,\"outSlope\":20.52045249938965,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.031806740909814835,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"airSteeringAcceleration\":80.0,\"airDrag\":4.0,\"wallJumpSteeringRecovery\":0.6000000238418579,\"groundFriction\":10.0}"
         },
         {
-            "type": "Character.WalkingAndRunning",
-            "settings": "{\"enabled\":true,\"walkSpeed\":5.0,\"runSpeed\":10.0,\"abilityPickUpTime\":0.30000001192092896}"
+            "type": "MeridianMotion.Characters.WalkingAndRunning",
+            "settings": "{\"enabled\":true,\"walkSpeed\":5.0,\"runSpeed\":10.0,\"speedRecoveryTime\":0.30000001192092896}"
         },
         {
-            "type": "Character.Dashing",
+            "type": "MeridianMotion.Characters.Dashing",
             "settings": "{\"enabled\":true,\"dashSpeed\":25.0,\"dashDuration\":0.20000000298023224,\"dashSpeedCurve\":{\"serializedVersion\":\"2\",\"m_Curve\":[{\"serializedVersion\":\"3\",\"time\":0.0,\"value\":1.0,\"inSlope\":0.0,\"outSlope\":-0.25,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0},{\"serializedVersion\":\"3\",\"time\":1.0,\"value\":0.75,\"inSlope\":-0.25,\"outSlope\":0.0,\"tangentMode\":0,\"weightedMode\":0,\"inWeight\":0.0,\"outWeight\":0.0}],\"m_PreInfinity\":2,\"m_PostInfinity\":2,\"m_RotationOrder\":4},\"dashEndSpeedRetention\":0.30000001192092896,\"dashCooldown\":0.4000000059604645,\"maxAirDashes\":1,\"dashInputBuffer\":0.10000000149011612,\"dashJumpSpeedRetention\":0.5}"
         },
         {
-            "type": "Character.Jumping",
+            "type": "MeridianMotion.Characters.Jumping",
             "settings": "{\"enabled\":true,\"minJumpHeight\":0.5,\"maxJumpHeight\":2.0,\"maxJumps\":2,\"jumpInputBuffer\":0.10000000149011612,\"coyoteTime\":0.10000000149011612}"
         }
     ],
@@ -95,11 +95,11 @@
             "value": "0"
         },
         {
-            "field": "movementSpeedMultiplier",
+            "field": "speedMultiplier",
             "value": "1"
         },
         {
-            "field": "jumpStrengthModifier",
+            "field": "jumpSpeedMultiplier",
             "value": "1"
         },
         {

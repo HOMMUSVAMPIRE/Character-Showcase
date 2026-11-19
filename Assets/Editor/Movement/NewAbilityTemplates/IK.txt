@@ -1,17 +1,18 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// {{Display}}'s IK (made by New Ability): it places the limbs while {{Display}} is under way, easing in as it starts and
     /// out as it ends. As made, it holds the hands where the animation has them: replace Solve's placement with yours,
-    /// in world space (CharacterIK corrects it for a stretched model). LineGripIK (hands on a rope or cable) and
+    /// in world space (HumanoidIK corrects it for a stretched model). CableGripIK (hands on a rope or cable) and
     /// LedgeHandIK (hands on a ledge) are examples to copy from; see docs/animation.md, IK for your own model. Every
-    /// humanoid model gets it ([HumanoidIK]) the next time Prepare Character Models runs.
+    /// humanoid model gets it ([HumanoidIK]) the next time Prepare Humanoid Models runs.
     /// </summary>
     [HumanoidIK]
-    [RequireComponent(typeof(CharacterIK))]
+    [RequireComponent(typeof(HumanoidIK))]
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/IK/{{Display}} IK")]
     public class {{Name}}IK : AbilityIK
     {
         [Tooltip("How strongly the limbs are placed while {{Display}} is under way. 0 turns it off")]

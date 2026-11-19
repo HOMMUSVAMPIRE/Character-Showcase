@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests
+namespace MeridianMotion.Tests
 {
     /// <summary>What the animation tests share: a rig, stepping the model's animation with the physics, and measuring it.</summary>
     [Category(TestArea.Animation)]
@@ -15,7 +15,7 @@ namespace CharacterShowcase.Tests
         // Its tests need Unity's frames (the model's, animation's or IK's per-frame updates): see CharacterRigFixture.MovementOnly.
         protected override bool MovementOnly => false;
 
-        protected AnimationController animation;
+        protected MMotionAnimator animation;
         protected Animator animator;
         // The steps the Animator has been stepped by hand this test, for recording its parameters (see AnimationRecorder).
         private int animatorSteps;
@@ -36,8 +36,8 @@ namespace CharacterShowcase.Tests
         }
 
 
-        /// <summary>Feeds the latest movement to the animator, as ACCharacterController does each frame in the game.</summary>
-        protected void FeedAnimator(int _) => animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+        /// <summary>Feeds the latest movement to the animator, as MMotionCharacter does each frame in the game.</summary>
+        protected void FeedAnimator(int _) => animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime);
 
         /// <summary>
         /// Steps the model's animation by hand with the physics (see StepAnimator), so measurements don't depend on the
@@ -122,7 +122,7 @@ namespace CharacterShowcase.Tests
             {
                 if (Bone(foot, 0) == null || Bone(foot, 1) == null) { Assert.Ignore("The model has no foot or toe bones to watch."); }
             }
-            Inputs walk = CharacterTestRig.Move(Vector3.forward * Mathf.Min(1f, speed / rig.WalkSpeed));
+            StepInputs walk = CharacterTestRig.Move(Vector3.forward * Mathf.Min(1f, speed / rig.WalkSpeed));
 
             // Reach walking speed and let the speed blend settle before measuring.
             yield return rig.Run(1f, _ => walk, StepAnimator);
@@ -146,7 +146,7 @@ namespace CharacterShowcase.Tests
             {
                 float lowestAnkle = ankles[foot].Min(p => p.y), lowestToe = toes[foot].Min(p => p.y);
                 // The band scales with the character's height, as its foot lifts do.
-                float band = FlatFootBand * rig.Controller.Scale.y;
+                float band = FlatFootBand * rig.Controller.CurrentScale.y;
                 bool Flat(int i) => ankles[foot][i].y < lowestAnkle + band && toes[foot][i].y < lowestToe + band;
                 // Each run of flat steps is one footfall: measure how far the foot got from where it landed.
                 for (int i = 0; i < ankles[foot].Count; i++)
@@ -167,7 +167,7 @@ namespace CharacterShowcase.Tests
             Assert.That(rig.Grounded, Is.True);
             Assert.That(measured, Is.EqualTo(speed).Within(0.1f * speed), "Test setup: the character should walk at the speed asked for.");
             float slide = moved / (flatSteps * Time.fixedDeltaTime) / measured;
-            TestContext.WriteLine($"At {rig.Controller.Scale}, walking at {measured:0.000} m/s, feet flat for {flatSteps} steps, sliding at {slide:P1} of that.");
+            TestContext.WriteLine($"At {rig.Controller.CurrentScale}, walking at {measured:0.000} m/s, feet flat for {flatSteps} steps, sliding at {slide:P1} of that.");
             result(slide);
         }
 
@@ -176,7 +176,7 @@ namespace CharacterShowcase.Tests
         {
             float lowest = float.PositiveInfinity;
             var baked = new Mesh();
-            foreach (SkinnedMeshRenderer skinned in rig.Models.Model.GetComponentsInChildren<SkinnedMeshRenderer>())
+            foreach (SkinnedMeshRenderer skinned in rig.Models.ModelRoot.GetComponentsInChildren<SkinnedMeshRenderer>())
             {
                 // Baked without the renderer's scale taken out: world units, relative to its position and rotation.
                 skinned.BakeMesh(baked, false);
@@ -196,7 +196,7 @@ namespace CharacterShowcase.Tests
             yield return new WaitForFixedUpdate(); // So the floor reaches physics queries before the room check.
             Assert.That(rig.Controller.SetScale(scale, immediately: true), Is.True);
             TakeOverAnimator();
-            var feet = animator.GetComponent<FootPlacementIK>();
+            var feet = animator.GetComponent<HumanoidFootPlacementIK>();
             if (feet != null) { feet.weight = footPlacementWeight; }
             float lowest = float.PositiveInfinity, highest = float.NegativeInfinity;
             // Settled first: resizing at once can drop the character onto the floor (a tenth of its size, from 4 cm
@@ -213,15 +213,15 @@ namespace CharacterShowcase.Tests
             result((lowest, highest));
         }
 
-        /// <summary>Where Prepare Character Models puts the package's own models (the ones SampleContentAnimationTests checks).</summary>
-        protected const string ModelsFolder = "Assets/Models/CharacterModels";
+        /// <summary>Where Prepare Humanoid Models puts the package's own models (the ones SampleContentAnimationTests checks).</summary>
+        protected const string ModelsFolder = "Assets/Models/Humanoid";
 
         /// <summary>The asset path of the character prefab's own model source (in the editor; null in a player, or if it has none).</summary>
         protected static string CharactersOwnSourcePath()
         {
 #if UNITY_EDITOR
             GameObject prefab = CharacterTestRig.CharacterPrefab();
-            CharacterModelHost host = prefab != null ? prefab.GetComponent<CharacterModelHost>() : null;
+            CharacterModelSlot host = prefab != null ? prefab.GetComponent<CharacterModelSlot>() : null;
             return host != null && host.ModelSource != null ? UnityEditor.AssetDatabase.GetAssetPath(host.ModelSource) : null;
 #else
             return null;

@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Movement
+namespace MeridianMotion.Tests.EditMode.Movement
 {
     /// <summary>
-    /// Tests of movement modes made of components (ComposedMovementMode) as assets: a new BasicMovementMode starts with
+    /// Tests of movement modes made of components (AbilityMovementMode) as assets: a new StandardMovementMode starts with
     /// its default components, one of each, in order; the movement mode asset has no missing or doubled components; a
     /// mode's JSON holds its components' settings (which the character's capabilities rely on to know when to measure
     /// again); each ability's state is declared once, with its events; and adding, removing and finding components.
@@ -17,7 +17,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
     [TestTiming]
     public class MovementCompositionTests
     {
-        private const string ModeAssetPath = "Assets/ScriptableObjects/BasicMovementMode.asset";
+        private const string ModeAssetPath = "Assets/ScriptableObjects/StandardMovementMode.asset";
         private readonly List<Object> created = new();
 
         [TearDown]
@@ -27,9 +27,9 @@ namespace CharacterShowcase.Tests.EditMode.Movement
             created.Clear();
         }
 
-        private BasicMovementMode NewMode()
+        private StandardMovementMode NewMode()
         {
-            var mode = ScriptableObject.CreateInstance<BasicMovementMode>();
+            var mode = ScriptableObject.CreateInstance<StandardMovementMode>();
             created.Add(mode);
             return mode;
         }
@@ -37,7 +37,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void ANewBasicMovementMode_StartsWithItsComponents_InOrder()
         {
-            BasicMovementMode mode = NewMode();
+            StandardMovementMode mode = NewMode();
             Assert.That(mode.Components.Select(c => c.GetType()),
                 Is.EqualTo(new[]
                 {
@@ -45,8 +45,8 @@ namespace CharacterShowcase.Tests.EditMode.Movement
                     typeof(PushingAndPulling), typeof(WallClimbing), typeof(Swimming), typeof(WallRunning), typeof(WallSliding), typeof(Rolling),
                     typeof(Crouching), typeof(Wading), typeof(FallAndAirHandling), typeof(WalkingAndRunning), typeof(Dashing), typeof(Jumping),
                 }),
-                "A new BasicMovementMode's components differ from this list. If you added a component to " +
-                "BasicMovementMode.DefaultComponents, add its type here too, at the same place: the order is a deliberate " +
+                "A new StandardMovementMode's components differ from this list. If you added a component to " +
+                "StandardMovementMode.DefaultComponents, add its type here too, at the same place: the order is a deliberate " +
                 "choice, checked here (see docs/adding-an-ability.md, Putting it in the mode). The order: " +
                 "most committed first: a bounce pad launches whatever the character is doing; what it hangs from holds it " +
                 "over everything below; a wall's top is grabbed out of a slide down it; a climbable wall is climbed rather " +
@@ -66,7 +66,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void TheMovementModeAsset_HasNoMissingOrDoubledComponents()
         {
-            var mode = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(ModeAssetPath);
+            var mode = AssetDatabase.LoadAssetAtPath<AbilityMovementMode>(ModeAssetPath);
             Assert.That(mode, Is.Not.Null, $"There's no movement mode made of components at {ModeAssetPath}.");
             Assert.That(mode.Components, Has.None.Null, "A component's type is missing (renamed or deleted?).");
             Assert.That(mode.Components.Select(c => c.GetType()), Is.Unique, "A mode should have one of each component.");
@@ -77,19 +77,19 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         /// Each ability's state's starts and ends are declared once, by the component that sets it (StateEvents), with
         /// an event for each: a state declared by two components would raise its events twice over, and one with no
         /// events would come and go unannounced. Checked on the movement mode asset (the character's) and on a new
-        /// BasicMovementMode's default components.
+        /// StandardMovementMode's default components.
         /// </summary>
         [Test]
         public void EachAbilityState_IsDeclaredOnce_WithItsEvents()
         {
-            var asset = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(ModeAssetPath);
+            var asset = AssetDatabase.LoadAssetAtPath<AbilityMovementMode>(ModeAssetPath);
             Assert.That(asset, Is.Not.Null, $"There's no movement mode made of components at {ModeAssetPath}.");
-            foreach (ComposedMovementMode mode in new ComposedMovementMode[] { asset, NewMode() })
+            foreach (AbilityMovementMode mode in new AbilityMovementMode[] { asset, NewMode() })
             {
                 var declaredBy = new Dictionary<CharacterState, string>();
                 foreach (MovementComponent component in mode.Components.Where(c => c != null))
                 {
-                    foreach (StateEvent pair in component.StateEvents)
+                    foreach (StateEventPair pair in component.StateEvents)
                     {
                         string name = component.GetType().Name;
                         Assert.That(declaredBy.ContainsKey(pair.state), Is.False,
@@ -112,17 +112,17 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void EveryMovementModeAsset_HasEveryDefaultComponent()
         {
-            string[] guids = AssetDatabase.FindAssets("t:" + nameof(ComposedMovementMode));
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(AbilityMovementMode));
             Assert.That(guids, Is.Not.Empty, "Test setup: the project should have movement mode assets.");
             foreach (string guid in guids)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guid);
-                var mode = AssetDatabase.LoadAssetAtPath<ComposedMovementMode>(path);
+                var mode = AssetDatabase.LoadAssetAtPath<AbilityMovementMode>(path);
                 List<System.Type> missing = mode.MissingDefaultComponentTypes();
                 Assert.That(missing, Is.Empty,
                     $"{path} doesn't have {string.Join(", ", missing.Select(MovementComponent.DisplayNameOf))}. Select it and " +
                     "press Add Missing Components in its inspector (turned off for a character they don't suit yet), or run " +
-                    "-executeMethod CharacterShowcase.EditorTools.MovementModeSync.AddToAllModesFromCommandLine.");
+                    "-executeMethod MeridianMotion.EditorTools.MovementModeSync.AddToAllModesFromCommandLine.");
             }
         }
 
@@ -132,7 +132,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
             // Read from the code's own order, so a new ability (New Ability adds one to it) doesn't change what's tested:
             // the first default, a middle one and the last are taken out, and the one above the last moved to the top, as
             // a mode whose order was changed by hand.
-            BasicMovementMode mode = NewMode();
+            StandardMovementMode mode = NewMode();
             List<System.Type> defaults = mode.DefaultComponentTypes().ToList();
             System.Type first = defaults[0], middle = typeof(Ledges), last = defaults[defaults.Count - 1], moved = defaults[defaults.Count - 2];
             foreach (System.Type type in new[] { first, middle, last }) { mode.Remove(type); }
@@ -172,7 +172,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
 
         /// <summary>
         /// Every movement event is declared by what raises it: a state's start or end (StateEvents), a moment's
-        /// (OneOffEvents), or the MovementController's own (landing, leaving the ground, hitting a ceiling or a wall).
+        /// (OneOffEvents), or the MMotionMotor's own (landing, leaving the ground, hitting a ceiling or a wall).
         /// None is both a state's and a moment's, so the conventions check and the kits know which kind each is.
         /// </summary>
         [Test]
@@ -182,7 +182,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
             MovementEvents states = MovementEvents.None, moments = MovementEvents.None;
             foreach (MovementComponent component in NewMode().Components)
             {
-                foreach (StateEvent pair in component.StateEvents) { states |= pair.started | pair.ended; }
+                foreach (StateEventPair pair in component.StateEvents) { states |= pair.started | pair.ended; }
                 moments |= component.OneOffEvents;
             }
             Assert.That(states & moments, Is.EqualTo(MovementEvents.None), "An event is declared both as a state's and as a moment's.");
@@ -197,11 +197,11 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void AModesJson_HoldsItsComponentsSettings()
         {
-            BasicMovementMode mode = NewMode();
+            StandardMovementMode mode = NewMode();
             string before = JsonUtility.ToJson(mode);
             mode.Get<Ziplines>().ZiplineGrabReach += 1f;
             Assert.That(JsonUtility.ToJson(mode), Is.Not.EqualTo(before),
-                "MovementController.Capabilities knows to measure again from the mode's JSON, so it must change with a component's settings.");
+                "MMotionMotor.Capabilities knows to measure again from the mode's JSON, so it must change with a component's settings.");
             mode.Get<Ziplines>().Enabled = false;
             Assert.That(JsonUtility.ToJson(mode), Does.Contain("ziplineGrabReach"));
         }
@@ -209,7 +209,7 @@ namespace CharacterShowcase.Tests.EditMode.Movement
         [Test]
         public void Components_AreAdded_Removed_AndFound()
         {
-            BasicMovementMode mode = NewMode();
+            StandardMovementMode mode = NewMode();
             Ziplines ziplines = mode.Get<Ziplines>();
             Assert.That(mode.Add<Ziplines>(), Is.SameAs(ziplines), "Adding a component the mode has gives back the one it has.");
             ziplines.Enabled = false;

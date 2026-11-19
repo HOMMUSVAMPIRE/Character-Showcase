@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// A mesh being put together from flat faces for one object, each face in one of the palette's surfaces (a submesh
@@ -16,7 +16,7 @@ namespace CharacterShowcase.EditorTools.Level
         private readonly List<Vector2> uvs = new();
         // Each face's vertices (from Face), for its UV2 chart.
         private readonly List<List<int>> faces = new();
-        private readonly List<Graybox.Surface> surfaces = new();
+        private readonly List<Graybox.GrayboxMaterial> surfaces = new();
         private readonly List<List<int>> triangles = new();
 
         /// <summary>Adds a face's corners as vertices and returns the first one's index (for Triangle).</summary>
@@ -38,7 +38,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// A triangle of vertices a, b and c (from Face), in a surface, turned to face along normal (Unity's front face is
         /// the side Cross(b - a, c - a) points to).
         /// </summary>
-        public void Triangle(Graybox.Surface surface, int a, int b, int c, Vector3 normal)
+        public void Triangle(Graybox.GrayboxMaterial surface, int a, int b, int c, Vector3 normal)
         {
             if (Vector3.Dot(Vector3.Cross(vertices[b] - vertices[a], vertices[c] - vertices[a]), normal) < 0f) { (b, c) = (c, b); }
             List<int> list = Submesh(surface);
@@ -46,7 +46,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>A flat four-cornered face, corners in order round it.</summary>
-        public void Quad(Graybox.Surface surface, Vector3 normal, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+        public void Quad(Graybox.GrayboxMaterial surface, Vector3 normal, Vector3 a, Vector3 b, Vector3 c, Vector3 d)
         {
             int i = Face(normal, new[] { a, b, c, d });
             Triangle(surface, i, i + 1, i + 2, normal);
@@ -58,7 +58,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// meets something above or stands on something), or its sides across z (where it runs into something at both
         /// ends).
         /// </summary>
-        public void Box(Graybox.Surface surface, Vector3 min, Vector3 max, bool top = true, bool bottom = true, bool ends = true,
+        public void Box(Graybox.GrayboxMaterial surface, Vector3 min, Vector3 max, bool top = true, bool bottom = true, bool ends = true,
             bool sides = true)
         {
             Vector3 a = min, b = max;
@@ -80,7 +80,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// A box round the line from a to b (a beam at any angle): width across along side (made square to the line),
         /// and depth across the third way. Its ends are left out unless asked for (a beam usually ends in something).
         /// </summary>
-        public void Beam(Graybox.Surface surface, Vector3 a, Vector3 b, Vector3 side, float width, float depth, bool ends = false)
+        public void Beam(Graybox.GrayboxMaterial surface, Vector3 a, Vector3 b, Vector3 side, float width, float depth, bool ends = false)
         {
             Vector3 along = (b - a).normalized;
             Vector3 w = Vector3.ProjectOnPlane(side, along).normalized * (width / 2f);
@@ -98,7 +98,7 @@ namespace CharacterShowcase.EditorTools.Level
         }
 
         /// <summary>A round bar from a to b (a pipe, a conduit), radius thick, with sides faces round it; its ends closed if asked for.</summary>
-        public void Tube(Graybox.Surface surface, Vector3 a, Vector3 b, float radius, int sides, bool ends = false)
+        public void Tube(Graybox.GrayboxMaterial surface, Vector3 a, Vector3 b, float radius, int sides, bool ends = false)
         {
             Vector3 along = (b - a).normalized;
             Vector3 u = Vector3.Cross(along, Mathf.Abs(along.y) < 0.9f ? Vector3.up : Vector3.right).normalized, v = Vector3.Cross(along, u);
@@ -122,7 +122,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// A tapering solid round a vertical axis at centre, with sides faces: radius r0 at y0 to r1 at y1, the rings
         /// turned turn degrees (for trees' faceted canopies); its top and bottom closed if asked for.
         /// </summary>
-        public void Frustum(Graybox.Surface surface, Vector3 centre, float r0, float r1, float y0, float y1, int sides, float turn = 0f,
+        public void Frustum(Graybox.GrayboxMaterial surface, Vector3 centre, float r0, float r1, float y0, float y1, int sides, float turn = 0f,
             bool top = true, bool bottom = false)
         {
             Vector3 Ring(int i, float r, float y)
@@ -153,7 +153,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// A flat plate with a convex outline (x across, y up) from z0 to z1: its two faces and its edges. Plates of
         /// several convex pieces make other outlines (a banner's swallowtail).
         /// </summary>
-        public void Plate(Graybox.Surface surface, IList<Vector2> outline, float z0, float z1)
+        public void Plate(Graybox.GrayboxMaterial surface, IList<Vector2> outline, float z0, float z1)
         {
             Vector2 centroid = Vector2.zero;
             foreach (Vector2 p in outline) { centroid += p; }
@@ -178,7 +178,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// A solid with a convex footprint (x and z) from y0 to y1: its sides, and its top and bottom if asked for
         /// (leave out the bottom of anything standing on the ground, the top of anything under a deck).
         /// </summary>
-        public void Prism(Graybox.Surface surface, IList<Vector2> shape, float y0, float y1, bool top = true, bool bottom = false)
+        public void Prism(Graybox.GrayboxMaterial surface, IList<Vector2> shape, float y0, float y1, bool top = true, bool bottom = false)
         {
             Vector2 centroid = Vector2.zero;
             foreach (Vector2 p in shape) { centroid += p; }
@@ -224,7 +224,7 @@ namespace CharacterShowcase.EditorTools.Level
             obj.AddComponent<MeshRenderer>().sharedMaterials = materials;
         }
 
-        private List<int> Submesh(Graybox.Surface surface)
+        private List<int> Submesh(Graybox.GrayboxMaterial surface)
         {
             int i = surfaces.IndexOf(surface);
             if (i < 0)

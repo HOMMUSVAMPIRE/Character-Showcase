@@ -1,15 +1,16 @@
 using System;
 using UnityEngine;
-using static Character.MovementHelpers;
+using UnityEngine.Serialization;
+using static MeridianMotion.Characters.MovementRules;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Crouching and sliding: Crouch lowers the character into a slower stance with a shorter collider, which stands back
     /// up only where there's room; pressed while sprinting, it slides along the ground on the sprint's momentum instead,
     /// low, slowing down until the slide ends in a crouch (unless sliding is turned off, when it just crouches). The
     /// crouch height is also what rolls and other low moves use (see the mode's posture), and the crouch input buffer
-    /// how long any Crouch press counts (see ComposedMovementMode.ConsumeCrouchPress).
+    /// how long any Crouch press counts (see AbilityMovementMode.ConsumeCrouchPress).
     /// </summary>
     [Serializable]
     public class Crouching : MovementComponent
@@ -28,7 +29,7 @@ namespace Character
 
         [Header("Sliding")]
         [Tooltip("Whether pressing Crouch while sprinting slides. Turned off, it crouches, as at any other speed")]
-        [SerializeField] private bool slidingEnabled = true;
+        [SerializeField] [FormerlySerializedAs("slidingEnabled")] private bool canSlide = true;
         [Tooltip("Pressing Crouch while sprinting slides, if the character is moving at least this fast (m/s, at its " +
                  "authored size); slower, it just crouches")]
         [SerializeField] private float slideMinStartSpeed = 4.5f;
@@ -39,7 +40,7 @@ namespace Character
         [SerializeField] private float slideDeceleration = 8f;
         [Tooltip("A slide ends, in a crouch, once it slows to this speed (m/s)")]
         [SerializeField] private float slideEndSpeed = 3f;
-        [Tooltip("The longest a slide lasts, in seconds, before it ends in a crouch. 0 turns sliding off, as Sliding Enabled does")]
+        [Tooltip("The longest a slide lasts, in seconds, before it ends in a crouch. 0 turns sliding off, as Can Slide does")]
         [SerializeField] private float slideMaxDuration = 1.2f;
         [Tooltip("How quickly (degrees per second) movement input turns a slide")]
         [SerializeField] private float slideSteering = 90f;
@@ -51,31 +52,31 @@ namespace Character
         /// <summary>How long (s) a press of Crouch counts for, after it's made.</summary>
         public float CrouchInputBuffer => crouchInputBuffer;
         /// <summary>Whether pressing Crouch while sprinting slides.</summary>
-        public bool SlidingEnabled { get => slidingEnabled; set => slidingEnabled = value; }
+        public bool SlidingEnabled { get => canSlide; set => canSlide = value; }
         /// <summary>How fast (m/s) a slide starts, at least, at the character's authored size.</summary>
         public float SlideStartSpeed { get => slideStartSpeed; set => slideStartSpeed = value; }
         /// <summary>The longest a slide lasts, in seconds. 0 turns sliding off.</summary>
         public float SlideMaxDuration { get => slideMaxDuration; set => slideMaxDuration = value; }
 
         /// <summary>A slide has the character while it lasts (crouching is a stance, not an ability: others start from it, or refuse to).</summary>
-        public override bool IsActive(MovementController controller) => controller.slide.IsSliding;
+        public override bool IsActive(MMotionMotor controller) => controller.slide.IsSliding;
         /// <summary>A slide is on the ground: the character is neither held up nor holding on.</summary>
         public override AbilityTraits Traits => AbilityTraits.None;
-        /// <summary>It slides only with Sliding Enabled on (and a Slide Max Duration).</summary>
-        public override bool Enters(CharacterState state) => state != CharacterState.Sliding || (slidingEnabled && slideMaxDuration > 0f);
+        /// <summary>It slides only with Can Slide on (and a Slide Max Duration).</summary>
+        public override bool AllowsState(CharacterState state) => state != CharacterState.Sliding || (canSlide && slideMaxDuration > 0f);
         /// <summary>The events of Crouching and Sliding starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Crouching, MovementEvents.CrouchStarted, MovementEvents.CrouchEnded),
             new(CharacterState.Sliding, MovementEvents.SlideStarted, MovementEvents.SlideEnded),
         };
 
         /// <summary>Crouched or sliding, low at the crouch height.</summary>
-        public override BodyPosture? Posture(MovementController controller) =>
+        public override BodyPosture? Posture(MMotionMotor controller) =>
             controller.crouch.IsCrouched || controller.slide.IsSliding ? BodyPosture.Low(crouchHeight) : null;
 
-        public override void Interrupt(MovementData movementData, MovementController controller)
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller)
         {
             if (controller.slide.IsSliding) { EndSlide(controller, crouched: controller.crouch.IsCrouched); }
         }
@@ -86,12 +87,12 @@ namespace Character
         /// character, then happens by itself. A jump stands the character up first, where there's room (the jump is
         /// skipped where there isn't).
         /// </summary>
-        public override void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeLocomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             CrouchState crouch = controller.crouch;
             if (holdToCrouch)
             {
-                bool held = inputs.crouch != null && inputs.crouch.value;
+                bool held = inputs.crouch != null && inputs.crouch.held;
                 if (held && movementData.initialGrounded)
                 {
                     crouch.IsCrouched = true;
@@ -111,7 +112,7 @@ namespace Character
                 }
             }
 
-            bool standForJump = Mode.IsNewJumpPress(inputs, controller);
+            bool standForJump = Mode.HasFreshJumpPress(inputs, controller);
             if (crouch.IsCrouched && (crouch.wantsToStand || standForJump) && controller.CanFitAt(movementData.initialPosition))
             {
                 crouch.IsCrouched = false;
@@ -126,11 +127,11 @@ namespace Character
         /// mode, letting go of it) stands up instead. Jumping cancels the slide into a jump that keeps its speed, and
         /// sliding off an edge carries its momentum into the air.
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             SlideState slide = controller.slide;
             if (!slide.IsSliding && !TryStartSlide(movementData, inputs, controller)) { return false; }
-            if (!slidingEnabled)
+            if (!canSlide)
             {
                 EndSlide(controller, crouched: true); // Sliding turned off part way through a slide.
                 return false;
@@ -144,7 +145,7 @@ namespace Character
             }
 
             bool standUp = holdToCrouch
-                ? inputs.crouch == null || !inputs.crouch.value
+                ? inputs.crouch == null || !inputs.crouch.held
                 : Mode.ConsumeCrouchPress(inputs, controller);
             if (standUp)
             {
@@ -154,7 +155,7 @@ namespace Character
 
             // A jump stands up (where there's room) and keeps the slide's speed: its momentum is already the
             // character's inertia, which the jump carries into the air.
-            if (Mode.IsNewJumpPress(inputs, controller) && controller.CanFitAt(movementData.initialPosition))
+            if (Mode.HasFreshJumpPress(inputs, controller) && controller.CanFitAt(movementData.initialPosition))
             {
                 EndSlide(controller, crouched: false);
                 movementData.directMovementVector = Vector3.zero;
@@ -176,7 +177,7 @@ namespace Character
             slide.elapsed += movementData.deltaTime;
 
             movementData.initialInertia = new Vector3(slide.direction.x * speed, inertia.y, slide.direction.z * speed);
-            if (speed <= slideEndSpeed * controller.SpeedScale || MovementHelpers.HasElapsed(slide.elapsed, slideMaxDuration * controller.DurationScale, movementData.deltaTime))
+            if (speed <= slideEndSpeed * controller.SpeedScale || MovementRules.HasElapsed(slide.elapsed, slideMaxDuration * controller.DurationScale, movementData.deltaTime))
             {
                 // Over: crouched, with what's left of the slide's speed, which grounded friction then eases out.
                 EndSlide(controller, crouched: true);
@@ -190,10 +191,10 @@ namespace Character
         }
 
         /// <summary>Starts a slide if Crouch was just pressed while sprinting fast enough on the ground.</summary>
-        private bool TryStartSlide(MovementData movementData, Inputs inputs, MovementController controller)
+        private bool TryStartSlide(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            if (!slidingEnabled || slideMaxDuration <= 0f || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
-            if (inputs.sprint == null || !inputs.sprint.value) { return false; }
+            if (!canSlide || slideMaxDuration <= 0f || !movementData.initialGrounded || controller.crouch.IsCrouched || Mode.AbilityInProgress(controller)) { return false; }
+            if (inputs.sprint == null || !inputs.sprint.held) { return false; }
             Vector3 velocity = movementData.initialVelocity;
             Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
             float speed = horizontal.magnitude;
@@ -211,7 +212,7 @@ namespace Character
             return true;
         }
 
-        private static void EndSlide(MovementController controller, bool crouched)
+        private static void EndSlide(MMotionMotor controller, bool crouched)
         {
             controller.slide.IsSliding = false;
             controller.crouch.IsCrouched = crouched;
@@ -225,7 +226,7 @@ namespace Character
         public override void MeasureCapabilities(MovementSimulation simulation, MovementCapabilities capabilities)
         {
             capabilities.CrouchHeight = crouchHeight * capabilities.StandHeight;
-            if (slidingEnabled && slideMaxDuration > 0f) { capabilities.SlideLength = SlideLength(simulation); }
+            if (canSlide && slideMaxDuration > 0f) { capabilities.SlideLength = SlideLength(simulation); }
         }
 
         /// <summary>How far (m) a slide from a sprint carries the character, from where it starts to where it ends.</summary>
@@ -237,7 +238,7 @@ namespace Character
             for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
             {
                 float before = simulation.Position.z;
-                Inputs inputs = MovementSimulation.Move(Vector3.forward, true);
+                StepInputs inputs = MovementSimulation.Move(Vector3.forward, true);
                 inputs.crouch = MovementSimulation.Held(i);
                 simulation.Step(inputs);
                 bool sliding = (simulation.State & CharacterState.Sliding) != 0;
@@ -256,7 +257,7 @@ namespace Character
         /// <summary>Asked to stand, but there wasn't room yet: stands as soon as there is.</summary>
         public bool wantsToStand;
         /// <summary>The Crouch button's presses (when crouching toggles), so each press counts once.</summary>
-        public readonly ButtonPress press = new();
+        public readonly PressBuffer press = new();
     }
 
     /// <summary>A slide in progress.</summary>
@@ -270,9 +271,9 @@ namespace Character
         public Vector3 direction;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's crouching state (Crouching).</summary>
         public CrouchState crouch { get; } = new CrouchState();

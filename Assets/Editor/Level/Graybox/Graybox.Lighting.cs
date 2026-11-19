@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Lighting, after the style sheet's lighting elements: ceiling panels and strip lights underground (with the lights
     // that light it), and in daylight door lights, bollards, floodlights and cyan accent posts, which glow (the Light
@@ -21,8 +21,8 @@ namespace CharacterShowcase.EditorTools.Level
         public static void CellLighting(Transform lighting, IEnumerable<Cell> cells)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(CellLighting), lighting, cells);
-            GrayboxSettings.LightSettings lights = Settings.lights;
-            GrayboxSettings.FixtureSettings fixtures = Settings.fixtures;
+            LevelBuilderSettings.LightSettings lights = Settings.lights;
+            LevelBuilderSettings.FixtureSettings fixtures = Settings.fixtures;
             foreach (Cell cell in cells)
             {
                 if (cell.Open) { continue; }
@@ -34,7 +34,7 @@ namespace CharacterShowcase.EditorTools.Level
                 int count = Mathf.Max(1, Mathf.RoundToInt(length / lights.spacing));
                 var mesh = new GrayboxMesh();
                 // A box under the ceiling (centred at "at", sized along and across the cell), from drop below it up to it.
-                void UnderCeiling(Surface surface, Vector2 at, float along, float width, float dropTop, float dropBottom)
+                void UnderCeiling(GrayboxMaterial surface, Vector2 at, float along, float width, float dropTop, float dropBottom)
                 {
                     Vector2 half = alongX ? new Vector2(along, width) / 2f : new Vector2(width, along) / 2f;
                     mesh.Box(surface, new Vector3(at.x - half.x, cell.Ceiling - dropBottom, at.y - half.y),
@@ -42,7 +42,7 @@ namespace CharacterShowcase.EditorTools.Level
                 }
                 if (corridor)
                 {
-                    UnderCeiling(Surface.Light, a.center, length - 1f, fixtures.stripLightSize.x, 0f, fixtures.stripLightSize.y);
+                    UnderCeiling(GrayboxMaterial.Light, a.center, length - 1f, fixtures.stripLightSize.x, 0f, fixtures.stripLightSize.y);
                 }
                 for (int i = 0; i < count; i++)
                 {
@@ -53,8 +53,8 @@ namespace CharacterShowcase.EditorTools.Level
                         // A graphite housing, its glowing face hanging just below it.
                         Vector2 panel = fixtures.ceilingPanelSize;
                         float housing = fixtures.ceilingPanelDrop * 0.6f;
-                        UnderCeiling(Surface.Graphite, at, panel.y + 0.1f, panel.x + 0.1f, 0f, housing);
-                        UnderCeiling(Surface.Light, at, panel.y, panel.x, housing, fixtures.ceilingPanelDrop);
+                        UnderCeiling(GrayboxMaterial.Graphite, at, panel.y + 0.1f, panel.x + 0.1f, 0f, housing);
+                        UnderCeiling(GrayboxMaterial.Light, at, panel.y, panel.x, housing, fixtures.ceilingPanelDrop);
                     }
                     var lamp = new GameObject($"Light ({cell.Name})");
                     lamp.transform.SetParent(lighting, false);
@@ -95,8 +95,8 @@ namespace CharacterShowcase.EditorTools.Level
             foreach (float side in new[] { 1f, -1f })
             {
                 float x0 = side * face, x1 = side * (face + housing), x2 = side * (face + housing + glow);
-                mesh.Box(Surface.Graphite, new Vector3(Mathf.Min(x0, x1), bottom, s), new Vector3(Mathf.Max(x0, x1), top, e));
-                mesh.Box(Surface.Light, new Vector3(Mathf.Min(x1, x2), bottom + rim, s + rim), new Vector3(Mathf.Max(x1, x2), top - rim, e - rim));
+                mesh.Box(GrayboxMaterial.Graphite, new Vector3(Mathf.Min(x0, x1), bottom, s), new Vector3(Mathf.Max(x0, x1), top, e));
+                mesh.Box(GrayboxMaterial.Light, new Vector3(Mathf.Min(x1, x2), bottom + rim, s + rim), new Vector3(Mathf.Max(x1, x2), top - rim, e - rim));
             }
         }
 
@@ -153,9 +153,9 @@ namespace CharacterShowcase.EditorTools.Level
             float h = size.x;
             Vector2[] shape = Octagon(size.y / 2f);
             var mesh = new GrayboxMesh();
-            mesh.Prism(Surface.Graphite, shape, 0f, 0.72f * h, top: false);
-            mesh.Prism(Surface.Light, shape, 0.72f * h, 0.86f * h, top: false);
-            mesh.Prism(Surface.Graphite, shape, 0.86f * h, h);
+            mesh.Prism(GrayboxMaterial.Graphite, shape, 0f, 0.72f * h, top: false);
+            mesh.Prism(GrayboxMaterial.Light, shape, 0.72f * h, 0.86f * h, top: false);
+            mesh.Prism(GrayboxMaterial.Graphite, shape, 0.86f * h, h);
             mesh.AddTo(bollard, "Bollard");
             var collider = bollard.AddComponent<BoxCollider>();
             collider.center = new Vector3(0f, h / 2f, 0f);
@@ -181,10 +181,10 @@ namespace CharacterShowcase.EditorTools.Level
             Vector2 head = Settings.fixtures.floodlightHeadSize;
             const float depth = 0.25f, glow = 0.02f, rim = 0.04f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Graphite, new Vector3(-m, 0f, -m), new Vector3(m, mast, m), bottom: false);
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-m, 0f, -m), new Vector3(m, mast, m), bottom: false);
             float y0 = mast - head.y / 2f, y1 = mast + head.y / 2f;
-            mesh.Box(Surface.Graphite, new Vector3(-head.x / 2f, y0, m), new Vector3(head.x / 2f, y1, m + depth));
-            mesh.Box(Surface.Light, new Vector3(-head.x / 2f + rim, y0 + rim, m + depth), new Vector3(head.x / 2f - rim, y1 - rim, m + depth + glow));
+            mesh.Box(GrayboxMaterial.Graphite, new Vector3(-head.x / 2f, y0, m), new Vector3(head.x / 2f, y1, m + depth));
+            mesh.Box(GrayboxMaterial.Light, new Vector3(-head.x / 2f + rim, y0 + rim, m + depth), new Vector3(head.x / 2f - rim, y1 - rim, m + depth + glow));
             mesh.AddTo(flood, "Floodlight");
             var collider = flood.AddComponent<BoxCollider>();
             collider.center = new Vector3(0f, mast / 2f, 0f);
@@ -207,7 +207,7 @@ namespace CharacterShowcase.EditorTools.Level
             post.transform.localPosition = new Vector3(at.x, height, at.y);
             float w = Settings.fixtures.accentPost.x / 2f;
             var mesh = new GrayboxMesh();
-            mesh.Box(Surface.Cyan, new Vector3(-w, 0f, -w), new Vector3(w, RailHeight + Settings.fixtures.accentPost.y, w), bottom: false);
+            mesh.Box(GrayboxMaterial.Cyan, new Vector3(-w, 0f, -w), new Vector3(w, RailHeight + Settings.fixtures.accentPost.y, w), bottom: false);
             mesh.AddTo(post, post.name);
             MakeStatic(post, occluder: false);
         }

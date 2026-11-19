@@ -34,13 +34,13 @@ MonoBehaviour:
     version: 2
     RefIds:
     - rid: 5929479653266554880
-      type: {class: BouncePads, ns: Character, asm: CharacterShowcase}
+      type: {class: BouncePads, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         bounceHeightMultiplier: 1
         bounceJumpBoost: 1.5
     - rid: 5929479653266554881
-      type: {class: Ziplines, ns: Character, asm: CharacterShowcase}
+      type: {class: Ziplines, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         ziplineGrabReach: 0.6
@@ -51,7 +51,7 @@ MonoBehaviour:
         ziplineJumpUpSpeed: 8
         ziplineRegrabDelay: 0.5
     - rid: 5929479653266554882
-      type: {class: RopeSwinging, ns: Character, asm: CharacterShowcase}
+      type: {class: RopeSwinging, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         ropeGrabReach: 0.5
@@ -64,7 +64,7 @@ MonoBehaviour:
         ropeJumpUpSpeed: 8
         ropeRegrabDelay: 0.6
     - rid: 5929479653649547264
-      type: {class: Ledges, ns: Character, asm: CharacterShowcase}
+      type: {class: Ledges, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         ledgeClimbDuration: 0.7
@@ -78,7 +78,7 @@ MonoBehaviour:
         ledgeClimbInset: 0.1
         ledgeRegrabDelay: 0.4
     - rid: 5929479653649547265
-      type: {class: Vaulting, ns: Character, asm: CharacterShowcase}
+      type: {class: Vaulting, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         vaultRiseDuration: 0.25
@@ -90,14 +90,14 @@ MonoBehaviour:
         vaultMaxDrop: 1
         vaultStepUpHeight: 0.5
     - rid: 5929479653649547266
-      type: {class: PushingAndPulling, ns: Character, asm: CharacterShowcase}
+      type: {class: PushingAndPulling, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         pushPullSpeed: 1.8
         grabReach: 0.25
         grabMaxAngle: 50
     - rid: 5929479653649547267
-      type: {class: WallClimbing, ns: Character, asm: CharacterShowcase}
+      type: {class: WallClimbing, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         wallClimbSpeed: 2.5
@@ -114,7 +114,7 @@ MonoBehaviour:
         wallClimbEnterDuration: 0.7
         wallClimbExitDuration: 0.7
     - rid: 5929479653649547268
-      type: {class: WallRunning, ns: Character, asm: CharacterShowcase}
+      type: {class: WallRunning, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         wallRunSpeed: 9
@@ -133,7 +133,7 @@ MonoBehaviour:
         wallJumpAwaySpeed: 10
         wallJumpUpSpeed: 10
     - rid: 5929479653649547269
-      type: {class: WallSliding, ns: Character, asm: CharacterShowcase}
+      type: {class: WallSliding, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         wallSlideSpeed: 2.5
@@ -150,7 +150,7 @@ MonoBehaviour:
         wallSlideMinApproachSpeed: 1
         wallSlideMaxStartRiseSpeed: 3
     - rid: 5929479654000558080
-      type: {class: Rolling, ns: Character, asm: CharacterShowcase}
+      type: {class: Rolling, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         rollSpeed: 11
@@ -184,14 +184,14 @@ MonoBehaviour:
         landingRollMinFall: 2
         landingRollMinSpeed: 2
     - rid: 5929479654000558081
-      type: {class: Crouching, ns: Character, asm: CharacterShowcase}
+      type: {class: Crouching, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         crouchSpeed: 1
         crouchHeight: 0.65
         holdToCrouch: 0
         crouchInputBuffer: 0.1
-        slidingEnabled: 0
+        canSlide: 0
         slideMinStartSpeed: 4.5
         slideStartSpeed: 12
         slideDeceleration: 5
@@ -199,7 +199,7 @@ MonoBehaviour:
         slideMaxDuration: 2
         slideSteering: 90
     - rid: 5929479654395346944
-      type: {class: Dashing, ns: Character, asm: CharacterShowcase}
+      type: {class: Dashing, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 0
         dashSpeed: 25
@@ -234,7 +234,7 @@ MonoBehaviour:
         dashInputBuffer: 0.1
         dashJumpSpeedRetention: 0.5
     - rid: 5929479654395346945
-      type: {class: Jumping, ns: Character, asm: CharacterShowcase}
+      type: {class: Jumping, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         minJumpHeight: 0.75
@@ -243,10 +243,10 @@ MonoBehaviour:
         jumpInputBuffer: 0.1
         coyoteTime: 0.1
     - rid: 5929479656689369088
-      type: {class: FallAndAirHandling, ns: Character, asm: CharacterShowcase}
+      type: {class: FallAndAirHandling, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
-        gravityStrength: 40
+        gravity: 40
         maxFallSpeed: 100
         coyoteTimeGravityCurve:
           serializedVersion: 2
@@ -282,7 +282,7 @@ MonoBehaviour:
           m_PostInfinity: 2
           m_RotationOrder: 4
         airSteeringStrength: 0.7
-        airSteeringStrengthCurve:
+        airControlCurve:
           serializedVersion: 2
           m_Curve:
           - serializedVersion: 3
@@ -315,19 +315,19 @@ MonoBehaviour:
           m_PreInfinity: 2
           m_PostInfinity: 2
           m_RotationOrder: 4
-        airAcceleration: 80
+        airSteeringAcceleration: 80
         airDrag: 4
         wallJumpSteeringRecovery: 0.6
-        groundedDampenHorizontalInertia: 10
+        groundFriction: 10
     - rid: 5929479656689369089
-      type: {class: WalkingAndRunning, ns: Character, asm: CharacterShowcase}
+      type: {class: WalkingAndRunning, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         walkSpeed: 3.5
         runSpeed: 10
-        abilityPickUpTime: 0.3
+        speedRecoveryTime: 0.3
     - rid: 5929479671128260608
-      type: {class: Swimming, ns: Character, asm: CharacterShowcase}
+      type: {class: Swimming, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         swimDepth: 0.8
@@ -343,7 +343,7 @@ MonoBehaviour:
         swimBuoyancy: 0
         swimMaxPitch: 60
     - rid: 5929479671128260609
-      type: {class: Wading, ns: Character, asm: CharacterShowcase}
+      type: {class: Wading, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         wadeStartDepth: 0.1

@@ -3,5 +3,5 @@ using System.Runtime.CompilerServices;
 // The model-generation pipeline (the mannequin's and the fox's generators: Assets/Editor/Pipeline) is
 // an editor assembly of its own, kept out of the package, as are the level checks (the movement envelope the level specs
 // are checked against: Assets/Editor/LevelChecks). Both use the character editor's internal helpers (CommandLine).
-[assembly: InternalsVisibleTo("CharacterShowcase.Pipeline.Editor")]
-[assembly: InternalsVisibleTo("CharacterShowcase.LevelChecks.Editor")]
+[assembly: InternalsVisibleTo("MeridianMotion.Showcase.Pipeline")]
+[assembly: InternalsVisibleTo("MeridianMotion.Showcase.LevelChecks")]

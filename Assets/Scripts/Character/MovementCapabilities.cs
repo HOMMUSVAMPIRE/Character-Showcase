@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// What a character can do, as it's tuned and sized: the limits of its movement, in metres (and degrees) at its size.
-    /// Worked out by MovementController.Capabilities, from the settings where they're exact by construction (the step
+    /// Worked out by MMotionMotor.Capabilities, from the settings where they're exact by construction (the step
     /// height, the jump heights) and otherwise by running a copy of the character's own movement and measuring what it
     /// does (see MovementSimulation), so they can't drift from the movement. A value is NaN where the character can't do
     /// that at all (wall-running turned off, say).
@@ -32,9 +32,9 @@ namespace Character
             public override string ToString() => $"{Name}: {Reach:0.00} m";
         }
 
-        /// <summary>The tallest step (m) the character steps up by itself (MovementController's Max Step Height, at its size).</summary>
+        /// <summary>The tallest step (m) the character steps up by itself (MMotionMotor's Max Step Height, at its size).</summary>
         public float StepHeight { get; internal set; } = float.NaN;
-        /// <summary>The steepest slope (degrees) it treats as walkable ground (MovementController's Max Slope Angle).</summary>
+        /// <summary>The steepest slope (degrees) it treats as walkable ground (MMotionMotor's Max Slope Angle).</summary>
         public float WalkableSlopeAngle { get; internal set; } = float.NaN;
         /// <summary>How tall (m) the character stands: what it needs to stand under something.</summary>
         public float StandHeight { get; internal set; } = float.NaN;
@@ -55,7 +55,7 @@ namespace Character
         /// <summary>How far (m) it falls during a full wall run (NaN without wall-running).</summary>
         public float WallRunDrop { get; internal set; } = float.NaN;
 
-        /// <summary>The lists behind Jumps and Climbs, filled by MovementController.Capabilities.</summary>
+        /// <summary>The lists behind Jumps and Climbs, filled by MMotionMotor.Capabilities.</summary>
         internal readonly List<Move> jumps = new(), climbs = new();
 
         /// <summary>The gaps (at the same height) its moves cross, shortest first: "jump", "sprint jump", "sprint jump and air dash", ...</summary>

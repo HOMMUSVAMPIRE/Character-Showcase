@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of how the character's movement resolves against the world: momentum that a collision blocks is lost
@@ -51,7 +51,7 @@ namespace CharacterShowcase.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelSlot's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             // Half a step height above the head: the jump clears a step, so it reaches the ceiling.
             float headroom = 0.5f * rig.StepHeight;
@@ -82,7 +82,7 @@ namespace CharacterShowcase.Tests.Movement
         {
             // No floor: the character stays airborne, where nothing else slows it down.
             rig.SpawnCharacter(new Vector3(0f, 20f, 0f));
-            // Its model loaded first: the body it may take from it (see CharacterModelHost's Body Fit) is the one tested.
+            // Its model loaded first: the body it may take from it (see CharacterModelSlot's Body Fit) is the one tested.
             yield return rig.WaitForModel();
             Dashing dash = rig.Component<Dashing>();
             // The wall's face halfway along the dash, so the dash reaches it with speed to spare.

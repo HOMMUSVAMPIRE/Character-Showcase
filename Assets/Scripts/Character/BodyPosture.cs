@@ -1,6 +1,6 @@
 using System;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>The ways a character's body can be held (see BodyPosture).</summary>
     public enum BodyPostureKind
@@ -16,7 +16,7 @@ namespace Character
     /// <summary>
     /// How the character's body is held: what shape collision gives it (see CharacterBody). Components ask for one each
     /// step (see MovementComponent.Posture); the mode keeps the character in it where there's room (see
-    /// MovementController.SetPosture). Its feet stay where they are: the character's origin is the bottom of its body
+    /// MMotionMotor.SetPosture). Its feet stay where they are: the character's origin is the bottom of its body
     /// however it's held, what it would stand (or lie) on. A low posture is a share of the character's standing height, so
     /// it holds through changes of size.
     /// </summary>

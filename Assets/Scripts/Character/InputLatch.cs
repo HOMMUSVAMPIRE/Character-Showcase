@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Turns input read every render frame into one input frame per physics step (CharacterInputFrame). A device is read

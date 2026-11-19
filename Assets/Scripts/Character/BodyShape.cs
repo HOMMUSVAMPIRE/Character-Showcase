@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>The kinds of primitive a character's body can be (see BodyShape).</summary>
     public enum BodyShapeKind
@@ -18,7 +18,7 @@ namespace Character
     /// A character's body as authored (at its authored size, 1, 1, 1): one of Unity's primitive collider shapes, relative
     /// to its feet (the character's origin) and its facing (+Z ahead), standing; and how thick it is lying down (see
     /// BodyPosture.Lying), if thinner than laying its standing shape down makes it. A PrimitiveBody is shaped from one (see
-    /// MovementController.SetBody); a BodyDefinition asset holds one, for a character or a model (see
+    /// MMotionMotor.SetBody); a BodyDefinition asset holds one, for a character or a model (see
     /// CharacterModelSource.BodyDefinition).
     /// </summary>
     [Serializable]

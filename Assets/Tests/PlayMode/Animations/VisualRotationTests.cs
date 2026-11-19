@@ -1,17 +1,17 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Animations
+namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
     /// Tests of how the character's model turns after the character: the character (its root) turns at once where it's
     /// steered, and the model (its model parent) eases round after it, no faster than its turn speed limit (lower at a
     /// run), leaning into turns and with acceleration, upright standing still; facings abilities set are turned to at
     /// once, without leaning; and it turns with spinning ground. The model's turning is stepped with the physics, as
-    /// ACCharacterController does each frame in the game.
+    /// MMotionCharacter does each frame in the game.
     /// </summary>
     [Category(TestArea.Animation)]
     public class VisualRotationTests : CharacterRigFixture
@@ -22,8 +22,8 @@ namespace CharacterShowcase.Tests.Animations
 
         private T Setting<T>(string name)
         {
-            var field = typeof(AnimationController).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            Assert.That(field, Is.Not.Null, $"AnimationController has no '{name}' setting.");
+            var field = typeof(MMotionAnimator).GetField(name, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(field, Is.Not.Null, $"MMotionAnimator has no '{name}' setting.");
             return (T)field.GetValue(rig.Animation);
         }
 
@@ -31,11 +31,11 @@ namespace CharacterShowcase.Tests.Animations
         private float ModelYaw => Model.eulerAngles.y;
         private float RootYaw => rig.Body.rotation.eulerAngles.y;
 
-        /// <summary>Turns and animates the model for the step just taken, as ACCharacterController does each frame.</summary>
+        /// <summary>Turns and animates the model for the step just taken, as MMotionCharacter does each frame.</summary>
         private void Feed(int _)
         {
             rig.Animation.SmoothRotateVisuals(Time.fixedDeltaTime, rig.Movement.ConsumeGroundRotation());
-            rig.Animation.UpdateAnimator(rig.Movement.lastFrameMovementData, Time.fixedDeltaTime);
+            rig.Animation.UpdateAnimator(rig.Movement.lastStep, Time.fixedDeltaTime);
         }
 
         private IEnumerator Stand()

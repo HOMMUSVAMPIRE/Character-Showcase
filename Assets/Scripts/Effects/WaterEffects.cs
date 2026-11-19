@@ -1,23 +1,24 @@
 using System;
 using System.Collections.Generic;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// The character's splashes and ripples on water (see Level.Water). A splash where it goes in or comes out (falling
+    /// The character's splashes and ripples on water (see MeridianMotion.Levels.SwimmableWater). A splash where it goes in or comes out (falling
     /// or diving in, jumping, climbing or vaulting out, surfacing, landing or running into shallow water), as strong as
     /// it was fast; ripples on the surface round it as it swims or wades, every so far it goes, and every so often while
     /// it's still. Movement only reports what happens (its events and state); this plays the effects.
     ///
     /// The effects are prefabs, played on the water's surface: one with a component implementing IWaterEffect plays
     /// that; otherwise its particle systems play as they are, scaled with the character's size and the effect's strength
-    /// (give them Hierarchy scaling). The defaults (Tools > Character Showcase > Create Water Effects) are simple
+    /// (give them Hierarchy scaling). The defaults (Tools > Meridian Motion > Create Water Effects) are simple
     /// particle systems; replace them with anything. Each is pooled: no more than so many of one play at once, the oldest
     /// reused after that. Splashed and Rippled are raised for each (with or without a prefab), for sound and the like.
     /// </summary>
     [DisallowMultipleComponent]
+    [AddComponentMenu("Meridian Motion/Effects/Water Effects")]
     public class WaterEffects : MonoBehaviour
     {
         [Header("Effects")]
@@ -80,7 +81,7 @@ namespace Character
         /// <summary>The most of each effect playing at once; another reuses the oldest.</summary>
         public int MaxPlaying { get => maxPlaying; set => maxPlaying = Mathf.Max(1, value); }
 
-        private MovementController movement;
+        private MMotionMotor movement;
         // Effects played, by prefab, to be reused; and where the next one to reuse is, once they're all playing.
         private readonly Dictionary<GameObject, List<PlayedEffect>> played = new();
         private readonly Dictionary<GameObject, int> oldest = new();
@@ -112,7 +113,7 @@ namespace Character
             }
         }
 
-        private void Awake() => movement = GetComponent<MovementController>();
+        private void Awake() => movement = GetComponent<MMotionMotor>();
 
         private void OnEnable()
         {
@@ -136,7 +137,7 @@ namespace Character
         /// Splashes for the movement events that take the character into or out of the water: starting or ending a swim
         /// or a dive (by its speed up or down), starting to wade (by its speed along), and landing in water (by its fall).
         /// </summary>
-        private void HandleMovementEvent(MovementEvents movementEvent, MovementData data)
+        private void HandleMovementEvent(MovementEvents movementEvent, MovementStep data)
         {
             float speed;
             switch (movementEvent)
@@ -176,7 +177,7 @@ namespace Character
             float strength = Mathf.Clamp01(speed / (splashFullSpeed * (movement != null ? movement.SpeedScale : 1f)));
             if (strength < splashMinStrength || strength <= 0f) { return false; }
             float height = movement != null ? movement.Body.StandingHeight : 2f * size;
-            Water water = Water.Under(feet, height);
+            SwimmableWater water = SwimmableWater.Under(feet, height);
             if (water == null) { return false; }
             var context = Context(water, feet, strength, velocity);
             Play(splashPrefab, context);
@@ -191,7 +192,7 @@ namespace Character
             Rippled?.Invoke(context);
         }
 
-        private WaterEffectContext Context(Water water, Vector3 at, float strength, Vector3 velocity) => new()
+        private WaterEffectContext Context(SwimmableWater water, Vector3 at, float strength, Vector3 velocity) => new()
         {
             position = new Vector3(at.x, water.SurfaceHeight + SurfaceLift * Size, at.z),
             water = water,
@@ -206,14 +207,14 @@ namespace Character
         /// </summary>
         private void Update()
         {
-            MovementData data = movement != null ? movement.lastFrameMovementData : null;
+            MovementStep data = movement != null ? movement.lastStep : null;
             Vector3 position = transform.position;
             float moved = hasLastPosition ? new Vector2(position.x - lastPosition.x, position.z - lastPosition.z).magnitude : 0f;
             lastPosition = position;
             hasLastPosition = true;
             bool atSurface = data != null && (data.state & (CharacterState.Swimming | CharacterState.Wading)) != 0
                              && (data.state & CharacterState.Diving) == 0;
-            Water water = atSurface ? Water.Under(position, movement.Body.StandingHeight) : null;
+            SwimmableWater water = atSurface ? SwimmableWater.Under(position, movement.Body.StandingHeight) : null;
             if (water == null)
             {
                 rippleDistance = 0f;

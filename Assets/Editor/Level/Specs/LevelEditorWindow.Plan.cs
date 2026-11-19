@@ -9,7 +9,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // The plan of the level, picking and dragging pieces on it, and the Scene view's panel and handle.
     public partial class LevelEditorWindow

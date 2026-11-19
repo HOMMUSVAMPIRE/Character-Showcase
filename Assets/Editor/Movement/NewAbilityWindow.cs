@@ -5,10 +5,10 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
-    /// New Ability (Tools > Character Showcase > New Ability…): asks for an ability's name, what it does with the
+    /// New Ability (Tools > Meridian Motion > New Ability…): asks for an ability's name, what it does with the
     /// character, what starts it and where it goes in the order, shows every file it will make or change
     /// (AbilityScaffold), and makes them: a small working ability, with its state, events, tests and docs, that a person
     /// then turns into theirs. Once Unity has compiled it, the movement mode assets are given it (MovementModeSync), turned
@@ -23,7 +23,7 @@ namespace CharacterShowcase.EditorTools
         private AbilityScaffold.Answers answers = new();
         private Vector2 scroll;
 
-        [MenuItem("Tools/Character Showcase/New Ability…", priority = 10)]
+        [MenuItem("Tools/Meridian Motion/New Ability…", priority = 10)]
         public static void Open() => GetWindow<NewAbilityWindow>(true, "New Ability").minSize = new Vector2(480f, 520f);
 
         private void OnGUI()
@@ -43,7 +43,7 @@ namespace CharacterShowcase.EditorTools
                 "It starts near a level element of its own, made with it (as a zipline is caught near a cable)."), answers.levelElement);
             answers.needsIK = EditorGUILayout.Toggle(new GUIContent("Needs IK",
                 "It gets an IK component of its own, placing the limbs while it's under way (hands on what it holds, say), " +
-                "which every humanoid model gets once Prepare Character Models runs."), answers.needsIK);
+                "which every humanoid model gets once Prepare Humanoid Models runs."), answers.needsIK);
             answers.area = (AbilityScaffold.Area)EditorGUILayout.EnumPopup(new GUIContent("Kind",
                 "Abilities: what the character does by itself. Traversal: getting about the level (climbing, ropes, water). Picks its " +
                 "docs page and its tests' folder."), answers.area);
@@ -146,7 +146,7 @@ namespace CharacterShowcase.EditorTools
             }
             List<string> written = AbilityScaffold.Write(AbilityScaffold.Plan(made, ReadProjectFile, ReadTemplate), ProjectRoot);
             Debug.Log($"[New Ability] Made {made.name}:\n" + string.Join("\n", written) +
-                      "\nNext: -executeMethod CharacterShowcase.EditorTools.MovementModeSync.AddToAllModesFromCommandLine, to give it to the movement modes.");
+                      "\nNext: -executeMethod MeridianMotion.EditorTools.MovementModeSync.AddToAllModesFromCommandLine, to give it to the movement modes.");
             CommandLine.Finish(true);
         }
 

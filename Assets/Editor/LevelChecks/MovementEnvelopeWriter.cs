@@ -3,19 +3,20 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Character;
+using MeridianMotion.Characters;
+using MeridianMotion.EditorTools;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.Showcase.LevelChecks
 {
     /// <summary>
     /// Writes Tools/LevelSpec/envelope.json, the limits the levelspec tool's movement checks hold levels to, from what the
     /// default character can do: the Character prefab, with the collider its model gives it (see
-    /// CharacterModelHost.BodyFor), measured by running its movement (MovementController.Capabilities, through
+    /// CharacterModelSlot.BodyFor), measured by running its movement (MMotionMotor.Capabilities, through
     /// MovementSimulation). The levelspec tool is Python with nothing else to install, so it can't run the movement
     /// itself: this file is how it knows. Never edit it by hand. Saving the tuning in the editor writes it again
-    /// (see MovementEnvelopeAutoWriter); MovementEnvelopeTests fails while it's out of date otherwise. The ramp gradient is the levels' own rule (GrayboxSettings'
+    /// (see MovementEnvelopeAutoWriter); MovementEnvelopeTests fails while it's out of date otherwise. The ramp gradient is the levels' own rule (LevelBuilderSettings'
     /// Max Ramp Gradient), not the character's.
     /// </summary>
     public static class MovementEnvelopeWriter
@@ -23,13 +24,13 @@ namespace CharacterShowcase.EditorTools
         /// <summary>Where the envelope is written.</summary>
         public const string EnvelopePath = "Tools/LevelSpec/envelope.json";
         /// <summary>The default character, whose movement the envelope is measured from.</summary>
-        public const string CharacterPrefabPath = SceneGameSetup.CharacterPrefabPath;
-        // The level generation settings (the level editor assembly's GrayboxSettings, read by name: this assembly can't
+        public const string CharacterPrefabPath = CharacterSceneSetup.CharacterPrefabPath;
+        // The level generation settings (the level editor assembly's LevelBuilderSettings, read by name: this assembly can't
         // reference it).
-        private const string GrayboxSettingsPath = "Assets/Editor/Level/GrayboxSettings.asset";
+        private const string GrayboxSettingsPath = "Assets/Editor/Level/LevelBuilderSettings.asset";
         private const float DefaultRampGradient = 0.25f;
 
-        [MenuItem("Tools/Character Showcase/Level/Specs/Write Movement Envelope")]
+        [MenuItem("Tools/Meridian Motion/Showcase/Levels/Specs/Write Movement Envelope")]
         private static void WriteFromMenu()
         {
             string json = Write();
@@ -56,8 +57,8 @@ namespace CharacterShowcase.EditorTools
         public static MovementCapabilities Capabilities()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPrefabPath);
-            var movement = prefab.GetComponent<MovementController>();
-            BodyShape? body = prefab.TryGetComponent(out CharacterModelHost host) ? host.BodyFor(host.ModelSource, movement) : null;
+            var movement = prefab.GetComponent<MMotionMotor>();
+            BodyShape? body = prefab.TryGetComponent(out CharacterModelSlot host) ? host.BodyFor(host.ModelSource, movement) : null;
             return MovementSimulation.Measure(movement, body);
         }
 
@@ -78,9 +79,9 @@ namespace CharacterShowcase.EditorTools
             var sb = new StringBuilder();
             sb.Append("{\n");
             sb.Append("  \"about\": \"What the default character can do (the Character prefab, with its model's collider), measured by running its movement " +
-                      "(MovementController.Capabilities): the limits the movement checks hold a level's gaps, climbs, stairs, ramps and clearances to. " +
-                      "Written by Tools > Character Showcase > Level > Specs > Write Movement Envelope: don't edit it. The ramp gradient is the levels' rule " +
-                      "(GrayboxSettings' Max Ramp Gradient), not the character's limit.\",\n");
+                      "(MMotionMotor.Capabilities): the limits the movement checks hold a level's gaps, climbs, stairs, ramps and clearances to. " +
+                      "Written by Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope: don't edit it. The ramp gradient is the levels' rule " +
+                      "(LevelBuilderSettings' Max Ramp Gradient), not the character's limit.\",\n");
             sb.Append($"  \"stepHeight\": {N(c.StepHeight)},\n");
             sb.Append($"  \"walkableSlope\": {N(c.WalkableSlopeAngle)},\n");
             sb.Append($"  \"maxRampGradient\": {N(ramp)},\n");

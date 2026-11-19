@@ -1,12 +1,12 @@
 using System;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Bounce pads (see Level.BouncePad): standing on one launches the character into the air, to the pad's height. First
-    /// in BasicMovementMode's components, since a pad launches whatever the character is doing on it (rolling, sliding,
+    /// Bounce pads (see MeridianMotion.Levels.LaunchPad): standing on one launches the character into the air, to the pad's height. First
+    /// in StandardMovementMode's components, since a pad launches whatever the character is doing on it (rolling, sliding,
     /// dashing).
     /// </summary>
     [Serializable]
@@ -29,9 +29,9 @@ namespace Character
         /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a launch off a bounce pad.</summary>
         public override MovementEvents OneOffEvents => MovementEvents.Bounced;
 
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
-            controller.bounce.cooldownRemaining = MovementHelpers.CountDown(controller.bounce.cooldownRemaining, movementData.deltaTime);
+            controller.bounce.cooldownRemaining = MovementRules.CountDown(controller.bounce.cooldownRemaining, movementData.deltaTime);
         }
 
         /// <summary>A launch holds the character neither up nor on: it has it for the one step it launches it.</summary>
@@ -45,31 +45,31 @@ namespace Character
         /// the pad had the character this step (only on the step it launches: after that the character is simply in the
         /// air).
         /// </summary>
-        public override bool TakeOver(MovementData movementData, Inputs inputs, MovementController controller)
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             BounceState bounce = controller.bounce;
             if (bounceHeightMultiplier <= 0f || !movementData.initialGrounded || bounce.cooldownRemaining > 0f) { return false; }
-            BouncePad pad = BouncePad.Of(movementData.initialGroundTransform);
+            LaunchPad pad = LaunchPad.Of(movementData.initialGroundTransform);
             if (pad == null || pad.LaunchHeight <= 0f) { return false; }
             // Nothing that holds the character on the pad (holding a crate on it, climbing up off it) is launched.
-            if (Mode.AbilityInProgressWith(AbilityTraits.HoldsOn, controller)) { return false; }
+            if (Mode.AbilityInProgressWith(AbilityTraits.Attached, controller)) { return false; }
             Mode.InterruptOthers(movementData, controller, this);
 
-            bool boosted = inputs.jump != null && inputs.jump.value;
+            bool boosted = inputs.jump != null && inputs.jump.held;
             float height = pad.LaunchHeight * bounceHeightMultiplier * (boosted ? bounceJumpBoost : 1f);
             Vector3 up = pad.LaunchDirection;
             float upShare = Mathf.Max(up.y, MinLaunchUpShare);
-            float riseSpeed = MovementHelpers.LaunchSpeedFor(height, Mode.GravityAcceleration(controller), movementData.deltaTime);
+            float riseSpeed = MovementRules.LaunchSpeedFor(height, Mode.GravityAcceleration(controller), movementData.deltaTime);
 
             Vector3 velocity = movementData.initialVelocity;
-            Vector3 kept = new Vector3(velocity.x, 0f, velocity.z) * pad.KeepMomentum;
+            Vector3 kept = new Vector3(velocity.x, 0f, velocity.z) * pad.MomentumKept;
             movementData.velocityOverride = kept + up * (riseSpeed / upShare);
             movementData.directMovementVector = Vector3.zero;
 
             // The launch is the jump from the ground: the character's air jumps are left, and gravity is at full strength
             // from here (as after a jump, not the softer coyote gravity after walking off an edge).
-            MovementHelpers.GiveBackJumps(controller);
-            MovementHelpers.TryUseJump(controller);
+            MovementRules.GiveBackJumps(controller);
+            MovementRules.TryUseJump(controller);
             if (boosted) { controller.jump.press.Use(); }
             bounce.cooldownRemaining = BounceCooldown;
             pad.NotifyLaunched();
@@ -86,9 +86,9 @@ namespace Character
         public float cooldownRemaining;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's bounce pad state (BouncePads).</summary>
         public BounceState bounce { get; } = new BounceState();

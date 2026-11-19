@@ -1,0 +1,97 @@
+using System;
+using UnityEngine;
+
+namespace MeridianMotion.Characters
+{
+    /// <summary>
+    /// Zz Hovering: made by New Ability (Tools > Meridian Motion > New Ability…). As made, it's a small working
+    /// ability to build on:
+    /// it takes the character over and holds it where it is, hovering, for Zz Hovering Duration, then lets go.
+    /// A press of Interact starts it (within Zz Hovering Input Buffer of being able to).
+    /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
+    /// </summary>
+    [Serializable]
+    public class ZzHovering : MovementComponent
+    {
+        [Tooltip("How long (s) Zz Hovering lasts once it starts, at the character's authored size. 0 turns it off")]
+        [Min(0f)] [SerializeField] private float zzHoveringDuration = 0.5f;
+        [Tooltip("If Interact is pressed this many seconds before Zz Hovering can start, it starts as soon as it can")]
+        [Min(0f)] [SerializeField] private float zzHoveringInputBuffer = 0.1f;
+
+        public override bool IsActive(MMotionMotor controller) => controller.zzHovering.IsActive;
+        /// <summary>Under way, it holds the character up (it isn't falling).</summary>
+        public override AbilityTraits Traits => AbilityTraits.Supported;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Hovering Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Hovering Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
+        /// <summary>The events of ZzHovering starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
+        {
+            new(CharacterState.ZzHovering, MovementEvents.ZzHoveringStarted, MovementEvents.ZzHoveringEnded),
+        };
+
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
+        {
+            controller.zzHovering.press.Track(inputs.interact);
+            controller.zzHovering.timeLeft = MovementRules.CountDown(controller.zzHovering.timeLeft, movementData.deltaTime);
+        }
+
+        /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
+        public override void Interrupt(MovementStep movementData, MMotionMotor controller) => controller.zzHovering.timeLeft = 0f;
+
+        /// <summary>Carries on while it lasts, or starts if it can, holding the character where it is.</summary>
+        public override bool TakeOver(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
+        {
+            ZzHoveringState state = controller.zzHovering;
+            if (!state.IsActive)
+            {
+                if (!CanStart(inputs, controller)) { return false; }
+                state.timeLeft = zzHoveringDuration * controller.DurationScale;
+                Mode.InterruptOthers(movementData, controller, this);
+            }
+            // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
+            movementData.velocityOverride = Vector3.zero;
+            movementData.state |= CharacterState.ZzHovering;
+            PublishProgress(controller);
+            return true;
+        }
+
+        private void PublishProgress(MMotionMotor controller)
+        {
+            float duration = zzHoveringDuration * controller.DurationScale;
+            controller.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - controller.zzHovering.timeLeft / duration : 1f);
+        }
+
+        /// <summary>Whether Zz Hovering can start this step: turned on by a duration, and what starts it.</summary>
+        private bool CanStart(StepInputs inputs, MMotionMotor controller)
+        {
+            if (zzHoveringDuration <= 0f) { return false; }
+            return controller.zzHovering.press.Consume(inputs.interact, zzHoveringInputBuffer);
+        }
+    }
+
+    /// <summary>What each character is doing with Zz Hovering (modes are shared assets, so it lives on the character).</summary>
+    public class ZzHoveringState
+    {
+        /// <summary>Seconds left of Zz Hovering (0 when it isn't under way).</summary>
+        public float timeLeft;
+        /// <summary>Interact's presses, so each press starts it at most once.</summary>
+        public readonly PressBuffer press = new();
+
+        /// <summary>Whether Zz Hovering is under way.</summary>
+        public bool IsActive => timeLeft > 0f;
+    }
+
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability.
+    public partial class MMotionMotor
+    {
+        /// <summary>The character's Zz Hovering state (ZzHovering).</summary>
+        public ZzHoveringState zzHovering { get; } = new ZzHoveringState();
+    }
+}

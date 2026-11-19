@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace CharacterShowcase.Tests.Abilities
+namespace MeridianMotion.Tests.Abilities
 {
     /// <summary>
     /// Tests of Zz Boosting (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
@@ -22,7 +22,7 @@ namespace CharacterShowcase.Tests.Abilities
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
         }
 
-        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
 
         protected override string OffSetting => "zzBoostingDuration";
 

@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Sets up the Quaternius Universal Animation Libraries in Assets/Animation/Quaternius (CC0, from quaternius.com)
@@ -13,7 +13,7 @@ namespace CharacterShowcase.EditorTools
     /// controller does the moving.
     ///
     /// As Quaternius's own Unity setup has it, the axis conversion is baked in and the file is a Humanoid; its avatar's
-    /// reference pose is straightened into a T-pose as every model's is (CharacterModelImporter.EnforceTPose), so the
+    /// reference pose is straightened into a T-pose as every model's is (HumanoidModelImporter.EnforceTPose), so the
     /// clips are stored relative to it and play the same on every model. Each take becomes a clip named for it (the
     /// "Armature|Armature|" prefix dropped), looping if its name ends in "_Loop" (as Quaternius names them), with its
     /// root's rotation and position kept in the pose as authored, as the mannequin's own clips' are, so nothing moves
@@ -27,7 +27,7 @@ namespace CharacterShowcase.EditorTools
         private const string TPoseTake = "A_TPose";
 
         /// <summary>Sets up every library that isn't already, and logs when they all are.</summary>
-        [MenuItem("Tools/Character Showcase/Prepare Quaternius Animations", priority = 4)]
+        [MenuItem("Tools/Meridian Motion/Prepare/Quaternius Library", priority = 4)]
         public static void PrepareAllFromMenu()
         {
             List<string> problems = PrepareAll();
@@ -79,7 +79,7 @@ namespace CharacterShowcase.EditorTools
 
             // Unity maps the skeleton (its bones have the usual names) and makes the avatar on import; then its
             // reference pose is straightened into a T-pose, as every model's is.
-            CharacterModelImporter.EnforceTPose(importer, path);
+            HumanoidModelImporter.EnforceTPose(importer, path);
 
             ModelImporterClipAnimation[] takes = importer.defaultClipAnimations;
             if (takes == null || takes.Length == 0) { return "It has no animation."; }

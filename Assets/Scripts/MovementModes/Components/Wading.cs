@@ -1,11 +1,11 @@
 using System;
-using Level;
+using MeridianMotion.Levels;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Wading (see Level.Water): walking through water too shallow to swim in, the character walks and runs slower the
+    /// Wading (see MeridianMotion.Levels.SwimmableWater): walking through water too shallow to swim in, the character walks and runs slower the
     /// deeper the water is over its feet: at its full speed where the water reaches Wade Start Depth, slowing to Wade
     /// Speed Multiplier of it where it's as deep as Swimming's Swim Depth (where it would swim). It only changes how the
     /// character walks (see MovementComponent.BeforeLocomotion), through the mode's MoveSpeed, as crouching does.
@@ -14,10 +14,10 @@ namespace Character
     public class Wading : MovementComponent
     {
         /// <summary>Wading looks like walking, slowed: no animation state of its own is needed.</summary>
-        public override CharacterState ShownByLocomotion => CharacterState.Wading;
+        public override CharacterState LocomotionState => CharacterState.Wading;
         /// <summary>The events of Wading starting and ending (see MovementComponent.StateEvents).</summary>
-        public override StateEvent[] StateEvents => stateEvents;
-        private static readonly StateEvent[] stateEvents =
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
         {
             new(CharacterState.Wading, MovementEvents.WadeStarted, MovementEvents.WadeEnded),
         };
@@ -35,7 +35,7 @@ namespace Character
         public float WadeSpeedMultiplier => wadeSpeedMultiplier;
 
         /// <summary>Every step, the character walks at full speed until wading says otherwise (only on the ground, below).</summary>
-        public override void AdvanceTimers(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void AdvanceTimers(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             controller.wade.speedMultiplier = 1f;
         }
@@ -44,12 +44,12 @@ namespace Character
         /// On the ground in water at least Wade Start Depth deep over the feet (and too shallow to swim in: deeper,
         /// Swimming has the character), slows its walking by how deep it is, and marks the step as wading.
         /// </summary>
-        public override void BeforeLocomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeLocomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             if (!movementData.initialGrounded) { return; }
             Vector3 feet = movementData.initialPosition;
             // A skin's width above the feet, which rest a hair into the floor of the water (see Swimming).
-            Water water = Water.At(feet + Vector3.up * controller.Skin);
+            SwimmableWater water = SwimmableWater.At(feet + Vector3.up * controller.Skin);
             if (water == null) { return; }
             float height = controller.Body.StandingHeight;
             float under = water.SurfaceHeight - feet.y;
@@ -72,9 +72,9 @@ namespace Character
         public float speedMultiplier = 1f;
     }
 
-    // This state's place on the character (see MovementController): declared here, beside its ability, so a new
-    // ability adds its state in its own file rather than in MovementController.cs.
-    public partial class MovementController
+    // This state's place on the character (see MMotionMotor): declared here, beside its ability, so a new
+    // ability adds its state in its own file rather than in MMotionMotor.cs.
+    public partial class MMotionMotor
     {
         /// <summary>The character's wading state (Wading).</summary>
         public WadeState wade { get; } = new WadeState();

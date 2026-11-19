@@ -3,7 +3,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>
     /// An ID for an object in a scene that's the same on every machine that has loaded the same level: a hash (64-bit

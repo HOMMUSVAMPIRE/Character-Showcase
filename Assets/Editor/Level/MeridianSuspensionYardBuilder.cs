@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Suspension Yard (05), the aerial district south-east of the
@@ -25,7 +25,7 @@ namespace CharacterShowcase.EditorTools.Level
         private const float BridgeWidth = 6f;
         private const float ColumnWidth = 6f;
 
-        // The rope swings (see RopeChain), worked out for the movement's tuning (BasicMovementMode.asset): change them
+        // The rope swings (see RopeChain), worked out for the movement's tuning (StandardMovementMode.asset): change them
         // with it, and check the arithmetic in the notes again.
         private const float RopeRise = 12f;       // The anchors, above the decks the swing goes between.
         private const float RopeDrop = 2f;        // How far below those decks the ropes hang.
@@ -196,7 +196,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// stands near the decks. Nothing swung on a rope rises above its anchor, and a jump off one (simulated) takes the
         /// feet no more than about 8.5 m above the deck, the head well under the beam, so the beam is never in the way.
         ///
-        /// Why these numbers (with the tuning in BasicMovementMode.asset: sprint 10 m/s, a jump of 2 m under gravity 40,
+        /// Why these numbers (with the tuning in StandardMovementMode.asset: sprint 10 m/s, a jump of 2 m under gravity 40,
         /// hands 2.1 m above the feet): a sprint jump off the edge has the hands 3.8 to 4.1 m above the deck between 2
         /// and 4 m out, so the first rope, RopeReach out and hanging RopeDrop below the deck, is caught there about 8 m
         /// below its anchor. Catching hold keeps only the speed across the rope (falling speed is lost), so every rope is
@@ -230,14 +230,14 @@ namespace CharacterShowcase.EditorTools.Level
             float anchor = height + RopeRise, beam = anchor + Settings.mechanics.ropeBracket, beamTop = beam + 0.4f;
             float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg, sideYaw = Mathf.Atan2(side.x, side.y) * Mathf.Rad2Deg;
             Vector2 first = start + d * RopeReach;
-            BoxXZ(chain, "Rope Gantry Beam", first + d * (span / 2f), new Vector2(0.6f, span + 1f), beam, beamTop, yaw, Surface.Steel);
+            BoxXZ(chain, "Rope Gantry Beam", first + d * (span / 2f), new Vector2(0.6f, span + 1f), beam, beamTop, yaw, GrayboxMaterial.Steel);
             for (int i = 0; i < count; i++)
             {
                 Vector2 at = first + d * (i * spacing);
                 Rope(chain, new Vector3(at.x, anchor, at.y), RopeRise + RopeDrop);
                 if (i == 0 || i == count - 1) { continue; }
-                BoxXZ(chain, "Rope Gantry Mast", at + side * RopeMastOffset, new Vector2(0.8f, 0.8f), 0f, beamTop, yaw, Surface.Graphite);
-                BoxXZ(chain, "Rope Gantry Arm", at + side * (RopeMastOffset / 2f), new Vector2(0.6f, RopeMastOffset), beam, beamTop, sideYaw, Surface.Steel);
+                BoxXZ(chain, "Rope Gantry Mast", at + side * RopeMastOffset, new Vector2(0.8f, 0.8f), 0f, beamTop, yaw, GrayboxMaterial.Graphite);
+                BoxXZ(chain, "Rope Gantry Arm", at + side * (RopeMastOffset / 2f), new Vector2(0.6f, RopeMastOffset), beam, beamTop, sideYaw, GrayboxMaterial.Steel);
             }
         }
 

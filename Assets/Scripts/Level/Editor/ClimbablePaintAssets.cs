@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
-using Level;
+using MeridianMotion.Levels;
 using UnityEditor;
 using UnityEngine;
 
-namespace Level.EditorTools
+namespace MeridianMotion.Levels.EditorTools
 {
     /// <summary>
     /// The assets painting climbable surfaces makes (see PaintedClimbableSurface): the mask textures, saved as assets so
@@ -25,7 +25,7 @@ namespace Level.EditorTools
         /// mask the shared one meaning nothing's painted (see NoMaskPath). Painted objects give theirs masks of their own,
         /// per renderer, without changing the material.
         /// </summary>
-        [MenuItem("Tools/Character Showcase/Set Up Climbable Materials")]
+        [MenuItem("Tools/Meridian Motion/Set Up Climbable Materials")]
         public static void SetUpMaterials()
         {
             var none = AssetDatabase.LoadAssetAtPath<Texture>(NoMaskPath);

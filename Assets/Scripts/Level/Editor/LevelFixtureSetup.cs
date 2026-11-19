@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Level;
-using UnityEditor;
+using MeridianMotion.Levels;
 using UnityEditor.Events;
-using UnityEngine;
+using UnityEditor;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
+using UnityEngine;
 
-namespace Level.EditorTools
+namespace MeridianMotion.Levels.EditorTools
 {
     /// <summary>
     /// Turns a level's fixtures into the level elements they stand for (this assembly's mechanics: moving platforms,
@@ -18,8 +18,8 @@ namespace Level.EditorTools
     /// and Set Up Scene runs it again (it leaves what's set up as it is), for a scene built some other way:
     /// <list type="bullet">
     /// <item>"Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a
-    /// kinematic Rigidbody and a MovingPlatform.</item>
-    /// <item>"Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableObject.</item>
+    /// kinematic Rigidbody and a TickedPlatform.</item>
+    /// <item>"Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableBlock.</item>
     /// <item>"Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, timed
     /// by a CourseTimer for its course, found or made in the scene's "Course Timers" group (CoursesName). Who's racing is
     /// the game's to say (Set Up Scene connects the spawner).</item>
@@ -30,7 +30,7 @@ namespace Level.EditorTools
     /// material. Only names starting "Rope |": "Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes.</item>
     /// <item>"Zipline | length=m | speed=m/s" (at the cable's start, its +Z along the cable) gets a Zipline that keeps
     /// the level's cable.</item>
-    /// <item>"Bounce Pad | height=m | keep=f" gets a BouncePad, squashing its "Spring" child when it launches someone.</item>
+    /// <item>"Bounce Pad | height=m | keep=f" gets a LaunchPad, squashing its "Spring" child when it launches someone.</item>
     /// <item>"Climbable Panel | speed=f" gets a ClimbableSurface (all of it climbable) with that speed multiplier.</item>
     /// <item>"Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that
     /// keeps the level's surface. Only names starting "Water |".</item>
@@ -105,29 +105,29 @@ namespace Level.EditorTools
         }
 
         /// <summary>Sets a moving platform up from its name's settings (adding what it needs).</summary>
-        public static MovingPlatform SetUpMovingPlatform(GameObject obj, bool withUndo)
+        public static TickedPlatform SetUpMovingPlatform(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
             GameObjectUtility.SetStaticEditorFlags(obj, 0);
             Need<Rigidbody>(obj, withUndo);
-            MovingPlatform platform = Need<MovingPlatform>(obj, withUndo);
+            TickedPlatform platform = Need<TickedPlatform>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(platform, "Set Up Scene"); }
             platform.travel = Vector(p, "travel", Vector3.zero);
-            platform.period = Mathf.Max(0.1f, Float(p, "period", 6f));
+            platform.roundTripTime = Mathf.Max(0.1f, Float(p, "period", 6f));
             platform.pauseAtEnds = Mathf.Max(0f, Float(p, "pause", 0.75f));
             platform.spinDegreesPerSecond = Vector(p, "spin", Vector3.zero);
             platform.phaseOffset = Mathf.Clamp01(Float(p, "phase", 0f));
-            platform.smooth = Bool(p, "smooth", true);
+            platform.easeAtEnds = Bool(p, "smooth", true);
             return platform;
         }
 
         /// <summary>Sets a pushable crate up from its name's settings (adding what it needs).</summary>
-        public static PushableObject SetUpPushable(GameObject obj, bool withUndo)
+        public static PushableBlock SetUpPushable(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
             GameObjectUtility.SetStaticEditorFlags(obj, 0);
             Need<Rigidbody>(obj, withUndo);
-            PushableObject pushable = Need<PushableObject>(obj, withUndo);
+            PushableBlock pushable = Need<PushableBlock>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(pushable, "Set Up Scene"); }
             pushable.CanBePulled = Bool(p, "pull", true);
             pushable.SpeedMultiplier = Float(p, "speed", 1f);
@@ -138,16 +138,16 @@ namespace Level.EditorTools
         public static bool IsLadder(string name) => name.StartsWith(LadderPrefix + " |", StringComparison.Ordinal);
 
         /// <summary>Sets a ladder up from its name's settings (adding what it needs), keeping the level's mesh.</summary>
-        public static Ladder SetUpLadder(GameObject obj, bool withUndo)
+        public static ClimbableLadder SetUpLadder(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
-            Ladder ladder = Need<Ladder>(obj, withUndo);
+            ClimbableLadder ladder = Need<ClimbableLadder>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(ladder, "Set Up Scene"); }
             ladder.BuildsMesh = false;
             ladder.Height = Float(p, "height", 4f);
             ladder.Width = Float(p, "width", 0.6f);
             ladder.RungSpacing = Float(p, "spacing", 0.3f);
-            ladder.Depth = Float(p, "rail", 0.06f);
+            ladder.RailDepth = Float(p, "rail", 0.06f);
             ladder.RungSize = Float(p, "rung", 0.035f);
             return ladder;
         }
@@ -156,11 +156,11 @@ namespace Level.EditorTools
         public static bool IsFixture(string name, string prefix) => name.StartsWith(prefix + " |", StringComparison.Ordinal);
 
         /// <summary>Sets a rope up from its name's settings (adding what it needs): it draws itself, in the level's material, as it swings.</summary>
-        public static Rope SetUpRope(GameObject obj, bool withUndo)
+        public static SwingRope SetUpRope(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
             GameObjectUtility.SetStaticEditorFlags(obj, 0);
-            Rope rope = Need<Rope>(obj, withUndo);
+            SwingRope rope = Need<SwingRope>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(rope, "Set Up Scene"); }
             rope.Length = Float(p, "length", 8f);
             rope.Thickness = Float(p, "thickness", 0.07f);
@@ -170,10 +170,10 @@ namespace Level.EditorTools
         }
 
         /// <summary>Sets a zipline up from its name's settings (adding what it needs), keeping the level's cable.</summary>
-        public static Zipline SetUpZipline(GameObject obj, bool withUndo)
+        public static ZiplineCable SetUpZipline(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
-            Zipline line = Need<Zipline>(obj, withUndo);
+            ZiplineCable line = Need<ZiplineCable>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(line, "Set Up Scene"); }
             line.BuildsMesh = false;
             line.LocalEnd = Vector3.forward * Mathf.Max(0.1f, Float(p, "length", 10f));
@@ -182,13 +182,13 @@ namespace Level.EditorTools
         }
 
         /// <summary>Sets a bounce pad up from its name's settings (adding what it needs), its "Spring" child squashing on launches.</summary>
-        public static BouncePad SetUpBouncePad(GameObject obj, bool withUndo)
+        public static LaunchPad SetUpBouncePad(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
-            BouncePad pad = Need<BouncePad>(obj, withUndo);
+            LaunchPad pad = Need<LaunchPad>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(pad, "Set Up Scene"); }
             pad.LaunchHeight = Float(p, "height", 6f);
-            pad.KeepMomentum = Float(p, "keep", 1f);
+            pad.MomentumKept = Float(p, "keep", 1f);
             Transform spring = obj.transform.Find(BouncePadSpringName);
             if (spring != null)
             {
@@ -202,10 +202,10 @@ namespace Level.EditorTools
         /// Makes a body of water swimmable, from its name's settings (adding what it needs), keeping the level's surface
         /// (its mesh and material).
         /// </summary>
-        public static Water SetUpWater(GameObject obj, bool withUndo)
+        public static SwimmableWater SetUpWater(GameObject obj, bool withUndo)
         {
             Dictionary<string, string> p = Parameters(obj.name);
-            Water water = Need<Water>(obj, withUndo);
+            SwimmableWater water = Need<SwimmableWater>(obj, withUndo);
             if (withUndo) { Undo.RecordObject(water, "Set Up Scene"); }
             water.BuildsMesh = false;
             water.Size = Vector(p, "size", new Vector3(10f, 3f, 10f));
@@ -299,10 +299,10 @@ namespace Level.EditorTools
                     var setter = c.GetType().GetProperty("text")?.GetSetMethod();
                     if (setter == null || setter.GetParameters()[0].ParameterType != typeof(string)) { continue; }
                     // Wired already (the level set up before): left as it is, not wired twice.
-                    if (!ShowsOn(timer.OnDisplay, c, setter.Name))
+                    if (!ShowsOn(timer.OnTextChanged, c, setter.Name))
                     {
                         var show = (UnityAction<string>)Delegate.CreateDelegate(typeof(UnityAction<string>), c, setter);
-                        UnityEventTools.AddPersistentListener(timer.OnDisplay, show);
+                        UnityEventTools.AddPersistentListener(timer.OnTextChanged, show);
                     }
                     displays++;
                     break;

@@ -1,0 +1,21 @@
+{
+    "name": "MeridianMotion.EditorTools",
+    "rootNamespace": "MeridianMotion.EditorTools",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.Cameras",
+        "MeridianMotion.Levels",
+        "MeridianMotion.Levels.EditorTools"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

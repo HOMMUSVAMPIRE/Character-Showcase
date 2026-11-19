@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of jump heights: a tap of Jump rises the min jump height, Jump held to the top of the jump rises the max jump
@@ -23,7 +23,7 @@ namespace CharacterShowcase.Tests.Movement
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
         }
 
-        protected override Inputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
+        protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
 
         protected override string OffSetting => "maxJumpHeight";
 
@@ -38,9 +38,9 @@ namespace CharacterShowcase.Tests.Movement
             float start = rig.Position.y, top = start;
             yield return rig.Run(1.5f, i =>
             {
-                Inputs inputs = CharacterTestRig.Idle();
+                StepInputs inputs = CharacterTestRig.Idle();
                 inputs.jump = CharacterTestRig.Held();
-                inputs.jump.value = i < heldSteps;
+                inputs.jump.held = i < heldSteps;
                 return inputs;
             }, _ => top = Mathf.Max(top, rig.Position.y));
             risen(top - start);
@@ -81,11 +81,11 @@ namespace CharacterShowcase.Tests.Movement
             bool released = false;
             yield return rig.Run(1.5f, i =>
             {
-                Inputs inputs = CharacterTestRig.Idle();
+                StepInputs inputs = CharacterTestRig.Idle();
                 inputs.jump = CharacterTestRig.Held();
                 // Held until the feet have risen past halfway from the min height to the max, then let go.
                 released |= rig.Position.y - start > 0.5f * (MinHeight + MaxHeight);
-                inputs.jump.value = !released;
+                inputs.jump.held = !released;
                 if (released && float.IsNaN(atRelease)) { atRelease = rig.Position.y; }
                 return inputs;
             }, _ => top = Mathf.Max(top, rig.Position.y));

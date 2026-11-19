@@ -1,10 +1,10 @@
 using System.Collections;
-using Level;
+using MeridianMotion.Levels;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Levels
+namespace MeridianMotion.Tests.Levels
 {
     /// <summary>
     /// Tests of timed courses with the character (CourseTimer and TimingGate): sprinting from a start gate to a finish
@@ -54,14 +54,14 @@ namespace CharacterShowcase.Tests.Levels
             Gate(0f, TimingGateRole.Start);
             Gate(length, TimingGateRole.Finish);
             string shown = null;
-            timer.OnDisplay.AddListener(text => shown = text);
+            timer.OnTextChanged.AddListener(text => shown = text);
             yield return rig.SpawnSettled(new Vector3(0f, 0.05f, -12f));
             timer.SetRacer(rig.Character.transform);
 
             // Up to speed well before the start gate, then on through the finish.
             yield return rig.Run(length / rig.RunSpeed + 2f, step => CharacterTestRig.Sprint(Vector3.forward));
 
-            Assert.AreEqual(1, timer.Completed, "Sprinting through the start and finish gates should finish one run.");
+            Assert.AreEqual(1, timer.LapCount, "Sprinting through the start and finish gates should finish one run.");
             Assert.IsFalse(timer.IsRunning);
             float expected = length / rig.RunSpeed;
             // Gates are seen on the physics step the character enters them: a step either way.

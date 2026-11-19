@@ -1,0 +1,22 @@
+{
+    "name": "MeridianMotion.Showcase.Levels",
+    "rootNamespace": "MeridianMotion.Showcase.Levels",
+    "references": [
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.TextMeshPro",
+        "MeridianMotion.Levels",
+        "MeridianMotion.Levels.EditorTools"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

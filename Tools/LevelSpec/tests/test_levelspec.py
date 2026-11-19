@@ -33,7 +33,7 @@ def spec_with(*pieces, name="Test", scene="Assets/Scenes/Test/Test.unity"):
 
 class ExportedLevels(unittest.TestCase):
     def test_there_are_exported_levels(self):
-        self.assertTrue(EXPORTED, "Export the level specs from Unity (Tools > Character Showcase > Level > Specs).")
+        self.assertTrue(EXPORTED, "Export the level specs from Unity (Tools > Meridian Motion > Showcase > Levels > Specs).")
 
     def test_each_is_valid(self):
         for name in EXPORTED:

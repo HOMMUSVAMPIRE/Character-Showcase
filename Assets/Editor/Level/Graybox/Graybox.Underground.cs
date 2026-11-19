@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // The ground and slabs with openings cut through them, underground cells (rooms and passages), and shaft walls.
     public static partial class Graybox
@@ -13,7 +13,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// </summary>
         [Piece]
         public static void SlabWithHoles(Transform parent, string name, UnityEngine.Rect area, IEnumerable<UnityEngine.Rect> holes,
-            float y0, float y1, Surface surface = Surface.Concrete)
+            float y0, float y1, GrayboxMaterial surface = GrayboxMaterial.Concrete)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(SlabWithHoles), parent, name, area, holes, y0, y1, surface);
             var cuts = new List<UnityEngine.Rect>();
@@ -67,7 +67,7 @@ namespace CharacterShowcase.EditorTools.Level
         public static void Ground(Transform parent, float half, IEnumerable<UnityEngine.Rect> openings)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ground), parent, half, openings);
-            SlabWithHoles(Group(parent, "Ground (placeholder)"), "Ground", UnityEngine.Rect.MinMaxRect(-half, -half, half, half), openings, -1f, 0f, Surface.Ground);
+            SlabWithHoles(Group(parent, "Ground (placeholder)"), "Ground", UnityEngine.Rect.MinMaxRect(-half, -half, half, half), openings, -1f, 0f, GrayboxMaterial.Ground);
         }
 
         private static bool SameSpans(List<(float x0, float x1)> a, List<(float x0, float x1)> b)
@@ -171,13 +171,13 @@ namespace CharacterShowcase.EditorTools.Level
                         if (name == "Wall" && e - s - 2f * inset > eps)
                         {
                             Trim(group, "Skirting", p + dir * ((s + e) / 2f) - n * (skirting.y / 2f), new Vector2(skirting.y, e - s - 2f * inset),
-                                cell.Floor, cell.Floor + skirting.x, yaw, Surface.Graphite);
+                                cell.Floor, cell.Floor + skirting.x, yaw, GrayboxMaterial.Graphite);
                         }
                         // Close the outside corners: extend past a corner of the cell unless that's inside the network.
                         if (extendStart && !Inside(p + dir * (s - thickness / 2f) + n * (thickness / 2f))) { s -= thickness; }
                         if (extendEnd && !Inside(p + dir * (e + thickness / 2f) + n * (thickness / 2f))) { e += thickness; }
                         if (e - s < eps || pieceTop - bottom < eps) { return; }
-                        BoxXZ(group, name, p + dir * ((s + e) / 2f) + offset, new Vector2(thickness, e - s), bottom, pieceTop, yaw, Surface.Panel);
+                        BoxXZ(group, name, p + dir * ((s + e) / 2f) + offset, new Vector2(thickness, e - s), bottom, pieceTop, yaw, GrayboxMaterial.Panel);
                     }
                     float at = 0f;
                     foreach ((float from, float to, float neighbourTop) in openings)
@@ -201,10 +201,10 @@ namespace CharacterShowcase.EditorTools.Level
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(ShaftWalls), parent, name, x0, z0, x1, z1, y0, y1, thickness);
             Transform shaft = Group(parent, name);
             float t = thickness;
-            Block(shaft, "Wall (North)", x0 - t, x1 + t, z1, z1 + t, y0, y1, Surface.Panel);
-            Block(shaft, "Wall (South)", x0 - t, x1 + t, z0 - t, z0, y0, y1, Surface.Panel);
-            Block(shaft, "Wall (East)", x1, x1 + t, z0, z1, y0, y1, Surface.Panel);
-            Block(shaft, "Wall (West)", x0 - t, x0, z0, z1, y0, y1, Surface.Panel);
+            Block(shaft, "Wall (North)", x0 - t, x1 + t, z1, z1 + t, y0, y1, GrayboxMaterial.Panel);
+            Block(shaft, "Wall (South)", x0 - t, x1 + t, z0 - t, z0, y0, y1, GrayboxMaterial.Panel);
+            Block(shaft, "Wall (East)", x1, x1 + t, z0, z1, y0, y1, GrayboxMaterial.Panel);
+            Block(shaft, "Wall (West)", x0 - t, x0, z0, z1, y0, y1, GrayboxMaterial.Panel);
         }
     }
 }

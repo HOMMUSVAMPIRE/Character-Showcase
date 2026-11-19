@@ -1,0 +1,495 @@
+using MeridianMotion.PhysicsQueries;
+using Unity.Profiling;
+using UnityEngine;
+using UnityEngine.Serialization;
+
+namespace MeridianMotion.Characters
+{
+    /// <summary>
+    /// Moves a character: each physics step it runs its movement mode on the inputs (Step), resolves
+    /// the result against the world (CheckMovementValid) and moves the Rigidbody. It holds the character's movement
+    /// settings and its abilities' state. Split by area: its body (MMotionMotor.Body.cs), hovering over steps
+    /// (.Hover.cs), the ground (.Ground.cs), collision (.Collision.cs), the queries abilities use (.Queries.cs) and what
+    /// it can do (.Capabilities.cs); each ability's state is declared beside its component (in Components/). Serialized
+    /// fields all stay in this file, so the inspector keeps their order.
+    /// </summary>
+    [AddComponentMenu("Meridian Motion/Characters/MMotion Motor")]
+    public partial class MMotionMotor : MonoBehaviour
+    {
+        [SerializeField]
+        [Tooltip("A reference to the parent character controller")]
+        private MMotionCharacter characterController;
+
+        [SerializeField]
+        [Tooltip("The rigidbody that drives this character's physics interactions and enables proper movement behaviour")]
+        private Rigidbody rb;
+
+        [Tooltip("The scriptable object that drives this character's movement")]
+        [FormerlySerializedAs("movementHandler")] public MovementMode movementMode;
+
+        /// <summary>
+        /// Raised after each physics step, once for each event that happened during it (one flag at a time), with that
+        /// step's movement data. Animation, effects and sound hook in here rather than watching the movement state.
+        /// </summary>
+        public event System.Action<MovementEvents, MovementStep> MovementEventRaised;
+
+        /// <summary>
+        /// The movement data of the last physics step to finish (null before the first): what animation and the next
+        /// step read the character's state, velocity and collisions from.
+        /// </summary>
+        [HideInInspector] public MovementStep lastStep = null;
+        /// <summary>The movement data of the physics step in progress (null between steps: FinishStep moves it to lastStep).</summary>
+        [HideInInspector] public MovementStep currentStep = null;
+        // The two movement data objects the character's steps take turns with (see StartStep): a step's is kept as the
+        // last step's (lastStep) until the next has run, so the next takes the other. Each step's data lives
+        // only that long: anything that needs it later copies what it needs.
+        private readonly MovementStep[] stepData = { new MovementStep(), new MovementStep() };
+
+        /// <summary>
+        /// A change in velocity, in m/s, to be applied to the character in the next physics step (like if the character
+        /// gets thrown by an explosion); added to with AddVelocityChange, and cleared once applied.
+        /// </summary>
+        [HideInInspector] public Vector3 pendingVelocityChange;
+        /// <summary>
+        /// A complete override on the character's velocity, in m/s, to be applied in the next physics step (set with
+        /// OverrideVelocity), or null for none. Cleared once applied.
+        /// </summary>
+        public Vector3? velocityOverride = null;
+
+        [Tooltip("A multiplier on the character's movement speed")]
+        [FormerlySerializedAs("movementSpeedMultiplier")] public float speedMultiplier;
+        [Tooltip("A multiplier on the character's jump launch speed (jump heights scale with its square)")]
+        [FormerlySerializedAs("jumpStrengthModifier")] public float jumpSpeedMultiplier;
+
+        [Tooltip("The radius (m, at the authored size) of the sphere cast used to determine whether the character is standing " +
+                 "on the ground. 0: 90% of the body's footprint, following it as it's refitted (to a model, say). A fixed " +
+                 "radius wider than the body starts inside a slope it stands on, which doesn't count as ground")]
+        public float groundCheckRadius;
+
+        [Tooltip("A mask which defines the physics layers which affect where the character can move and how")]
+        public LayerMask movementLayerMask = 0;
+
+        [Header("Collision")]
+        [SerializeField]
+        [Tooltip("The character's collider, for the physics that meets it: a capsule, box or sphere, kept in the body's shape (see Body), and the body's shape as authored if there's no Body Definition. Its first solid one of those if left empty. Optional: the movement doesn't need it")]
+        [UnityEngine.Serialization.FormerlySerializedAs("capsule")]
+        private Collider bodyCollider;
+        [SerializeField]
+        [Tooltip("The character's body as authored (see BodyDefinition): the shape the movement moves and sweeps (the character " +
+                 "has no collider of its own for that). An optional Body Collider is shaped from it as the character wakes " +
+                 "(made a collider of its kind if it isn't one). Empty: the body is shaped as the Body Collider is authored")]
+        private BodyDefinition bodyDefinition;
+        [SerializeField]
+        [Tooltip("Maximum height of a step or ledge the character can automatically step up (stairs).")]
+        private float maxStepHeight = 0.35f;
+        [SerializeField]
+        [Tooltip("Hold the body's bottom above the feet by the Max Step Height, standing or crouched (not lying), and keep " +
+                 "the feet on the ground with probes under them: steps, edges and bumps under that height pass under the " +
+                 "body (the feet step up and down onto them), so it never rests on an edge or a corner; anything taller " +
+                 "meets the body. Off: the body stands on the feet, stepping up onto what it meets")]
+        private bool hoverOverSteps = true;
+        [SerializeField]
+        [Tooltip("Maximum slope angle (degrees) the character treats as walkable ground.")]
+        private float maxSlopeAngle = 55f;
+        [SerializeField]
+        [Tooltip("Small buffer kept between the character and surfaces to avoid jitter.")]
+        private float skinWidth = 0.02f;
+        [SerializeField]
+        [Tooltip("Distance below the feet the character will probe to stick to descending slopes. Keep small — anything larger than the gap between stair treads feels like teleporting instead of falling when walking off a ledge.")]
+        private float groundSnapDistance = 0.1f;
+
+        [Header("Size")]
+        [SerializeField]
+        [Tooltip("How the character's movement changes with its size (see MMotionCharacter.SetScale). Proportional: " +
+                 "speeds, accelerations and gravity scale with height and timings stay the same, so a character of any " +
+                 "size moves exactly like a scaled copy of itself: a jump lasts as long and goes as high for its size, " +
+                 "and it crosses its own height in the same time. Natural: speeds scale with the square root of height " +
+                 "and timings with it, while gravity stays the same, as for real animals: smaller characters look " +
+                 "quicker for their size, and jumps take longer the bigger they are. Unchanged: speeds stay as tuned.")]
+        private MovementSizeScaling sizeScaling = MovementSizeScaling.Proportional;
+
+        /// <summary>The character's size, as set by MMotionCharacter.SetScale (1, 1, 1 is as authored).</summary>
+        public Vector3 Scale { get; private set; } = Vector3.one;
+        /// <summary>The character's height relative to as authored: distances like step height scale with it.</summary>
+        public float HeightScale => Scale.y;
+        /// <summary>How the character's movement changes with its size.</summary>
+        public MovementSizeScaling SizeScaling { get => sizeScaling; set => sizeScaling = value; }
+        /// <summary>What speeds (and jump launch speed) are multiplied by at the character's size. See sizeScaling.</summary>
+        public float SpeedScale => sizeScaling switch
+        {
+            MovementSizeScaling.Proportional => HeightScale,
+            MovementSizeScaling.Natural => Mathf.Sqrt(HeightScale),
+            _ => 1f,
+        };
+        /// <summary>What durations of size-dependent motion (such as a dash) are multiplied by at the character's size.</summary>
+        public float DurationScale => sizeScaling == MovementSizeScaling.Natural ? Mathf.Sqrt(HeightScale) : 1f;
+        /// <summary>
+        /// What accelerations (gravity, air steering) are multiplied by at the character's size: speed per duration, so
+        /// speeds build up and fall away over the same share of a jump or a stride at any size.
+        /// </summary>
+        public float AccelerationScale => SpeedScale / DurationScale;
+
+        /// <summary>
+        /// The character's smallest dimension relative to as authored: the lesser of its height and its body's footprint's
+        /// radius. Small clearances (the skin width) scale with it, so they stay as thin, for the character's size, on
+        /// every side.
+        /// </summary>
+        private float ClearanceScale => Body.HasAuthoredSize && Body.AuthoredRadius > 0f
+            ? Mathf.Min(HeightScale, Body.FootprintRadius / Body.AuthoredRadius) : HeightScale;
+
+        /// <summary>The gap kept between the character and surfaces, at its size.</summary>
+        internal float SkinWidth => skinWidth * ClearanceScale;
+        /// <summary>The gap kept between the character and surfaces at its authored size (a body scales it for itself).</summary>
+        internal float AuthoredSkinWidth => skinWidth;
+
+        // How far below the feet the floor can be while still counting as grounded. The ground snap always closes
+        // this gap, so the character never hovers inside it.
+        private const float BaseGroundedTolerance = 0.1f;
+        // Scaled with height: at a tenth of the size, a fixed 0.1 m would be the character's whole height.
+        private float GroundedTolerance => BaseGroundedTolerance * HeightScale;
+
+        // How far from straight below the character's feet a step's edge may be when it lands on the step (see TryStepUp).
+        private const float StepLandingAngle = 40f;
+
+        /// <summary>The radius of the body used for collision sweeps (the body's, less the skin width).</summary>
+        private float SweepRadius => Mathf.Max(0.01f * ClearanceScale, Body.FootprintRadius - SkinWidth);
+
+        /// <summary>
+        /// The share of the body's footprint the ground check's sphere is, without a Ground Check Radius of its own: a
+        /// little inside it, so a wall beside the character isn't ground.
+        /// </summary>
+        public const float GroundCheckFootprintShare = 0.9f;
+
+        /// <summary>The radius of the sphere CheckGrounded casts under the feet.</summary>
+        private float GroundCheckRadius => groundCheckRadius > 0f ? groundCheckRadius * Mathf.Max(Scale.x, Scale.z)
+            : Body.FootprintRadius * GroundCheckFootprintShare;
+
+        /// <summary>The tallest step the character climbs at its size.</summary>
+        private float StepHeight => maxStepHeight * HeightScale;
+
+        private readonly ColliderBuffer overlaps = new(16, "MMotionMotor.overlaps");
+        // Reused for every ground check and collision sweep (several per physics step), so they don't allocate
+        private readonly RaycastHitBuffer castHits = new(32, "MMotionMotor.castHits");
+        /// <summary>The buffer the body's overlap queries fill (reused, so they don't allocate).</summary>
+        internal ColliderBuffer OverlapBuffer => overlaps;
+        /// <summary>The buffer the body's sweeps fill (reused: the ground check and sweeps share it, one at a time).</summary>
+        internal RaycastHitBuffer CastBuffer => castHits;
+
+        private void Awake()
+        {
+            ShapeFromDefinition();
+        }
+
+        [Tooltip("The transform on which the character is currently standing")]
+        public Transform groundTransform;
+
+        [Header("Moving Ground")]
+        [SerializeField]
+        [Tooltip("Carry the character along with whatever they are standing on (moving platforms, elevators).")]
+        private bool moveWithGround = true;
+        [SerializeField]
+        [Tooltip("Also turn the character with ground that rotates about the vertical axis (spinning platforms).")]
+        private bool rotateWithGround = true;
+        [SerializeField]
+        [Tooltip("When leaving moving ground (jumping or walking off), keep its velocity so the character doesn't stop dead in mid-air.")]
+        private bool inheritGroundVelocity = true;
+        [SerializeField]
+        [Tooltip("Ground that moves further than this in one physics step is treated as teleporting, and doesn't carry the character.")]
+        private float maxGroundCarryPerStep = 2f;
+
+        // The ground the character stood on at the end of the last step, and the character's pose relative to it.
+        private Transform carrierGround;
+        private Vector3 carrierLocalPosition;
+        private Quaternion carrierRotation = Quaternion.identity;
+        // Ground yaw applied since the visuals last consumed it (see ConsumeGroundRotation).
+        private Quaternion pendingGroundRotation = Quaternion.identity;
+
+        /// <summary>Velocity of the ground carrying the character during the last step (zero on static ground or in the air).</summary>
+        public Vector3 GroundVelocity { get; private set; }
+
+        // The state of the character's abilities, which persists between physics steps: movement modes are shared
+        // assets, so it lives on the character, one per character. Each ability's state is declared beside its component
+        // (a part of this class in the component's file: Components/Ledges.cs has `ledge`, say), so adding an ability
+        // doesn't touch this file.
+
+        /// <summary>
+        /// The character's own clock, in whole steps: the step under way, counted from 1 (0 before its first; SetClock
+        /// starts it elsewhere). Movement times things by it, never by Time.fixedTime: it keeps the tick something
+        /// happened at and asks SecondsSince, so timing is exact however long the character has run (a float of seconds
+        /// added to step by step drifts, and loses its fractions as it grows), and a copy of the character stepped faster
+        /// than real time (see MovementSimulation), or replayed from any tick, times things the same.
+        /// </summary>
+        public long StepIndex { get; private set; }
+
+        /// <summary>The length (s) of the character's steps: the last one's, as it was given (see Step).</summary>
+        public float StepLength { get; private set; }
+
+        /// <summary>The clock in seconds (StepIndex steps of StepLength), for showing it. To time something, keep its tick (SecondsSince).</summary>
+        public float StepTime => (float)(StepIndex * (double)StepLength);
+
+        /// <summary>
+        /// How long (s) since the step tick given: the whole steps between, times the step length (as an input's hold
+        /// duration is: see InputState), exact however long the character has run.
+        /// </summary>
+        public float SecondsSince(long tick) => (StepIndex - tick) * StepLength;
+
+        /// <summary>A tick that never was (before any): SecondsSince it is longer than anything is timed for.</summary>
+        public const long NeverTick = long.MinValue / 4;
+
+        /// <summary>
+        /// Starts the character's clock at tick (its Tick, and the step its next step is), before its first step: for a
+        /// character that joins a clock already running (a networked game's), or a test of a long session.
+        /// </summary>
+        public void SetClock(uint tick)
+        {
+            InputTick = tick;
+            StepIndex = tick;
+        }
+
+        // Runtime state, so not serialized: a saved value (the prefab used to store 0) would override "never grounded".
+        /// <summary>The step (StepIndex) the character was last on the ground in (NeverTick until it first touches it).</summary>
+        [System.NonSerialized] public long lastGroundedTick = NeverTick;
+
+        /// <summary>Whether the character has started a jump since they were last on the ground.</summary>
+        public bool HasJumpedSinceGrounded => jump.lastJumpTick >= lastGroundedTick;
+
+        // Caps time since grounded so "never grounded" stays a finite number when evaluating curves with it.
+        private const float MaxTimeSinceGrounded = 1000f;
+
+        // Profiler markers for the parts of a step (the Profiler's CPU Usage; each movement component has its own too,
+        // "Movement.<Component>": see MovementComponent.Marker). See docs/testing.md, Performance.
+        private static readonly ProfilerMarker StepMarker = new("Movement.Step");
+        private static readonly ProfilerMarker ModeMarker = new("Movement.Mode");
+        private static readonly ProfilerMarker CollisionMarker = new("Movement.Collision");
+
+        /// <summary>
+        /// One physics step of the character's movement, given the step's input frame, called by the MMotionCharacter
+        /// in FixedUpdate (so every character steps in the same order): the step's starting state (StartStep), the input
+        /// worked out from the frame (InputState), what the movement mode makes of it (RunMovementMode), then resolving
+        /// that against the world and moving the Rigidbody (ResolveAndApply).
+        /// </summary>
+        public void Step(in CharacterInputFrame frame, float stepLength)
+        {
+            using (StepMarker.Auto())
+            {
+                StepLength = stepLength;
+                MovementStep data = StartStep();
+                InputState.Advance(frame, data.deltaTime);
+                // The move input is relative to the frame's look (the player's camera, an AI's aim): the movement never
+                // reads a camera, so it steps the same on a machine without one.
+                data.look = frame.Look;
+                RunMovementMode(data, InputState.Current);
+                ResolveAndApply(data);
+                InputTick++;
+            }
+        }
+
+        /// <summary>
+        /// The character's input as its movement reads it, worked out each step from the frames it's given (presses and
+        /// hold durations counted in steps). Part of its state.
+        /// </summary>
+        public InputState InputState { get; } = new();
+
+        /// <summary>
+        /// The step the character takes next: how many it has taken. The frame for it is tagged with it
+        /// (CharacterInputFrame.tick), as an input source or a recording sees it.
+        /// </summary>
+        public uint InputTick { get; private set; }
+
+        /// <summary>
+        /// Advances the character's clock and starts the step's movement data from where the last step left the
+        /// character: its pose, momentum and state, carried by the ground it stood on, whether it's on the ground now, and
+        /// any forces added between steps.
+        /// </summary>
+        private MovementStep StartStep()
+        {
+            StepIndex++;
+            // Whether the last frame's movement data is valid to be used (will be false on the first frame)
+            bool hasLastFrameMovement = lastStep != null;
+
+            // The step's movement data: one of the two this character reuses (not the last step's, which this one starts
+            // from), reset, so a step allocates none. Populated with some initial data.
+            MovementStep data = lastStep == stepData[0] ? stepData[1] : stepData[0];
+            data.Reset();
+            data.deltaTime = StepLength;
+            data.initialPosition = (float.IsNaN(rb.position.x) || float.IsNaN(rb.position.y) || float.IsNaN(rb.position.z)) ? transform.position : rb.position;
+            // Read the physics pose, not the transform: with Rigidbody interpolation the transform holds a smoothed render
+            // pose that lags behind the simulation.
+            data.initialRotation = rb.rotation;
+
+            data.previousState = hasLastFrameMovement ? lastStep.state : CharacterState.None;
+            data.state = CharacterState.None;
+
+            data.initialInertia = hasLastFrameMovement ? lastStep.finalInertia : Vector3.zero;
+            data.initialVelocity = hasLastFrameMovement ? lastStep.finalVelocity : Vector3.zero;
+            data.previousCollisions = hasLastFrameMovement ? lastStep.collisions : CollisionFlags.None;
+
+            // Move with whatever the character was standing on, then check whether the character is starting on the
+            // ground this frame via spherecast downwards
+            data.initialGrounded = ApplyGroundCarry(data);
+            data.initialGroundTransform = groundTransform;
+            data.resolution.groundedBy = data.initialGrounded ? lastGroundedBy : GroundedBy.None;
+
+            // On leaving the ground (walking off an edge or jumping), keep moving at the speed the character was going.
+            // On the ground, walking is applied directly each frame rather than stored as inertia, so without this the
+            // character would stop dead in the air until air steering kicks in.
+            if (!data.initialGrounded && hasLastFrameMovement && lastStep.initialGrounded)
+            {
+                Vector3 walking = lastStep.finalVelocity - lastStep.finalInertia;
+                data.initialInertia += new Vector3(walking.x, 0f, walking.z);
+            }
+
+            // If we are on the ground, update related data on the movement data object
+            if (data.initialGrounded)
+            {
+                lastGroundedTick = StepIndex;
+                data.state = data.state | CharacterState.Grounded;
+            }
+            // Always pass these on, including while airborne: coyote time and the coyote gravity and air steering
+            // curves all measure time since leaving the ground. (Previously they were only set while grounded, so in
+            // the air they measured time since the game started and those features never took effect.)
+            data.timeSinceGrounded = Mathf.Min(SecondsSince(lastGroundedTick), MaxTimeSinceGrounded);
+
+            // Setup initial movement data before calculation to avoid weird behaviour
+            data.directMovementVector = Vector3.zero;
+            data.targetRotation = data.initialRotation; // Includes any turn from rotating ground.
+            // Level unless a component holds the body pitched (see MovementStep.targetPitch).
+            data.initialPitch = bodyPitch;
+            data.targetPitch = 0f;
+
+            data.velocityChange = pendingVelocityChange;
+            pendingVelocityChange = Vector3.zero;
+
+            data.velocityOverride = velocityOverride;
+            velocityOverride = null;
+            return data;
+        }
+
+        /// <summary>Has the movement mode fill in how the character means to move this step, from the inputs.</summary>
+        private void RunMovementMode(MovementStep data, StepInputs inputs)
+        {
+            if (movementMode == null) { return; }
+            using (ModeMarker.Auto())
+            {
+                movementMode.Run(data, inputs, this);
+            }
+        }
+
+        /// <summary>
+        /// Resolves the step's movement against the world (fixing whatever can't move as called for), lets the movement
+        /// mode move what goes with the character, moves the Rigidbody, and raises the step's events.
+        /// </summary>
+        private void ResolveAndApply(MovementStep data)
+        {
+            bool hasLastFrameMovement = lastStep != null;
+            using (CollisionMarker.Auto())
+            {
+                CheckMovementValid(data);
+            }
+            if (movementMode != null) { movementMode.AfterMovementResolved(data, this); }
+
+            // Save this frame's complete movement data
+            currentStep = data;
+
+            // Use the character's rigidbody to execute the movement for this frame
+            CompleteMovement(data);
+
+            RememberGround(data);
+
+            if (hasLastFrameMovement) { DetectEvents(data); }
+            RaiseEvents(data);
+        }
+
+        /// <summary>
+        /// Adds the events every movement mode shares, found by comparing this step to the last: landing, leaving the
+        /// ground, and newly touching a ceiling or wall. (Movement modes report jumps and dashes themselves.)
+        /// </summary>
+        private void DetectEvents(MovementStep data)
+        {
+            bool wasGrounded = (data.previousState & CharacterState.Grounded) != 0;
+            bool isGrounded = (data.state & CharacterState.Grounded) != 0;
+            if (!wasGrounded && isGrounded) { data.events |= MovementEvents.Landed; }
+            if (wasGrounded && !isGrounded) { data.events |= MovementEvents.LeftGround; }
+
+            CollisionFlags newContacts = data.collisions & ~data.previousCollisions;
+            if ((newContacts & CollisionFlags.Above) != 0) { data.events |= MovementEvents.HitCeiling; }
+            if ((newContacts & CollisionFlags.Sides) != 0) { data.events |= MovementEvents.HitWall; }
+
+            // The abilities' starts and ends, which the movement mode knows (each ability's component declares them).
+            if (movementMode != null) { movementMode.DetectStateEvents(data); }
+        }
+
+        private void RaiseEvents(MovementStep data)
+        {
+            if (data.events == MovementEvents.None || MovementEventRaised == null) { return; }
+            // Every bit of the enum, by count rather than while the bit is no more than the events: once the top bit is
+            // in use, shifting on past it goes negative and then to 0, and a loop on bit <= events never ends.
+            for (int shift = 0; shift < 63; shift++)
+            {
+                var single = (MovementEvents)(1L << shift);
+                if ((data.events & single) != 0) { MovementEventRaised(single, data); }
+            }
+        }
+
+        /// <summary>
+        /// Uses the rigidbody to move the character in accordance with the finished movement data for the frame
+        /// </summary>
+        /// <param name="movementData"></param>
+        public void CompleteMovement(MovementStep movementData = null)
+        {
+            if (movementData == null) {movementData = currentStep;}
+            if (rb != null)
+            {
+                Vector3 pos = movementData.initialPosition + movementData.finalMovementVector;
+                Quaternion rot = movementData.finalRotation;
+                // The body must be kinematic: Move only interpolates for kinematic bodies (on a dynamic body it is
+                // a teleport, which makes the character visibly step at the physics rate), and a dynamic body would
+                // also be pushed around by the physics solver on top of this controller's own collision handling.
+                rb.Move(pos, rot);
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+        }
+
+        /// <summary>
+        /// At the end of the frame, store information in the last frame data for use next frame
+        /// </summary>
+        public void FinishStep()
+        {
+            lastStep = currentStep;
+            currentStep = null;
+        }
+
+        /// <summary>
+        /// Add a force to the character to be applied in the next fixed update
+        /// </summary>
+        /// <param name="force"></param>
+        public void AddForce(Vector3 force)
+        {
+            // Over a step: the last step's length (the physics step's before the first).
+            AddVelocityChange(force * (StepLength > 0f ? StepLength : Time.fixedDeltaTime) / rb.mass);
+        }
+
+        /// <summary>
+        /// Add a change in velocity to the character to be applied in the next fixed update
+        /// </summary>
+        /// <param name="velocityChange"></param>
+        public void AddVelocityChange(Vector3 velocityChange)
+        {
+            pendingVelocityChange += velocityChange;
+        }
+
+        /// <summary>
+        /// Override the character's velocity in the next fixed update
+        /// </summary>
+        /// <param name="newVelocity"></param>
+        public void OverrideVelocity(Vector3 newVelocity)
+        {
+            velocityOverride = newVelocity;
+        }
+
+    }
+}

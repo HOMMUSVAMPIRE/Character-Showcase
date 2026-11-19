@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A saved movement tuning: settings of a movement mode's components (some or all of them, on/off switches included),
@@ -12,7 +12,7 @@ namespace Character
     /// components, and a setting of a component the mode doesn't have is left out (and reported). Settings are found by
     /// their field names (see MovementSettings).
     /// </summary>
-    [CreateAssetMenu(fileName = "MovementTuningPreset", menuName = "Scriptable Objects/MovementModes/Tuning Preset")]
+    [CreateAssetMenu(fileName = "Tuning Preset", menuName = "Meridian Motion/Movement/Tuning Preset")]
     public class MovementTuningPreset : ScriptableObject
     {
         /// <summary>One component's part of a preset: its settings' values, and which of them the preset sets.</summary>
@@ -37,7 +37,7 @@ namespace Character
         /// Replaces the preset's contents with the mode's tuning now: every setting of every component (or only the
         /// given component types), so applying it gives those components exactly these values again.
         /// </summary>
-        public void Capture(ComposedMovementMode mode, ICollection<Type> onlyComponents = null)
+        public void Capture(AbilityMovementMode mode, ICollection<Type> onlyComponents = null)
         {
             parts.Clear();
             foreach (MovementComponent component in mode.Components)
@@ -53,7 +53,7 @@ namespace Character
         /// Sets the preset's settings on the mode's components (turned on or off), returning how many changed. What it
         /// can't set (a component the mode doesn't have, a setting its component no longer has) is added to problems.
         /// </summary>
-        public int ApplyTo(ComposedMovementMode mode, List<string> problems = null)
+        public int ApplyTo(AbilityMovementMode mode, List<string> problems = null)
         {
             int changed = 0;
             foreach (Part part in parts)

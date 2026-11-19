@@ -1,10 +1,10 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of momentum carried onto the ground: walking (or sprinting) only makes up the difference between the momentum
@@ -17,7 +17,7 @@ namespace CharacterShowcase.Tests.Movement
     public class GroundMomentumTests : CharacterRigFixture
     {
 
-        private static Inputs Forward(bool sprint, int step) =>
+        private static StepInputs Forward(bool sprint, int step) =>
             sprint ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward);
 
         private float SpeedFor(bool sprint) => sprint ? rig.RunSpeed : rig.WalkSpeed;
@@ -38,9 +38,9 @@ namespace CharacterShowcase.Tests.Movement
             int groundSteps = 0;
             yield return rig.Run(1.5f, i =>
             {
-                Inputs inputs = Forward(sprint, i);
+                StepInputs inputs = Forward(sprint, i);
                 inputs.jump = CharacterTestRig.Held();
-                inputs.jump.value = i < 3;
+                inputs.jump.held = i < 3;
                 return inputs;
             }, _ =>
             {
@@ -65,7 +65,7 @@ namespace CharacterShowcase.Tests.Movement
             float fastest = 0f;
             yield return rig.Run(0.8f, i =>
             {
-                Inputs inputs = Forward(sprint, i);
+                StepInputs inputs = Forward(sprint, i);
                 if (i < 5) { inputs.jump = CharacterTestRig.Held(); }
                 return inputs;
             }, _ =>
@@ -86,10 +86,10 @@ namespace CharacterShowcase.Tests.Movement
             float fastest = 0f;
             yield return rig.Run(6f, i =>
             {
-                Inputs inputs = Forward(sprint, i);
+                StepInputs inputs = Forward(sprint, i);
                 if (i == pressAt) { held = 0; }
                 inputs.jump = CharacterTestRig.Held();
-                inputs.jump.value = i >= pressAt && held < 12;
+                inputs.jump.held = i >= pressAt && held < 12;
                 held++;
                 return inputs;
             }, i =>
@@ -115,9 +115,9 @@ namespace CharacterShowcase.Tests.Movement
             yield return rig.Run(2f, i =>
             {
                 if (landed) { return CharacterTestRig.Move(Vector3.forward); }
-                Inputs inputs = Forward(true, i);
+                StepInputs inputs = Forward(true, i);
                 inputs.jump = CharacterTestRig.Held();
-                inputs.jump.value = i < 30;
+                inputs.jump.held = i < 30;
                 return inputs;
             }, _ =>
             {

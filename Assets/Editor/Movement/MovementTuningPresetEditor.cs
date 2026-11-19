@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// The inspector of a movement tuning preset (MovementTuningPreset): its notes, then each component it sets settings
@@ -21,17 +21,17 @@ namespace CharacterShowcase.EditorTools
         private const string PartsField = "parts";
         private const float ButtonWidth = 22f;
         // The mode to save from and apply to, kept while the editor is open (the Character prefab's to begin with).
-        private static ComposedMovementMode chosenMode;
+        private static AbilityMovementMode chosenMode;
 
         /// <summary>The Character prefab's movement mode, if it's made of components.</summary>
-        public static ComposedMovementMode DefaultMode()
+        public static AbilityMovementMode DefaultMode()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(SceneGameSetup.CharacterPrefabPath);
-            return prefab != null && prefab.TryGetComponent(out MovementController movement) ? movement.movementHandler as ComposedMovementMode : null;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterSceneSetup.CharacterPrefabPath);
+            return prefab != null && prefab.TryGetComponent(out MMotionMotor movement) ? movement.movementMode as AbilityMovementMode : null;
         }
 
         /// <summary>Asks where to save a new preset holding all of the mode's tuning now, and saves it there.</summary>
-        public static void SaveAsPreset(ComposedMovementMode mode)
+        public static void SaveAsPreset(AbilityMovementMode mode)
         {
             string path = EditorUtility.SaveFilePanelInProject("Save Tuning as Preset", $"{mode.name} Tuning", "asset",
                 "Where to save the preset (it holds every setting of every component; untick those it shouldn't set).");
@@ -52,9 +52,9 @@ namespace CharacterShowcase.EditorTools
 
             EditorGUILayout.Space();
             chosenMode ??= DefaultMode();
-            chosenMode = (ComposedMovementMode)EditorGUILayout.ObjectField(new GUIContent("Movement Mode",
+            chosenMode = (AbilityMovementMode)EditorGUILayout.ObjectField(new GUIContent("Movement Mode",
                 "The movement mode to save the tuning from, or apply the preset to (the Character prefab's, unless another is picked)"),
-                chosenMode, typeof(ComposedMovementMode), false);
+                chosenMode, typeof(AbilityMovementMode), false);
             using (new EditorGUI.DisabledScope(chosenMode == null))
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -88,7 +88,7 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>Applies the preset to the mode, with Undo, reporting what it changed and couldn't set.</summary>
-        private static void Apply(MovementTuningPreset preset, ComposedMovementMode mode)
+        private static void Apply(MovementTuningPreset preset, AbilityMovementMode mode)
         {
             Undo.RecordObject(mode, $"Apply {preset.name}");
             var problems = new List<string>();

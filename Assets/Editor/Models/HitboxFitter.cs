@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.Linq;
-using Character;
+using MeridianMotion.Characters;
 using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.EditorTools
+namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// Fits a model's hitboxes (see CharacterHitboxes): a capsule on each of its body's bones, fitted to the part of its
@@ -13,8 +13,8 @@ namespace CharacterShowcase.EditorTools
     /// own space (through the mesh's bind poses), so the model's pose doesn't matter. Each capsule runs along whichever
     /// of the bone's mesh's principal axes, or the way to a child bone with a hitbox, makes it smallest, and covers most of
     /// it: its ends trimmed of the furthest few vertices, its radius reaching most of them, so it's a little inside the
-    /// skin rather than a box round everything. Run by Prepare Character Models (and the model generators) as they save a model's
-    /// prefab, and by Fit Hitboxes (Tools > Character Showcase) for every model there is.
+    /// skin rather than a box round everything. Run by Prepare Humanoid Models (and the model generators) as they save a model's
+    /// prefab, and by Fit Hitboxes (Tools > Meridian Motion) for every model there is.
     /// </summary>
     public static class HitboxFitter
     {
@@ -41,7 +41,7 @@ namespace CharacterShowcase.EditorTools
             HumanBodyBones.RightUpperLeg, HumanBodyBones.RightLowerLeg, HumanBodyBones.RightFoot,
         };
 
-        [MenuItem("Tools/Character Showcase/Fit Hitboxes", priority = 4)]
+        [MenuItem("Tools/Meridian Motion/Fit Hitboxes", priority = 4)]
         public static void FitAllFromMenu()
         {
             int fitted = FitAll(out int failed);
@@ -56,15 +56,15 @@ namespace CharacterShowcase.EditorTools
         }
 
         /// <summary>
-        /// Fits the hitboxes of every model a model source names (each DirectCharacterModelSource's model prefab: the
+        /// Fits the hitboxes of every model a model source names (each PrefabModelSource's model prefab: the
         /// prepared humanoids, the mannequin and the fox), keeping each one's settings. Returns how many were fitted.
         /// </summary>
         public static int FitAll(out int failed)
         {
             var prefabs = new SortedSet<string>();
-            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(DirectCharacterModelSource)}"))
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(PrefabModelSource)}"))
             {
-                var source = AssetDatabase.LoadAssetAtPath<DirectCharacterModelSource>(AssetDatabase.GUIDToAssetPath(guid));
+                var source = AssetDatabase.LoadAssetAtPath<PrefabModelSource>(AssetDatabase.GUIDToAssetPath(guid));
                 if (source != null && source.ModelPrefab != null) { prefabs.Add(AssetDatabase.GetAssetPath(source.ModelPrefab)); }
             }
             int fitted = 0;
@@ -115,19 +115,19 @@ namespace CharacterShowcase.EditorTools
             }
             settings.ApplyModifiedPropertiesWithoutUndo();
 
-            foreach (Hitbox old in model.GetComponentsInChildren<Hitbox>(true)) { Object.DestroyImmediate(old.gameObject); }
+            foreach (BoneHitbox old in model.GetComponentsInChildren<BoneHitbox>(true)) { Object.DestroyImmediate(old.gameObject); }
 
             SkinnedMeshRenderer[] renderers = model.GetComponentsInChildren<SkinnedMeshRenderer>(true).Where(r => r.sharedMesh != null).ToArray();
             if (renderers.Length == 0)
             {
                 Debug.LogWarning($"[{LogName}] '{model.name}' has no skinned mesh to fit hitboxes to.", model);
-                hitboxes.SetHitboxes(Enumerable.Empty<Hitbox>());
+                hitboxes.SetHitboxes(Enumerable.Empty<BoneHitbox>());
                 return false;
             }
             HashSet<Transform> chosen = ChooseBones(model, hitboxes.HitboxBones, renderers);
             Dictionary<Transform, List<Vector3>> points = CollectPoints(chosen, renderers);
 
-            var made = new List<Hitbox>();
+            var made = new List<BoneHitbox>();
             foreach (Transform bone in OrderedByDepth(chosen))
             {
                 if (!points.TryGetValue(bone, out List<Vector3> carried) || carried.Count < MinimumVertices) { continue; }
@@ -263,7 +263,7 @@ namespace CharacterShowcase.EditorTools
 
         // ---- The capsule ----
 
-        private static Hitbox MakeHitbox(Transform bone, List<Vector3> points, List<Vector3> childDirections)
+        private static BoneHitbox MakeHitbox(Transform bone, List<Vector3> points, List<Vector3> childDirections)
         {
             Vector3 centroid = Vector3.zero;
             foreach (Vector3 p in points) { centroid += p; }
@@ -289,7 +289,7 @@ namespace CharacterShowcase.EditorTools
             capsule.center = Vector3.zero;
             capsule.radius = best.radius;
             capsule.height = best.height;
-            return holder.AddComponent<Hitbox>();
+            return holder.AddComponent<BoneHitbox>();
         }
 
         private struct Capsule

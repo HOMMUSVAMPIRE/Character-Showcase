@@ -1,7 +1,8 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Events;
 
-namespace Level
+namespace MeridianMotion.Levels
 {
     /// <summary>How a timing gate counts toward its course.</summary>
     public enum TimingGateRole
@@ -18,9 +19,10 @@ namespace Level
     /// Times runs over a course marked by timing gates (see TimingGate): laps through one start-and-finish gate, or runs
     /// from a start gate to a finish gate (with the speed over the course's distance, if it has one). Only its racer
     /// counts (set with SetRacer, as a character spawner's On Character Spawned can; with none, anything that passes
-    /// does). It shows the time under way, the last and the best through On Display, as a line of text for a sign.
+    /// does). It shows the time under way, the last and the best through On Text Changed, as a line of text for a sign.
     /// Times are game time, measured on the physics step a gate's passed.
     /// </summary>
+    [AddComponentMenu("Meridian Motion/Levels/Course Timer")]
     public class CourseTimer : MonoBehaviour
     {
         [Tooltip("The course's name, shown with its times.")]
@@ -32,7 +34,7 @@ namespace Level
         [Tooltip("What's timed: only it counts when it passes a gate. Empty, anything that passes does.")]
         [SerializeField] private Transform racer;
         [Tooltip("Called with the course's times as a line of text, about ten times a second while a run's under way and when one ends.")]
-        [SerializeField] private UnityEvent<string> onDisplay = new();
+        [SerializeField] [FormerlySerializedAs("onDisplay")] private UnityEvent<string> onTextChanged = new();
 
         private const float DisplayInterval = 0.1f;
         private float startTime;
@@ -47,11 +49,11 @@ namespace Level
         /// <summary>How soon (seconds) after a run starts a pass can end it (see Minimum Run Time).</summary>
         public float MinimumRunTime => minimumRunTime;
         /// <summary>Called with the course's times as a line of text.</summary>
-        public UnityEvent<string> OnDisplay => onDisplay;
+        public UnityEvent<string> OnTextChanged => onTextChanged;
         /// <summary>Whether a run's under way.</summary>
         public bool IsRunning { get; private set; }
         /// <summary>How many runs (laps) have been finished.</summary>
-        public int Completed { get; private set; }
+        public int LapCount { get; private set; }
         /// <summary>The last finished run's time in seconds, or 0 if none has finished.</summary>
         public float LastTime { get; private set; }
         /// <summary>The best finished run's time in seconds, or 0 if none has finished.</summary>
@@ -71,7 +73,7 @@ namespace Level
         /// A gate of this course was passed by passer (the object it detected): starts, ends or laps the run, as the
         /// gate's role says, if passer is the racer (or part of it).
         /// </summary>
-        public void Pass(TimingGateRole role, Transform passer)
+        public void RegisterGatePass(TimingGateRole role, Transform passer)
         {
             if (racer != null && (passer == null || (passer != racer && !passer.IsChildOf(racer)))) { return; }
             float now = Time.time;
@@ -102,8 +104,8 @@ namespace Level
         {
             IsRunning = false;
             LastTime = now - startTime;
-            BestTime = Completed == 0 ? LastTime : Mathf.Min(BestTime, LastTime);
-            Completed++;
+            BestTime = LapCount == 0 ? LastTime : Mathf.Min(BestTime, LastTime);
+            LapCount++;
         }
 
         private void Start() => Show();
@@ -115,11 +117,11 @@ namespace Level
         }
 
         /// <summary>The course's times as a line of text: the run under way (or the last), the last and best, and speed.</summary>
-        public string Describe()
+        public string Readout()
         {
             string Clock(float seconds) => seconds <= 0f ? "--:--.--" : $"{(int)(seconds / 60f)}:{seconds % 60f:00.00}";
             string text = $"{courseName.ToUpperInvariant()}  {Clock(IsRunning ? CurrentTime : LastTime)}";
-            if (Completed > 0)
+            if (LapCount > 0)
             {
                 text += $"\nLAST {Clock(LastTime)}  BEST {Clock(BestTime)}";
                 if (distance > 0f) { text += $"  {distance / LastTime:0.0} m/s"; }
@@ -130,7 +132,7 @@ namespace Level
         private void Show()
         {
             nextDisplay = Time.time + DisplayInterval;
-            onDisplay?.Invoke(Describe());
+            onTextChanged?.Invoke(Readout());
         }
     }
 }

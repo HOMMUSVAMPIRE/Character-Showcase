@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace PhysicsQueries
+namespace MeridianMotion.PhysicsQueries
 {
     /// <summary>
     /// A reused buffer for Unity's non-allocating physics queries (RaycastNonAlloc and the like) that grows when a query

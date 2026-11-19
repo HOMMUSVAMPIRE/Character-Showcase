@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using Level;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.Levels
+namespace MeridianMotion.Tests.Levels
 {
     /// <summary>
     /// Tests of the camera's underwater view (UnderwaterView): a camera going under a water's surface changes the scene's
@@ -16,8 +16,8 @@ namespace CharacterShowcase.Tests.Levels
     public class UnderwaterViewTests
     {
         private readonly List<Object> created = new();
-        private readonly List<(bool submerged, Water water)> raised = new();
-        private Water water;
+        private readonly List<(bool submerged, SwimmableWater water)> raised = new();
+        private SwimmableWater water;
         private UnderwaterView view;
         private (bool fog, FogMode mode, Color colour, float density) sceneFog;
         private Light sceneSun, sun;
@@ -44,7 +44,7 @@ namespace CharacterShowcase.Tests.Levels
 
             var waterObject = new GameObject("Water");
             created.Add(waterObject);
-            water = waterObject.AddComponent<Water>();
+            water = waterObject.AddComponent<SwimmableWater>();
             water.Size = new Vector3(20f, 5f, 20f);
             var cameraObject = new GameObject("Camera", typeof(Camera));
             created.Add(cameraObject);
@@ -67,7 +67,7 @@ namespace CharacterShowcase.Tests.Levels
         private void MoveCameraTo(float height)
         {
             view.transform.position = new Vector3(0f, height, 0f);
-            view.Check();
+            view.Refresh();
         }
 
         private void AssertSceneFog()
@@ -91,17 +91,17 @@ namespace CharacterShowcase.Tests.Levels
             Assert.That(view.IsUnderwater, Is.True);
             Assert.That(view.Water, Is.SameAs(water));
             Assert.That(RenderSettings.fog, Is.True);
-            Assert.That(RenderSettings.fogColor, Is.EqualTo(view.FogColour), "Under the water, the fog should be the water's colour.");
+            Assert.That(RenderSettings.fogColor, Is.EqualTo(view.FogColor), "Under the water, the fog should be the water's colour.");
             Assert.That(RenderSettings.fogDensity, Is.EqualTo(view.FogDensity), "Under the water, the fog should be the water's density.");
             Assert.That(sun.intensity, Is.LessThan(SunIntensity), "Under the water, less of the sun should reach.");
             Assert.That(sun.color, Is.Not.EqualTo(SunColour), "Under the water, the sun should be tinted.");
-            Assert.That(raised, Is.EqualTo(new List<(bool, Water)> { (true, water) }));
+            Assert.That(raised, Is.EqualTo(new List<(bool, SwimmableWater)> { (true, water) }));
 
             MoveCameraTo(-3f); // Moving about under the water raises nothing more.
             MoveCameraTo(2f);
             Assert.That(view.IsUnderwater, Is.False);
             AssertSceneFog();
-            Assert.That(raised, Is.EqualTo(new List<(bool, Water)> { (true, water), (false, water) }));
+            Assert.That(raised, Is.EqualTo(new List<(bool, SwimmableWater)> { (true, water), (false, water) }));
         }
 
         [Test]
@@ -117,7 +117,7 @@ namespace CharacterShowcase.Tests.Levels
         public void OutsideTheWatersFootprint_IsntUnder()
         {
             view.transform.position = new Vector3(15f, -1f, 0f);
-            view.Check();
+            view.Refresh();
             Assert.That(view.IsUnderwater, Is.False);
             Assert.That(raised, Is.Empty);
             AssertSceneFog();

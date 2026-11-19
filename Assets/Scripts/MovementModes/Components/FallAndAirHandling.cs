@@ -1,7 +1,8 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// Fall &amp; Air Handling: gravity (and the gentler gravity of coyote time just after walking off an edge), the fall
@@ -18,8 +19,8 @@ namespace Character
     public class FallAndAirHandling : MovementComponent
     {
         [Header("Gravity & Falling")]
-        [Tooltip("The base acceleration applied to the character when falling, at its authored size (it scales with size: see the MovementController's Size Scaling)")]
-        [SerializeField] private float gravityStrength;
+        [Tooltip("The base acceleration applied to the character when falling, at its authored size (it scales with size: see the MMotionMotor's Size Scaling)")]
+        [SerializeField] [FormerlySerializedAs("gravityStrength")] private float gravity;
         [Tooltip("The maximum falling speed the player can reach. (if 0, do not clamp fall speed)")]
         [SerializeField] private float maxFallSpeed;
         [Tooltip("A curve that determines the impact of gravity during coyote time")]
@@ -29,9 +30,9 @@ namespace Character
         [Tooltip("The maximum strength with which the player can control their character's movement while in the air")]
         [SerializeField] private float airSteeringStrength;
         [Tooltip("A curve that determines how quickly after leaving the ground that the player can steer their character in the air")]
-        [SerializeField] private AnimationCurve airSteeringStrengthCurve = new();
-        [Tooltip("How quickly (m/s²) air steering changes the character's horizontal velocity, before the strength and curve above. Scales with the character's size (see the MovementController's Size Scaling).")]
-        [SerializeField] private float airAcceleration = 80f;
+        [SerializeField] [FormerlySerializedAs("airSteeringStrengthCurve")] private AnimationCurve airControlCurve = new();
+        [Tooltip("How quickly (m/s²) air steering changes the character's horizontal velocity, before the strength and curve above. Scales with the character's size (see the MMotionMotor's Size Scaling).")]
+        [SerializeField] [FormerlySerializedAs("airAcceleration")] private float airSteeringAcceleration = 80f;
         [Tooltip("How quickly (m/s²) the character slows down in the air with no steering input. Scales with the character's size.")]
         [SerializeField] private float airDrag = 4f;
         [Tooltip("Seconds over which air steering comes back after jumping off a wall (a wall run, a slide down a wall, a " +
@@ -42,26 +43,26 @@ namespace Character
         [Header("Landing")]
         [Tooltip("How quickly the ground's friction takes away the horizontal momentum the character carries onto it (from " +
                  "a landing, a dash, a roll), per second: higher stops it sooner")]
-        [SerializeField] private float groundedDampenHorizontalInertia = 10f;
+        [SerializeField] [FormerlySerializedAs("groundedDampenHorizontalInertia")] private float groundFriction = 10f;
 
         /// <summary>The character's gravity (m/s²) at its authored size.</summary>
-        public float GravityStrength => gravityStrength;
+        public float GravityStrength => gravity;
         /// <summary>How quickly (m/s²) air steering changes the character's horizontal velocity, at its authored size.</summary>
-        public float AirAcceleration => airAcceleration;
+        public float AirAcceleration => airSteeringAcceleration;
 
         /// <summary>
         /// Applies gravity to the character, and on the ground keeps just enough of it to stay on the ground. Abilities
         /// that move the character without gravity (a dash, a wall run, hanging from a ledge) override the velocity
         /// this gives.
         /// </summary>
-        public override void BeforeAbilities(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void BeforeAbilities(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             // How much gravity do we apply
             // The coyote gravity curve only applies after walking off the ground. After a jump, gravity is at full
             // strength, so a jump ended early (a short tap, or bumping a ceiling) doesn't float at its peak.
             float airGravity = controller.HasJumpedSinceGrounded ? 1f : coyoteTimeGravityCurve.Evaluate(movementData.timeSinceGrounded);
-            // Gravity scales with the character's size as accelerations do (see MovementController.AccelerationScale).
-            float g = gravityStrength * controller.AccelerationScale * (movementData.initialGrounded ? 0.5f : airGravity);
+            // Gravity scales with the character's size as accelerations do (see MMotionMotor.AccelerationScale).
+            float g = gravity * controller.AccelerationScale * (movementData.initialGrounded ? 0.5f : airGravity);
             // Apply gravity to the character
             movementData.velocityChange += Vector3.down * g * movementData.deltaTime;
 
@@ -85,30 +86,30 @@ namespace Character
         /// On the ground, the friction that takes away the momentum the character carries (before Walking &amp; Running,
         /// which makes up the difference to its speed); in the air, steering.
         /// </summary>
-        public override void Locomotion(MovementData movementData, Inputs inputs, MovementController controller)
+        public override void Locomotion(MovementStep movementData, StepInputs inputs, MMotionMotor controller)
         {
             if (movementData.initialGrounded)
             {
                 // We are grounded, so to limit sliding, kill horizontal momentum over time to simulate friction
-                // A rate per second: over the same share of a stride at any size (see MovementController.DurationScale).
+                // A rate per second: over the same share of a stride at any size (see MMotionMotor.DurationScale).
                 movementData.initialInertia = Vector3.Lerp(movementData.initialInertia, Vector3.up * movementData.initialInertia.y,
-                    groundedDampenHorizontalInertia * movementData.deltaTime / controller.DurationScale);
+                    groundFriction * movementData.deltaTime / controller.DurationScale);
                 return;
             }
 
             // We are not grounded, so determine the extent to which we are able to move
-            float steeringEffectiveness = controller.movementSpeedMultiplier
-                                          * airSteeringStrengthCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength
+            float steeringEffectiveness = controller.speedMultiplier
+                                          * airControlCurve.Evaluate(movementData.timeSinceGrounded) * airSteeringStrength
                                           * WallJumpSteering(controller);
             SteerInAir(movementData, inputs, controller, steeringEffectiveness);
             movementData.state |= CharacterState.Moving;
         }
 
         /// <summary>Limits how fast the character falls.</summary>
-        public override void FinishStep(MovementData movementData, MovementController controller)
+        public override void FinishStep(MovementStep movementData, MMotionMotor controller)
         {
             // If we are falling too fast, limit our fall speed. A maxFallSpeed of 0 disables the clamp (per tooltip).
-            // Like every speed, the limit scales with the character's size (see MovementController.SpeedScale).
+            // Like every speed, the limit scales with the character's size (see MMotionMotor.SpeedScale).
             float fallLimit = maxFallSpeed * controller.SpeedScale;
             if (maxFallSpeed > 0f && movementData.finalVelocity.y < -fallLimit)
             {
@@ -119,7 +120,7 @@ namespace Character
         }
 
         /// <summary>How much of its air steering the character has after a wall jump: 0 at the jump, easing back to 1.</summary>
-        private float WallJumpSteering(MovementController controller)
+        private float WallJumpSteering(MMotionMotor controller)
         {
             WallJumpState jump = controller.wallJump;
             if (!jump.recovering || wallJumpSteeringRecovery <= 0f) { return 1f; }
@@ -134,7 +135,7 @@ namespace Character
         /// the character slowly loses speed.
         /// </summary>
         /// <param name="steeringEffectiveness">How much control the character has right now (0 = none)</param>
-        private void SteerInAir(MovementData movementData, Inputs inputs, MovementController controller, float steeringEffectiveness)
+        private void SteerInAir(MovementStep movementData, StepInputs inputs, MMotionMotor controller, float steeringEffectiveness)
         {
             Vector3 inertia = movementData.initialInertia;
             Vector2 velocity = new Vector2(inertia.x, inertia.z);
@@ -146,8 +147,8 @@ namespace Character
             {
                 steerDirection /= steerDirection.magnitude;
                 float speedAlongInput = Vector2.Dot(velocity, steerDirection);
-                Vector2 target = steerDirection * Mathf.Max(Mode.MoveSpeed(inputs, controller) * controller.SpeedScale * controller.movementSpeedMultiplier * input, speedAlongInput);
-                velocity = Vector2.MoveTowards(velocity, target, airAcceleration * controller.AccelerationScale * steeringEffectiveness * movementData.deltaTime);
+                Vector2 target = steerDirection * Mathf.Max(Mode.MoveSpeed(inputs, controller) * controller.SpeedScale * controller.speedMultiplier * input, speedAlongInput);
+                velocity = Vector2.MoveTowards(velocity, target, airSteeringAcceleration * controller.AccelerationScale * steeringEffectiveness * movementData.deltaTime);
                 movementData.targetRotation = Quaternion.Lerp(movementData.initialRotation, Quaternion.LookRotation(steer, Vector3.up), steeringEffectiveness);
             }
             else if (input <= 0.001f)

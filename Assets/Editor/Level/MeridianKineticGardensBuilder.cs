@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static CharacterShowcase.EditorTools.Level.Graybox;
+using static MeridianMotion.Showcase.Levels.Graybox;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     /// <summary>
     /// Builds the graybox of the Meridian Complex's Kinetic Gardens, the open-air traversal district, into the complex's
@@ -74,7 +74,7 @@ namespace CharacterShowcase.EditorTools.Level
         /// with an orange coping round its edge (the concept art's gardens).
         /// </summary>
         private static GameObject Platform(Transform parent, string name, float x0, float x1, float z0, float z1, float top) =>
-            Graybox.Platform(parent, name, x0, x1, z0, z1, 0f, top, coping: Surface.Accent);
+            Graybox.Platform(parent, name, x0, x1, z0, z1, 0f, top, coping: GrayboxMaterial.Accent);
 
         /// <summary>
         /// The district's floor (±0, a few centimetres proud of the ground so the two don't flicker where they meet) and
@@ -88,13 +88,13 @@ namespace CharacterShowcase.EditorTools.Level
             {
                 openings.Add(new UnityEngine.Rect(r.x - PlanToWorld.x, r.y - PlanToWorld.z, r.width, r.height));
             }
-            SlabWithHoles(boundary, "Floor (±0)", UnityEngine.Rect.MinMaxRect(-200f, -200f, -80f, -80f), openings, -0.5f, FloorTop, Surface.Ground);
+            SlabWithHoles(boundary, "Floor (±0)", UnityEngine.Rect.MinMaxRect(-200f, -200f, -80f, -80f), openings, -0.5f, FloorTop, GrayboxMaterial.Ground);
             float t = BoundaryThickness, h = BoundaryHeight;
-            Block(boundary, "Wall (North)", -200f - t, -80f + t, -80f, -80f + t, 0f, h, Surface.Panel);
-            Block(boundary, "Wall (West)", -200f - t, -200f, -200f - t, -80f, 0f, h, Surface.Panel);
-            Block(boundary, "Wall (East)", -80f, -80f + t, -200f - t, -80f, 0f, h, Surface.Panel);
-            Block(boundary, "Wall (South-West)", -200f - t, -150f, -200f - t, -200f, 0f, h, Surface.Panel);
-            Block(boundary, "Wall (South-East)", -130f, -80f + t, -200f - t, -200f, 0f, h, Surface.Panel);
+            Block(boundary, "Wall (North)", -200f - t, -80f + t, -80f, -80f + t, 0f, h, GrayboxMaterial.Panel);
+            Block(boundary, "Wall (West)", -200f - t, -200f, -200f - t, -80f, 0f, h, GrayboxMaterial.Panel);
+            Block(boundary, "Wall (East)", -80f, -80f + t, -200f - t, -80f, 0f, h, GrayboxMaterial.Panel);
+            Block(boundary, "Wall (South-West)", -200f - t, -150f, -200f - t, -200f, 0f, h, GrayboxMaterial.Panel);
+            Block(boundary, "Wall (South-East)", -130f, -80f + t, -200f - t, -200f, 0f, h, GrayboxMaterial.Panel);
             AreaSign(boundary, new Vector2(-120f, -200f - t), 1.2f, Vector2.down, "02", "Kinetic Gardens"); // Beside the south entrance.
         }
 
@@ -178,8 +178,8 @@ namespace CharacterShowcase.EditorTools.Level
             Platform(traversal, "D3 Dash Island (+12)", -160f, -152f, -122f, -112f, h12);
             // Advanced 5 to 4: a narrow beam out from the north-west terrace at +16, dropping to the north platform, beside a
             // wall to run along (planned: at least 4 m wide and 8 m high).
-            BoxXZ(traversal, "Narrow Beam (+16)", new Vector2(-154f, -95f), new Vector2(12f, BeamWidth), h16 - 1f, h16, 0f, Surface.Steel);
-            BoxXZ(traversal, "Wall-Run Wall (planned)", new Vector2(-154f, -101.5f), new Vector2(12f, 1f), 0f, h20, 0f, Surface.Panel);
+            BoxXZ(traversal, "Narrow Beam (+16)", new Vector2(-154f, -95f), new Vector2(12f, BeamWidth), h16 - 1f, h16, 0f, GrayboxMaterial.Steel);
+            BoxXZ(traversal, "Wall-Run Wall (planned)", new Vector2(-154f, -101.5f), new Vector2(12f, 1f), 0f, h20, 0f, GrayboxMaterial.Panel);
 
             // Beginner route 4 to 6: up from the north platform to the viewpoint, by a stair, a landing at +16 and a stair
             // into the viewpoint itself.
@@ -198,7 +198,7 @@ namespace CharacterShowcase.EditorTools.Level
             float[] chain = { 14f, 16f, 18f };
             for (int i = 0; i < chain.Length; i++)
             {
-                BoxXZ(traversal, $"Ledge Chain Column (+{chain[i]:0})", new Vector2(-115f + 4f * i, -88f), new Vector2(2f, 2f), 0f, chain[i], 0f, Surface.Graphite);
+                BoxXZ(traversal, $"Ledge Chain Column (+{chain[i]:0})", new Vector2(-115f + 4f * i, -88f), new Vector2(2f, 2f), 0f, chain[i], 0f, GrayboxMaterial.Graphite);
             }
         }
 

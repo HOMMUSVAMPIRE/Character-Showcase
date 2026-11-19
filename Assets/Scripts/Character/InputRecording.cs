@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace Character
+namespace MeridianMotion.Characters
 {
     /// <summary>
     /// A character's input frames (see CharacterInputFrame), one a physics step, kept in a ring of a fixed size: when it's
     /// full, each new frame replaces the oldest, so it holds the latest Capacity steps without allocating. Read oldest
     /// first (this[0]). Written to and read from a small binary file (Save, Load): a header (its format, the step length
-    /// it was recorded at, and the tuning's fingerprint, MovementController.TuningFingerprint), then the frames. Replaying
+    /// it was recorded at, and the tuning's fingerprint, MMotionMotor.TuningFingerprint), then the frames. Replaying
     /// the frames in order to the same character, in the same world, with the same tuning moves it the same way.
     /// </summary>
     public sealed class InputRecording
@@ -26,7 +26,7 @@ namespace Character
 
         /// <summary>Starts an empty recording that keeps the latest capacity frames.</summary>
         /// <param name="stepLength">The physics step's length (s) the frames are for.</param>
-        /// <param name="tuning">The character's tuning (MovementController.TuningFingerprint), or 0 if not known.</param>
+        /// <param name="tuning">The character's tuning (MMotionMotor.TuningFingerprint), or 0 if not known.</param>
         public InputRecording(int capacity, float stepLength, ulong tuning = 0)
         {
             if (capacity <= 0) { throw new ArgumentOutOfRangeException(nameof(capacity), "A recording holds at least one frame."); }
@@ -41,7 +41,7 @@ namespace Character
         public int Count => count;
         /// <summary>The physics step's length (s) the frames were recorded at.</summary>
         public float StepLength { get; }
-        /// <summary>The fingerprint of the tuning the frames were recorded with (MovementController.TuningFingerprint); 0 if not known.</summary>
+        /// <summary>The fingerprint of the tuning the frames were recorded with (MMotionMotor.TuningFingerprint); 0 if not known.</summary>
         public ulong Tuning { get; }
 
         /// <summary>A frame, oldest first (0 is the oldest held).</summary>

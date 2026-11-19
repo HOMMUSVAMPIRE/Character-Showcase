@@ -1,9 +1,9 @@
 using System.Collections;
-using Character;
+using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace CharacterShowcase.Tests.Movement
+namespace MeridianMotion.Tests.Movement
 {
     /// <summary>
     /// Tests of the test rig itself (CharacterTestRig), which every character test relies on: a test's change to a
@@ -17,7 +17,7 @@ namespace CharacterShowcase.Tests.Movement
         public IEnumerator AComponentsSettings_ChangedByATest_AreTheRigsOwnCopy()
         {
             yield return rig.StandOnFloor();
-            var asset = CharacterTestRig.CharacterPrefab().GetComponent<MovementController>().movementHandler as ComposedMovementMode;
+            var asset = CharacterTestRig.CharacterPrefab().GetComponent<MMotionMotor>().movementMode as AbilityMovementMode;
             Assume.That(asset, Is.Not.Null, "Test setup: the character's movement mode should be made of components.");
             float authored = asset.Get<Ziplines>(includeDisabled: true).ZiplineGrabReach;
             rig.SetMovementSetting("ziplineGrabReach", authored + 1f);

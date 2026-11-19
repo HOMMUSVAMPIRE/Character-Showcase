@@ -9,7 +9,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace CharacterShowcase.EditorTools.Level
+namespace MeridianMotion.Showcase.Levels
 {
     // Keyboard shortcuts and commands (duplicate, delete, reorder, add a part), and following edits made in the hierarchy.
     public partial class LevelEditorWindow

@@ -1,13 +1,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using CharacterShowcase.EditorTools.Level;
+using MeridianMotion.Showcase.Levels;
+using MeridianMotion.Tests;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor;
 using UnityEngine;
 
-namespace CharacterShowcase.Tests.EditMode.Levels
+namespace MeridianMotion.Showcase.Tests.Levels
 {
     /// <summary>
     /// Checks of the level editor's workings (LevelSpecEdit, LevelSpecPreview), without its window: moving a piece

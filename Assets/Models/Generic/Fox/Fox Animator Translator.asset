@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fea169c6f94934098aa49da53584a11c, type: 3}
+  m_Name: Fox Animator Translator
+  m_EditorClassIdentifier: MeridianMotion.Characters::MeridianMotion.Characters.AnimatorParameterTranslator
+  floatParameters:
+  - source: Speed
+    parameter: Speed
+    smoothed: 1
+  - source: Vertical Speed
+    parameter: VerticalSpeed
+    smoothed: 0
+  - source: Wall Side
+    parameter: WallSide
+    smoothed: 0
+  - source: Grab Speed
+    parameter: GrabSpeed
+    smoothed: 1
+  - source: Climb Right
+    parameter: ClimbRight
+    smoothed: 1
+  - source: Climb Up
+    parameter: ClimbUp
+    smoothed: 1
+  - source: Climb Step Progress
+    parameter: ClimbStepProgress
+    smoothed: 0
+  - source: Roll Progress
+    parameter: RollProgress
+    smoothed: 0
+  - source: Climb Progress
+    parameter: ClimbProgress
+    smoothed: 0
+  - source: Vault Progress
+    parameter: VaultProgress
+    smoothed: 0
+  - source: Turn Speed
+    parameter: TurnSpeed
+    smoothed: 1
+  speedDampTime: 0.1
+  playbackParameters:
+  - parameter: LocomotionPlayback
+    axes:
+    - speedParameter: Speed
+      topSpeedParameter: LocomotionTopSpeed
+      negativeTopSpeedParameter: 
+  - parameter: CrouchPlayback
+    axes:
+    - speedParameter: Speed
+      topSpeedParameter: CrouchTopSpeed
+      negativeTopSpeedParameter: 
+  - parameter: ClimbPlayback
+    axes:
+    - speedParameter: ClimbRight
+      topSpeedParameter: ClimbRightTopSpeed
+      negativeTopSpeedParameter: ClimbLeftTopSpeed
+    - speedParameter: ClimbUp
+      topSpeedParameter: ClimbUpTopSpeed
+      negativeTopSpeedParameter: ClimbDownTopSpeed
+  boolParameters:
+  - source: Grounded
+    parameter: Grounded
+  - source: Dashing
+    parameter: Dashing
+  - source: Crouching
+    parameter: Crouching
+  - source: Sliding
+    parameter: Sliding
+  - source: Rolling
+    parameter: Rolling
+  - source: Wall Running
+    parameter: WallRunning
+  - source: Wall Sliding
+    parameter: WallSliding
+  - source: Wall Climbing
+    parameter: WallClimbing
+  - source: On Ladder
+    parameter: OnLadder
+  - source: Climb Entering
+    parameter: ClimbEntering
+  - source: Climb Exiting
+    parameter: ClimbExiting
+  - source: Hanging
+    parameter: Hanging
+  - source: Climbing
+    parameter: Climbing
+  - source: Vaulting
+    parameter: Vaulting
+  - source: Grabbing
+    parameter: Grabbing
+  - source: Rope Swinging
+    parameter: RopeSwinging
+  - source: Ziplining
+    parameter: Ziplining
+  - source: Swimming
+    parameter: Swimming
+  - source: Diving
+    parameter: Diving
+  eventTriggers: []
