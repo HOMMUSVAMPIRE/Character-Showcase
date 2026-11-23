@@ -40,8 +40,7 @@ namespace MeridianMotion.Tests.Animations
 
         private IEnumerator Stand()
         {
-            rig.Floor(0f, 300f);
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), settleSeconds: 0f);
+            yield return rig.StandOnFloor(null, settleSeconds: 0f, floorWidth: 300f);
             if (Model == null || Model == rig.Character.transform) { Assert.Ignore("The character has no model parent of its own."); }
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle(), Feed);
         }

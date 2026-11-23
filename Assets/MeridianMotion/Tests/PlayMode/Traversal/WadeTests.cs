@@ -39,10 +39,16 @@ namespace MeridianMotion.Tests.Traversal
 
         protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
-        // Wading isn't an ability (the hygiene check's NOT_AN_ABILITY: it's where the character stands), so it has no
-        // setting whose 0 turns it off: a Wade Start Depth of 0 wades in any water, and a Wade Speed Multiplier of 1 still
-        // wades, only without slowing. The kit's other checks apply, and are kept.
-        protected override string OffSetting => null;
+        // Wade Max Depth: at 0 the character wades in no water at all.
+        protected override string OffSetting => "wadeMaxDepth";
+
+        // Turned off, either way, the water doesn't slow the walk: by the end of the kit's run (well past getting up to
+        // speed), the character walks at its full walking speed.
+        protected override Instead WhatHappensInstead(bool byToggle) => new Instead
+        {
+            Afterwards = () => Assert.That(rig.HorizontalSpeed, Is.EqualTo(rig.WalkSpeed).Within(0.05f),
+                "With Wading turned off, the water shouldn't slow the walk."),
+        };
 
         /// <summary>The character standing on a floor with water this far over its feet (worked out from its size, so spawned first).</summary>
         private IEnumerator StandInWater(System.Func<float> depthOverFeet)
@@ -100,6 +106,19 @@ namespace MeridianMotion.Tests.Traversal
         }
 
         [UnityTest]
+        public IEnumerator WaterDeeperThanTheWadeMaxDepth_DoesntSlowTheCharacter()
+        {
+            float under = 0f;
+            yield return StandInWater(() => under = Mathf.Lerp(StartDepth, rig.SwimDepth, 0.75f));
+            // The max halfway between where wading starts and how deep this water is.
+            rig.SetMovementSetting("wadeMaxDepth", (StartDepth + under) / 2f / rig.StandingHeight);
+            float speed = 0f;
+            yield return MeanSpeed(_ => CharacterTestRig.Move(Vector3.forward), s => speed = s);
+            Assert.That(speed, Is.EqualTo(rig.WalkSpeed).Within(0.05f), "Water deeper than Wade Max Depth shouldn't slow the walk.");
+            Assert.That(rig.InState(CharacterState.Wading), Is.False);
+        }
+
+        [UnityTest]
         public IEnumerator WalkingIntoWaterAndOut_RaisesTheWadingEvents()
         {
             rig.Floor();
@@ -131,17 +150,6 @@ namespace MeridianMotion.Tests.Traversal
                 _ => vaulted |= rig.InState(CharacterState.Vaulting), timeoutSeconds: 6f);
             Assert.That(vaulted, Is.True, "Heading into a low wall while wading, the character should vault it.");
             Assert.That(rig.Position.z, Is.GreaterThan(5f), "The character should be past the wall.");
-        }
-
-        [UnityTest]
-        public IEnumerator WadingTurnedOff_DoesntSlowTheCharacter()
-        {
-            yield return StandInWater(() => Mathf.Lerp(StartDepth, rig.SwimDepth, 0.5f));
-            rig.Component<Wading>().Enabled = false;
-            float speed = 0f;
-            yield return MeanSpeed(_ => CharacterTestRig.Move(Vector3.forward), s => speed = s);
-            Assert.That(speed, Is.EqualTo(rig.WalkSpeed).Within(0.05f), "With Wading turned off, the water shouldn't slow the walk.");
-            Assert.That(rig.InState(CharacterState.Wading), Is.False);
         }
     }
 }

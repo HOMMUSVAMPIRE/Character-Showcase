@@ -13,10 +13,12 @@ namespace MeridianMotion.Tests
     /// its OneOffEvents): a jump, a bounce, with no state that's under way for a while (AbilityFixture is the kit for
     /// those). It gets the checks every such ability should pass, as its own tests:
     /// - it happens from its inputs (the fixture's own set-up, checked);
-    /// - turned off by its toggle, or by its 0 setting (OffSetting), it doesn't happen;
+    /// - turned off by its toggle, or by its 0 setting (OffSetting), it doesn't happen, and the character does what it
+    ///   should instead (WhatHappensInstead: stays on the ground), if the fixture says;
     /// - once it's happened, it doesn't happen again straight away (for RepeatSeconds) from the same inputs: one press,
     ///   one jump;
-    /// - saved before it happens and put back, the character steps on exactly as it did, the moment included;
+    /// - saved before it happens, or just after, and put back, the character steps on exactly as it did, the moment
+    ///   included;
     /// - at another size, it still happens.
     /// A fixture supplies how to set it up (SetUpToStart, spawning with SpawnCharacter), its inputs (InputsFor), its 0
     /// setting (OffSetting) and its event (MomentEvent), then adds the tests about the ability itself. It needs its area's
@@ -55,8 +57,10 @@ namespace MeridianMotion.Tests
         {
             yield return SetUp();
             Component.Enabled = false;
-            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f));
+            Instead instead = WhatHappensInstead(byToggle: true);
+            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f), _ => instead?.EachStep?.Invoke());
             Assert.That(Happened, Is.False, $"With {typeof(T).Name} turned off, it shouldn't raise {MomentEvent}.");
+            instead?.Afterwards?.Invoke();
         }
 
         [UnityTest]
@@ -65,8 +69,10 @@ namespace MeridianMotion.Tests
             if (OffSetting == null) { Assert.Ignore($"{typeof(T).Name} has no setting whose 0 turns it off (OffSetting)."); }
             yield return SetUp();
             TurnOffBySetting();
-            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f));
+            Instead instead = WhatHappensInstead(byToggle: false);
+            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f), _ => instead?.EachStep?.Invoke());
             Assert.That(Happened, Is.False, $"With {OffSetting} at 0, {typeof(T).Name} shouldn't raise {MomentEvent}.");
+            instead?.Afterwards?.Invoke();
         }
 
         [UnityTest]
@@ -104,6 +110,41 @@ namespace MeridianMotion.Tests
                 Assert.That(again[i], Is.EqualTo(first[i]), $"Put back, step {i} should be exactly as it was (position, rotation, velocity, and whether it happened).");
             }
         }
+
+        /// <summary>
+        /// Saved just after the moment (mid-jump, say: what it left the character with) and put back, the character steps on
+        /// exactly as it did.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator Kit_SavedJustAfterItAndPutBack_StepsOnExactlyAsItDid()
+        {
+            yield return SetUp();
+            int limit = CharacterTestRig.StepsFor(SecondsToStart);
+            while (!Happened && StepsRun < limit) { yield return RunInputs(1); }
+            Assume.That(Happened, Is.True, "Test setup: it should have happened.");
+            yield return RunInputs(StepsAfterSaving);
+            MovementStateSnapshot saved = rig.Movement.SaveState();
+            WorldStateSnapshot world = WorldStateSnapshot.Save();
+            long levelTick = rig.LevelTick;
+            int savedAt = StepsRun;
+
+            var first = new List<(Vector3, Quaternion, Vector3, bool)>();
+            yield return RunInputs(StepsCompared, _ => first.Add(Step()));
+            Assert.That(rig.Movement.RestoreState(saved), Is.True, "The saved state should be put back.");
+            world.Restore();
+            rig.LevelTick = levelTick;
+            RewindTo(savedAt);
+            var again = new List<(Vector3, Quaternion, Vector3, bool)>();
+            yield return RunInputs(StepsCompared, _ => again.Add(Step()));
+
+            for (int i = 0; i < first.Count; i++)
+            {
+                Assert.That(again[i], Is.EqualTo(first[i]), $"Put back, step {i} should be exactly as it was (position, rotation, velocity, and whether it happened).");
+            }
+        }
+
+        /// <summary>How many steps after the moment the saved-just-after check saves the character.</summary>
+        protected virtual int StepsAfterSaving => 3;
 
         // The pose and velocity, and whether the moment happened, this step.
         private (Vector3, Quaternion, Vector3, bool) Step()

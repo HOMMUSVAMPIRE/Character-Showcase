@@ -48,6 +48,16 @@ namespace MeridianMotion.Tests.Traversal
         // Dropped from above the water, it falls in and on down to its swimming depth first.
         protected override float SecondsToStart => 1.5f;
 
+        // Turned off, either way, the character sinks: by the end of the kit's run it stands on the pool's floor.
+        protected override Instead WhatHappensInstead(bool byToggle) => new Instead
+        {
+            Afterwards = () =>
+            {
+                Assert.That(rig.Grounded, Is.True, "With Swimming turned off, the character should sink to the pool's floor.");
+                Assert.That(rig.Position.y, Is.EqualTo(-PoolDepth * Scale).Within(0.05f), "It should stand on the pool's floor.");
+            },
+        };
+
         /// <summary>A deep pool (its floor, and water over it), and the character spawned on it, in mid-air above the water.</summary>
         private IEnumerator SetUpPool(float dropFrom = 1f)
         {
@@ -313,17 +323,6 @@ namespace MeridianMotion.Tests.Traversal
             Assert.That(rig.Swimming, Is.False, "In the shallows, the character should stop swimming.");
             Assert.That(rig.Position.y, Is.GreaterThan(0.5f), "The character should have walked up out of the water.");
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.SwimEnded));
-        }
-
-        [UnityTest]
-        public IEnumerator SwimmingTurnedOff_FallsToTheBottom()
-        {
-            yield return SetUpPool();
-            rig.Component<Swimming>().Enabled = false;
-            bool swam = false;
-            yield return rig.RunUntilLanded(_ => swam |= rig.Swimming);
-            Assert.That(swam, Is.False, "With Swimming turned off, the character shouldn't swim.");
-            Assert.That(rig.Position.y, Is.EqualTo(-PoolDepth).Within(0.05f), "It should have fallen to the pool's floor.");
         }
     }
 }

@@ -28,11 +28,16 @@ namespace MeridianMotion.Characters
         [Tooltip("The share of its walking and running speed the character keeps in water as deep as Swimming's Swim " +
                  "Depth (the deepest it wades in), easing from full speed at Wade Start Depth. 1 doesn't slow it")]
         [Range(0.05f, 1f)] [SerializeField] private float wadeSpeedMultiplier = 0.5f;
+        [Tooltip("The deepest water over the character's feet it wades in, as a share of its standing height: deeper (and " +
+                 "too shallow to swim in) it walks as on land. 1 wades at any depth. 0 turns wading off")]
+        [Range(0f, 1f)] [SerializeField] private float wadeMaxDepth = 1f;
 
         /// <summary>How deep water must be over the feet to slow the character, as a share of its standing height.</summary>
         public float WadeStartDepth => wadeStartDepth;
         /// <summary>The share of its speed the character keeps wading as deep as it can (Swimming's Swim Depth).</summary>
         public float WadeSpeedMultiplier => wadeSpeedMultiplier;
+        /// <summary>The deepest water over the feet the character wades in, as a share of its standing height (1: any depth; 0: never).</summary>
+        public float WadeMaxDepth => wadeMaxDepth;
 
         /// <summary>Every step, the character walks at full speed until wading says otherwise (only on the ground, below).</summary>
         public override void AdvanceTimers(MovementStep step, StepInputs inputs, MMotionMotor motor)
@@ -41,12 +46,13 @@ namespace MeridianMotion.Characters
         }
 
         /// <summary>
-        /// On the ground in water at least Wade Start Depth deep over the feet (and too shallow to swim in: deeper,
-        /// Swimming has the character), slows its walking by how deep it is, and marks the step as wading.
+        /// On the ground in water at least Wade Start Depth deep over the feet, and no deeper than Wade Max Depth (and
+        /// too shallow to swim in: deeper, Swimming has the character), slows its walking by how deep it is, and marks the
+        /// step as wading.
         /// </summary>
         public override void BeforeLocomotion(MovementStep step, StepInputs inputs, MMotionMotor motor)
         {
-            if (!step.initialGrounded) { return; }
+            if (!step.initialGrounded || wadeMaxDepth <= 0f) { return; }
             Vector3 feet = step.initialPosition;
             // A skin's width above the feet, which rest a hair into the floor of the water (see Swimming).
             SwimmableWater water = SwimmableWater.At(feet + Vector3.up * motor.Skin);
@@ -55,6 +61,8 @@ namespace MeridianMotion.Characters
             float under = water.SurfaceHeight - feet.y;
             float start = wadeStartDepth * height;
             if (under < start) { return; }
+            // Below 1, deeper water than the max isn't waded in; at 1 (the default), any depth is.
+            if (wadeMaxDepth < 1f && under > wadeMaxDepth * height) { return; }
 
             // From the start depth to the swim depth (the deepest it wades), whether or not it swims; past it, as slow as
             // wading gets.

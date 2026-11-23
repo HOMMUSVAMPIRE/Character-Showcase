@@ -30,8 +30,7 @@ namespace MeridianMotion.Tests.Spawning
         [UnityTest]
         public IEnumerator EveryCharacterPrefab_SpawnsStandsAndWalks([ValueSource(nameof(CharacterPrefabs))] string path)
         {
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), CharacterTestRig.LoadPrefab(path));
+            yield return rig.StandOnFloor(CharacterTestRig.LoadPrefab(path));
             Assert.That(rig.Grounded, Is.True, $"{path} should stand on the floor.");
             Vector3 start = rig.Position;
             const float seconds = 1.5f;

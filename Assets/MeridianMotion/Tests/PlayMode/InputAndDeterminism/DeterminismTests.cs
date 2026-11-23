@@ -165,8 +165,7 @@ namespace MeridianMotion.Tests.InputAndDeterminism
             switch (ability)
             {
                 case Ability.WallClimbing:
-                    rig.Floor();
-                    yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+                    yield return rig.StandOnFloor();
                     rig.ClimbableBox("Wall", new Vector3(0f, 5f, rig.FrontExtent + 0.8f), new Vector3(10f, 10f, 1f));
                     break;
                 case Ability.Ziplining:
@@ -185,14 +184,12 @@ namespace MeridianMotion.Tests.InputAndDeterminism
                     yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
                     break;
                 case Ability.Pushing:
-                    rig.Floor();
-                    yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+                    yield return rig.StandOnFloor();
                     // As tall as PushPullTests' (too tall to vault), just ahead.
                     rig.PushableBox(new Vector3(0f, 0.75f, rig.Position.z + rig.FrontExtent + 0.1f + 0.75f), Vector3.one * 1.5f, 1f, true);
                     break;
                 default:
-                    rig.Floor();
-                    yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f));
+                    yield return rig.StandOnFloor();
                     break;
             }
             Physics.SyncTransforms();
@@ -227,14 +224,19 @@ namespace MeridianMotion.Tests.InputAndDeterminism
             _ => null,
         };
 
+        // Every ability's fixture saves and puts back its ability, just after it starts and well into it (the kits'
+        // Kit_SavedPartwayAndPutBack, Kit_SavedJustAfterItAndPutBack). These are what no ability's kit has: riding a
+        // moving platform, and changing size.
+        private static readonly Ability[] NotAbilities = { Ability.OnAMovingPlatform, Ability.ChangingSize };
+
         /// <summary>
-        /// A character saved partway through (mid-jump, mid-climb, riding a zipline, on a moving platform, changing size,
-        /// swinging on a rope, pushing a box) and put back, the level with it (its ropes' and pushables' own state:
-        /// WorldStateSnapshot; its clock), then given the same frames again, steps on exactly as it did from there: the
-        /// snapshots hold everything a step reads or changes. The save is between steps, at a few ticks.
+        /// A character saved partway through riding a moving platform, or changing size, and put back, the level with it
+        /// (its clock: WorldStateSnapshot holds its ropes' and pushables' own state), then given the same frames again,
+        /// steps on exactly as it did from there: the snapshots hold everything a step reads or changes. The save is
+        /// between steps, at a few ticks. (Each ability is the kit's to check: see NotAbilities.)
         /// </summary>
         [UnityTest]
-        public IEnumerator SavedMidAbility_AndPutBack_StepsOnExactlyAsItDid([Values] Ability ability, [Values(12, 37)] int savedAt)
+        public IEnumerator SavedMidAbility_AndPutBack_StepsOnExactlyAsItDid([ValueSource(nameof(NotAbilities))] Ability ability, [Values(12, 37)] int savedAt)
         {
             yield return SetUp(ability);
             int at = savedAt;

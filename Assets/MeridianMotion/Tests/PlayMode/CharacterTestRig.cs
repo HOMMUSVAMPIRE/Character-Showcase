@@ -73,10 +73,16 @@ namespace MeridianMotion.Tests
         }
 
         /// <summary>A floor, and the character standing on it at the origin, its model loaded and settled.</summary>
-        public IEnumerator StandOnFloor()
+        public IEnumerator StandOnFloor() => StandOnFloor(null);
+
+        /// <summary>
+        /// A floor floorWidth across, and the given character prefab (the tested one, if null) standing on it at the
+        /// origin, its model loaded, then left to settle for settleSeconds.
+        /// </summary>
+        public IEnumerator StandOnFloor(GameObject prefab, float settleSeconds = 0.3f, float floorWidth = 100f)
         {
-            Floor();
-            yield return SpawnSettled(new Vector3(0f, 0.05f, 0f));
+            Floor(0f, floorWidth);
+            yield return SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab, settleSeconds);
         }
 
         public void SpawnCharacter(Vector3 position) => SpawnCharacter(position, null);
@@ -180,6 +186,20 @@ namespace MeridianMotion.Tests
             return null;
 #endif
         }
+
+        /// <summary>The fox (FoxPrefab), or the test skipped (Assert.Ignore, with NoFox) if there's none.</summary>
+        public static GameObject FoxOrSkip()
+        {
+            GameObject fox = FoxPrefab();
+            if (fox == null) { Assert.Ignore(NoFox); }
+            return fox;
+        }
+
+        /// <summary>
+        /// The prefab a test run for several characters names: one starting "Fox" (the fox, or a case of it: "Fox, not
+        /// hovering") is the fox, skipping the test without it (FoxOrSkip); any other, the character tested.
+        /// </summary>
+        public static GameObject PrefabFor(string character) => character.StartsWith("Fox") ? FoxOrSkip() : CharacterPrefab();
 
         /// <summary>The character prefab's body as authored (before it's spawned, to build a world around it).</summary>
         public static BodyShape PrefabBody() => CharacterPrefab().GetComponent<MMotionMotor>().AuthoredBody;

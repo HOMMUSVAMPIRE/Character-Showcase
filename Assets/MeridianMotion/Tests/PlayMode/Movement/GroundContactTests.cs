@@ -61,19 +61,10 @@ namespace MeridianMotion.Tests.Movement
                 $"Hovering over steps, the character's feet should stay on the ground. {trace.Summary()}");
         }
 
-        private GameObject PrefabOf(string character)
-        {
-            if (!character.StartsWith("Fox")) { return CharacterTestRig.CharacterPrefab(); }
-            GameObject fox = CharacterTestRig.FoxPrefab();
-            if (fox == null) { Assert.Ignore(CharacterTestRig.NoFox); }
-            return fox;
-        }
-
         /// <summary>The character, standing on a floor at the origin, its model loaded.</summary>
         private IEnumerator Spawn(string character)
         {
-            rig.Floor(0f, 200f);
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), PrefabOf(character), settleSeconds: 0f);
+            yield return rig.StandOnFloor(CharacterTestRig.PrefabFor(character), settleSeconds: 0f, floorWidth: 200f);
             rig.Movement.HoverOverSteps = Hovering(character);
             yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
         }

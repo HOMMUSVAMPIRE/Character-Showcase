@@ -14,10 +14,13 @@ namespace MeridianMotion.Tests
     /// - it starts from its inputs, raising its start event (the fixture's own set-up, checked);
     /// - turned off by its toggle, it doesn't start;
     /// - turned off by its 0 setting (OffSetting), it doesn't start;
+    /// - turned off either way, the character does what it should instead (WhatHappensInstead: crouches, sinks), if the
+    ///   fixture says;
     /// - turned off while it's under way, it lets go, raising its end event (another ability may take the character then,
     ///   as a wall slide does a ledge's as it falls);
     /// - its states' start and end events come in pairs;
-    /// - saved partway through and put back, the character steps on exactly as it did (with the level's moving parts);
+    /// - saved partway through (just after it starts, and well into it) and put back, the character steps on exactly as it
+    ///   did (with the level's moving parts);
     /// - at another size, it still starts.
     /// A fixture supplies how to set the ability up (SetUpToStart, spawning the character with SpawnCharacter, so it's at
     /// the size a check asks for), the inputs that start it and keep it going (InputsFor), and the setting whose 0 turns it
@@ -39,6 +42,12 @@ namespace MeridianMotion.Tests
 
         /// <summary>How many steps into the ability the save-and-put-back check saves the character.</summary>
         protected virtual int StepsBeforeSaving => 3;
+
+        /// <summary>
+        /// How many steps further on the check's later save is: well into the ability, for what builds up as it goes (a
+        /// rope's swing, a pushed box's speed, a climb carried along). It may have ended by then: what follows is compared all the same.
+        /// </summary>
+        protected virtual int StepsBeforeSavingLater => 30;
 
         private StateEventPair FirstStateEvent
         {
@@ -70,10 +79,14 @@ namespace MeridianMotion.Tests
         }
 
         /// <summary>Runs the fixture's inputs for SecondsToStart (and a little more), returning whether the ability ever got under way.</summary>
-        private IEnumerator RunWatching(System.Action<bool> started)
+        private IEnumerator RunWatching(System.Action<bool> started, Instead instead = null)
         {
             bool was = false;
-            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f), _ => was |= UnderWay);
+            yield return RunInputs(CharacterTestRig.StepsFor(SecondsToStart + 0.25f), _ =>
+            {
+                was |= UnderWay;
+                instead?.EachStep?.Invoke();
+            });
             started(was);
         }
 
@@ -92,10 +105,12 @@ namespace MeridianMotion.Tests
         {
             yield return SetUp();
             Component.Enabled = false;
+            Instead instead = WhatHappensInstead(byToggle: true);
             bool started = false;
-            yield return RunWatching(s => started = s);
+            yield return RunWatching(s => started = s, instead);
             Assert.That(started, Is.False, $"With {typeof(T).Name} turned off, it shouldn't start.");
             Assert.That(rig.EventsRaised, Has.No.Member(AbilityEvents.started));
+            instead?.Afterwards?.Invoke();
         }
 
         [UnityTest]
@@ -104,10 +119,12 @@ namespace MeridianMotion.Tests
             if (OffSetting == null) { Assert.Ignore($"{typeof(T).Name} has no setting whose 0 turns it off (OffSetting)."); }
             yield return SetUp();
             TurnOffBySetting();
+            Instead instead = WhatHappensInstead(byToggle: false);
             bool started = false;
-            yield return RunWatching(s => started = s);
+            yield return RunWatching(s => started = s, instead);
             Assert.That(started, Is.False, $"With {OffSetting} at 0, {typeof(T).Name} shouldn't start.");
             Assert.That(rig.EventsRaised, Has.No.Member(AbilityEvents.started));
+            instead?.Afterwards?.Invoke();
         }
 
         [UnityTest]
@@ -147,12 +164,12 @@ namespace MeridianMotion.Tests
         }
 
         [UnityTest]
-        public IEnumerator Kit_SavedPartwayAndPutBack_StepsOnExactlyAsItDid()
+        public IEnumerator Kit_SavedPartwayAndPutBack_StepsOnExactlyAsItDid([Values(false, true)] bool later)
         {
             yield return SetUp();
             yield return RunUntilUnderWay();
             Assume.That(UnderWay, Is.True, "Test setup: the ability should be under way.");
-            yield return RunInputs(StepsBeforeSaving);
+            yield return RunInputs(later ? StepsBeforeSaving + StepsBeforeSavingLater : StepsBeforeSaving);
             MovementStateSnapshot saved = rig.Movement.SaveState();
             WorldStateSnapshot world = WorldStateSnapshot.Save();
             long levelTick = rig.LevelTick;

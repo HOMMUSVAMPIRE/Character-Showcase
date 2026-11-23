@@ -49,8 +49,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, -25f), settleSeconds: 0f);
-            wallFace = rig.SideExtent + 0.1f;
-            rig.Box("Wall", new Vector3(wallFace + 0.5f, 20f, -26f + wallLength / 2f), new Vector3(1f, 40f, wallLength));
+            wallFace = rig.WallBeside(length: wallLength);
         }
 
         /// <summary>Launches the character forward along the wall at the wall-run speed, steering forward.</summary>

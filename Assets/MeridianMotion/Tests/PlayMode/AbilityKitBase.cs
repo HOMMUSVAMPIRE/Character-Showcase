@@ -82,6 +82,23 @@ namespace MeridianMotion.Tests
         /// <summary>Puts the script back to the given step (with the character's state put back there too).</summary>
         protected void RewindTo(int step) => StepsRun = step;
 
+        /// <summary>
+        /// What the character should do instead of the ability when it's turned off (byToggle: by its toggle; else by its
+        /// 0 setting): crouch instead of sliding, stay on the ground instead of jumping, sink instead of swimming. The kit's
+        /// turned-off checks ask for it before running their inputs, call its EachStep after every step and its Afterwards
+        /// at the end (assert there). Null, the default, checks nothing more.
+        /// </summary>
+        protected virtual Instead WhatHappensInstead(bool byToggle) => null;
+
+        /// <summary>A turned-off check of a fixture's own (see WhatHappensInstead): watched each step, asserted at the end.</summary>
+        protected sealed class Instead
+        {
+            /// <summary>Called after each step of the check's run (to watch for what can only be seen on the way).</summary>
+            public System.Action EachStep;
+            /// <summary>Called once the check's run is over, after the kit's own assertions.</summary>
+            public System.Action Afterwards;
+        }
+
         /// <summary>Sets OffSetting to 0 (a float setting: a fixture whose setting is of another type overrides this).</summary>
         protected virtual void TurnOffBySetting() => rig.SetMovementSetting(OffSetting, 0f);
 

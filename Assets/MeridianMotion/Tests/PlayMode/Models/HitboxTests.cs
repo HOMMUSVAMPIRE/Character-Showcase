@@ -26,13 +26,7 @@ namespace MeridianMotion.Tests.Models
         /// <summary>The characters tested.</summary>
         public static IEnumerable<string> Characters() => new[] { "Character", "Fox" };
 
-        private IEnumerator Spawn(string character)
-        {
-            GameObject prefab = character == "Fox" ? CharacterTestRig.FoxPrefab() : CharacterTestRig.CharacterPrefab();
-            if (prefab == null) { Assert.Ignore(CharacterTestRig.NoFox); }
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab);
-        }
+        private IEnumerator Spawn(string character) => rig.StandOnFloor(CharacterTestRig.PrefabFor(character));
 
         private CharacterHitboxes Hitboxes
         {

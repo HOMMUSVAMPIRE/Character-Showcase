@@ -103,6 +103,29 @@ namespace MeridianMotion.Tests
         public GameObject Floor(float topHeight = 0f, float width = 100f) =>
             Box("Floor", new Vector3(0f, topHeight - 0.5f, 0f), new Vector3(width, 1f, width));
 
+        /// <summary>
+        /// A wall a metre thick straight ahead of the character (+Z), its face gap past the front of its body, standing on
+        /// the ground (y 0) as tall as height and as wide as width, centred on the character. Returns the face's z.
+        /// </summary>
+        public float WallAhead(float gap = 0.1f, float height = 30f, float width = 10f)
+        {
+            float face = Position.z + FrontExtent + gap;
+            Box("Wall", new Vector3(Position.x, height / 2f, face + 0.5f), new Vector3(width, height, 1f));
+            return face;
+        }
+
+        /// <summary>
+        /// A wall a metre thick on the character's right (+X), its face gap past the side of its body, standing on the
+        /// ground (y 0) as tall as height, running length along Z from behind metres behind the character. Returns the
+        /// face's x.
+        /// </summary>
+        public float WallBeside(float gap = 0.1f, float height = 40f, float length = 60f, float behind = 1f)
+        {
+            float face = Position.x + SideExtent + gap;
+            Box("Wall", new Vector3(face + 0.5f, height / 2f, Position.z - behind + length / 2f), new Vector3(1f, height, length));
+            return face;
+        }
+
         /// <summary>A box the character can grab, push and pull (a PushableBlock), resting with its bottom at center.y - size.y / 2.</summary>
         public PushableBlock PushableBox(Vector3 center, Vector3 size, float speedMultiplier = 1f, bool canBePulled = true)
         {

@@ -19,13 +19,7 @@ namespace MeridianMotion.Tests.Movement
     public class FoxTests : CharacterRigFixture
     {
 
-        private IEnumerator SpawnFox()
-        {
-            GameObject prefab = CharacterTestRig.FoxPrefab();
-            if (prefab == null) { Assert.Ignore(CharacterTestRig.NoFox); }
-            rig.Floor();
-            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab);
-        }
+        private IEnumerator SpawnFox() => rig.StandOnFloor(CharacterTestRig.FoxOrSkip());
 
         [UnityTest]
         public IEnumerator TheFox_StandsOnItsPaws_InARoundedBodyAboveItsLegs_ItsEyesOnItsHead()

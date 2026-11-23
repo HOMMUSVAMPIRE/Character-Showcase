@@ -72,30 +72,6 @@ namespace MeridianMotion.Tests.Movement
         }
 
         [UnityTest]
-        public IEnumerator JumpingTurnedOff_TheCharacterDoesntJump()
-        {
-            yield return rig.StandOnFloor();
-            rig.ClearEvents();
-            rig.Component<Jumping>().Enabled = false;
-            bool leftTheGround = false;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Jump(), _ => leftTheGround |= !rig.Grounded);
-            Assert.That(leftTheGround, Is.False, "With Jumping turned off, Jump shouldn't leave the ground.");
-            Assert.That(rig.EventsRaised, Has.No.Member(MovementEvents.Jumped));
-            Assert.That(rig.MaxJumps, Is.EqualTo(0), "Without Jumping, the character has no jumps.");
-        }
-
-        [UnityTest]
-        public IEnumerator DashingTurnedOff_TheCharacterDoesntDash()
-        {
-            yield return rig.StandOnFloor();
-            rig.ClearEvents();
-            rig.Component<Dashing>().Enabled = false;
-            yield return rig.Run(0.5f, step => CharacterTestRig.Dash(Vector3.forward));
-            Assert.That(rig.EventsRaised, Has.No.Member(MovementEvents.DashStarted), "With Dashing turned off, Dash shouldn't dash.");
-            Assert.That(rig.Movement.dash.IsDashing, Is.False);
-        }
-
-        [UnityTest]
         public IEnumerator WalkingAndRunningTurnedOff_TheCharacterDoesntWalk_ButStillJumps()
         {
             yield return rig.StandOnFloor();

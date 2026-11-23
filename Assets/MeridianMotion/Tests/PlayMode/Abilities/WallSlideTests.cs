@@ -43,8 +43,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, 0f), settleSeconds: 0f);
-            face = rig.FrontExtent + 0.1f;
-            rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
+            face = rig.WallAhead();
         }
 
         /// <summary>Falls into the wall, steering into it, until sliding down it.</summary>

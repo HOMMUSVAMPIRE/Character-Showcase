@@ -133,21 +133,21 @@ The level builders know nothing about the character: see [Test Levels](levels.md
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.
   - Wait for what the movement does rather than a fixed time chosen for one tuning: `rig.RunUntil(condition, inputs)`, `rig.RunUntilLanded()` after a jump or fall, `rig.RunUntilBackOnTheGround(inputs)` for a whole jump. Use these rather than a loop of `rig.Run(1, …)`: each yield costs a frame, which in the editor is long.
-  - The rig records the character's movement events from spawn (`rig.EventsRaised`, `rig.Count(event)`, `rig.StepOf(event)`; `rig.ClearEvents()` to record from a point), and has the common readings (`rig.Velocity`, `rig.Gravity`, `rig.HorizontalSpeed`, `rig.MeanSpeed`, `rig.StandOnFloor()`...): add to it rather than to one fixture.
+  - The rig records the character's movement events from spawn (`rig.EventsRaised`, `rig.Count(event)`, `rig.StepOf(event)`; `rig.ClearEvents()` to record from a point), and has the common readings (`rig.Velocity`, `rig.Gravity`, `rig.HorizontalSpeed`, `rig.MeanSpeed`...) and set-ups (`rig.StandOnFloor()`, or `rig.StandOnFloor(prefab)` for another character; `rig.WallAhead()`, `rig.WallBeside()`; `CharacterTestRig.FoxOrSkip()` and `PrefabFor(name)` for a test of the fox, skipped without it): add to it rather than to one fixture.
 - **The ability test kit.** Deriving `AbilityFixture<T>` gives the fixture the checks every ability should pass, as its own tests (named `Kit_…`):
   - it starts from its inputs, raising its start event;
   - turned off by its toggle, and by its 0 setting, it doesn't start;
   - turned off while it's under way, it lets go at once, raising its end event;
   - its states' start and end events come in pairs;
-  - saved partway through and put back, the character steps on exactly as it did;
+  - saved partway through (just after it starts, and well into it) and put back, the character steps on exactly as it did;
   - at half and twice its size, it still starts.
 
-  The fixture supplies three things: `SetUpToStart` (the world it needs, and the character spawned with the kit's `SpawnCharacter`, so it's at the size a check asks for), `InputsFor(step)` (the inputs that start it and keep it going) and `OffSetting` (the name of the setting whose 0 turns it off). `AbilityState`, `SecondsToStart`, `StepsBeforeSaving` and `StepsCompared` can be overridden. `DashTests` and `ZiplineTests` are examples. Then add the tests that are about the ability itself.
+  The fixture supplies three things: `SetUpToStart` (the world it needs, and the character spawned with the kit's `SpawnCharacter`, so it's at the size a check asks for), `InputsFor(step)` (the inputs that start it and keep it going) and `OffSetting` (the name of the setting whose 0 turns it off). `AbilityState`, `SecondsToStart`, `StepsBeforeSaving` and `StepsCompared` can be overridden, and so can `WhatHappensInstead(byToggle)`: what the character should do instead when the ability's turned off (crouch, sink, stay on the ground), checked each step and at the end of the kit's turned-off checks (`SlideTests`, `SwimTests`). `DashTests` and `ZiplineTests` are examples. Then add the tests that are about the ability itself.
 - **The moment kit.** An ability that happens in a moment rather than being under way for a while (a jump, a bounce: `OneOffEvents`, no state) derives from `MomentFixture<T>` instead, and supplies its event too (`MomentEvent`). Its `Kit_…` checks:
   - it happens from its inputs (and its component declares the event);
   - turned off by its toggle, and by its 0 setting, it doesn't happen;
   - once it's happened, the same inputs don't make it happen again straight away (`RepeatSeconds`);
-  - saved before it and put back, the character steps on exactly as it did, the moment included;
+  - saved before it, or just after it, and put back, the character steps on exactly as it did, the moment included;
   - at half and twice its size, it still happens.
 
   `JumpHeightTests` and `BouncePadTests` are examples. What the two kits share is `AbilityKitBase<T>`.

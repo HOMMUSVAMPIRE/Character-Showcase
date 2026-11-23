@@ -27,8 +27,7 @@ namespace MeridianMotion.Tests.Animations
         /// <summary>Spawns the fox at the feet position given (the world already built), and takes over its animation.</summary>
         private IEnumerator SpawnFox(Vector3 feet)
         {
-            GameObject prefab = CharacterTestRig.FoxPrefab();
-            if (prefab == null) { Assert.Ignore(CharacterTestRig.NoFox); }
+            GameObject prefab = CharacterTestRig.FoxOrSkip();
             Physics.SyncTransforms();
             rig.SpawnCharacter(feet, prefab);
             animation = rig.Animation;

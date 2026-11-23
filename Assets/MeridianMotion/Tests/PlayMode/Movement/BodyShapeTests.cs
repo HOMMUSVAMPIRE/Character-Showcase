@@ -129,8 +129,7 @@ namespace MeridianMotion.Tests.Movement
                 if (run > 0) { yield return ReplaceRig(); }
                 GameObject prefab = character == "Fox" ? CharacterTestRig.FoxPrefab() : CharacterTestRig.CharacterPrefab();
                 if (prefab == null) { Assert.Ignore(CharacterTestRig.NoFox); }
-                rig.Floor(0f, 200f);
-                yield return rig.SpawnSettled(new Vector3(0f, 0.05f, 0f), prefab, settleSeconds: 0f);
+                yield return rig.StandOnFloor(prefab, settleSeconds: 0f, floorWidth: 200f);
                 bool withCollider = run == 0;
                 if (withCollider) { rig.AddBodyCollider(); }
 

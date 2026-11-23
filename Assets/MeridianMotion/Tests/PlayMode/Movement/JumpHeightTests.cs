@@ -29,6 +29,21 @@ namespace MeridianMotion.Tests.Movement
 
         protected override MovementEvents MomentEvent => MovementEvents.Jumped;
 
+        // Turned off, Jump leaves the character on the ground; without the component, it has no jumps at all.
+        protected override Instead WhatHappensInstead(bool byToggle)
+        {
+            bool leftTheGround = false;
+            return new Instead
+            {
+                EachStep = () => leftTheGround |= !rig.Grounded,
+                Afterwards = () =>
+                {
+                    Assert.That(leftTheGround, Is.False, "With Jumping turned off, Jump shouldn't leave the ground.");
+                    if (byToggle) { Assert.That(rig.MaxJumps, Is.EqualTo(0), "Without Jumping, the character has no jumps."); }
+                },
+            };
+        }
+
         private float MinHeight => rig.MovementSetting<float>("minJumpHeight") * rig.Movement.HeightScale;
         private float MaxHeight => rig.MovementSetting<float>("maxJumpHeight") * rig.Movement.HeightScale;
 

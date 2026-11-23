@@ -28,6 +28,13 @@ namespace MeridianMotion.Tests.Abilities
 
         protected override string OffSetting => "slideMaxDuration";
 
+        // With no slide length, crouching while sprinting crouches instead. (The kit's toggle is Crouching's, which turns
+        // crouching off too: Can Slide, sliding's own toggle, is SlidingTurnedOff_CrouchesInstead.)
+        protected override Instead WhatHappensInstead(bool byToggle) => byToggle ? null : new Instead
+        {
+            Afterwards = () => Assert.That(rig.InState(CharacterState.Crouching), Is.True, "With no slide length, it should crouch instead."),
+        };
+
         protected override CharacterState AbilityState => CharacterState.Sliding;
 
         private float SlideStartSpeed => rig.Component<Crouching>().SlideStartSpeed * rig.Movement.SpeedScale;
@@ -166,20 +173,17 @@ namespace MeridianMotion.Tests.Abilities
         }
 
         /// <summary>
-        /// Sliding turned off, either way (Can Slide off, or a Slide Max Duration of 0), crouching while sprinting
-        /// crouches instead.
+        /// Sliding turned off by Can Slide (Crouching's toggle for it), crouching while sprinting crouches instead. (A Slide
+        /// Max Duration of 0 is the kit's turned-off check, with WhatHappensInstead.)
         /// </summary>
         [UnityTest]
-        public IEnumerator SlidingTurnedOff_CrouchesInstead([Values(false, true)] bool byMaxDurationOfZero)
+        public IEnumerator SlidingTurnedOff_CrouchesInstead()
         {
             yield return SprintForward();
-            if (byMaxDurationOfZero) { rig.SetMovementSetting("slideMaxDuration", 0f); }
-            else { rig.Component<Crouching>().SlidingEnabled = false; }
+            rig.Component<Crouching>().SlidingEnabled = false;
             bool slid = false;
             yield return rig.Run(0.5f, step => SprintCrouching(step), _ => slid |= Sliding);
-            Assert.That(slid, Is.False, byMaxDurationOfZero
-                ? "With no slide length, crouching while sprinting shouldn't slide."
-                : "With Can Slide off, crouching while sprinting shouldn't slide.");
+            Assert.That(slid, Is.False, "With Can Slide off, crouching while sprinting shouldn't slide.");
             Assert.That(rig.InState(CharacterState.Crouching), Is.True, "It should crouch instead.");
         }
 
