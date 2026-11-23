@@ -113,7 +113,7 @@ namespace MeridianMotion.Tests.Traversal
         public IEnumerator ABounce_IsTheCharactersJump_LeavingItsAirJumps()
         {
             yield return SetUpPad(4f);
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntil(() => rig.Count(MovementEvents.Bounced) > 0, _ => CharacterTestRig.Idle(), timeoutSeconds: 3f);
             Assert.That(rig.Count(MovementEvents.Bounced) > 0, Is.True, "Test setup: the character should have bounced.");
             Assert.That(rig.Movement.jump.remaining, Is.EqualTo(Mathf.Max(0, rig.Component<Jumping>().MaxJumps - 1)), "The bounce should use the ground jump and leave the air jumps.");
         }

@@ -37,7 +37,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
         }
 
         /// <summary>Press dash for one step (then release) and count how many steps the character spends dashing.</summary>
@@ -99,7 +99,7 @@ namespace MeridianMotion.Tests.Movement
 
             float justAfter = 0f;
             yield return rig.Run(1, _ => CharacterTestRig.Idle(), _ => justAfter = rig.Movement.lastStep.finalVelocity.x);
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Vector3 rest = rig.Position;
             yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
 

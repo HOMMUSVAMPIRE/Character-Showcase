@@ -78,7 +78,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Vector3 settled = rig.Position;
 
             yield return rig.Run(2f, _ => CharacterTestRig.Idle());
@@ -160,7 +160,7 @@ namespace MeridianMotion.Tests.Movement
             rig.Box("Ledge", new Vector3(0f, -0.5f, -10f), new Vector3(10f, 1f, 20f));
             rig.Floor(-5f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
 
             float dt = Time.fixedDeltaTime;
             int airborneSteps = 0;
@@ -209,7 +209,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             int maxJumps = rig.Component<Jumping>().MaxJumps;
 
             // A one-step tap, released while still inside the coyote window.
@@ -226,7 +226,7 @@ namespace MeridianMotion.Tests.Movement
             rig.Box("Ledge", new Vector3(0f, -0.5f, -10f), new Vector3(10f, 1f, 20f));
             rig.Floor(-5f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -0.8f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             int maxJumps = rig.Component<Jumping>().MaxJumps;
 
             // Walk off, then check the jumps just after leaving the ground.
@@ -247,7 +247,7 @@ namespace MeridianMotion.Tests.Movement
             rig.Box("Ledge", new Vector3(0f, -0.5f, -10f), new Vector3(10f, 1f, 20f));
             rig.Floor(-2f);
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -1.5f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             float walkSpeed = rig.Component<WalkingAndRunning>().WalkSpeed;
 
             float dt = Time.fixedDeltaTime;
@@ -273,7 +273,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             // Use up every jump, so the buffered press can only be honoured by landing.
             int jumps = rig.Component<Jumping>().MaxJumps;
             for (int i = 0; i < jumps; i++)
@@ -421,7 +421,7 @@ namespace MeridianMotion.Tests.Movement
                 rig.Box($"Step {i + 1}", new Vector3(0f, height / 2f, i * run + run / 2f), new Vector3(width, height, run));
             }
             rig.Body.position = new Vector3(0f, top + 0.05f, -1.5f - startOffset);
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should stand at the top of the stairs.");
 
             Vector3 heading = Quaternion.Euler(0f, inputAngle, 0f) * Vector3.forward;

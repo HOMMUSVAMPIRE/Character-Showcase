@@ -217,7 +217,7 @@ namespace MeridianMotion.Tests.Traversal
             Assume.That(depth, Is.LessThan(surface - shelf), "Test setup: the water should be deep enough to swim in.");
             yield return rig.RunUntil(() => rig.Swimming && Mathf.Abs(rig.Velocity.y) < 0.05f, _ => CharacterTestRig.Idle(), timeoutSeconds: 5f);
             yield return rig.Run(1, _ => CharacterTestRig.Crouch());
-            yield return rig.Run(0.4f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntil(() => Diving, _ => CharacterTestRig.Idle(), timeoutSeconds: 2f);
             Assume.That(Diving, Is.True, "Test setup: the character should be underwater.");
             LookDown(lookDown);
             float shallowestDiving = float.PositiveInfinity, wadedOutAt = float.NaN;
@@ -255,7 +255,7 @@ namespace MeridianMotion.Tests.Traversal
             Assert.That(Diving, Is.False, "Without input, the character should drift back up to the surface.");
             Assert.That(rig.Swimming, Is.True, "Back at the surface, the character should swim there.");
             Assert.That(rig.EventsRaised, Does.Contain(MovementEvents.DiveEnded));
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(FeetUnder, Is.EqualTo(rig.SwimDepth).Within(0.02f), "At the surface, the character should float at its swimming depth.");
             Assert.That(rig.CurrentHeight, Is.EqualTo(rig.StandingHeight).Within(0.01f), "At the surface, the body should stand again.");
         }
@@ -265,7 +265,7 @@ namespace MeridianMotion.Tests.Traversal
         {
             yield return DivedInThePool();
             rig.SetMovementSetting("swimBuoyancy", 0f);
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle()); // The dive's push wears off.
+            yield return rig.Settle(); // The dive's push wears off.
             float depth = rig.Position.y;
             yield return rig.Run(2f, _ => CharacterTestRig.Idle());
             Assert.That(Diving, Is.True, "With no buoyancy, the character should stay underwater.");

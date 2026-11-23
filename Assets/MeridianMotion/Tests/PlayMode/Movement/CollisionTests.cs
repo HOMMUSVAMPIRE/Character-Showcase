@@ -57,7 +57,7 @@ namespace MeridianMotion.Tests.Movement
             float headroom = 0.5f * rig.StepHeight;
             float ceiling = rig.CurrentHeight + headroom;
             rig.Box("Ceiling", new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(10f, 1f, 10f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
 
             // Hold jump for longer than the jump lasts, so only the ceiling can end it.
             int stepsAtCeiling = 0;
@@ -156,7 +156,7 @@ namespace MeridianMotion.Tests.Movement
 
             yield return rig.RunUntilLanded();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should land on the ramp.");
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
 
             Vector3 moved = rig.Position - dropped;
             Assert.That(new Vector2(moved.x, moved.z).magnitude, Is.LessThan(0.03f), "Landing on a walkable ramp turned the fall into a slide down it.");

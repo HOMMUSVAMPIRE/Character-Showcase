@@ -96,7 +96,7 @@ namespace MeridianMotion.Tests.Movement
             MovementCapabilities authored = Capabilities;
             float jump = Reach("sprint jump"), slide = authored.SlideLength, stand = authored.StandHeight;
             rig.Controller.SetScale(new Vector3(2f, 2f, 2f), immediately: true);
-            yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assume.That(rig.Movement.SizeScaling, Is.EqualTo(MovementSizeScaling.Proportional), "Tests the default, proportional size scaling.");
             Assert.That(Capabilities.StandHeight, Is.EqualTo(2f * stand).Within(1e-3f));
             Assert.That(Reach("sprint jump"), Is.EqualTo(2f * jump).Within(0.02f * jump), "A character twice the size should jump twice as far.");

@@ -5,6 +5,7 @@ using NUnit.Framework;
 using UnityEngine.Rendering;
 using UnityEngine.TestTools;
 using UnityEngine;
+using static MeridianMotion.Tests.Waits;
 
 namespace MeridianMotion.Tests.Cameras
 {
@@ -87,35 +88,6 @@ namespace MeridianMotion.Tests.Cameras
             for (int i = 0; i < count; i++) { yield return null; }
         }
 
-        /// <summary>
-        /// Waits frame by frame until done says so, or timeoutSeconds pass: for something easing to where it settles, as
-        /// long as that takes however it's tuned, rather than a time chosen for one tuning. Doesn't fail by itself on the
-        /// timeout: assert what should then be true.
-        /// </summary>
-        private static IEnumerator WaitUntil(System.Func<bool> done, float timeoutSeconds = 5f)
-        {
-            float until = Time.time + timeoutSeconds;
-            while (!done() && Time.time < until) { yield return null; }
-        }
-
-        /// <summary>
-        /// Waits frame by frame until value stops changing (by less than tolerance a frame, for several frames running),
-        /// or timeoutSeconds pass.
-        /// </summary>
-        private static IEnumerator WaitUntilSettled(System.Func<float> value, float tolerance, float timeoutSeconds = 5f)
-        {
-            const int SteadyFrames = 5;
-            float until = Time.time + timeoutSeconds, last = value();
-            int steady = 0;
-            while (steady < SteadyFrames && Time.time < until)
-            {
-                yield return null;
-                float now = value();
-                steady = Mathf.Abs(now - last) < tolerance ? steady + 1 : 0;
-                last = now;
-            }
-        }
-
         /// <summary>Waits for a physics step (the rig samples its target once per step) and a frame to apply it.</summary>
         private static IEnumerator PhysicsStepAndFrame()
         {
@@ -181,7 +153,7 @@ namespace MeridianMotion.Tests.Cameras
             Assert.That(rig.SetMode(CameraMode.FirstPerson), Is.True);
             yield return new WaitForSeconds(rig.Modes.transitionDuration * 0.5f);
             float midBlend = rig.ThirdPersonBlend;
-            yield return new WaitForSeconds(rig.Modes.transitionDuration);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 0f);
 
             Assert.That(midBlend, Is.InRange(0.05f, 0.95f), "Camera should blend between modes, not cut.");
             Assert.That(rig.ThirdPersonBlend, Is.EqualTo(0f));
@@ -198,7 +170,7 @@ namespace MeridianMotion.Tests.Cameras
             anchor.localPosition = new Vector3(0f, 1.25f, 0f);
             rig.FirstPerson.eyeAnchor = anchor;
             rig.SetMode(CameraMode.FirstPerson);
-            yield return new WaitForSeconds(rig.Modes.transitionDuration * 1.5f);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 0f);
 
             Vector3 eyes = target.position + Vector3.up * 1.25f + Quaternion.Euler(0f, rig.Yaw, 0f) * Vector3.forward * rig.FirstPerson.eyeForwardOffset;
             Assert.That(rig.EyeHeight, Is.EqualTo(1.25f).Within(1e-4f));
@@ -233,7 +205,7 @@ namespace MeridianMotion.Tests.Cameras
             Box("Low Ceiling", target.position + new Vector3(0f, ceiling + 0.5f, 0f), new Vector3(40f, 1f, 40f));
             // Looking level, so the camera stays under the ceiling.
             rig.SetLookRotation(rig.Yaw, 0f);
-            yield return new WaitForSeconds(rig.Collision.returnSmoothTime * 3f + 0.2f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
 
             Assert.That(rig.PivotHeight, Is.EqualTo(eyes).Within(1e-4f), "The pivot should be no higher than the eyes.");
             Vector3 pivot = target.position + Vector3.up * eyes;
@@ -271,7 +243,7 @@ namespace MeridianMotion.Tests.Cameras
 
             rig.SetDistance(6f, instant: true);
             // Collision pulls in instantly but eases back out (returnSmoothTime), so give it time to extend.
-            yield return new WaitForSeconds(rig.Collision.returnSmoothTime * 6f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
             Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(6f)), Is.LessThan(0.01f));
 
             rig.SetDistance(1000f, instant: true);
@@ -335,7 +307,7 @@ namespace MeridianMotion.Tests.Cameras
                 Assert.Ignore("The camera doesn't start on the right shoulder with auto-swap and collision on.");
             }
             WallOnTheShoulderSide();
-            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
 
             Vector3 local = Quaternion.Inverse(Quaternion.Euler(0f, rig.Yaw, 0f)) * (cam.transform.position - target.position);
             Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
@@ -379,7 +351,7 @@ namespace MeridianMotion.Tests.Cameras
             // On the left, away from the shoulder, its face half the probe's radius from the pivot.
             float face = 0.5f * rig.Collision.probeRadius;
             Box("Wall", target.position + new Vector3(-(face + 0.5f), 2f, 0f), new Vector3(1f, 8f, 40f));
-            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
 
             Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
             Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.9f * rig.Zoom.defaultDistance),
@@ -399,7 +371,7 @@ namespace MeridianMotion.Tests.Cameras
             {
                 Box(side < 0f ? "Wall (West)" : "Wall (East)", target.position + new Vector3(side * (half + 0.5f), 2f, 0f), new Vector3(1f, 8f, 40f));
             }
-            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
 
             Vector3 pivot = target.position + Vector3.up * rig.ThirdPerson.pivotHeight;
             Assert.That(Vector3.Distance(cam.transform.position, pivot), Is.GreaterThan(0.9f * rig.Zoom.defaultDistance),
@@ -416,10 +388,10 @@ namespace MeridianMotion.Tests.Cameras
                 Assert.Ignore("The camera doesn't start on the right shoulder with auto-swap and collision on.");
             }
             GameObject wall = WallOnTheShoulderSide();
-            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
             wall.SetActive(false);
             Physics.SyncTransforms();
-            yield return new WaitForSeconds(rig.ThirdPerson.shoulderSwapTime * 3f + rig.Collision.returnSmoothTime * 3f);
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-4f);
             Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(rig.Zoom.defaultDistance)), Is.LessThan(0.05f),
                 "With the wall gone, the camera should go back over its own shoulder.");
         }
@@ -534,7 +506,7 @@ namespace MeridianMotion.Tests.Cameras
                 yield return null;
                 largestOffset = Mathf.Max(largestOffset, Vector3.Distance(cam.transform.position, rest));
             }
-            yield return new WaitForSeconds(1f / rig.Shake.decayPerSecond + 0.1f);
+            yield return WaitUntil(() => rig.Trauma == 0f);
 
             Assert.That(largestOffset, Is.GreaterThan(0.001f), "Trauma should shake the camera.");
             Assert.That(rig.Trauma, Is.EqualTo(0f), "Trauma should decay away.");
@@ -576,12 +548,12 @@ namespace MeridianMotion.Tests.Cameras
             yield return Frames(2);
 
             rig.SetMode(CameraMode.FirstPerson);
-            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 0f);
             Assert.That(renderer.shadowCastingMode, Is.EqualTo(ShadowCastingMode.ShadowsOnly), "Target should only cast a shadow in first person.");
             Assert.That(renderer.forceRenderingOff, Is.False);
 
             rig.SetMode(CameraMode.ThirdPerson);
-            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 1f);
             Assert.That(renderer.shadowCastingMode, Is.EqualTo(ShadowCastingMode.On), "Target should be fully visible again.");
             Assert.That(renderer.forceRenderingOff, Is.False);
         }
@@ -591,7 +563,7 @@ namespace MeridianMotion.Tests.Cameras
         {
             rig.FirstPerson.hideTarget = TargetHideMode.Hide;
             rig.SetMode(CameraMode.FirstPerson);
-            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 0f);
 
             // Like a character model that finishes loading after the camera started following the character.
             var model = Track(GameObject.CreatePrimitive(PrimitiveType.Cube));
@@ -602,7 +574,7 @@ namespace MeridianMotion.Tests.Cameras
             Assert.That(renderer.forceRenderingOff, Is.True, "A renderer added to the target later should be hidden too.");
 
             rig.SetMode(CameraMode.ThirdPerson);
-            yield return new WaitForSeconds(rig.Modes.transitionDuration + 0.1f);
+            yield return WaitUntil(() => rig.ThirdPersonBlend == 1f);
             Assert.That(renderer.forceRenderingOff, Is.False, "It should be shown again in third person.");
         }
 

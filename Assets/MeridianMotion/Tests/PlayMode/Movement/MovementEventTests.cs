@@ -19,7 +19,7 @@ namespace MeridianMotion.Tests.Movement
         private IEnumerator SettleAndRecord(Vector3 position)
         {
             rig.SpawnCharacter(position);
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             rig.ClearEvents();
         }
 

@@ -176,12 +176,12 @@ namespace MeridianMotion.Tests.Traversal
         {
             yield return SetUpPanel();
             yield return rig.Run(0.5f, _ => Up);
-            yield return rig.Run(3f, _ => Right);
+            yield return rig.RunUntilStill(_ => Right);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the edge of the climbable area.");
             Assert.That(rig.Position.x, Is.GreaterThan(0.5f), "The character should have climbed across the panel.");
             Assert.That(rig.Position.x, Is.LessThan(1f + rig.SideExtent), "The character should stop at the panel's edge, not climb on along the plain wall.");
 
-            yield return rig.Run(5f, _ => CharacterTestRig.Move(Vector3.left));
+            yield return rig.RunUntilStill(_ => CharacterTestRig.Move(Vector3.left));
             Assert.That(Climbing, Is.True);
             Assert.That(rig.Position.x, Is.GreaterThan(-1f - rig.SideExtent), "The character should stop at the panel's other edge too.");
         }
@@ -190,7 +190,7 @@ namespace MeridianMotion.Tests.Traversal
         public IEnumerator ClimbingUp_StopsAtTheTopOfTheClimbableArea()
         {
             yield return SetUpPanel();
-            yield return rig.Run(4f, _ => Up);
+            yield return rig.RunUntilStill(_ => Up);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the top of the climbable area.");
             Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.LessThan(4f + 0.5f), "The character should stop at the panel's top, not climb on up the plain wall.");
             Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.GreaterThan(4f - 0.5f), "The character should have climbed to the panel's top.");
@@ -204,7 +204,7 @@ namespace MeridianMotion.Tests.Traversal
             rig.ClimbableBox("Pillar", new Vector3(0f, 5f, face + 2f), new Vector3(2f, 10f, 4f));
             yield return TakeHold();
             yield return rig.Run(0.5f, _ => Up);
-            yield return rig.Run(1.5f, _ => Right);
+            yield return rig.RunUntil(() => rig.Position.z > face + 0.25f, _ => Right);
 
             Assert.That(Climbing, Is.True, "The character should still be climbing, round the corner.");
             Assert.That(Vector3.Angle(Forward, Vector3.left), Is.LessThan(10f), "The character should face the pillar's right face.");
@@ -222,7 +222,7 @@ namespace MeridianMotion.Tests.Traversal
             rig.ClimbableBox("Side Wall", new Vector3(side + 0.5f, 5f, face - 5f), new Vector3(1f, 10f, 10f));
             yield return TakeHold();
             yield return rig.Run(0.5f, _ => Up);
-            yield return rig.Run(2f, _ => Right);
+            yield return rig.RunUntil(() => Vector3.Angle(Forward, Vector3.right) < 10f, _ => Right);
             Assert.That(Climbing, Is.True, "The character should still be climbing, in the corner.");
             Assert.That(Vector3.Angle(Forward, Vector3.right), Is.LessThan(10f), "The character should have turned to the side wall.");
 
@@ -387,12 +387,12 @@ namespace MeridianMotion.Tests.Traversal
             float toMiddle = middle - (rig.Position.y + rig.WallClimbGripHeight);
             yield return rig.Run(toMiddle / rig.ClimbSpeed, _ => Up);
 
-            yield return rig.Run(3f, _ => Right);
+            yield return rig.RunUntilStill(_ => Right);
             Assert.That(Climbing, Is.True, "The character should still be climbing at the edge of the paint.");
             Assert.That(rig.Position.x, Is.GreaterThan(0.5f * radius), "The character should have climbed across the patch.");
             Assert.That(rig.Position.x, Is.LessThan(radius + 0.1f), "The character's grip shouldn't leave the paint.");
 
-            yield return rig.Run(4f, _ => Up);
+            yield return rig.RunUntilStill(_ => Up);
             Assert.That(Climbing, Is.True);
             Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.LessThan(middle + radius + 0.1f), "The character shouldn't climb up past the paint.");
             Assert.That(rig.Position.y + rig.WallClimbGripHeight, Is.GreaterThan(middle), "The character should have climbed up the patch.");
@@ -416,13 +416,13 @@ namespace MeridianMotion.Tests.Traversal
             painted.Paint(new Vector3(0f, 5f, face), Vector3.back, 6f);
             yield return TakeHold();
             yield return rig.Run(0.5f, _ => Up);
-            yield return rig.Run(1.5f, _ => Right);
+            yield return rig.RunUntilStill(_ => Right);
             Assert.That(Climbing, Is.True);
             Assert.That(Vector3.Angle(Forward, Vector3.forward), Is.LessThan(5f), "The character shouldn't go round onto the unpainted face.");
             Assert.That(rig.Position.x, Is.EqualTo(1f).Within(0.15f), "The character should stop at the corner.");
 
             painted.Paint(new Vector3(1f, 5f, face + 2f), Vector3.right, 6f);
-            yield return rig.Run(1.5f, _ => Right);
+            yield return rig.RunUntil(() => rig.Position.z > face + 0.25f, _ => Right);
             Assert.That(Climbing, Is.True);
             Assert.That(Vector3.Angle(Forward, Vector3.left), Is.LessThan(10f), "Painted round the corner, the character should climb onto the right face.");
             Assert.That(rig.Position.z, Is.GreaterThan(face + 0.25f));

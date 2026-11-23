@@ -159,6 +159,8 @@ namespace MeridianMotion.Tests.Models
         /// </summary>
         private class SlowSource : CharacterModelSource
         {
+            /// <summary>How many frames it takes to make its model.</summary>
+            public const int Frames = 30;
             public bool cleanedUp;
             public int released;
 
@@ -166,7 +168,7 @@ namespace MeridianMotion.Tests.Models
             {
                 try
                 {
-                    for (int i = 0; i < 30; i++) { await Awaitable.NextFrameAsync(cancellationToken); }
+                    for (int i = 0; i < Frames; i++) { await Awaitable.NextFrameAsync(cancellationToken); }
                 }
                 catch (System.OperationCanceledException)
                 {
@@ -185,6 +187,10 @@ namespace MeridianMotion.Tests.Models
             }
         }
 
+        // Frames past a load's own (SlowSource.Frames, or a prefab source's next frame) for it to have produced its model,
+        // had it not been cancelled: a test that it doesn't waits this long, as there's nothing to wait for.
+        private const int LoadSlackFrames = 10;
+
         /// <summary>
         /// A character destroyed while its model loads cancels the load (its source's cleanup runs) and leaves no model
         /// behind, whether the source is slow (stands in for Addressables) or instantiates straight away.
@@ -200,7 +206,7 @@ namespace MeridianMotion.Tests.Models
                 Object.Destroy(rig.Character);
                 yield return null;
             }
-            for (int i = 0; i < 10; i++) { yield return null; }
+            for (int i = 0; i < LoadSlackFrames; i++) { yield return null; }
             foreach (GameObject obj in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include))
             {
                 Assert.That(obj.name.StartsWith("Cube Model(Clone)"), Is.False, "A model finished loading for a character that no longer exists.");
@@ -215,7 +221,7 @@ namespace MeridianMotion.Tests.Models
             Object.Destroy(rig.Character);
             yield return null;
             Assert.That(slow.cleanedUp, Is.True, "The source's cleanup should run when its character is destroyed.");
-            for (int i = 0; i < 40; i++) { yield return null; }
+            for (int i = 0; i < SlowSource.Frames + LoadSlackFrames; i++) { yield return null; }
             Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
         }
 
@@ -234,7 +240,7 @@ namespace MeridianMotion.Tests.Models
             Assert.That(slow.cleanedUp, Is.True, "Replacing a model mid-load should cancel the first load.");
             Assert.That(slowLoaded, Is.False, "The first load should report that it didn't load.");
             Assert.That(rig.Models.ModelRoot.name, Does.StartWith("Cube Model"));
-            for (int i = 0; i < 40; i++) { yield return null; }
+            for (int i = 0; i < SlowSource.Frames + LoadSlackFrames; i++) { yield return null; }
             Assert.That(GameObject.Find("Slow Model"), Is.Null, "The cancelled load shouldn't produce a model.");
         }
 
@@ -440,7 +446,7 @@ namespace MeridianMotion.Tests.Models
                 Assert.That(rig.BodyNow.radius, Is.EqualTo(0.5f * shoulders * rig.Models.BodyWidthMargin).Within(0.01f),
                     "The body should be as wide as the shoulders, times the margin.");
             }
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
 
@@ -501,7 +507,7 @@ namespace MeridianMotion.Tests.Models
             Assert.That(box.kind, Is.EqualTo(BodyShapeKind.Box), "The character's body should be a box, as the model's is.");
             Assert.That(Vector3.Distance(box.size, size * modelScale), Is.LessThan(1e-4f), "Sized as the source sizes the model.");
             Assert.That(box.center.y - box.size.y / 2f, Is.EqualTo(0f).Within(1e-4f), "Standing on the character's feet.");
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.005f));
         }

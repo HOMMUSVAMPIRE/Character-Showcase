@@ -83,7 +83,7 @@ namespace MeridianMotion.Tests.Movement
                 Assert.That(risen, Is.GreaterThanOrEqualTo(previous - 0.01f), $"Held {held} steps, the jump should rise at least as high as held for less.");
                 if (held == 1) { Assert.That(risen, Is.EqualTo(MinHeight).Within(0.01f), "A tap should rise the min jump height."); }
                 previous = risen;
-                yield return rig.Run(0.5f, _ => CharacterTestRig.Idle()); // Land and settle.
+                yield return rig.Settle(); // Land and settle.
             }
             Assert.That(previous, Is.EqualTo(MaxHeight).Within(0.01f), "Jump held should rise the max jump height.");
         }
@@ -116,7 +116,7 @@ namespace MeridianMotion.Tests.Movement
             rig.SetMovementSetting("maxJumpHeight", 3.5f);
             float tap = 0f, held = 0f;
             yield return JumpHolding(1, h => tap = h);
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             yield return JumpHolding(1000, h => held = h);
             Assert.That(tap, Is.EqualTo(0.4f * rig.Movement.HeightScale).Within(0.01f));
             Assert.That(held, Is.EqualTo(3.5f * rig.Movement.HeightScale).Within(0.01f));

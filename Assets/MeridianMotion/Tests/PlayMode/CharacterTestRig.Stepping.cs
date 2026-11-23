@@ -239,6 +239,39 @@ namespace MeridianMotion.Tests
             yield return RunUntil(() => left && Grounded, inputsForStep, step => { left |= !Grounded; afterStep?.Invoke(step); }, timeoutSeconds);
         }
 
+        /// <summary>
+        /// Runs the character idle until it has settled (moving slower than SettledSpeed for SettledSteps steps running:
+        /// landed and stopped, or floating still at its swimming depth), failing the test if it hasn't within
+        /// timeoutSeconds. For a test's set-up, after spawning, placing or resizing the character, instead of a fixed idle
+        /// run: retuning (a slower stop, a longer fall) can't leave it still moving, and a quick settle doesn't wait out
+        /// a fixed time. Not for a stretch of time a test means to pass (holding on, not drifting): run that for its time.
+        /// </summary>
+        public IEnumerator Settle(float timeoutSeconds = 3f)
+        {
+            bool settled = false;
+            yield return RunUntilStill(_ => Idle(), still => settled = still, timeoutSeconds);
+            Assert.That(settled, Is.True, $"Test setup: the character should settle within {timeoutSeconds} s (at {Position}, moving at {Velocity}).");
+        }
+
+        /// <summary>
+        /// Runs the character with the given inputs until it stops moving (slower than SettledSpeed for SettledSteps steps
+        /// running: climbing into the edge of a climbable area, walking into a wall), or the timeout passes; still, if
+        /// given, is told which. For a run that means "until it gets as far as it goes", instead of a time long enough
+        /// for one tuning.
+        /// </summary>
+        public IEnumerator RunUntilStill(Func<int, StepInputs> inputsForStep, Action<bool> still = null, float timeoutSeconds = DefaultTimeout)
+        {
+            int steps = 0;
+            yield return RunUntil(() => steps >= SettledSteps, inputsForStep,
+                _ => steps = Velocity.sqrMagnitude < SettledSpeed * SettledSpeed ? steps + 1 : 0, timeoutSeconds);
+            still?.Invoke(steps >= SettledSteps);
+        }
+
+        /// <summary>How slow (m/s) the character must be moving to count as settled (see Settle).</summary>
+        public const float SettledSpeed = 0.005f;
+        /// <summary>How many steps running the character must be that slow to count as settled (see Settle).</summary>
+        public const int SettledSteps = 5;
+
         /// <summary>How long (s) RunUntil waits at most by default: far longer than any move should take.</summary>
         public const float DefaultTimeout = 10f;
 

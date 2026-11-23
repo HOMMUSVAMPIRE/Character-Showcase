@@ -64,6 +64,8 @@ namespace MeridianMotion.Tests.Traversal
         private IEnumerator FallInAndSettle()
         {
             yield return rig.RunUntil(() => rig.Swimming, _ => CharacterTestRig.Idle(), timeoutSeconds: 4f);
+            // A moment, not rig.Settle(): floating back up to its swim depth takes longer than the splash's particles
+            // live, and a test checks they're still playing.
             yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
         }
 

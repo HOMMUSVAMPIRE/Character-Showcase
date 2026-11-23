@@ -110,7 +110,7 @@ namespace MeridianMotion.Tests.Movement
             GameObject ground = rig.Box("Ground", new Vector3(0f, -0.15f, 0f), new Vector3(4f, 0.3f, 4f));
             ground.AddComponent<Rigidbody>().isKinematic = true;
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the ground.");
 
             ground.transform.position += new Vector3(20f, 0f, 0f);
@@ -129,7 +129,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True, "Test setup: the character should be standing on the floor.");
 
             var target = new Vector3(1f, 0f, 0.5f);

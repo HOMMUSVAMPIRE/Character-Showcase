@@ -24,7 +24,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
         }
 
         [UnityTest]
@@ -44,7 +44,7 @@ namespace MeridianMotion.Tests.Movement
             Assert.That(rig.BodyNow.center, Is.EqualTo(center * 2f));
             Assert.That(rig.Body.mass, Is.EqualTo(mass * 8f).Within(1e-3f), "Mass should grow with volume.");
 
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.Position.y, Is.EqualTo(0f).Within(0.03f), "The bigger character should still stand on the floor.");
         }
@@ -60,7 +60,7 @@ namespace MeridianMotion.Tests.Movement
             yield return rig.Run(2, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.CurrentScale.y, Is.InRange(1.01f, 1.99f), "Partway through, the character should be between sizes.");
 
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntil(() => !rig.Controller.IsResizing, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.IsResizing, Is.False);
             Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)));
         }
@@ -82,7 +82,7 @@ namespace MeridianMotion.Tests.Movement
 
             // At once: Destroy waits for the end of the frame, and the rig may step the physics before then.
             Object.DestroyImmediate(ceiling);
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntil(() => !rig.Controller.IsResizing, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.IsResizing, Is.False);
             Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(2f, 2f, 2f)), "Once there's room it should finish growing.");
         }
@@ -139,12 +139,12 @@ namespace MeridianMotion.Tests.Movement
             // Jump height at 4x the height should be about 4x.
             float jumpHeight = 0f;
             rig.Controller.SetScale(Vector3.one, immediately: true);
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             float floor = rig.Position.y;
             yield return rig.Run(3f, i => CharacterTestRig.Jump(), _ => jumpHeight = Mathf.Max(jumpHeight, rig.Position.y - floor));
             float bigJumpHeight = 0f;
             rig.Controller.SetScale(new Vector3(4f, 4f, 4f), immediately: true);
-            yield return rig.Run(3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             yield return rig.Run(6f, i => CharacterTestRig.Jump(), _ => bigJumpHeight = Mathf.Max(bigJumpHeight, rig.Position.y - floor));
             Assert.That(jumpHeight, Is.GreaterThan(rig.StepHeight), "Test setup: the character should jump.");
             Assert.That(bigJumpHeight / jumpHeight, Is.EqualTo(4f).Within(0.6f), "Jump height should scale with height.");
@@ -467,7 +467,7 @@ namespace MeridianMotion.Tests.Movement
             inspector.ApplyModifiedProperties(); // Calls OnValidate, as editing the field in the inspector does.
 
             Assert.That(rig.Controller.TargetScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
-            yield return rig.Run(1f, _ => CharacterTestRig.Idle());
+            yield return rig.RunUntil(() => !rig.Controller.IsResizing, _ => CharacterTestRig.Idle());
             Assert.That(rig.Controller.CurrentScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
             Assert.That(ModelParent.localScale, Is.EqualTo(new Vector3(1.5f, 0.75f, 1.5f)));
         }

@@ -284,7 +284,7 @@ namespace MeridianMotion.Tests.Traversal
             // Down the beach and on past its foot, over deep water.
             yield return rig.RunUntil(() => rig.Position.z > foot.z + 3f, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 15f);
             Assert.That(rig.Swimming, Is.True, "Walking down into deep water, the character should swim.");
-            yield return rig.Run(1.5f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Swimming, Is.True);
             Assert.That(FeetUnder, Is.EqualTo(rig.SwimDepth).Within(0.02f), "The character should float at its swimming depth, not stay down on the beach.");
         }
@@ -303,7 +303,7 @@ namespace MeridianMotion.Tests.Traversal
             yield return rig.RunUntil(() => touchedBottom && rig.Velocity.y > 0f, _ => CharacterTestRig.Idle(),
                 _ => touchedBottom |= rig.Swimming && rig.Grounded, timeoutSeconds: 4f);
             Assume.That(touchedBottom, Is.True, "Test setup: the plunge should reach the floor.");
-            yield return rig.Run(2f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Swimming, Is.True, "Resting on the pool's floor (where its water ends), the character is still in the water.");
             Assert.That(FeetUnder, Is.EqualTo(rig.SwimDepth).Within(0.02f), "Off the bottom, the character should float back up to its swimming depth.");
         }

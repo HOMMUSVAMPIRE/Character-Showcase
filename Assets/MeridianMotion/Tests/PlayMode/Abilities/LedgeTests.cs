@@ -66,7 +66,7 @@ namespace MeridianMotion.Tests.Abilities
         /// <summary>Lets the character fall toward the ledge, steering into it, until it has settled into hanging.</summary>
         private IEnumerator GrabAndHang()
         {
-            yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntilStill(_ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(Hanging, Is.True, "Test setup: the character should be hanging from the ledge.");
         }
 

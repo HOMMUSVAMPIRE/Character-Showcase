@@ -72,7 +72,7 @@ namespace MeridianMotion.Tests.InputAndDeterminism
             rig.Box("Start", new Vector3(0f, -0.5f, 2f), new Vector3(6f, 1f, 10f));
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
             yield return rig.WaitForModel();
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             MovementCapabilities can = rig.Movement.Capabilities;
             float across = can.Jumps.Where(m => m.Name == "sprint jump").Select(m => m.Reach).DefaultIfEmpty(0f).First();
             float up = can.Climbs.Where(m => m.Name == "jump up").Select(m => m.Reach).DefaultIfEmpty(0f).First();

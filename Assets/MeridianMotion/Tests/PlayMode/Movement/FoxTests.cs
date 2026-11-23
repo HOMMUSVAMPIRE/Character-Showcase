@@ -119,7 +119,7 @@ namespace MeridianMotion.Tests.Movement
             if (!up)
             {
                 rig.Teleport(new Vector3(0f, top + 0.02f, -1f));
-                yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+                yield return rig.Settle();
             }
             float end = 1.5f + steps * run + 1f;
             yield return rig.RunUntil(() => rig.Position.z > end, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 10f);

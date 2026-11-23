@@ -20,7 +20,7 @@ namespace MeridianMotion.Tests.Animations
         {
             rig.Floor();
             rig.SpawnCharacter(new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             rig.ClearEvents();
             var received = new List<(MovementEvents movementEvent, CharacterAnimationState state)>();
             rig.Animation.MovementEventReceived += (movementEvent, state) => received.Add((movementEvent, state));

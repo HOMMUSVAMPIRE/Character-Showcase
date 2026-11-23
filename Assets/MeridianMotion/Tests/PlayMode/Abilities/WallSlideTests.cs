@@ -49,7 +49,7 @@ namespace MeridianMotion.Tests.Abilities
         /// <summary>Falls into the wall, steering into it, until sliding down it.</summary>
         private IEnumerator SlideDown()
         {
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => Sliding, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding down the wall.");
         }
 
@@ -226,7 +226,7 @@ namespace MeridianMotion.Tests.Abilities
             yield return rig.Run(delay + 0.05f, _ => CharacterTestRig.Move(Vector3.back));
             Assert.That(Sliding, Is.False, "Steering away from the wall for the release delay should let go of it.");
 
-            yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => Sliding, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding again.");
             yield return rig.Run(2, step => step == 0 ? CharacterTestRig.Crouch(Vector3.forward) : CharacterTestRig.Move(Vector3.forward));
             Assert.That(Sliding, Is.False, "Pressing Crouch should let go of the wall.");
@@ -305,7 +305,7 @@ namespace MeridianMotion.Tests.Abilities
             // Use an air jump and the air dashes, then slide down the same wall again and jump off it.
             rig.Movement.jump.remaining = 0;
             rig.Movement.dash.airDashesUsed = maxAirDashes;
-            yield return rig.Run(1.2f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => Sliding, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(Sliding, Is.True, "Test setup: the character should be sliding down the wall again.");
             yield return rig.Run(1, _ => CharacterTestRig.Jump(Vector3.forward));
             Assert.That(rig.Movement.jump.remaining, Is.Zero, "Jumping off the same wall again shouldn't give back jumps.");

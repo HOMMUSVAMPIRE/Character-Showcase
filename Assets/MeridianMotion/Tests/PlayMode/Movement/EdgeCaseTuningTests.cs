@@ -24,7 +24,7 @@ namespace MeridianMotion.Tests.Movement
         {
             rig.Floor();
             rig.SpawnCharacter(at ?? new Vector3(0f, 0.05f, 0f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
         }
 
         private static bool IsFinite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);
@@ -288,7 +288,7 @@ namespace MeridianMotion.Tests.Movement
             yield return Settle();
             rig.SetMovementSetting("maxAirDashes", 0);
 
-            yield return rig.Run(0.15f, i => CharacterTestRig.Jump());
+            yield return rig.RunUntil(() => !rig.Grounded, i => CharacterTestRig.Jump(), timeoutSeconds: 1f);
             Assert.That(rig.Grounded, Is.False, "Test setup: the character should be in the air.");
             yield return rig.Run(0.1f, i => i == 0 ? CharacterTestRig.Dash(Vector3.right) : CharacterTestRig.Idle());
             Assert.That(rig.Count(MovementEvents.DashStarted), Is.EqualTo(0), "A character with no air dashes dashed in the air.");
@@ -331,7 +331,7 @@ namespace MeridianMotion.Tests.Movement
             rig.SpawnCharacter(new Vector3(0f, 0.05f, -0.8f));
             rig.SetMovementSetting("coyoteTime", 0f);
             if (rig.Component<Jumping>().MaxJumps < 2) { rig.SetMovementSetting("maxJumps", 2); }
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
 
             // Walk off, and press jump two steps after leaving the ground.
             int airborneSteps = 0;

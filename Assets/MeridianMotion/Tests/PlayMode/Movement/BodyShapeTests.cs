@@ -50,7 +50,7 @@ namespace MeridianMotion.Tests.Movement
         /// <summary>Walks the character forward into a wall WallDistance beyond its front, returning where its front ends up and the wall's face.</summary>
         private IEnumerator WalkIntoAWall(System.Action<float, float> result)
         {
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assume.That(rig.Grounded, Is.True, "Test setup: the body should stand on the floor.");
             float face = rig.Position.z + rig.FrontExtent + WallDistance;
             rig.Box("Wall", new Vector3(0f, 2f, face + 0.5f), new Vector3(10f, 4f, 1f));
@@ -216,7 +216,7 @@ namespace MeridianMotion.Tests.Movement
             Assert.That(rig.BodyNow.kind, Is.EqualTo(BodyShapeKind.Box), "Its body should be a box now.");
             Assert.That(rig.Movement.Body.Collider, Is.Null, "Without a collider, none is added for it.");
             Assert.That(rig.StandingHeight, Is.EqualTo(taller.size.y).Within(1e-4f));
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assert.That(rig.Grounded, Is.True);
             Assert.That(rig.BodyFits, Is.True);
         }

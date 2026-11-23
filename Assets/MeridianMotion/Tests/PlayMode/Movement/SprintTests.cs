@@ -24,7 +24,7 @@ namespace MeridianMotion.Tests.Movement
             {
                 Assert.Ignore($"The character's run speed ({rig.RunSpeed:0.00} m/s) isn't faster than its walk speed ({rig.WalkSpeed:0.00} m/s), so it doesn't sprint.");
             }
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
         }
 
 

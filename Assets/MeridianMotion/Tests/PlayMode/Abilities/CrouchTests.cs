@@ -204,7 +204,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             yield return rig.StandOnFloor();
             rig.Controller.SetScale(Vector3.one * 2f, immediately: true);
-            yield return rig.Run(0.2f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             float standing = rig.StandingHeight;
             yield return PressCrouch();
             Assert.That(rig.CurrentHeight, Is.EqualTo(standing * rig.CrouchHeight).Within(0.02f), "The crouch height is a share of the character's height at any size.");

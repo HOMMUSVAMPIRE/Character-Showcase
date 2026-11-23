@@ -55,7 +55,7 @@ namespace MeridianMotion.Tests.Traversal
         {
             yield return rig.SpawnSettled(Vector3.up * 5f, settleSeconds: 0f);
             PlaceInWater(depthOverFeet());
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Idle());
+            yield return rig.Settle();
             Assume.That(rig.Grounded && !rig.Swimming, Is.True, "Test setup: the character should be standing in the water.");
         }
 

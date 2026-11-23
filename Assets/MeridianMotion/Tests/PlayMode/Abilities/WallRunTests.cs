@@ -97,7 +97,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             yield return SetUpWall();
             yield return LaunchAlongWall();
-            yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => WallRunning, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
 
             rig.ClearEvents();
@@ -124,7 +124,7 @@ namespace MeridianMotion.Tests.Abilities
             // A second wall on the left, facing the first.
             rig.Box("Facing Wall", new Vector3(-3f - 0.5f, 20f, 4f), new Vector3(1f, 40f, 60f));
             yield return LaunchAlongWall();
-            yield return rig.Run(0.2f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => WallRunning, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(WallRunning, Is.True, "Test setup: the character should be running along the right-hand wall.");
 
             // Jump, steering forward and over toward the facing wall.
@@ -195,7 +195,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             yield return SetUpWall();
             yield return LaunchAlongWall();
-            yield return rig.Run(0.15f, _ => CharacterTestRig.Move(Vector3.forward));
+            yield return rig.RunUntil(() => WallRunning, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(WallRunning, Is.True, "Test setup: the character should be wall-running.");
             float delay = rig.MovementSetting<float>("wallRunReleaseDelay");
             Vector3 away = new Vector3(-1f, 0f, 0.3f).normalized; // The wall is on the right (+X).
