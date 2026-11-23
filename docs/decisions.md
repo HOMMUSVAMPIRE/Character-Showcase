@@ -151,6 +151,26 @@ Choices about how the project is built, why they were made, and what was decided
 - `when` guards for switches on flags (`case var e when e == MovementEvents.Jumped:`): readable, but an `if` chain the compiler can't check for duplicates. A switch on the bit number keeps real `case`s.
 - Bits handed out as the mode is built: no hand-picked bits, but bits that change with the mode, which recorded golden paths, replays and the network would have to map.
 
+## A project's abilities live in its own assembly: StateOf, [MovementFlags] and a ledger (November 2026)
+**Decided:** New Ability makes an ability of a project's own (its default, Where: Project) in the project's folder and its own assembly (`Abilities`, in the output folder), never in the package.
+- **Its state:** it keeps its state with `MMotionMotor.StateOf<T>()`: one object per character and state type, made the first time it's asked for, held in an object array on the motor.
+- **Its flags:** they're declared in a `[MovementFlags]` class of its own (`GroundPound.State`, `.Started`, `.Ended`, on bits 128 and up), which the name registry finds by reflection.
+- **Its bits:** they're given out by the project's ledger (`Character Flags.json`), which records every bit it has given and never gives one twice.
+- **Its place:** it's added to the project's own movement assets. The package's `DefaultComponents` and `StandardMovementMode.asset` aren't touched.
+
+The package's own abilities keep their parts of the partial `MMotionMotor` and their flags in `CharacterState.cs` and `MovementEvents.cs` (New Ability's Where: Package).
+
+**Why:**
+- A package upgrade replaces the package's files, so an ability that edits them (the flags, `DefaultComponents`, a part of `MMotionMotor`) is lost on the next upgrade. A partial class can't span assemblies anyway.
+- `StateOf` finds a state by its type, not its place. So snapshots and `StateSerializer`, which already carry the character's plain objects by type, carry it without changes, whatever order the states were made in.
+- The ledger, not the highest bit the code declares, decides the next bit. Otherwise deleting the newest ability would free its bits, and a translator trigger saved for it would fire on the next ability's event.
+- Test assemblies aren't looked in for flags, so a test's flags never show in the inspectors or take a project's bits.
+
+**Against:**
+- State slots by the component's place in the mode: no lookup, but a different mode (or order) puts a state in another slot, which a serialized state would have to map.
+- Slots numbered as state types are first used: the order differs between machines, so a state written on one would be read into the wrong slot on another.
+- A ScriptableObject ledger: inspector-friendly, but it's YAML in a binary-ish asset, and a hand-merge of it is harder than of a small JSON file.
+
 ## Ability states and events stay global flag enums, 64 bits wide (November 2026, replaced by the one above)
 **Decided:** `CharacterState` is 64 bits wide (`long`), as `MovementEvents` already was. Each ability still takes bits of both by hand, and the hygiene check fails if two members share a bit or one isn't a single bit. No field of either is serialized by Unity (which drops enum fields wider than 32 bits): `MovementStep`'s are `[NonSerialized]`, and a saved set of events is a `long`.
 

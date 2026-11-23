@@ -47,6 +47,14 @@ namespace MeridianMotion.Tests
         protected IEnumerator SpawnCharacter(Vector3 position, float settleSeconds = 0.3f)
         {
             yield return rig.SpawnSettled(position, settleSeconds: 0f);
+            // An ability made in a project (New Ability's Your Project) isn't in the package's movement asset, which the
+            // test character moves with and New Ability leaves alone: it's put into the rig's copy, last in the order. (A
+            // package ability missing from it is still the mode's to have: the test is ignored, as rig.Component says.)
+            if (typeof(T).Assembly != typeof(MovementComponent).Assembly && rig.Movement.movementMode is AbilityMovementMode mode
+                && mode.Get<T>(includeDisabled: true) == null)
+            {
+                mode.Insert(mode.Components.Count, (T)System.Activator.CreateInstance(typeof(T)));
+            }
             if (!Mathf.Approximately(Scale, 1f)) { Assert.That(rig.Controller.SetScale(Vector3.one * Scale, immediately: true), Is.True, "Test setup: the character should resize."); }
             if (settleSeconds > 0f) { yield return rig.Run(settleSeconds, _ => CharacterTestRig.Idle()); }
         }

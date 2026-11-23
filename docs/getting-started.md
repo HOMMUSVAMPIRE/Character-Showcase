@@ -29,6 +29,7 @@ The tools make things: prepared models, the characters New Character makes, and 
 - `Models/Humanoid/[name]`: humanoid models, each in a folder of its own, prepared by Prepare Humanoid Models (see [Adding a Character](adding-a-character.md)).
 - `Models/Generic/[name]`: generic-rig characters, the ones that aren't humanoids (see [Generic Rigs](generic-rigs.md)).
 - `Characters/[name]`: characters made with New Character.
+- `Abilities/`: abilities made with New Ability (its Where: Project), in their own assembly, with the ledger of their flags' bits (`Character Flags.json`: see [Adding a Movement Ability](adding-an-ability.md#an-ability-of-your-projects-own)).
 
 The mannequin and its animation stay in the package. The tools read them from there.
 
@@ -40,5 +41,6 @@ The mannequin and its animation stay in the package. The tools read them from th
 ## Where next
 - [Adding a Character](adding-a-character.md): your own model, a character of your own, or a generic-rig character.
 - [Tuning the Character](tuning.md): where its settings are, and tuning presets.
+- [Adding a Movement Ability](adding-an-ability.md#an-ability-of-your-projects-own): a move of your own, which New Ability makes in your project's folder and assembly (Abilities, in the output folder), so upgrading the package leaves it alone.
 - [Your First Ability](tutorial-first-ability.md): a new move, built step by step.
 - [Troubleshooting](troubleshooting.md): when something's wrong.

@@ -59,6 +59,56 @@ namespace MeridianMotion.EditorTools
         }
 
         /// <summary>
+        /// The project's own movement mode assets (the paths of those outside the package, which an upgrade would
+        /// replace: New Character's copies, say), by path: those a project's ability (New Ability's Your Project) is given to.
+        /// </summary>
+        public static List<string> ProjectModes()
+        {
+            var paths = new List<string>();
+            foreach (string guid in AssetDatabase.FindAssets("t:" + nameof(AbilityMovementMode)))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!MeridianMotionAssets.InPackage(path) && !MeridianMotionAssets.IsReadOnly(path)) { paths.Add(path); }
+            }
+            paths.Sort(string.CompareOrdinal);
+            return paths;
+        }
+
+        /// <summary>
+        /// Gives the component type (a project's ability) to each of the movement mode assets at paths that hasn't got it,
+        /// turned on, just after its component of type after (by class name; or first, for null; or last, if it hasn't
+        /// one), with Undo, and saves them. Returns the paths of those it was added to.
+        /// </summary>
+        public static List<string> AddToProjectModes(Type type, string after, IEnumerable<string> paths)
+        {
+            var added = new List<string>();
+            foreach (string path in paths)
+            {
+                var mode = AssetDatabase.LoadAssetAtPath<AbilityMovementMode>(path);
+                if (mode == null || mode.Get(type, includeDisabled: true) != null) { continue; }
+                int at = mode.Components.Count;
+                if (after == null) { at = 0; }
+                else
+                {
+                    for (int i = 0; i < mode.Components.Count; i++)
+                    {
+                        if (mode.Components[i] != null && mode.Components[i].GetType().Name == after) { at = i + 1; break; }
+                    }
+                }
+                Undo.RecordObject(mode, "Add Movement Component");
+                mode.Insert(at, (MovementComponent)Activator.CreateInstance(type));
+                EditorUtility.SetDirty(mode);
+                AssetDatabase.SaveAssetIfDirty(mode);
+                added.Add(path);
+            }
+            if (added.Count > 0)
+            {
+                Debug.Log($"[{nameof(MovementModeSync)}] Added {MovementComponent.DisplayNameOf(type)}, turned on, to: {string.Join(", ", added)}");
+            }
+            return added;
+        }
+
+        /// <summary>
         /// For -executeMethod: AddToAllModes, then exits (code 0, or 1 if something went wrong). Run it after adding a
         /// component to a mode's default list outside the editor.
         /// </summary>

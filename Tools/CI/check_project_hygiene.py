@@ -137,8 +137,22 @@ def assemblies():
     return found
 
 
+def project_abilities_folder():
+    """
+    Where New Ability puts a project's own abilities ([output folder]/Abilities, the output folder from
+    ProjectSettings/MeridianMotionSettings.asset): their assemblies are the project's, not the package's or the showcase's,
+    so they aren't held to the assembly table (nor are they to the package's conventions: see AGENTS.md).
+    """
+    settings = ROOT / "ProjectSettings" / "MeridianMotionSettings.asset"
+    found = re.search(r"^\s*outputFolder:\s*(\S+)\s*$", settings.read_text(), re.MULTILINE) if settings.exists() else None
+    return ROOT / (found.group(1) if found else "Assets") / "Abilities"
+
+
 def check_assembly_references():
+    abilities = project_abilities_folder()
     for name, folder, refs in assemblies():
+        if folder == abilities or abilities in folder.parents:
+            continue
         where = (folder / f"{name}.asmdef").relative_to(ROOT) if (folder / f"{name}.asmdef").exists() else folder.relative_to(ROOT)
         if name not in ALLOWED_REFERENCES:
             problems.append(f"{where}: assembly {name} isn't in AGENTS.md's assembly table (nor ALLOWED_REFERENCES in "

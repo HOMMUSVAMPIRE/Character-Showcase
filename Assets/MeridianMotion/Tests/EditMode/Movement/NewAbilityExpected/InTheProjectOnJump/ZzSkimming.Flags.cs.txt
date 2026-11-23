@@ -1,0 +1,19 @@
+using MeridianMotion.Characters;
+
+namespace Abilities
+{
+    // Zz Skimming's flags: its state, and the events of it starting and ending (see ZzSkimming.StateEvents). Their bits were
+    // given out by New Ability from the project's ledger (Character Flags.json), which never gives a bit twice: a bit is saved data
+    // (in recordings, and an Animator Parameter Translator's triggers), so never renumber one. Their names, in the
+    // inspectors and in ToString, are ZzSkimming.State, ZzSkimming.Started and ZzSkimming.Ended ([MovementFlags]).
+    [MovementFlags]
+    public partial class ZzSkimming
+    {
+        public const int StateBit = 201;
+        public static readonly CharacterState State = CharacterState.Bit(StateBit);
+        public const int StartedBit = 201;
+        public static readonly MovementEvents Started = MovementEvents.Bit(StartedBit);
+        public const int EndedBit = 202;
+        public static readonly MovementEvents Ended = MovementEvents.Bit(EndedBit);
+    }
+}

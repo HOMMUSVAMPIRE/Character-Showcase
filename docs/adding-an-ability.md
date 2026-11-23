@@ -7,8 +7,8 @@ The inspector (its toggle, moving it up and down, removing it, Add Component), t
 
 New to this? The short path, which [Your First Ability](tutorial-first-ability.md) walks through with a real ability (Ground Pound), step by step:
 
-1. **Make it:** Tools > Meridian Motion > New Ability…, answer its questions, press Make It. It makes a small ability that already works, with its tests and docs (see [The quick way](#the-quick-way-new-ability)).
-2. **Write what it does:** in its file (`Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/<Name>.cs`), change its settings and replace what its `TakeOver` does (or `AfterLocomotion`, for one on top of walking).
+1. **Make it:** Tools > Meridian Motion > New Ability…, answer its questions, press Make It. It makes a small ability that already works, with its tests (see [The quick way](#the-quick-way-new-ability)).
+2. **Write what it does:** in its file (`<output folder>/Abilities/<Name>/<Name>.cs` for one of your project's own, the default: see [An ability of your project's own](#an-ability-of-your-projects-own)), change its settings and replace what its `TakeOver` does (or `AfterLocomotion`, for one on top of walking).
 3. **Press Play** and try it; tune it on the movement mode asset's Components list.
 4. **Run its tests:** close Unity, then `python3 Tools/run_tests.py --changed` (see [Automated Tests](testing.md)), and the hygiene check, `python3 Tools/CI/check_project_hygiene.py`.
 
@@ -17,14 +17,16 @@ The rest of this page is the full reference: what each part is for, and what to 
 ## The quick way: New Ability
 **Tools > Meridian Motion > New Ability…** makes the start of an ability, with everything below that isn't its logic already done, and shows each file it will make or change before it does. Its questions:
 
+- **Where:** Project (the default) makes it in your project's own folder and assembly, changing nothing of the package's: see [An ability of your project's own](#an-ability-of-your-projects-own). Package makes it in Meridian Motion itself, as its own abilities are (for developing the package; not offered when the package is installed read-only). The rest of this section is about Package.
 - **Name:** its class name (Gliding, say). Its inspector name is this spaced out; its state, events and settings are named after it.
 - **What It Does:** Takes Over (it has the character while under way, as a zipline does) or On Top Of Walking (it adds to the character's own movement, as a dash does).
 - **Started By:** a button the input already has (Jump, Dash, Crouch, Roll or Interact), or None. A button of its own is a step of its own: see AGENTS.md, Input.
 - **At A Level Element:** it starts near a level element of its own, made with it.
 - **Kind:** Abilities or Traversal, which picks its docs page and its tests' folder.
 - **Place In The Order:** the default component it goes just after (see [Movement Components](movement.md#movement-components)).
+- **Give It To** (Project only): which of your project's own movement assets get it once it's compiled.
 
-Make It writes:
+In the package, Make It writes:
 
 - **The component** (section 1): a small ability that works as it is. Taking over, it holds the character where it is for its Duration; on top of walking, it moves the character on the way it faces at its Speed for its Duration. It has its settings, its hooks, its state and that state's place on the MMotionMotor (section 2), its `StateEvents` and `Traits`.
 - **Its flag and events** (section 3), each the next unused bit, added at the New Ability line in `CharacterState.cs` and `MovementEvents.cs`. Keep those lines: New Ability refuses without them.
@@ -33,9 +35,25 @@ Make It writes:
 - **Its docs**: a section in abilities.md or traversal.md to write, and its name in movement.md's component list.
 - **With At A Level Element:** a level element in Assets/MeridianMotion/Runtime/LevelElements (`<Name>Point`) that it starts within reach of (section 6).
 
-Then make it yours: replace what its `TakeOver` or `AfterLocomotion` does, change its settings, write its docs section and add tests of what it does. Run its tests as you go: `python3 Tools/run_tests.py --changed`. A look of its own (section 5) is still to add. Unity's command line can make one too: `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.MakeFromCommandLine -abilityName Gliding -kind TakesOver -button Interact -after Rolling -area Abilities` (and `-levelElement`), then `MovementModeSync.AddToAllModesFromCommandLine` once it's compiled.
+Then make it yours: replace what its `TakeOver` or `AfterLocomotion` does, change its settings, write its docs section and add tests of what it does. Run its tests as you go: `python3 Tools/run_tests.py --changed`. A look of its own (section 5) is still to add. Unity's command line can make one too: `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.MakeFromCommandLine -target Package -abilityName Gliding -kind TakesOver -button Interact -after Rolling -area Abilities` (and `-levelElement`), then `MovementModeSync.AddToAllModesFromCommandLine` once it's compiled.
 
 The sections below are the full reference: what each part is for, and what to do by hand.
+
+## An ability of your project's own
+With Where: Project, New Ability writes nothing into the package (`Assets/MeridianMotion`, which an upgrade replaces). Everything goes in `Abilities/` in the output folder (Project Settings > Meridian Motion):
+
+- **Its component and state**, in `Abilities/<Name>/<Name>.cs`, namespace `Abilities`. The `Abilities` assembly (`Abilities.asmdef`, made the first time) references `MeridianMotion.Characters` and `MeridianMotion.Levels`. A partial class can't span assemblies, so the ability can't add a part to `MMotionMotor` (section 2). It keeps its state with `motor.StateOf<NameState>()`, one object per character and type, made the first time it's asked for. That state is saved, put back and written to bytes with the rest, as a package ability's is.
+- **Its flags**, in `Abilities/<Name>/<Name>.Flags.cs`: its state and its two events, on bits of the project's own range (`Flags256.UserFirstBit` on).
+  - The class is marked `[MovementFlags]`, so the names are `<Name>.State`, `<Name>.Started` and `<Name>.Ended`, in the inspectors and in `ToString`. Use them as the package's are: `step.state |= GroundPound.State`, `case GroundPound.StartedBit:`.
+  - The bits come from the project's ledger, `Abilities/Character Flags.json`, which records every bit New Ability gives out and never gives one twice: a bit is saved data (recordings, a translator's triggers). Keep the ledger in version control. Never edit a bit or take one out.
+- **Its level element and IK**, if asked for, beside it (`<Name>Point.cs`, `<Name>IK.cs`). Prepare Humanoid Models adds an IK component marked `[HumanoidIK]` to the models wherever it's declared.
+- **Its tests**, in `Abilities/Tests/<Name>Tests.cs`, on the ability test kit (section 7), in the `Abilities.Tests` assembly (PlayMode, made the first time). They need the package's tests in the project; when they aren't there, New Ability leaves the tests out. Run them from the Test Runner (PlayMode). The character the kit moves has the package's own movement, which doesn't have your ability, so the kit puts it in the rig's copy, last in the order.
+- **Its place:** once Unity has compiled it, it's added, turned on, to the movement assets chosen under Give It To, just after the component chosen under Place In The Order. These are your project's own (New Character's copies, say), never the package's: the package's `DefaultComponents` and `StandardMovementMode.asset` stay as they are. To give it to another later, use the movement asset inspector's Add Component.
+- **No docs page, and no convention checks:** the hygiene check is this repository's, not part of the package. Section 1's rules still make a good ability.
+
+From the command line: `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.MakeFromCommandLine -abilityName Gliding -kind TakesOver -button Interact -after Rolling` (`-target Project` is the default), then, once it's compiled, `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.AddToProjectModesFromCommandLine -abilityName Gliding -after Rolling`. Add `-modes` to choose the movement assets: `all` (the default), `none`, or paths separated by `;`.
+
+Sections 2 to 4 and 7 below describe the package's own abilities. A project's ability differs only as above.
 
 ## 1. The component
 A `[Serializable]` subclass of `MovementComponent` in `Assets/MeridianMotion/Runtime/Characters/MovementModes/Components/<Ability>.cs`.

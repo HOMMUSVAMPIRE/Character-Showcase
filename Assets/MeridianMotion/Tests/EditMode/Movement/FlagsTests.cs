@@ -1,8 +1,10 @@
 using System.Linq;
+using System.Text.RegularExpressions;
 using MeridianMotion.Characters;
 using NUnit.Framework;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace MeridianMotion.Tests.EditMode.Movement
 {
@@ -96,9 +98,40 @@ namespace MeridianMotion.Tests.EditMode.Movement
             Assert.That(MovementEvents.LandedBit, Is.EqualTo(2));
             Assert.That(MovementEvents.RopeGrabbedBit, Is.EqualTo(31));
             Assert.That(MovementEvents.DiveEndedBit, Is.EqualTo(41));
-            Assert.That(CharacterState.Named.All(n => n.flag.SingleBit < Flags256.PackageBits)
-                        && MovementEvents.Named.All(n => n.flag.SingleBit < Flags256.PackageBits), Is.True,
+            // The package's are named bare; a project's own ([MovementFlags]) are [Class].[Field], from its bits on.
+            Assert.That(CharacterState.Named.Where(n => !n.name.Contains(".")).All(n => n.flag.SingleBit < Flags256.PackageBits)
+                        && MovementEvents.Named.Where(n => !n.name.Contains(".")).All(n => n.flag.SingleBit < Flags256.PackageBits), Is.True,
                 "The package's flags are below its bits' end: the rest are a project's own.");
         }
+
+        [Test]
+        public void AProjectsOwnFlags_AreNamedByTheirClass_OnTheirOwnBits()
+        {
+            // Test assemblies aren't looked in for the project's names, so this one's class is given to the finder.
+            LogAssert.Expect(LogType.Warning, new Regex("FlagsTestsProjectFlags.Misplaced is on bit 127, one of the package's"));
+            (string[] byBit, var named) = FlagNames.Find<CharacterState>(flag => flag.SingleBit, new[] { typeof(FlagsTestsProjectFlags) });
+            Assert.That(byBit[FlagsTestsProjectFlags.StateBit], Is.EqualTo("FlagsTestsProjectFlags.State"), "A [MovementFlags] class's flags should be named [Class].[Field].");
+            Assert.That(byBit[CharacterState.GroundedBit], Is.EqualTo(nameof(CharacterState.Grounded)), "The package's keep their bare names.");
+            Assert.That(named.Any(n => n.name == "FlagsTestsProjectFlags.Misplaced"), Is.False, "A project's flag on a bit of the package's should be left out.");
+            Assert.That(named.Select(n => n.flag.SingleBit), Is.Ordered);
+
+            (string[] events, _) = FlagNames.Find<MovementEvents>(flag => flag.SingleBit, new[] { typeof(FlagsTestsProjectFlags) });
+            Assert.That(events[FlagsTestsProjectFlags.EndedBit], Is.EqualTo("FlagsTestsProjectFlags.Ended"));
+            Assert.That(CharacterState.TryParse("FlagsTestsProjectFlags.State", out _), Is.False, "A test's flags shouldn't be among the project's names.");
+        }
+    }
+
+    /// <summary>A project's own flags, as New Ability writes them ([Name].Flags.cs), for FlagsTests.</summary>
+    [MovementFlags]
+    public static class FlagsTestsProjectFlags
+    {
+        public const int StateBit = 250;
+        public static readonly CharacterState State = CharacterState.Bit(StateBit);
+        public const int StartedBit = 250;
+        public static readonly MovementEvents Started = MovementEvents.Bit(StartedBit);
+        public const int EndedBit = 251;
+        public static readonly MovementEvents Ended = MovementEvents.Bit(EndedBit);
+        // On a bit of the package's: left out (with a warning).
+        public static readonly CharacterState Misplaced = CharacterState.Bit(Flags256.PackageBits - 1);
     }
 }

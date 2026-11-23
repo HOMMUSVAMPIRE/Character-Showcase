@@ -37,6 +37,30 @@ namespace MeridianMotion.EditorTools
         }
 
         /// <summary>
+        /// The package's folder (the one with its package.json, found from Character.prefab's), without a slash at the
+        /// end: Assets/MeridianMotion as embedded here, or Packages/com.meridianmotion.charactercontroller.
+        /// </summary>
+        public static string PackageRoot
+        {
+            get
+            {
+                string folder = System.IO.Path.GetDirectoryName(CharacterPrefab)?.Replace('\\', '/');
+                while (!string.IsNullOrEmpty(folder) && !System.IO.File.Exists(System.IO.Path.Combine(folder, "package.json")))
+                {
+                    folder = System.IO.Path.GetDirectoryName(folder)?.Replace('\\', '/');
+                }
+                if (!string.IsNullOrEmpty(folder)) { return folder; }
+                // Without its package.json: the folder Character.prefab's Content/Prefabs is in.
+                string prefabs = System.IO.Path.GetDirectoryName(CharacterPrefab);
+                return System.IO.Path.GetDirectoryName(System.IO.Path.GetDirectoryName(prefabs))?.Replace('\\', '/') ?? "";
+            }
+        }
+
+        /// <summary>Whether path is the package's own (in PackageRoot): what a package upgrade replaces.</summary>
+        public static bool InPackage(string path) =>
+            !string.IsNullOrEmpty(path) && (path == PackageRoot || path.StartsWith(PackageRoot + "/"));
+
+        /// <summary>
         /// Whether the asset at path can't be saved: it's in a package installed from the registry, Git or a tarball
         /// (Unity keeps those read-only, and replaces them on an upgrade). An embedded or local package can be.
         /// </summary>

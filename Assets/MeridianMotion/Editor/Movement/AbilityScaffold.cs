@@ -11,7 +11,17 @@ namespace MeridianMotion.EditorTools
 {
     /// <summary>
     /// What New Ability (NewAbilityWindow) makes from its answers, worked out as a list of file changes before anything is
-    /// written, so the window can show them and a test can check them without touching the project. It makes:
+    /// written, so the window can show them and a test can check them without touching the project. Where it goes is the
+    /// first answer (Target). In the project (the default): everything in the project's own folder ([output folder]/Abilities,
+    /// its own assembly, Abilities, and its tests' assembly, Abilities.Tests), so a package upgrade can't overwrite it and
+    /// nothing of the package's is changed:
+    /// - the ability's component (its state kept with motor.StateOf), and its flags ([Name].Flags.cs: its state and two
+    ///   events, on bits from Flags256.UserFirstBit that the project's ledger, Character Flags.json, gives out and records);
+    /// - optionally, a level element it starts at and an IK component of its own, beside it;
+    /// - its PlayMode test fixture, on the ability test kit, if the package's tests are in the project;
+    /// - the two assemblies' definitions, the first time.
+    /// Once it's compiled, the project's own movement assets that were chosen are given it, turned on
+    /// (MovementModeSync.AddToProjectModes). In the package (for developing Meridian Motion itself), it makes:
     /// - the ability's component, a small working ability to build on (from NewAbilityTemplates/Component.txt): its
     ///   settings, its hooks, its state and that state's place on the MMotionMotor;
     /// - its CharacterState flag and its two MovementEvents, each the next unused bit (at the flags' New Ability lines);
@@ -33,6 +43,12 @@ namespace MeridianMotion.EditorTools
         /// <summary>Which docs page and test folder it belongs to.</summary>
         public enum Area { Abilities, Traversal }
 
+        /// <summary>
+        /// Where it's made: in the project, its own folder and assembly (what a package user does), or in the package
+        /// itself (developing Meridian Motion: its files, flags and default components).
+        /// </summary>
+        public enum Target { Project, Package }
+
         /// <summary>The window's answers.</summary>
         public sealed class Answers
         {
@@ -47,6 +63,17 @@ namespace MeridianMotion.EditorTools
             /// <summary>The default component it goes just after in the order (its class name), or null for first.</summary>
             public string after = nameof(Rolling);
             public Area area = Area.Abilities;
+            public Target target = Target.Project;
+            /// <summary>The folder a project's abilities go in (Target.Project), or null for ProjectAbilitiesFolder.</summary>
+            public string projectFolder;
+            /// <summary>
+            /// The project's own movement assets (paths) to give it to once it's compiled (Target.Project), or null for all of
+            /// them (MovementModeSync.ProjectModes).
+            /// </summary>
+            public List<string> modes;
+
+            /// <summary>The folder a project's abilities go in.</summary>
+            public string ProjectFolder => string.IsNullOrEmpty(projectFolder) ? ProjectAbilitiesFolder : projectFolder.TrimEnd('/');
         }
 
         /// <summary>A file to write: a new one, or an existing one's new text.</summary>
@@ -70,6 +97,16 @@ namespace MeridianMotion.EditorTools
         public const string LevelFolder = "Assets/MeridianMotion/Runtime/LevelElements";
         public const string IKFolder = "Assets/MeridianMotion/Runtime/Characters/IK";
         public const string MovementDocPath = "docs/movement.md";
+        /// <summary>A project's abilities' assembly and namespace, and its tests'.</summary>
+        public const string ProjectAssembly = "Abilities";
+        public const string ProjectTestsAssembly = "Abilities.Tests";
+        /// <summary>The ledger of a project's flags' bits, in its abilities' folder (see CharacterFlagLedger).</summary>
+        public const string LedgerFileName = "Character Flags.json";
+        // The ability test kit, if the package's PlayMode tests are in the project: a project's ability gets tests on it only then.
+        private const string TestKitType = "MeridianMotion.Tests.AbilityFixture`1, MeridianMotion.Tests.PlayMode";
+
+        /// <summary>The folder New Ability puts a project's abilities in: Abilities in the output folder (MeridianMotionSettings).</summary>
+        public static string ProjectAbilitiesFolder => MeridianMotionSettings.OutputFolder + "/" + ProjectAssembly;
         /// <summary>The line in CharacterState.cs and MovementEvents.cs that new members go above.</summary>
         public const string EnumAnchor = "// New Ability (NewAbilityWindow) adds";
         private const string CompositionTestName = "ANewStandardMovementMode_StartsWithItsComponents_InOrder";
@@ -95,7 +132,8 @@ namespace MeridianMotion.EditorTools
         /// <summary>
         /// Why the answers can't be made, or null if they can: a name that isn't a class name or is taken (as a type, a
         /// state, an event, a member of the MMotionMotor or a setting), no way of starting it, a place in the
-        /// order that isn't one, or a file it must change missing its New Ability line.
+        /// order that isn't one, a file it must change missing its New Ability line (in the package), or a ledger it
+        /// can't read or with no bits left (in the project).
         /// </summary>
         public static string Problem(Answers answers, Func<string, string> read)
         {
@@ -103,20 +141,37 @@ namespace MeridianMotion.EditorTools
             if (!Regex.IsMatch(name, "^[A-Z][A-Za-z0-9]*$")) { return "Give it a name: a class name, starting with a capital letter (Gliding, say)."; }
             var names = new Names(name);
             if (answers.button == StartButton.None && !answers.levelElement) { return "Choose what starts it: a button, a level element, or both."; }
-            if (TypeNames.Value.Contains(name) || (answers.levelElement && TypeNames.Value.Contains(names.element)) || (answers.needsIK && TypeNames.Value.Contains(names.ik)))
+            if (TypeNames.Value.Contains(name) || TypeNames.Value.Contains(names.type + "State") || (answers.levelElement && TypeNames.Value.Contains(names.element))
+                || (answers.needsIK && TypeNames.Value.Contains(names.ik)))
             {
-                return $"There's already a type called {name}{(answers.levelElement ? $" or {names.element}" : "")}{(answers.needsIK ? $" or {names.ik}" : "")}: choose another name.";
+                return $"There's already a type called {name}, {name}State{(answers.levelElement ? $" or {names.element}" : "")}{(answers.needsIK ? $" or {names.ik}" : "")}: choose another name.";
             }
-            if (CharacterState.TryParse(names.state, out _)) { return $"There's already a state called {names.state}: choose another name."; }
-            if (MovementEvents.TryParse(names.started, out _) || MovementEvents.TryParse(names.ended, out _)) { return $"There's already a movement event called {names.started} or {names.ended}: choose another name."; }
-            if (typeof(MMotionMotor).GetMember(names.field).Length > 0) { return $"The MMotionMotor already has a member called {names.field}: choose another name."; }
+            bool package = answers.target == Target.Package;
+            string state = package ? names.state : ProjectFlag(names, "State");
+            string started = package ? names.started : ProjectFlag(names, "Started");
+            string ended = package ? names.ended : ProjectFlag(names, "Ended");
+            if (CharacterState.TryParse(state, out _)) { return $"There's already a state called {state}: choose another name."; }
+            if (MovementEvents.TryParse(started, out _) || MovementEvents.TryParse(ended, out _)) { return $"There's already a movement event called {started} or {ended}: choose another name."; }
+            if (package && typeof(MMotionMotor).GetMember(names.field).Length > 0) { return $"The MMotionMotor already has a member called {names.field}: choose another name."; }
             HashSet<string> settings = ExistingSettingNames();
             foreach (string setting in SettingNames(answers, names))
             {
                 if (settings.Contains(setting)) { return $"There's already a movement setting called {setting} (setting names are unique): choose another name."; }
             }
             if (answers.after != null && !DefaultComponentNames().Contains(answers.after)) { return $"{answers.after} isn't one of the default components."; }
-            if (read(ComponentPath(names)) != null) { return $"{ComponentPath(names)} is already there."; }
+            if (read(ComponentPath(answers, names)) != null) { return $"{ComponentPath(answers, names)} is already there."; }
+            if (!package)
+            {
+                if (MeridianMotionAssets.InPackage(answers.ProjectFolder)) { return $"{answers.ProjectFolder} is in the package, which an upgrade replaces: set an output folder outside it (Project Settings > Meridian Motion)."; }
+                CharacterFlagLedger ledger;
+                try { ledger = CharacterFlagLedger.Parse(read(LedgerPath(answers))); }
+                catch (ArgumentException exception) { return $"{LedgerPath(answers)} can't be read ({exception.Message}): put it right, or back as it was."; }
+                if (ledger.NextStateBit() >= Flags256.Size || ledger.NextEventBit() + 1 >= Flags256.Size)
+                {
+                    return $"The project has no flag bits left for another ability (its own are {Flags256.UserFirstBit} to {Flags256.Size - 1}: see {LedgerPath(answers)}).";
+                }
+                return null;
+            }
             foreach (string path in new[] { StatePath, EventsPath })
             {
                 string text = read(path);
@@ -126,6 +181,9 @@ namespace MeridianMotion.EditorTools
             if (mode == null || !mode.Contains("DefaultComponents()")) { return $"{ModePath} has no DefaultComponents to add it to."; }
             return null;
         }
+
+        /// <summary>A project's ability's flag's name, as the registry gives it ([MovementFlags]): GroundPound.State.</summary>
+        public static string ProjectFlag(Names names, string field) => names.type + "." + field;
 
         // Every type's name, found once a domain (the window asks on every repaint): a new ability's name mustn't be one.
         private static readonly Lazy<HashSet<string>> TypeNames = new(() => new HashSet<string>(TypeCache.GetTypesDerivedFrom<object>().Select(t => t.Name)));
@@ -159,19 +217,31 @@ namespace MeridianMotion.EditorTools
             return names;
         }
 
-        public static string ComponentPath(Names names) => $"{ComponentsFolder}/{names.type}.cs";
-        public static string FixturePath(Answers answers, Names names) => $"{FixturesFolder}/{answers.area}/{names.type}Tests.cs";
-        public static string ElementPath(Names names) => $"{LevelFolder}/{names.element}.cs";
-        public static string IKPath(Names names) => $"{IKFolder}/{names.ik}.cs";
+        public static string ComponentPath(Answers answers, Names names) =>
+            answers.target == Target.Package ? $"{ComponentsFolder}/{names.type}.cs" : $"{answers.ProjectFolder}/{names.type}/{names.type}.cs";
+        public static string FlagsPath(Answers answers, Names names) => $"{answers.ProjectFolder}/{names.type}/{names.type}.Flags.cs";
+        public static string FixturePath(Answers answers, Names names) =>
+            answers.target == Target.Package ? $"{FixturesFolder}/{answers.area}/{names.type}Tests.cs" : $"{answers.ProjectFolder}/Tests/{names.type}Tests.cs";
+        public static string ElementPath(Answers answers, Names names) =>
+            answers.target == Target.Package ? $"{LevelFolder}/{names.element}.cs" : $"{answers.ProjectFolder}/{names.type}/{names.element}.cs";
+        public static string IKPath(Answers answers, Names names) =>
+            answers.target == Target.Package ? $"{IKFolder}/{names.ik}.cs" : $"{answers.ProjectFolder}/{names.type}/{names.ik}.cs";
+        public static string LedgerPath(Answers answers) => $"{answers.ProjectFolder}/{LedgerFileName}";
+        public static string AssemblyPath(Answers answers) => $"{answers.ProjectFolder}/{ProjectAssembly}.asmdef";
+        public static string TestsAssemblyPath(Answers answers) => $"{answers.ProjectFolder}/Tests/{ProjectTestsAssembly}.asmdef";
         public static string AreaDocPath(Answers answers) => answers.area == Area.Abilities ? "docs/abilities.md" : "docs/traversal.md";
+
+        /// <summary>Whether the package's ability test kit (its PlayMode tests) is in the project, for a project's ability's tests.</summary>
+        public static bool HasTestKit => Type.GetType(TestKitType) != null;
 
         /// <summary>
         /// Every file change the answers make (call Problem first). read gives a file's text by its project-relative
-        /// path (null if it isn't there), template a template's text by its name (Component, Fixture, LevelElement).
+        /// path (null if it isn't there), template a template's text by its name (Component, Flags, Fixture, LevelElement, IK).
         /// </summary>
         public static List<Change> Plan(Answers answers, Func<string, string> read, Func<string, string> template)
         {
             var names = new Names(answers.name.Trim());
+            bool package = answers.target == Target.Package;
             var values = new Dictionary<string, string>
             {
                 ["Name"] = names.type,
@@ -185,23 +255,42 @@ namespace MeridianMotion.EditorTools
                 ["Area"] = answers.area.ToString(),
                 ["Button"] = answers.button.ToString().ToLowerInvariant(),
                 ["ButtonDisplay"] = answers.button.ToString(),
+                // What differs between the package's abilities and a project's: where they are, how they reach their
+                // state (a part of the partial MMotionMotor, or StateOf) and their flags (CharacterState's, or their own).
+                ["Namespace"] = package ? "MeridianMotion.Characters" : ProjectAssembly,
+                ["TestNamespace"] = package ? $"MeridianMotion.Tests.{answers.area}" : $"{ProjectAssembly}.Tests",
+                ["ElementNamespace"] = package ? "MeridianMotion.Levels" : ProjectAssembly,
+                ["ElementFull"] = package ? $"MeridianMotion.Levels.{names.element}" : names.element,
+                ["MenuRoot"] = package ? "Meridian Motion" : ProjectAssembly,
+                ["Partial"] = package ? "" : "partial ",
+                ["StateAccess"] = package ? $"motor.{names.field}" : $"motor.StateOf<{names.type}State>()",
+                ["StateRef"] = package ? $"CharacterState.{names.state}" : ProjectFlag(names, "State"),
+                ["StartedRef"] = package ? $"MovementEvents.{names.started}" : ProjectFlag(names, "Started"),
+                ["EndedRef"] = package ? $"MovementEvents.{names.ended}" : ProjectFlag(names, "Ended"),
             };
             var flags = new HashSet<string>();
             flags.Add(answers.kind == Kind.TakesOver ? "takesOver" : "onTopOfWalking");
             if (answers.button != StartButton.None) { flags.Add("button"); }
             if (answers.levelElement) { flags.Add("levelElement"); }
+            if (package) { flags.Add("package"); }
 
             var changes = new List<Change>
             {
-                new() { path = ComponentPath(names), isNew = true, text = Render(template("Component"), values, flags), summary = $"The {names.display} component: a small working ability to build on" },
+                new() { path = ComponentPath(answers, names), isNew = true, text = Render(template("Component"), values, flags), summary = $"The {names.display} component: a small working ability to build on" },
             };
+            if (!package) { AddProjectFlags(changes, answers, names, values, flags, read, template); }
             if (answers.levelElement)
             {
-                changes.Add(new Change { path = ElementPath(names), isNew = true, text = Render(template("LevelElement"), values, flags), summary = $"The level element it starts at ({names.element})" });
+                changes.Add(new Change { path = ElementPath(answers, names), isNew = true, text = Render(template("LevelElement"), values, flags), summary = $"The level element it starts at ({names.element})" });
             }
             if (answers.needsIK)
             {
-                changes.Add(new Change { path = IKPath(names), isNew = true, text = Render(template("IK"), values, flags), summary = $"Its IK ({names.ik}), on every humanoid model once Prepare Humanoid Models runs" });
+                changes.Add(new Change { path = IKPath(answers, names), isNew = true, text = Render(template("IK"), values, flags), summary = $"Its IK ({names.ik}), on every humanoid model once Prepare Humanoid Models runs" });
+            }
+            if (!package)
+            {
+                AddProjectAssemblies(changes, answers, names, values, flags, read, template);
+                return changes;
             }
             changes.Add(new Change { path = StatePath, text = AddEnumMembers(read(StatePath), $"{names.display} (see {names.type})", names.state), summary = $"Its state, CharacterState.{names.state}" });
             changes.Add(new Change { path = EventsPath, text = AddEnumMembers(read(EventsPath), $"{names.display} starting and ending (see {names.type})", names.started, names.ended), summary = $"Its events, {names.started} and {names.ended}" });
@@ -219,6 +308,71 @@ namespace MeridianMotion.EditorTools
             string listed = movementDoc != null ? AddToComponentList(movementDoc, names.display, answers.after) : null;
             if (listed != null) { changes.Add(new Change { path = MovementDocPath, optional = true, text = listed, summary = $"Its name in {MovementDocPath}'s component list" }); }
             return changes;
+        }
+
+        // A project's ability's flags: the next bits the ledger gives out, written into its [Name].Flags.cs and recorded.
+        private static void AddProjectFlags(List<Change> changes, Answers answers, Names names, Dictionary<string, string> values,
+                                            HashSet<string> flags, Func<string, string> read, Func<string, string> template)
+        {
+            string ledgerText = read(LedgerPath(answers));
+            CharacterFlagLedger ledger = CharacterFlagLedger.Parse(ledgerText);
+            int stateBit = ledger.NextStateBit();
+            int startedBit = ledger.NextEventBit();
+            int endedBit = startedBit + 1;
+            ledger.AddState(ProjectFlag(names, "State"), stateBit);
+            ledger.AddEvent(ProjectFlag(names, "Started"), startedBit);
+            ledger.AddEvent(ProjectFlag(names, "Ended"), endedBit);
+            values["StateBit"] = stateBit.ToString();
+            values["StartedBit"] = startedBit.ToString();
+            values["EndedBit"] = endedBit.ToString();
+            values["Ledger"] = LedgerFileName;
+            changes.Add(new Change { path = FlagsPath(answers, names), isNew = true, text = Render(template("Flags"), values, flags),
+                                     summary = $"Its state and events ({ProjectFlag(names, "State")}, bit {stateBit}; {ProjectFlag(names, "Started")} and {ProjectFlag(names, "Ended")}, bits {startedBit} and {endedBit})" });
+            changes.Add(new Change { path = LedgerPath(answers), isNew = ledgerText == null, text = ledger.ToJson(),
+                                     summary = "The project's ledger of its flags' bits, with its three" });
+        }
+
+        // A project's ability's tests (if the kit is in the project), and the assemblies it and they are in, the first time.
+        private static void AddProjectAssemblies(List<Change> changes, Answers answers, Names names, Dictionary<string, string> values,
+                                                 HashSet<string> flags, Func<string, string> read, Func<string, string> template)
+        {
+            if (read(AssemblyPath(answers)) == null)
+            {
+                changes.Add(new Change { path = AssemblyPath(answers), isNew = true, text = AssemblyDefinition(ProjectAssembly, tests: false),
+                                         summary = $"The {ProjectAssembly} assembly the project's abilities are in" });
+            }
+            if (!HasTestKit) { return; }
+            changes.Add(new Change { path = FixturePath(answers, names), isNew = true, text = Render(template("Fixture"), values, flags), summary = $"Its tests, {names.type}Tests, on the ability test kit" });
+            if (read(TestsAssemblyPath(answers)) == null)
+            {
+                changes.Add(new Change { path = TestsAssemblyPath(answers), isNew = true, text = AssemblyDefinition(ProjectTestsAssembly, tests: true),
+                                         summary = $"The {ProjectTestsAssembly} assembly their tests are in (PlayMode, on the package's ability test kit)" });
+            }
+        }
+
+        /// <summary>The assembly definition of a project's abilities (or, with tests, of their PlayMode tests), as text.</summary>
+        public static string AssemblyDefinition(string name, bool tests)
+        {
+            var references = tests
+                ? new[] { ProjectAssembly, "MeridianMotion.Characters", "MeridianMotion.Levels", "MeridianMotion.Tests.PlayMode", "MeridianMotion.Tests.Shared", "UnityEngine.TestRunner", "UnityEditor.TestRunner" }
+                : new[] { "MeridianMotion.Characters", "MeridianMotion.Levels" };
+            var text = new StringBuilder();
+            text.Append("{\n");
+            text.Append($"    \"name\": \"{name}\",\n");
+            text.Append($"    \"rootNamespace\": \"{name}\",\n");
+            text.Append("    \"references\": [\n");
+            text.Append(string.Join(",\n", references.Select(r => $"        \"{r}\""))).Append("\n    ],\n");
+            text.Append("    \"includePlatforms\": [],\n");
+            text.Append("    \"excludePlatforms\": [],\n");
+            text.Append("    \"allowUnsafeCode\": false,\n");
+            text.Append($"    \"overrideReferences\": {(tests ? "true" : "false")},\n");
+            text.Append($"    \"precompiledReferences\": [{(tests ? "\n        \"nunit.framework.dll\"\n    " : "")}],\n");
+            text.Append($"    \"autoReferenced\": {(tests ? "false" : "true")},\n");
+            text.Append($"    \"defineConstraints\": [{(tests ? "\n        \"UNITY_INCLUDE_TESTS\"\n    " : "")}],\n");
+            text.Append("    \"versionDefines\": [],\n");
+            text.Append("    \"noEngineReferences\": false\n");
+            text.Append("}\n");
+            return text.ToString();
         }
 
         /// <summary>

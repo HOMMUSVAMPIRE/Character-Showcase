@@ -1,0 +1,17 @@
+{
+    "name": "Abilities",
+    "rootNamespace": "Abilities",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.Levels"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

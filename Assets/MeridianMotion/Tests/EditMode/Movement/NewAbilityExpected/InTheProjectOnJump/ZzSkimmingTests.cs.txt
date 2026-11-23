@@ -1,0 +1,40 @@
+using System.Collections;
+using MeridianMotion.Characters;
+using MeridianMotion.Tests;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+namespace Abilities.Tests
+{
+    /// <summary>
+    /// Tests of Zz Skimming (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
+    /// letting go, its events, saved and put back, at another size) come from AbilityFixture: as set up here,
+    /// a press of Jump standing on a floor.
+    /// Add the tests that are about Zz Skimming itself below, reading expected values from its settings
+    /// (rig.MovementSetting&lt;float&gt;("zzSkimmingDuration")), not from numbers of your own.
+    /// </summary>
+    [Category(TestArea.Abilities)]
+    public class ZzSkimmingTests : AbilityFixture<ZzSkimming>
+    {
+        protected override IEnumerator SetUpToStart()
+        {
+            rig.Floor();
+            yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f));
+        }
+
+        protected override StepInputs InputsFor(int step) => step == 0 ? CharacterTestRig.Jump() : CharacterTestRig.Idle();
+
+        protected override string OffSetting => "zzSkimmingDuration";
+
+        [UnityTest]
+        public IEnumerator ZzSkimming_LastsItsDuration()
+        {
+            yield return SetUpToStart();
+            float duration = rig.MovementSetting<float>("zzSkimmingDuration") * rig.Movement.DurationScale;
+            int steps = 0;
+            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState(ZzSkimming.State)) { steps++; } });
+            Assert.That(steps, Is.EqualTo(CharacterTestRig.StepsFor(duration)).Within(1), "Zz Skimming should last its duration.");
+        }
+    }
+}

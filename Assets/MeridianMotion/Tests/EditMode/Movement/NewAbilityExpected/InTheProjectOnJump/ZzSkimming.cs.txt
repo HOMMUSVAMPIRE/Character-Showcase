@@ -1,0 +1,90 @@
+using System;
+using MeridianMotion.Characters;
+using UnityEngine;
+
+namespace Abilities
+{
+    /// <summary>
+    /// Zz Skimming: made by New Ability (Tools > Meridian Motion > New Ability…). As made, it's a small working
+    /// ability to build on:
+    /// on top of walking, it moves the character on the way it faces at Zz Skimming Speed, for Zz Skimming Duration.
+    /// A press of Jump starts it (within Zz Skimming Input Buffer of being able to).
+    /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
+    /// </summary>
+    [Serializable]
+    public partial class ZzSkimming : MovementComponent
+    {
+        [Tooltip("How long (s) Zz Skimming lasts once it starts, at the character's authored size. 0 turns it off")]
+        [Min(0f)] [SerializeField] private float zzSkimmingDuration = 0.5f;
+        [Tooltip("How fast (m/s) Zz Skimming moves the character on the way it faces, on top of walking, at its authored size")]
+        [Min(0f)] [SerializeField] private float zzSkimmingSpeed = 4f;
+        [Tooltip("If Jump is pressed this many seconds before Zz Skimming can start, it starts as soon as it can")]
+        [Min(0f)] [SerializeField] private float zzSkimmingInputBuffer = 0.1f;
+
+        public override bool IsActive(MMotionMotor motor) => motor.StateOf<ZzSkimmingState>().IsActive;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Skimming Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Skimming Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
+        /// <summary>The events of ZzSkimming starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
+        {
+            new(ZzSkimming.State, ZzSkimming.Started, ZzSkimming.Ended),
+        };
+
+        public override void AdvanceTimers(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            motor.StateOf<ZzSkimmingState>().press.Track(inputs.jump);
+            motor.StateOf<ZzSkimmingState>().timeLeft = MovementRules.CountDown(motor.StateOf<ZzSkimmingState>().timeLeft, step.deltaTime);
+        }
+
+        /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
+        public override void Interrupt(MovementStep step, MMotionMotor motor) => motor.StateOf<ZzSkimmingState>().timeLeft = 0f;
+
+        /// <summary>Starts if it can, and while it lasts moves the character on the way it faces, on top of walking.</summary>
+        public override void AfterLocomotion(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            ZzSkimmingState state = motor.StateOf<ZzSkimmingState>();
+            if (!state.IsActive)
+            {
+                if (!CanStart(inputs, motor)) { return; }
+                state.timeLeft = zzSkimmingDuration * motor.DurationScale;
+            }
+            // Your ability's movement goes here. As made: on the way it faces (its physics pose's), at its speed.
+            Vector3 forward = step.initialRotation * Vector3.forward;
+            step.directMovementVector += forward * (zzSkimmingSpeed * motor.SpeedScale * step.deltaTime);
+            step.state |= ZzSkimming.State;
+            PublishProgress(motor);
+        }
+
+        private void PublishProgress(MMotionMotor motor)
+        {
+            float duration = zzSkimmingDuration * motor.DurationScale;
+            motor.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - motor.StateOf<ZzSkimmingState>().timeLeft / duration : 1f);
+        }
+
+        /// <summary>Whether Zz Skimming can start this step: turned on by a duration, and what starts it.</summary>
+        private bool CanStart(StepInputs inputs, MMotionMotor motor)
+        {
+            if (zzSkimmingDuration <= 0f) { return false; }
+            return motor.StateOf<ZzSkimmingState>().press.Consume(inputs.jump, zzSkimmingInputBuffer);
+        }
+    }
+
+    /// <summary>What each character is doing with Zz Skimming (modes are shared assets, so it lives on the character).</summary>
+    public class ZzSkimmingState
+    {
+        /// <summary>Seconds left of Zz Skimming (0 when it isn't under way).</summary>
+        public float timeLeft;
+        /// <summary>Jump's presses, so each press starts it at most once.</summary>
+        public readonly PressBuffer press = new();
+
+        /// <summary>Whether Zz Skimming is under way.</summary>
+        public bool IsActive => timeLeft > 0f;
+    }
+}

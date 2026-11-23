@@ -1,0 +1,30 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Abilities
+{
+    /// <summary>
+    /// A place in the level where the Zz Gliding ability starts (made by New Ability): a character within its
+    /// ability's reach of one starts it. It knows nothing about the character (the level never does): the ability finds
+    /// it through All. Replace it with what your ability uses in the level. If it gets state of its own that the
+    /// character's movement depends on (as a rope's swing does), see docs/adding-level-content.md for the rules it keeps.
+    /// </summary>
+    [AddComponentMenu("Abilities/Levels/Zz Gliding Point")]
+    public class ZzGlidingPoint : MonoBehaviour
+    {
+        private static readonly List<ZzGlidingPoint> active = new();
+
+        /// <summary>Every enabled ZzGlidingPoint, for characters to look for one.</summary>
+        public static IReadOnlyList<ZzGlidingPoint> All => active;
+
+        private void OnEnable() => active.Add(this);
+
+        private void OnDisable() => active.Remove(this);
+
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = new Color(0.3f, 0.8f, 1f, 0.8f);
+            Gizmos.DrawWireSphere(transform.position, 0.25f);
+        }
+    }
+}

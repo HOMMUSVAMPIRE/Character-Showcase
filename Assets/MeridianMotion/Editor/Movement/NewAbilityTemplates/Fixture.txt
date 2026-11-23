@@ -1,10 +1,13 @@
 using System.Collections;
 using MeridianMotion.Characters;
+{{^package}}
+using MeridianMotion.Tests;
+{{/package}}
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace MeridianMotion.Tests.{{Area}}
+namespace {{TestNamespace}}
 {
     /// <summary>
     /// Tests of {{Display}} (made by New Ability). The checks every ability gets (it starts, turned off it doesn't,
@@ -25,7 +28,7 @@ namespace MeridianMotion.Tests.{{Area}}
         {
             rig.Floor();
 {{#levelElement}}
-            rig.Track(new GameObject("{{Element}}")).AddComponent<MeridianMotion.Levels.{{Element}}>();
+            rig.Track(new GameObject("{{Element}}")).AddComponent<{{ElementFull}}>();
             // At the element, it starts at once: not settled first, so the kit sees it start.
             yield return SpawnCharacter(new Vector3(0f, 0.05f, 0f), settleSeconds: 0f);
 {{/levelElement}}
@@ -49,7 +52,7 @@ namespace MeridianMotion.Tests.{{Area}}
             yield return SetUpToStart();
             float duration = rig.MovementSetting<float>("{{name}}Duration") * rig.Movement.DurationScale;
             int steps = 0;
-            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState(CharacterState.{{StateFlag}})) { steps++; } });
+            yield return rig.Run(CharacterTestRig.StepsFor(duration) + 5, InputsFor, _ => { if (rig.InState({{StateRef}})) { steps++; } });
 {{#button}}
             Assert.That(steps, Is.EqualTo(CharacterTestRig.StepsFor(duration)).Within(1), "{{Display}} should last its duration.");
 {{/button}}

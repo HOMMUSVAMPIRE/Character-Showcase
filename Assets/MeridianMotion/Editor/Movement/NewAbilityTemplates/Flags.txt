@@ -1,0 +1,19 @@
+using MeridianMotion.Characters;
+
+namespace {{Namespace}}
+{
+    // {{Display}}'s flags: its state, and the events of it starting and ending (see {{Name}}.StateEvents). Their bits were
+    // given out by New Ability from the project's ledger ({{Ledger}}), which never gives a bit twice: a bit is saved data
+    // (in recordings, and an Animator Parameter Translator's triggers), so never renumber one. Their names, in the
+    // inspectors and in ToString, are {{Name}}.State, {{Name}}.Started and {{Name}}.Ended ([MovementFlags]).
+    [MovementFlags]
+    public partial class {{Name}}
+    {
+        public const int StateBit = {{StateBit}};
+        public static readonly CharacterState State = CharacterState.Bit(StateBit);
+        public const int StartedBit = {{StartedBit}};
+        public static readonly MovementEvents Started = MovementEvents.Bit(StartedBit);
+        public const int EndedBit = {{EndedBit}};
+        public static readonly MovementEvents Ended = MovementEvents.Bit(EndedBit);
+    }
+}

@@ -79,7 +79,9 @@ submenu). No namespace may be named as a Unity type it would hide inside `Meridi
 Component's search shows bare class names (ReferenceAssets/OpenTasks.md, category E).
 
 The test assemblies also reference Unity's test runner. The hygiene check holds every assembly to this table (its
-`ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both, kept in step.
+`ALLOWED_REFERENCES`): a new assembly, or a new reference, goes in both, kept in step. A project's own abilities'
+assemblies (New Ability's `Abilities` and `Abilities.Tests`, in the output folder's `Abilities/`) are exempt: they're the
+project's, not the package's.
 
 **The package line.** The character is meant to ship as an Asset Store package without the showcase's levels or its
 Blender pipeline: what ships is `Assets/MeridianMotion`, and nothing else, so cutting the package is taking that folder. The
@@ -258,7 +260,8 @@ tests use and fails if one disappears. A movement component's class name is save
 shows it as a missing component. `CharacterState` and `MovementEvents` are 256-bit flag structs (`Flags256`), not enums:
 Unity silently drops enum fields wider than 32 bits, and saves these (`AnimatorParameterTranslator.EventTrigger`, drawn by
 `EventTriggerDrawer`). Each flag is a bit number (`XBit`, a constant, for a `switch`) and its value; the package's are in
-bits 0 to 127, a project's own from 128 (`Flags256.PackageBits`). A flag's bit is saved data: never renumber one.
+bits 0 to 127, a project's own from 128 (`Flags256.PackageBits`), declared in its `[MovementFlags]` classes and given
+out by its ledger (`Character Flags.json`). A flag's bit is saved data: never renumber one.
 
 **Unity asset files.**
 - Every file and folder under `Assets/` needs a `.meta` with a unique GUID. Adding a file outside the editor, copy a
@@ -300,8 +303,10 @@ materials (`Assets/Showcase/Materials/Level/Level_[Surface].mat`), `NoiseConcret
 
 ## Recipes
 
-**A new movement ability:** start it with New Ability (`NewAbilityWindow`, or `MakeFromCommandLine`), which makes a
-working ability with its state, flag, events, place in the order and the modes, kit tests and docs stubs, then follow
+**A new movement ability:** start it with New Ability (`NewAbilityWindow`, or `MakeFromCommandLine`). For the package
+itself, choose Where: Package (`-target Package`; Project, the default, is a package user's: their own folder and
+assembly, `StateOf`, `[MovementFlags]` and the ledger, docs/adding-an-ability.md, An ability of your project's own).
+It makes a working ability with its state, flag, events, place in the order and the modes, kit tests and docs stubs, then follow
 [docs/adding-an-ability.md](docs/adding-an-ability.md), the full checklist (the component and its hooks, its state, flag
 and events, its place in the mode, animation, level fixtures, tests and docs). Keep the New Ability lines in
 `CharacterState.cs` and `MovementEvents.cs`.

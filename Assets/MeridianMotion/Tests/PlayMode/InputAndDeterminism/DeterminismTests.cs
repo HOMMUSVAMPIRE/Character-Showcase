@@ -289,6 +289,42 @@ namespace MeridianMotion.Tests.InputAndDeterminism
             Assert.That(differs, Is.Null, $"Read into a new character, the state should step on exactly as it did: {differs}.");
         }
 
+        /// <summary>A state of the kind an ability made in a project keeps (MMotionMotor.StateOf), for the test below.</summary>
+        private sealed class ProjectAbilityState
+        {
+            public int count;
+            public readonly List<int> history = new();
+        }
+
+        /// <summary>
+        /// The state an ability made outside the package keeps on the character (MMotionMotor.StateOf: the package's own
+        /// abilities' are parts of the motor) is one object per character, and saved and put back, and written to bytes
+        /// and read into a new character, with the rest of its state: so such an ability is deterministic as the package's are.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AProjectAbilitysState_IsSavedAndPutBack_AndWrittenToBytes_WithTheRest()
+        {
+            yield return SetUp(Ability.Jumping);
+            ProjectAbilityState state = rig.Movement.StateOf<ProjectAbilityState>();
+            Assert.That(rig.Movement.StateOf<ProjectAbilityState>(), Is.SameAs(state), "Asked for again, it's the same object.");
+            state.count = 5;
+            state.history.Add(1);
+            MovementStateSnapshot saved = rig.Movement.SaveState();
+            state.count = 9;
+            state.history.Add(2);
+            rig.Movement.RestoreState(saved);
+            Assert.That(rig.Movement.StateOf<ProjectAbilityState>().count, Is.EqualTo(5), "Put back, it's as it was saved.");
+            Assert.That(rig.Movement.StateOf<ProjectAbilityState>().history, Is.EqualTo(new[] { 1 }));
+
+            byte[] bytes = StateSerializer.WriteCharacter(rig.Movement);
+            yield return ReplaceRig();
+            yield return SetUp(Ability.Jumping);
+            StateSerializer.ReadCharacter(rig.Movement, bytes);
+            ProjectAbilityState read = rig.Movement.StateOf<ProjectAbilityState>();
+            Assert.That(read.count, Is.EqualTo(5), "Read into a new character (which hadn't asked for it), it's as it was written.");
+            Assert.That(read.history, Is.EqualTo(new[] { 1 }));
+        }
+
         // ---- At another frame rate ----
 
         /// <summary>

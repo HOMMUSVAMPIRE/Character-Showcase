@@ -1,0 +1,112 @@
+using System;
+using MeridianMotion.Characters;
+using UnityEngine;
+
+namespace Abilities
+{
+    /// <summary>
+    /// Zz Gliding: made by New Ability (Tools > Meridian Motion > New Ability…). As made, it's a small working
+    /// ability to build on:
+    /// it takes the character over and holds it where it is, hovering, for Zz Gliding Duration, then lets go.
+    /// A press of Interact starts it (within Zz Gliding Input Buffer of being able to).
+    /// It starts within Zz Gliding Reach of a ZzGlidingPoint in the level (see ZzGlidingPoint).
+    /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
+    /// </summary>
+    [Serializable]
+    public partial class ZzGliding : MovementComponent
+    {
+        [Tooltip("How long (s) Zz Gliding lasts once it starts, at the character's authored size. 0 turns it off")]
+        [Min(0f)] [SerializeField] private float zzGlidingDuration = 0.5f;
+        [Tooltip("If Interact is pressed this many seconds before Zz Gliding can start, it starts as soon as it can")]
+        [Min(0f)] [SerializeField] private float zzGlidingInputBuffer = 0.1f;
+        [Tooltip("How far (m) from a ZzGlidingPoint the character can be, at its authored size, for Zz Gliding to start")]
+        [Min(0f)] [SerializeField] private float zzGlidingReach = 1.5f;
+
+        public override bool IsActive(MMotionMotor motor) => motor.StateOf<ZzGlidingState>().IsActive;
+        /// <summary>Under way, it holds the character up (it isn't falling).</summary>
+        public override AbilityTraits Traits => AbilityTraits.Supported;
+        /// <summary>
+        /// How far through it is (0 to 1), published for its look: an Animator Parameter Translator's float parameter shows
+        /// it (Shows > Ability Value > Zz Gliding Progress), with no animation code. Add values of your own the same way.
+        /// </summary>
+        private static readonly AbilityValueId ProgressValue = new("Zz Gliding Progress");
+        public override string[] AbilityValueNames => abilityValueNames;
+        private static readonly string[] abilityValueNames = { ProgressValue.name };
+
+        /// <summary>The events of ZzGliding starting and ending (see MovementComponent.StateEvents).</summary>
+        public override StateEventPair[] StateEvents => stateEvents;
+        private static readonly StateEventPair[] stateEvents =
+        {
+            new(ZzGliding.State, ZzGliding.Started, ZzGliding.Ended),
+        };
+
+        public override void AdvanceTimers(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            motor.StateOf<ZzGlidingState>().press.Track(inputs.interact);
+            motor.StateOf<ZzGlidingState>().timeLeft = MovementRules.CountDown(motor.StateOf<ZzGlidingState>().timeLeft, step.deltaTime);
+        }
+
+        /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
+        public override void Interrupt(MovementStep step, MMotionMotor motor) => motor.StateOf<ZzGlidingState>().timeLeft = 0f;
+
+        /// <summary>Carries on while it lasts, or starts if it can, holding the character where it is.</summary>
+        public override bool TakeOver(MovementStep step, StepInputs inputs, MMotionMotor motor)
+        {
+            ZzGlidingState state = motor.StateOf<ZzGlidingState>();
+            if (!state.IsActive)
+            {
+                if (!CanStart(inputs, motor)) { return false; }
+                state.timeLeft = zzGlidingDuration * motor.DurationScale;
+                Mode.InterruptOthers(step, motor, this);
+            }
+            // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
+            step.velocityOverride = Vector3.zero;
+            step.state |= ZzGliding.State;
+            PublishProgress(motor);
+            return true;
+        }
+
+        private void PublishProgress(MMotionMotor motor)
+        {
+            float duration = zzGlidingDuration * motor.DurationScale;
+            motor.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - motor.StateOf<ZzGlidingState>().timeLeft / duration : 1f);
+        }
+
+        /// <summary>Whether Zz Gliding can start this step: turned on by a duration, and what starts it.</summary>
+        private bool CanStart(StepInputs inputs, MMotionMotor motor)
+        {
+            if (zzGlidingDuration <= 0f) { return false; }
+            if (!WithinZzGlidingReach(motor)) { return false; }
+            return motor.StateOf<ZzGlidingState>().press.Consume(inputs.interact, zzGlidingInputBuffer);
+        }
+
+        /// <summary>
+        /// Whether a ZzGlidingPoint is within reach of the character (from its physics pose). Which one doesn't matter here;
+        /// an ability that chooses one breaks ties with StableOrder, so it chooses alike on every machine.
+        /// </summary>
+        private bool WithinZzGlidingReach(MMotionMotor motor)
+        {
+            float reach = zzGlidingReach * motor.HeightScale;
+            Vector3 position = motor.PhysicsPosition;
+            // By index: a foreach over the list (an interface) would allocate every step.
+            var elements = ZzGlidingPoint.All;
+            for (int i = 0; i < elements.Count; i++)
+            {
+                if ((elements[i].transform.position - position).sqrMagnitude <= reach * reach) { return true; }
+            }
+            return false;
+        }
+    }
+
+    /// <summary>What each character is doing with Zz Gliding (modes are shared assets, so it lives on the character).</summary>
+    public class ZzGlidingState
+    {
+        /// <summary>Seconds left of Zz Gliding (0 when it isn't under way).</summary>
+        public float timeLeft;
+        /// <summary>Interact's presses, so each press starts it at most once.</summary>
+        public readonly PressBuffer press = new();
+
+        /// <summary>Whether Zz Gliding is under way.</summary>
+        public bool IsActive => timeLeft > 0f;
+    }
+}

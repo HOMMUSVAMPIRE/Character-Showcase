@@ -1,10 +1,15 @@
 using System;
+{{^package}}
+using MeridianMotion.Characters;
+{{/package}}
+{{#package}}
 {{#levelElement}}
 using MeridianMotion.Levels;
 {{/levelElement}}
+{{/package}}
 using UnityEngine;
 
-namespace MeridianMotion.Characters
+namespace {{Namespace}}
 {
     /// <summary>
     /// {{Display}}: made by New Ability (Tools > Meridian Motion > New Ability…). As made, it's a small working
@@ -19,12 +24,12 @@ namespace MeridianMotion.Characters
     /// A press of {{ButtonDisplay}} starts it (within {{Display}} Input Buffer of being able to).
 {{/button}}
 {{#levelElement}}
-    /// It starts within {{Display}} Reach of a {{Element}} in the level (see MeridianMotion.Levels.{{Element}}).
+    /// It starts within {{Display}} Reach of a {{Element}} in the level (see {{ElementFull}}).
 {{/levelElement}}
     /// Replace what it does with your ability: see docs/adding-an-ability.md, which says what each part is for.
     /// </summary>
     [Serializable]
-    public class {{Name}} : MovementComponent
+    public {{Partial}}class {{Name}} : MovementComponent
     {
         [Tooltip("How long (s) {{Display}} lasts once it starts, at the character's authored size. 0 turns it off")]
         [Min(0f)] [SerializeField] private float {{name}}Duration = 0.5f;
@@ -41,7 +46,7 @@ namespace MeridianMotion.Characters
         [Min(0f)] [SerializeField] private float {{name}}Reach = 1.5f;
 {{/levelElement}}
 
-        public override bool IsActive(MMotionMotor motor) => motor.{{name}}.IsActive;
+        public override bool IsActive(MMotionMotor motor) => {{StateAccess}}.IsActive;
 {{#takesOver}}
         /// <summary>Under way, it holds the character up (it isn't falling).</summary>
         public override AbilityTraits Traits => AbilityTraits.Supported;
@@ -58,25 +63,25 @@ namespace MeridianMotion.Characters
         public override StateEventPair[] StateEvents => stateEvents;
         private static readonly StateEventPair[] stateEvents =
         {
-            new(CharacterState.{{StateFlag}}, MovementEvents.{{Started}}, MovementEvents.{{Ended}}),
+            new({{StateRef}}, {{StartedRef}}, {{EndedRef}}),
         };
 
         public override void AdvanceTimers(MovementStep step, StepInputs inputs, MMotionMotor motor)
         {
 {{#button}}
-            motor.{{name}}.press.Track(inputs.{{Button}});
+            {{StateAccess}}.press.Track(inputs.{{Button}});
 {{/button}}
-            motor.{{name}}.timeLeft = MovementRules.CountDown(motor.{{name}}.timeLeft, step.deltaTime);
+            {{StateAccess}}.timeLeft = MovementRules.CountDown({{StateAccess}}.timeLeft, step.deltaTime);
         }
 
         /// <summary>Ends it at once: another ability took the character, or it was turned off while under way.</summary>
-        public override void Interrupt(MovementStep step, MMotionMotor motor) => motor.{{name}}.timeLeft = 0f;
+        public override void Interrupt(MovementStep step, MMotionMotor motor) => {{StateAccess}}.timeLeft = 0f;
 
 {{#takesOver}}
         /// <summary>Carries on while it lasts, or starts if it can, holding the character where it is.</summary>
         public override bool TakeOver(MovementStep step, StepInputs inputs, MMotionMotor motor)
         {
-            {{Name}}State state = motor.{{name}};
+            {{Name}}State state = {{StateAccess}};
             if (!state.IsActive)
             {
                 if (!CanStart(inputs, motor)) { return false; }
@@ -85,7 +90,7 @@ namespace MeridianMotion.Characters
             }
             // Your ability's movement goes here. As made: no momentum at all, so the character hovers where it is.
             step.velocityOverride = Vector3.zero;
-            step.state |= CharacterState.{{StateFlag}};
+            step.state |= {{StateRef}};
             PublishProgress(motor);
             return true;
         }
@@ -94,7 +99,7 @@ namespace MeridianMotion.Characters
         /// <summary>Starts if it can, and while it lasts moves the character on the way it faces, on top of walking.</summary>
         public override void AfterLocomotion(MovementStep step, StepInputs inputs, MMotionMotor motor)
         {
-            {{Name}}State state = motor.{{name}};
+            {{Name}}State state = {{StateAccess}};
             if (!state.IsActive)
             {
                 if (!CanStart(inputs, motor)) { return; }
@@ -103,7 +108,7 @@ namespace MeridianMotion.Characters
             // Your ability's movement goes here. As made: on the way it faces (its physics pose's), at its speed.
             Vector3 forward = step.initialRotation * Vector3.forward;
             step.directMovementVector += forward * ({{name}}Speed * motor.SpeedScale * step.deltaTime);
-            step.state |= CharacterState.{{StateFlag}};
+            step.state |= {{StateRef}};
             PublishProgress(motor);
         }
 {{/onTopOfWalking}}
@@ -111,7 +116,7 @@ namespace MeridianMotion.Characters
         private void PublishProgress(MMotionMotor motor)
         {
             float duration = {{name}}Duration * motor.DurationScale;
-            motor.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - motor.{{name}}.timeLeft / duration : 1f);
+            motor.AbilityValues.Set(ProgressValue, duration > 0f ? 1f - {{StateAccess}}.timeLeft / duration : 1f);
         }
 
         /// <summary>Whether {{Display}} can start this step: turned on by a duration, and what starts it.</summary>
@@ -122,7 +127,7 @@ namespace MeridianMotion.Characters
             if (!Within{{Name}}Reach(motor)) { return false; }
 {{/levelElement}}
 {{#button}}
-            return motor.{{name}}.press.Consume(inputs.{{Button}}, {{name}}InputBuffer);
+            return {{StateAccess}}.press.Consume(inputs.{{Button}}, {{name}}InputBuffer);
 {{/button}}
 {{^button}}
             return true;
@@ -162,6 +167,7 @@ namespace MeridianMotion.Characters
         /// <summary>Whether {{Display}} is under way.</summary>
         public bool IsActive => timeLeft > 0f;
     }
+{{#package}}
 
     // This state's place on the character (see MMotionMotor): declared here, beside its ability.
     public partial class MMotionMotor
@@ -169,4 +175,5 @@ namespace MeridianMotion.Characters
         /// <summary>The character's {{Display}} state ({{Name}}).</summary>
         public {{Name}}State {{name}} { get; } = new {{Name}}State();
     }
+{{/package}}
 }

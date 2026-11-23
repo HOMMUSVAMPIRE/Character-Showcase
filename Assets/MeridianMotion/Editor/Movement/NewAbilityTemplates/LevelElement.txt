@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace MeridianMotion.Levels
+namespace {{ElementNamespace}}
 {
     /// <summary>
     /// A place in the level where the {{Display}} ability starts (made by New Ability): a character within its
@@ -9,7 +9,7 @@ namespace MeridianMotion.Levels
     /// it through All. Replace it with what your ability uses in the level. If it gets state of its own that the
     /// character's movement depends on (as a rope's swing does), see docs/adding-level-content.md for the rules it keeps.
     /// </summary>
-    [AddComponentMenu("Meridian Motion/Levels/{{Display}} {{ElementDisplayTail}}")]
+    [AddComponentMenu("{{MenuRoot}}/Levels/{{Display}} {{ElementDisplayTail}}")]
     public class {{Element}} : MonoBehaviour
     {
         private static readonly List<{{Element}}> active = new();

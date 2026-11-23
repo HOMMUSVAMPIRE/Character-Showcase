@@ -1,6 +1,9 @@
+{{^package}}
+using MeridianMotion.Characters;
+{{/package}}
 using UnityEngine;
 
-namespace MeridianMotion.Characters
+namespace {{Namespace}}
 {
     /// <summary>
     /// {{Display}}'s IK (made by New Ability): it places the limbs while {{Display}} is under way, easing in as it starts and
@@ -12,7 +15,7 @@ namespace MeridianMotion.Characters
     [HumanoidIK]
     [RequireComponent(typeof(HumanoidIK))]
     [DisallowMultipleComponent]
-    [AddComponentMenu("Meridian Motion/IK/{{Display}} IK")]
+    [AddComponentMenu("{{MenuRoot}}/IK/{{Display}} IK")]
     public class {{Name}}IK : AbilityIK
     {
         [Tooltip("How strongly the limbs are placed while {{Display}} is under way. 0 turns it off")]
@@ -27,7 +30,7 @@ namespace MeridianMotion.Characters
         {
             if (stateSource == null || !animator.isHuman) { return; }
             CharacterAnimationState state = stateSource.AnimationState;
-            bool underWay = state.state.HasAny(CharacterState.{{StateFlag}});
+            bool underWay = state.state.HasAny({{StateRef}});
             FadeTo(underWay ? weight : 0f);
             if (activeWeight <= 0f) { return; }
 

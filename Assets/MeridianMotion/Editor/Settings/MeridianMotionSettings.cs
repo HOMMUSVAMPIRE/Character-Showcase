@@ -16,7 +16,8 @@ namespace MeridianMotion.EditorTools
         public const string DefaultOutputFolder = "Assets";
 
         [Tooltip("The folder in Assets the tools put what they make in: prepared models (in Models/Humanoid and Models/Generic), " +
-                 "characters made with New Character (in Characters), and the water effects if they're missing.")]
+                 "characters made with New Character (in Characters), abilities made with New Ability (in Abilities), and the water " +
+                 "effects if they're missing.")]
         [SerializeField] private string outputFolder = DefaultOutputFolder;
 
         /// <summary>The folder the tools' output goes in (Assets, or a folder in it), without a slash at the end.</summary>

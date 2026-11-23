@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using System.Text;
 using UnityEngine;
 
@@ -10,7 +9,8 @@ namespace MeridianMotion.Characters
     /// How CharacterState works as a set of flags (its flags themselves are in CharacterState.cs): a Flags256 of its own type, so it can't be
     /// mixed with another kind of flag. Combine with | and ~, test with HasAny (a flag set: HasAny(T.X)) or
     /// HasAll, and switch on one flag's bit: switch (value.SingleBit) { case CharacterState.MovingBit: … }. Its names (for
-    /// ToString, TryParse and the inspectors) are its flags' field names, found once by reflection.
+    /// ToString, TryParse and the inspectors) are its flags' field names, and a project's own flags' ([MovementFlags]
+    /// classes': [Class].[Field]), found once by reflection (FlagNames).
     /// </summary>
     [Serializable]
     public partial struct CharacterState : IEquatable<CharacterState>
@@ -70,7 +70,7 @@ namespace MeridianMotion.Characters
             return text.ToString();
         }
 
-        /// <summary>The flag of this name (a field's name, Grounded), or false if there's none.</summary>
+        /// <summary>The flag of this name (a field's name, Grounded; a project's, GroundPound.State), or false if there's none.</summary>
         public static bool TryParse(string name, out CharacterState flag)
         {
             foreach ((string each, CharacterState value) in Named)
@@ -100,20 +100,8 @@ namespace MeridianMotion.Characters
         private static string[] Names()
         {
             if (names != null) { return names; }
-            var byBit = new string[Flags256.Size];
-            var list = new List<(string, CharacterState)>();
-            foreach (FieldInfo field in typeof(CharacterState).GetFields(BindingFlags.Public | BindingFlags.Static))
-            {
-                if (field.FieldType != typeof(CharacterState) || !field.IsInitOnly) { continue; }
-                var value = (CharacterState)field.GetValue(null);
-                int bit = value.SingleBit;
-                if (bit < 0 || byBit[bit] != null) { continue; }
-                byBit[bit] = field.Name;
-                list.Add((field.Name, value));
-            }
-            list.Sort((a, b) => a.Item2.SingleBit.CompareTo(b.Item2.SingleBit));
-            named = list;
-            return names = byBit;
+            (names, named) = FlagNames.Find<CharacterState>(flag => flag.SingleBit);
+            return names;
         }
     }
 }
