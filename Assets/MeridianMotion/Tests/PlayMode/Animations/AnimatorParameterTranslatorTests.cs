@@ -7,7 +7,8 @@ using UnityEngine;
 namespace MeridianMotion.Tests.Animations
 {
     /// <summary>
-    /// Tests of an Animator Parameter Translator's bool parameters, set in its inspector: one showing a character's state
+    /// Tests of an Animator Parameter Translator: its parameters set, its event triggers fired and the parameters a
+    /// controller lacks skipped; its playback past the fastest loop; and its bool parameters, set in its inspector: one showing a character's state
     /// (State: …, an ability's own, with no code) is set while the state is; one showing the animation state's own bool is
     /// set from it; one whose source is unknown, or whose parameter the controller doesn't have, is skipped (the first with a
     /// warning); and a new translator's defaults all name the mannequin's parameters and sources that exist. Each drives an
@@ -126,5 +127,98 @@ namespace MeridianMotion.Tests.Animations
                 Assert.That(parameters, Does.Contain(entry.parameter), $"The mannequin's controller should have the default bool '{entry.parameter}'.");
             }
         }
+
+#if UNITY_EDITOR
+        [UnityTest]
+        public IEnumerator SetsParameters_FiresEventTriggers_AndSkipsMissingOnes()
+        {
+            var controller = rig.Track(new UnityEditor.Animations.AnimatorController());
+            controller.AddLayer("Base");
+            controller.layers[0].stateMachine.AddState("Idle");
+            controller.AddParameter(AnimatorParameterTranslator.DefaultSpeedParameter, AnimatorControllerParameterType.Float);
+            controller.AddParameter(AnimatorParameterTranslator.DefaultGroundedParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter(AnimatorParameterTranslator.DefaultDashingParameter, AnimatorControllerParameterType.Bool);
+            controller.AddParameter("Land", AnimatorControllerParameterType.Trigger);
+            // No VerticalSpeed parameter: the translator should skip it without complaint.
+
+            var model = rig.Track(new GameObject("Translator Test Model"));
+            var animator = model.AddComponent<Animator>();
+            animator.runtimeAnimatorController = controller;
+
+            var translator = rig.Track(ScriptableObject.CreateInstance<AnimatorParameterTranslator>());
+            var serialized = new UnityEditor.SerializedObject(translator);
+            serialized.FindProperty("speedDampTime").floatValue = 0f;
+            UnityEditor.SerializedProperty triggers = serialized.FindProperty("eventTriggers");
+            triggers.arraySize = 1;
+            triggers.GetArrayElementAtIndex(0).FindPropertyRelative("events").boxedValue = MovementEvents.Landed;
+            triggers.GetArrayElementAtIndex(0).FindPropertyRelative("trigger").stringValue = "Land";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            yield return null;
+
+            ICharacterAnimationDriver driver = translator.CreateDriver(model, animator);
+            Assert.That(driver, Is.Not.Null);
+            var state = new CharacterAnimationState { horizontalSpeed = 4f, grounded = true, verticalSpeed = 2f, dashing = true };
+            driver.UpdateAnimation(state, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultSpeedParameter), Is.EqualTo(4f).Within(1e-4f));
+            Assert.That(animator.GetBool(AnimatorParameterTranslator.DefaultGroundedParameter), Is.True);
+            Assert.That(animator.GetBool(AnimatorParameterTranslator.DefaultDashingParameter), Is.True, "Dashing should be passed on (it plays the dash animation).");
+
+            driver.HandleMovementEvent(MovementEvents.Jumped, state);
+            Assert.That(animator.GetBool("Land"), Is.False, "Only the bound event should fire the trigger.");
+            driver.HandleMovementEvent(MovementEvents.Landed, state);
+            Assert.That(animator.GetBool("Land"), Is.True, "Landing should fire the Land trigger.");
+
+            LogAssert.NoUnexpectedReceived();
+            Assert.That(translator.CreateDriver(model, null), Is.Null, "There's nothing to drive without an Animator.");
+        }
+
+        /// <summary>
+        /// Past the speed a state's fastest loop is made for (a TopSpeed parameter's default, which the controller
+        /// carries), the translator plays the state faster by however much faster the character moves, and never slower
+        /// than its own speed; a controller without the top speed is left playing as it is. Climbing goes by whichever
+        /// of across and up the climb is further past its loop.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator PlaysPastTheFastestLoop_ByHowMuchFasterTheCharacterMoves()
+        {
+            var controller = rig.Track(new UnityEditor.Animations.AnimatorController());
+            controller.AddLayer("Base");
+            controller.layers[0].stateMachine.AddState("Idle");
+            void Float(string name, float value) => controller.AddParameter(new AnimatorControllerParameter { name = name, type = AnimatorControllerParameterType.Float, defaultFloat = value });
+            Float(AnimatorParameterTranslator.DefaultSpeedParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultLocomotionTopSpeedParameter, 4f);
+            Float(AnimatorParameterTranslator.DefaultCrouchPlaybackParameter, 1f); // No crouch top speed: left as it is.
+            Float(AnimatorParameterTranslator.DefaultClimbRightParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultClimbUpParameter, 0f);
+            Float(AnimatorParameterTranslator.DefaultClimbPlaybackParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbUpTopSpeedParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbDownTopSpeedParameter, 1f);
+            Float(AnimatorParameterTranslator.DefaultClimbLeftTopSpeedParameter, 0.5f);
+            Float(AnimatorParameterTranslator.DefaultClimbRightTopSpeedParameter, 0.5f);
+
+            var model = rig.Track(new GameObject("Playback Test Model"));
+            var animator = model.AddComponent<Animator>();
+            animator.runtimeAnimatorController = controller;
+            var translator = rig.Track(ScriptableObject.CreateInstance<AnimatorParameterTranslator>());
+            var serialized = new UnityEditor.SerializedObject(translator);
+            serialized.FindProperty("speedDampTime").floatValue = 0f;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            yield return null;
+            ICharacterAnimationDriver driver = translator.CreateDriver(model, animator);
+
+            float Locomotion() => animator.GetFloat(AnimatorParameterTranslator.DefaultLocomotionPlaybackParameter);
+            driver.UpdateAnimation(new CharacterAnimationState { horizontalSpeed = 2f, grounded = true }, 0.02f);
+            Assert.That(Locomotion(), Is.EqualTo(1f).Within(1e-4f), "Within the tree, the loops play at their own speeds.");
+            driver.UpdateAnimation(new CharacterAnimationState { horizontalSpeed = 10f, grounded = true }, 0.02f);
+            Assert.That(Locomotion(), Is.EqualTo(2.5f).Within(1e-4f), "Past the fastest loop, it plays as much faster as the character moves.");
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultCrouchPlaybackParameter), Is.EqualTo(1f), "Without a top speed, a state plays as it is.");
+
+            // Climbing up and right at once: twice the across loop's speed, and the same as the up loop's.
+            driver.UpdateAnimation(new CharacterAnimationState { wallClimbing = true, localVelocity = new Vector3(1f, 1f, 0f) }, 0.02f);
+            Assert.That(animator.GetFloat(AnimatorParameterTranslator.DefaultClimbPlaybackParameter), Is.EqualTo(2f).Within(1e-4f));
+            LogAssert.NoUnexpectedReceived();
+        }
+#endif
     }
 }

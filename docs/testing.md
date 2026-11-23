@@ -31,7 +31,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | MovementTests | Movement | Movement | settling, falling, steps, coyote time, the jump buffer |
 | SprintTests | Movement | Movement | sprinting and walking again |
 | MovementComponentTests | Movement | Movement | components turned off or removed |
-| CharacterTestRigTests | Movement | Movement | the test rig itself |
+| CharacterTestRigTests | (the PlayMode root) | Movement | the test rig itself |
 | MovementCapabilitiesTests | Movement | Movement | the measured capabilities matching what the character does |
 | JumpHeightTests | Movement | Movement | tapped, held and released jump heights (and the moment kit's checks) |
 | GroundMomentumTests | Movement | Movement | momentum on landing and hopping |
@@ -69,21 +69,27 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | AnimationTests | Animations | Animation | soles on the floor, planted feet, IK on stretched models |
 | SampleContentAnimationTests | Animations | Animation, SampleContent | every prepared model's feet and lean |
 | AnimationEventTests | Animations | Animation | movement events passed on by the MMotionAnimator |
-| AnimatorParameterTranslatorTests | Animations | Animation | the translator's bool parameters, set in its inspector |
+| AnimatorParameterTranslatorTests | Animations | Animation | the translator: its parameters, triggers and playback |
 | FootLockTests | Animations | Animation | planted feet staying put |
 | VisualRotationTests | Animations | Animation | the model turning and leaning |
 | AbilityAnimationTests | Animations | Animation, SampleContent | each ability's Animator state and IK |
+| TraversalAnimationTests | Animations | Animation, SampleContent | climbing, ladders, ropes, ziplines, stairs and pushing on the model |
+| WaterAnimationTests | Animations | Animation, SampleContent | swimming and diving on the model |
 | HeadInWaterTests | Animations | Animation | the head-in-water hook |
 | FoxPawPlacementTests | Animations | Animation | the fox's paw placement |
 | FoxTerrainClearanceTests | Animations | Animation | the fox's body out of stairs and ramps |
 | FoxAbilityTests | Animations | Animation | the fox's Animator states, swimming and wall running |
-| ModelTests | Models | Models | model hosting, fitting, the translator |
+| ModelTests | Models | Models | model hosting: loading, swapping, fallbacks |
+| ModelFitTests | Models | Models | the character fitted to its model, and measuring on load |
 | ModelVariantTests | Models | Models | models made facing another way or off their origin |
 | HitboxTests | Models | Models | hitboxes |
 | TimingGateTests | Levels | Levels | a timed run between gates |
 | CourseTimerTests | Levels | Levels | lap gates and the racer |
 | UnderwaterViewTests | Levels | Levels | the camera's underwater view |
-| CameraRigTests | Cameras | Camera | the camera rig |
+| CameraRigTests | Cameras | Camera | the camera rig's views and modes |
+| CameraCollisionTests | Cameras | Camera | the camera's collision and shoulder swap |
+| CameraFollowTests | Cameras | Camera | following the target, at any size, and the landing dip |
+| CameraEffectsTests | Cameras | Camera | shake and the speed FOV |
 | SpawnerTests | Spawning | Spawning | the character spawner |
 | EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
 
@@ -247,21 +253,24 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - IK on stretched models: moving a hand or foot goal moving the hand or foot as far, and a knee hint on its own moving the foot no more than unstretched;
   - sample content (SampleContentAnimationTests, in the same file): every prepared model's planted feet staying in place walking at the walk loop's speed, standing on the floor with its arms hanging down (the character's own model, when it's one of them, checked in AnimationTests' stand-on-the-ground case instead), and the torso leaning as the mannequin's does when standing, walking and running (checks that its avatar's reference pose was set up).
 - **AnimationEventTests**: the movement's events passed on by the MMotionAnimator, with the animation state.
-- **AnimatorParameterTranslatorTests**: an Animator Parameter Translator's parameters: a bool showing a character's state (State: …) set while the state is, one showing the animation state's own bool set from it, an unknown source or a parameter the controller lacks skipped (the first with a warning), a float showing an ability value set from it and left as it is until it's set (as Wall Side is out of a wall run), and a new translator's defaults naming the mannequin's parameters and sources that exist.
+- **AnimatorParameterTranslatorTests**: an Animator Parameter Translator: its parameters set from the animation state, its event triggers fired only by their events, and parameters the controller lacks skipped; a state played faster than its fastest loop by however much faster the character moves (never slower than its own speed, and climbing by whichever way is further past its loop); and its bool parameters: a bool showing a character's state (State: …) set while the state is, one showing the animation state's own bool set from it, an unknown source or a parameter the controller lacks skipped (the first with a warning), a float showing an ability value set from it and left as it is until it's set (as Wall Side is out of a wall run), and a new translator's defaults naming the mannequin's parameters and sources that exist.
 - **FootLockTests**: turning on the spot, planted feet staying where they were put down (none of the slide they have without it); a model swapped in while standing carrying on the old one's foot placement (faded in as far, the pelvis as low) rather than fading back in; and standing on a rising and falling platform, frame by frame as drawn, the feet staying on it.
 - **VisualRotationTests**: the model turning after the character: the character turning at once and the model easing round after it without overshooting; turning slower at a run than standing (no faster than its moving limit); leaning into curves by the configured share of the balancing lean (either way); walking a curve leaning about half as much as sprinting it; walking a sharp corner leaning no more than walking speed allows; leaning forward speeding up and back stopping, and upright otherwise; facing a roll at once without leaning; turning with a spinning platform without lagging.
 - **AbilityAnimationTests** (sample content):
-  - crouching, sliding, rolling, wall-running, sliding down a wall, hanging, climbing, vaulting and pushing each playing their Animator state;
+  - crouching, sliding, rolling, wall-running, sliding down a wall, hanging, climbing and vaulting each playing their Animator state;
   - a roll following the roll and blending into walking before it ends, a roll from a crouch blending into the crouch without standing up, and the roll playing on landing from a high fall;
   - the wall run for the side the wall is on (feet toward the wall, leaning away);
   - sliding down a wall with the hands flat on it at head height, spread as wide as the library's climbs hold them, the body against it;
   - a hanging model's wrists on the ledge's top just back from its edge, either side of the character and as far apart as the library's climbs grip, fingers over the edge, its body against the wall; staying in the climb when crouched;
   - the planted hand on the top mid-vault;
+  - a crouched model fitting its lowered body.
+- **TraversalAnimationTests** (sample content):
+  - pushing playing its Animator state;
   - a step up onto a low platform easing the model up after the character, never sinking a foot into the top; landing on a staircase on the run (walking or sprinting up it) landing, not staying in the air;
-  - a crouched model fitting its lowered body;
   - the Ladder state holding still with the hands on different rungs and the hands and feet each on a rung;
   - the Wall Climb state with a hand on the wall and one reaching above the head climbing up, and Climb Enter and Climb Exit playing stepping on and off from the ground;
-  - the rope swing with the hands on the rope, and the zipline with both hands on the cable;
+  - the rope swing with the hands on the rope, and the zipline with both hands on the cable.
+- **WaterAnimationTests** (sample content):
   - the Swim state treading water with the head just out of it, and swimming along;
   - getting out of the water onto a low side playing the climb, not the vault, without passing through the air state or the body dropping back;
   - diving playing Swim Underwater, the swimmer drawn inside its lying body, and back at the surface Swim.
@@ -280,10 +289,11 @@ Then look at what changed in the recorded paths (git diff) before committing the
 ### Models (the Models category; see [Replacing the model](animation.md#replacing-the-model) and [Character models](animation.md#character-models))
 - **ModelTests**:
   - a character left without its model (never loaded, as on a server) moving exactly as one with it, step for step, bit for bit, its body the one its model gives from the first step;
-  - model hosting: loading at runtime and being set up, swapping models (including one without an Animator), new models staying hidden until swapped in, the placeholder, falling back when a model fails, cancelling loads when the character is destroyed or given another model, sources releasing their models, a model swapped in mid-run or mid-transition carrying on where the old one was, and measuring on load once per model (the editor preview is checked in PreparedModelTests);
+  - model hosting: loading at runtime and being set up, swapping models (including one without an Animator), new models staying hidden until swapped in, the placeholder, falling back when a model fails, cancelling loads when the character is destroyed or given another model, sources releasing their models, a model swapped in mid-run or mid-transition carrying on where the old one was.
+- **ModelFitTests**:
   - fitting a model to a height (in proportion to the character's size, the eyes following);
-  - fitting the body to the model (Body Fit): Height, as tall as the model in proportion as authored, or Model's Body, its source's own Body Definition (sized with the model, replacing the body with one of its kind) or, for a source without one, as wide as the model's shoulders; a fallback model's body being the fallback's, not the failed source's; and waiting for room to grow;
-  - and the Animator parameter translator, including playing a state faster than its fastest loop by however much faster the character moves.
+  - fitting the body to the model (Body Fit): Height, as tall as the model in proportion as authored, or Model's Body, its source's own Body Definition (sized with the model, replacing the body with one of its kind) or, for a source without one, as wide as the model's shoulders; a fallback model's body being the fallback's, not the failed source's; and waiting for room to grow (as the model slot does it: ScaleTests' resize waiting under a low ceiling is the other way to grow);
+  - measuring on load once per model (the editor preview is checked in PreparedModelTests).
 - **ModelVariantTests**: models made facing another way, or off their origin, facing forward and standing on the spot; a model with an unevenly scaled armature staying in proportion when stretched.
 - **HitboxTests**: the character's and the fox's models bringing their hitboxes (the characters themselves having no collider), on the CharacterHitbox layer, moving with the character's Rigidbody and left out of the movement's layers; the hitboxes covering the model as it's animated, without reaching far beyond it; detecting, a ball dropped on the character reported and passing through; colliding, bouncing off, the character still walking freely; and a timing gate's trigger seeing the fox walk through it (the character's own hitboxes trigger the gates in TimingGateTests).
 
@@ -293,17 +303,11 @@ Then look at what changed in the recorded paths (git diff) before committing the
 - **UnderwaterViewTests**: a camera going under a water's surface changing the scene's fog to the water's and tinting and dimming the sun, raising CameraSubmerged, and coming back up putting the scene's fog and sun back, raising CameraSurfaced; a camera just above the surface (within the margin) counting as under; outside the water's footprint not; and turning the view off underwater putting the scene's fog back.
 
 ### Cameras (the Camera category; see [Camera System](camera.md))
-- **CameraRigTests**: the camera rig, which follows a plain Transform, independent of the character code, with expectations taken from its own settings:
-  - third and first person placement, and mode blending and events; pitch limits and zoom limits;
-  - collision with walls (only as far in as needed, ignoring walls clear of it and the target's own colliders), at several sizes of target;
-  - moving to the other shoulder, at full distance, beside a wall partly blocking its own, returning once the wall is gone, and staying put beside a wall on the other side; never pulling in as a target comes up against a wall and runs along it;
-  - smooth follow and teleport snapping; shake and ShakeAll;
-  - first person target hiding, including renderers added to the target later; first person eyes following an eye anchor;
-  - framing and clip planes scaled with the target, across a wide range of sizes;
-  - speed FOV judging speed relative to the target's size, and settling once it stops;
-  - the landing dip, as deep as the landing settings make it, in proportion to the target's size, and recovering (landings are judged by the fastest fall since the target last rose, so a frame holding several physics steps, as in the editor, doesn't halve the impact);
-  - CameraZone overrides;
-  - following a new target with `Follow`: snapping to it and looking the way it faces, and taking its eye anchor and size reference in place of the old target's.
+- **CameraRigTests**, **CameraCollisionTests**, **CameraFollowTests** and **CameraEffectsTests** (sharing `CameraRigTestsBase`): the camera rig, which follows a plain Transform, independent of the character code, with expectations taken from its own settings:
+  - CameraRigTests: third and first person placement, and mode blending and events; pitch limits and zoom limits; first person target hiding, including renderers added to the target later; first person eyes following an eye anchor; CameraZone overrides;
+  - CameraCollisionTests: collision with walls (only as far in as needed, ignoring walls clear of it and the target's own colliders), at several sizes of target; moving to the other shoulder, at full distance, beside a wall partly blocking its own, returning once the wall is gone, and staying put beside a wall on the other side; never pulling in as a target comes up against a wall and runs along it;
+  - CameraFollowTests: smooth follow and teleport snapping; framing and clip planes scaled with the target, across a wide range of sizes; the landing dip, as deep as the landing settings make it, in proportion to the target's size, and recovering (landings are judged by the fastest fall since the target last rose, so a frame holding several physics steps, as in the editor, doesn't halve the impact); following a new target with `Follow`: snapping to it and looking the way it faces, and taking its eye anchor and size reference in place of the old target's.
+  - CameraEffectsTests: shake and ShakeAll; speed FOV judging speed relative to the target's size, and settling once it stops;
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
 - **EveryCharacterTests**: every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.

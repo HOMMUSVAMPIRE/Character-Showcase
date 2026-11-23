@@ -31,7 +31,6 @@ namespace MeridianMotion.Tests.EditMode.Movement
         private const string CheckFolder = "Temp/TutorialCheck";
         private const string CharacterAssembly = "MeridianMotion.Characters";
         private const string PlayModeTestsAssembly = "MeridianMotion.Tests.PlayMode";
-        private const string LevelsAssembly = "MeridianMotion.Levels";
         // Where the tutorial's project ability is planned (nothing is written there), so the check doesn't depend on the
         // project's own abilities or ledger.
         private const string ProjectFolder = "Assets/ZzTutorialAbilities";
@@ -177,26 +176,20 @@ namespace MeridianMotion.Tests.EditMode.Movement
             yield return inProject ? CompileInProject(changes, folder) : CompileInPackage(changes, folder);
         }
 
-        // A project's ability: its files as the Abilities assembly, against the package's as built; then its fixture as
-        // Abilities.Tests, against that and the PlayMode tests (the kit).
+        // A project's ability: its files and its fixture compiled together, in one build (each build costs seconds
+        // however small), against the package's as built and the PlayMode tests (the kit), whose references are the
+        // ability's too. (That its own code needs nothing of the tests' is the Abilities assembly's references to say:
+        // New Ability writes them, and NewAbilityTests holds them to the recording.)
         private static IEnumerator CompileInProject(List<AbilityScaffold.Change> changes, string folder)
         {
-            Assembly character = ProjectAssembly(CharacterAssembly);
-            Assembly levels = ProjectAssembly(LevelsAssembly);
-            string abilitiesDll = Path.Combine(folder, AbilityScaffold.ProjectAssembly + ".dll");
-            string testsFolder = ProjectFolder + "/Tests/";
-            List<string> abilitySources = Written(changes.Where(c => c.path.EndsWith(".cs") && !c.path.StartsWith(testsFolder)), folder);
-            string[] messages = null;
-            yield return Build(character, abilitySources, abilitiesDll, null, new[] { character.outputPath, levels.outputPath }, m => messages = m);
-            Assert.That(messages, Is.Empty, "The tutorial's ability should compile:\n" + string.Join("\n", messages ?? new string[0]));
-
             Assembly tests = ProjectAssembly(PlayModeTestsAssembly);
-            List<string> testSources = Written(changes.Where(c => c.path.EndsWith(".cs") && c.path.StartsWith(testsFolder)), folder);
-            Assert.That(testSources, Is.Not.Empty, "New Ability should make the tutorial's tests (are the package's PlayMode tests here?).");
-            messages = null;
-            yield return Build(tests, testSources, Path.Combine(folder, AbilityScaffold.ProjectTestsAssembly + ".dll"), null,
-                               new[] { tests.outputPath, abilitiesDll }, m => messages = m);
-            Assert.That(messages, Is.Empty, "The tutorial's tests should compile:\n" + string.Join("\n", messages ?? new string[0]));
+            string testsFolder = ProjectFolder + "/Tests/";
+            List<AbilityScaffold.Change> code = changes.Where(c => c.path.EndsWith(".cs")).ToList();
+            Assert.That(code.Any(c => c.path.StartsWith(testsFolder)), Is.True, "New Ability should make the tutorial's tests (are the package's PlayMode tests here?).");
+            List<string> sources = Written(code, folder);
+            string[] messages = null;
+            yield return Build(tests, sources, Path.Combine(folder, AbilityScaffold.ProjectAssembly + ".dll"), null, new[] { tests.outputPath }, m => messages = m);
+            Assert.That(messages, Is.Empty, "The tutorial's ability and its tests should compile:\n" + string.Join("\n", messages ?? new string[0]));
         }
 
         // A package's ability: the character's code with New Ability's changes and the ability; then the PlayMode tests

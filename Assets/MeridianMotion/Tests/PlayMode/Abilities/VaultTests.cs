@@ -232,18 +232,41 @@ namespace MeridianMotion.Tests.Abilities
         }
 
         /// <summary>
+        /// The heights at which what the character does with something in its way changes: either side of its step height
+        /// (stepped over, or vaulted), of Vaulting's Vault Step Up Height (vaulted onto, or over), and just under the
+        /// lowest ledge it could grab (Ledges' Ledge Grab Min Height), each BoundaryMargin from it.
+        /// </summary>
+        public enum Boundary { JustUnderTheStep, JustOverTheStep, JustUnderTheStepUp, JustOverTheStepUp, JustUnderTheLedge }
+
+        // How far (m) either side of a boundary height the obstacle's top is.
+        private const float BoundaryMargin = 0.03f;
+
+        private float HeightAt(Boundary boundary) => boundary switch
+        {
+            Boundary.JustUnderTheStep => rig.StepHeight - BoundaryMargin,
+            Boundary.JustOverTheStep => rig.StepHeight + BoundaryMargin,
+            Boundary.JustUnderTheStepUp => StepUpShare * rig.StandingHeight - BoundaryMargin,
+            Boundary.JustOverTheStepUp => StepUpShare * rig.StandingHeight + BoundaryMargin,
+            _ => LedgeShare * rig.StandingHeight - BoundaryMargin,
+        };
+
+        /// <summary>
         /// Anything lower than the lowest ledge the character could grab (Ledges' Ledge Grab Min Height) is passable on
         /// the ground, walking or sprinting into it head-on: stepped over or onto, or vaulted over or onto, thin or deep.
-        /// Heights are shares of that ledge height, so this holds the tuning as it is, whatever it is.
+        /// Checked either side of each height where what it does changes (Boundary), worked out from the settings, so
+        /// this holds the tuning as it is, whatever it is.
         /// </summary>
         [UnityTest]
         public IEnumerator AnythingLowerThanALedge_IsPassable_WalkingOrSprinting(
-            [Values(0.05f, 0.15f, 0.25f, 0.35f, 0.45f, 0.55f, 0.65f, 0.75f, 0.85f, 0.95f)] float shareOfLedgeHeight,
-            [Values(0.15f, 0.6f, 3f)] float depth, [Values(false, true)] bool sprinting)
+            [Values] Boundary boundary, [Values(0.15f, 0.6f, 3f)] float depth, [Values(false, true)] bool sprinting)
         {
             rig.Floor();
             yield return rig.SpawnSettled(Vector3.zero);
-            float height = shareOfLedgeHeight * LedgeShare * rig.StandingHeight;
+            float height = HeightAt(boundary);
+            if (height <= 0f || height >= LedgeShare * rig.StandingHeight)
+            {
+                Assert.Ignore($"With this tuning, {boundary} ({height:0.00} m) isn't between the floor and the lowest ledge.");
+            }
             top = rig.Position.y + height;
             face = rig.Position.z + rig.FrontExtent + 1.5f;
             back = face + depth;

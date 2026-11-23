@@ -3,7 +3,7 @@ using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 
-namespace MeridianMotion.Tests.Movement
+namespace MeridianMotion.Tests
 {
     /// <summary>
     /// Tests of the test rig itself (CharacterTestRig), which every character test relies on: a test's change to a

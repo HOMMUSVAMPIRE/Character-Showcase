@@ -83,6 +83,13 @@ namespace MeridianMotion.Tests.Movement
         public IEnumerator TheCapabilities_FollowTheSettings()
         {
             yield return OnALongFloor();
+            // Measured twice: only what it compares (a sprint jump, a jump to a ledge), so without the air jumps and air
+            // dashes, whose timings are searched for, or sliding and wall-running, which are measured on their own.
+            // None of those changes a sprint jump across a floor or a jump to a ledge.
+            rig.SetMovementSetting("maxJumps", 1);
+            rig.SetMovementSetting("maxAirDashes", 0);
+            rig.SetMovementSetting("slideMaxDuration", 0f);
+            rig.SetMovementSetting("wallRunMaxDuration", 0f);
             float jump = Reach("sprint jump"), ledge = Reach("jump to the ledge");
             rig.SetMovementSetting("maxJumpHeight", rig.MovementSetting<float>("maxJumpHeight") + 1f);
             Assert.That(Reach("sprint jump"), Is.GreaterThan(jump + 0.2f), "A higher jump should carry the character further.");
