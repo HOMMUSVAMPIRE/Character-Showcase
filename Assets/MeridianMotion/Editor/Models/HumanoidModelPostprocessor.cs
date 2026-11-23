@@ -16,8 +16,6 @@ namespace MeridianMotion.EditorTools
     /// </summary>
     public class HumanoidModelPostprocessor : AssetPostprocessor
     {
-        private static bool scheduled;
-
         /// <summary>
         /// Called before changed models are prepared, once the editor's idle: for what has to happen first. The model
         /// pipeline (Assets/Showcase/Editor/Pipeline) regenerates the mannequin here when its file has changed; without the pipeline,
@@ -43,7 +41,7 @@ namespace MeridianMotion.EditorTools
         private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
             // Imports caused by the tools themselves are already being dealt with.
-            if (HumanoidModelImporter.IsBusy || scheduled) { return; }
+            if (ModelPreparation.IsBusy || ModelPreparation.IsPending(PrepareWhenIdle)) { return; }
             bool relevant = imported.Concat(moved).Any(path => InModelsFolder(path) && AssetImporter.GetAtPath(path) is ModelImporter)
                             || deleted.Concat(movedFrom).Any(InModelsFolder)
                             // What the models' ground offsets are measured with: their controllers, the clips those play,
@@ -52,8 +50,7 @@ namespace MeridianMotion.EditorTools
             if (!relevant) { return; }
 
             // Not now: assets can't safely be changed while imports are being processed. Once the editor is idle.
-            scheduled = true;
-            EditorApplication.delayCall += PrepareWhenIdle;
+            ModelPreparation.WhenIdle(PrepareWhenIdle);
         }
 
         private static bool AffectsPreparedAnimation(string path) =>
@@ -62,14 +59,6 @@ namespace MeridianMotion.EditorTools
 
         private static void PrepareWhenIdle()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
-            {
-                EditorApplication.delayCall += PrepareWhenIdle; // Try again once that's over.
-                return;
-            }
-            scheduled = false;
-            if (HumanoidModelImporter.IsBusy) { return; }
-
             // Whatever has to come first (the model pipeline, where it's in the project, regenerating a changed mannequin's
             // clips and controller from its file), then the models.
             BeforePreparing?.Invoke();

@@ -42,7 +42,7 @@ namespace MeridianMotion.EditorTools
         public static string[] ModelsFolders => new[] { ModelsFolder, PackageModelsFolder }
             .Where(f => !string.IsNullOrEmpty(f) && AssetDatabase.IsValidFolder(f) && !MeridianMotionAssets.IsReadOnly(f)).Distinct().ToArray();
         /// <summary>Whether the asset at path is in one of the folders whose models are prepared (ModelsFolders).</summary>
-        public static bool InModelsFolders(string path) => ModelsFolders.Any(f => path.StartsWith(f + "/", System.StringComparison.Ordinal));
+        public static bool InModelsFolders(string path) => ModelPreparation.InFolders(path, ModelsFolders);
         /// <summary>The mannequin's model file: the model every model's animations are made for.</summary>
         public static string MannequinModelPath => MeridianMotionAssets.MannequinModel;
         /// <summary>The mannequin's model prefab, whose IK settings new models start from.</summary>
@@ -100,50 +100,31 @@ namespace MeridianMotion.EditorTools
         /// For -executeMethod: prepares every model (see PrepareAll), logs how each went, and exits when it's done, with
         /// code 1 if any couldn't be prepared.
         /// </summary>
-        public static void PrepareAllFromCommandLine()
+        public static void PrepareAllFromCommandLine() => ModelPreparation.FromCommandLine(() =>
         {
             List<Result> results = PrepareAll();
-            bool ok = results != null && results.All(r => r.Succeeded);
             if (results != null) { foreach (Result result in results) { Debug.Log($"[HumanoidModelImporter] {result}"); } }
-            CommandLine.Finish(ok);
-        }
+            return results;
+        }, result => result.Succeeded);
 
         /// <summary>Prepares every model (see PrepareAll) and shows how each went.</summary>
         [MenuItem("Tools/Meridian Motion/Prepare/Humanoid Models", priority = 30)]
         public static void PrepareAllFromMenu()
         {
             List<Result> results = PrepareAll();
-            if (results == null || Application.isBatchMode) { return; }
-            string summary = results.Count == 0
+            if (results == null) { return; }
+            ModelPreparation.ShowSummary("Prepare Humanoid Models", results.Count == 0
                 ? $"No model files were found in {ModelsFolder}. Put each model in a subfolder there."
-                : string.Join("\n\n", results.Select(r => r.ToString()));
-            EditorUtility.DisplayDialog("Prepare Humanoid Models", summary, "OK");
+                : string.Join("\n\n", results.Select(r => r.ToString())));
         }
 
         /// <summary>
-        /// True while a tool is preparing models or generating the mannequin. The imports they cause are their own doing,
-        /// so HumanoidModelPostprocessor ignores them rather than preparing the same models again.
+        /// True while a tool is preparing models (humanoid or generic-rig) or generating one: ModelPreparation.IsBusy.
         /// </summary>
-        public static bool IsBusy => busy > 0;
-        private static int busy;
+        public static bool IsBusy => ModelPreparation.IsBusy;
 
-        /// <summary>Marks a tool as working on models until the returned object is disposed. See IsBusy.</summary>
-        public static System.IDisposable Busy()
-        {
-            busy++;
-            return new BusyScope();
-        }
-
-        private sealed class BusyScope : System.IDisposable
-        {
-            private bool disposed;
-            public void Dispose()
-            {
-                if (disposed) { return; }
-                disposed = true;
-                busy--;
-            }
-        }
+        /// <summary>Marks a tool as working on models until the returned object is disposed: ModelPreparation.Busy.</summary>
+        public static System.IDisposable Busy() => ModelPreparation.Busy();
 
         /// <summary>
         /// Prepares every model file in the models folder, whether or not it has changed, and reports assets left over
@@ -163,7 +144,7 @@ namespace MeridianMotion.EditorTools
         {
             if (!LoadSharedAssets(out AnimatorController controller, out AnimatorParameterTranslator translator)) { return null; }
             var results = new List<Result>();
-            Dictionary<string, PreparedRecord> prepared = LoadPreparedRecords();
+            PreparedRecords prepared = PreparedRecords.Load(PreparedHashesPath);
             int modelCount = 0;
             using (Busy())
             {
@@ -218,14 +199,14 @@ namespace MeridianMotion.EditorTools
                     }
                     else
                     {
-                        prepared[result.modelPath] = RecordFor(result.modelPath, ControllerOf(result.definition));
+                        prepared.Set(result.modelPath, RecordFor(result.modelPath, ControllerOf(result.definition)).ToString());
                     }
                 }
                 modelCount = results.Count;
                 results.AddRange(FindOrphans(results));
             }
-            prepared.Keys.Where(path => !File.Exists(path)).ToList().ForEach(path => prepared.Remove(path));
-            SavePreparedRecords(prepared);
+            prepared.ForgetMissing();
+            prepared.Save();
 
             bool anythingHappened = results.Any(r => !r.upToDate);
             if (onlyChanged && !anythingHappened) { return results; }
@@ -273,12 +254,8 @@ namespace MeridianMotion.EditorTools
             return false;
         }
 
-        // AssetDatabase.FindAssets in the models folders (none, if there are none: given no folders, it'd search everywhere).
-        private static string[] FindIn(string filter)
-        {
-            string[] folders = ModelsFolders;
-            return folders.Length == 0 ? System.Array.Empty<string>() : AssetDatabase.FindAssets(filter, folders);
-        }
+        // AssetDatabase.FindAssets in the models folders.
+        private static string[] FindIn(string filter) => ModelPreparation.FindIn(filter, ModelsFolders);
 
         /// <summary>The model sources in the models folder that are ready to use (see Validate), sorted by path.</summary>
         public static IEnumerable<PrefabModelSource> FindPreparedSources() =>
@@ -289,27 +266,19 @@ namespace MeridianMotion.EditorTools
                 .Where(d => d != null && Validate(d) == null);
 
         /// <summary>Every model file (anything Unity imports as a model) in the models folder, sorted by path.</summary>
-        public static IEnumerable<string> FindModelFiles() =>
-            FindIn("")
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Where(path => AssetImporter.GetAtPath(path) is ModelImporter)
-                .Distinct()
-                .OrderBy(path => path, System.StringComparer.Ordinal);
+        public static IEnumerable<string> FindModelFiles() => ModelPreparation.ModelFilesIn(ModelsFolders);
 
         /// <summary>
-        /// The name a model goes by, which its prefab and source are named after: its file name. It depends on nothing
-        /// else (not on what else is in its folder), so adding or removing other models never renames a model's assets
-        /// and leaves references to the old ones behind.
+        /// The name a model goes by, which its prefab and source are named after: its file name (ModelPreparation.NameOf),
+        /// so adding or removing other models never renames a model's assets and leaves references to the old ones behind.
         /// </summary>
-        public static string NameOf(string modelPath) => Path.GetFileNameWithoutExtension(modelPath);
+        public static string NameOf(string modelPath) => ModelPreparation.NameOf(modelPath);
 
         /// <summary>Where a model's prefab is saved: "[name] Model.prefab" next to the model file.</summary>
-        public static string ModelPrefabPathFor(string modelPath, string name) =>
-            $"{Path.GetDirectoryName(modelPath)?.Replace('\\', '/')}/{name} Model.prefab";
+        public static string ModelPrefabPathFor(string modelPath, string name) => ModelPreparation.BesideModel(modelPath, $"{name} Model.prefab");
 
         /// <summary>Where a model's source is saved: "[name].asset" next to the model file.</summary>
-        public static string SourcePathFor(string modelPath, string name) =>
-            $"{Path.GetDirectoryName(modelPath)?.Replace('\\', '/')}/{name}.asset";
+        public static string SourcePathFor(string modelPath, string name) => ModelPreparation.BesideModel(modelPath, $"{name}.asset");
 
         /// <summary>Imports one model as a Humanoid and saves its model prefab and definition.</summary>
         public static Result Prepare(string modelPath, AnimatorController controller, AnimatorParameterTranslator translator)

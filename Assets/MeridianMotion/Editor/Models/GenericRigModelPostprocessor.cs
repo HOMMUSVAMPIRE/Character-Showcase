@@ -14,8 +14,6 @@ namespace MeridianMotion.EditorTools
     /// </summary>
     public class GenericRigModelPostprocessor : AssetPostprocessor
     {
-        private static bool scheduled;
-
         private void OnPreprocessModel()
         {
             if (!GenericRigModelImporter.InModelsFolder(assetPath) || assetImporter is not ModelImporter importer || !importer.importSettingsMissing) { return; }
@@ -28,13 +26,12 @@ namespace MeridianMotion.EditorTools
         private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
         {
             // Imports caused by the tools themselves are already being dealt with.
-            if (HumanoidModelImporter.IsBusy || scheduled) { return; }
+            if (ModelPreparation.IsBusy || ModelPreparation.IsPending(PrepareWhenIdle)) { return; }
             bool relevant = imported.Concat(moved).Any(path => GenericRigModelImporter.InModelsFolder(path)
                 && (AssetImporter.GetAtPath(path) is ModelImporter || IsSetupOrSet(path)));
             if (!relevant) { return; }
             // Not now: assets can't safely be changed while imports are being processed. Once the editor is idle.
-            scheduled = true;
-            EditorApplication.delayCall += PrepareWhenIdle;
+            ModelPreparation.WhenIdle(PrepareWhenIdle);
         }
 
         private static bool IsSetupOrSet(string path)
@@ -45,13 +42,6 @@ namespace MeridianMotion.EditorTools
 
         private static void PrepareWhenIdle()
         {
-            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
-            {
-                EditorApplication.delayCall += PrepareWhenIdle; // Try again once that's over.
-                return;
-            }
-            scheduled = false;
-            if (HumanoidModelImporter.IsBusy) { return; }
             GenericRigModelImporter.PrepareChanged();
         }
     }

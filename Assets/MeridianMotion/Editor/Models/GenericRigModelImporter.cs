@@ -56,16 +56,18 @@ namespace MeridianMotion.EditorTools
         // ---- Where things are ----
 
         /// <summary>A generic-rig character's name: its model file's.</summary>
-        public static string NameOf(string modelPath) => Path.GetFileNameWithoutExtension(modelPath);
-        private static string FolderOf(string modelPath) => Path.GetDirectoryName(modelPath).Replace('\\', '/');
-        public static string SetupPathFor(string modelPath) => $"{FolderOf(modelPath)}/{NameOf(modelPath)} Setup.asset";
-        public static string ModelPrefabPathFor(string modelPath) => $"{FolderOf(modelPath)}/{NameOf(modelPath)} Model.prefab";
-        public static string SourcePathFor(string modelPath) => $"{FolderOf(modelPath)}/{NameOf(modelPath)}.asset";
-        public static string BodyPathFor(string modelPath) => $"{FolderOf(modelPath)}/{NameOf(modelPath)} Body.asset";
-        public static string TranslatorPathFor(string modelPath) => $"{FolderOf(modelPath)}/{NameOf(modelPath)} Animator Translator.asset";
+        public static string NameOf(string modelPath) => ModelPreparation.NameOf(modelPath);
+        private static string FolderOf(string modelPath) => ModelPreparation.FolderOf(modelPath);
+        // "[name][suffix]" beside the model.
+        private static string Beside(string modelPath, string suffix) => ModelPreparation.BesideModel(modelPath, NameOf(modelPath) + suffix);
+        public static string SetupPathFor(string modelPath) => Beside(modelPath, " Setup.asset");
+        public static string ModelPrefabPathFor(string modelPath) => Beside(modelPath, " Model.prefab");
+        public static string SourcePathFor(string modelPath) => Beside(modelPath, ".asset");
+        public static string BodyPathFor(string modelPath) => Beside(modelPath, " Body.asset");
+        public static string TranslatorPathFor(string modelPath) => Beside(modelPath, " Animator Translator.asset");
 
         /// <summary>Whether a path is in a generic-rig character's folder (Models/Generic/[name]/... in the output folder).</summary>
-        public static bool InModelsFolder(string path) => path.StartsWith(ModelsFolder + "/");
+        public static bool InModelsFolder(string path) => ModelPreparation.InFolders(path, ModelsFolder);
 
         /// <summary>Whether a model source is a generic-rig character's: it, or the model prefab it wears, is in a generic-rig character's folder.</summary>
         public static bool IsGenericRig(CharacterModelSource source) =>
@@ -75,12 +77,7 @@ namespace MeridianMotion.EditorTools
             source is PrefabModelSource direct && direct.ModelPrefab != null ? AssetDatabase.GetAssetPath(direct.ModelPrefab) : "";
 
         /// <summary>The model files in the generic-rig characters' folders that have a skinned mesh (a model to prepare, not only clips).</summary>
-        public static IEnumerable<string> FindModelFiles() =>
-            AssetDatabase.IsValidFolder(ModelsFolder)
-                ? AssetDatabase.FindAssets("t:Model", new[] { ModelsFolder }).Select(AssetDatabase.GUIDToAssetPath)
-                    .Where(path => AssetImporter.GetAtPath(path) is ModelImporter && HasSkinnedMesh(path))
-                    .Distinct().OrderBy(p => p, System.StringComparer.Ordinal)
-                : Enumerable.Empty<string>();
+        public static IEnumerable<string> FindModelFiles() => ModelPreparation.ModelFilesIn(ModelsFolder).Where(HasSkinnedMesh);
 
         private static bool HasSkinnedMesh(string modelPath)
         {
@@ -100,17 +97,16 @@ namespace MeridianMotion.EditorTools
         {
             List<Result> results = PrepareAll();
             int failed = results.Count(r => !r.Succeeded);
-            EditorUtility.DisplayDialog(LogName, results.Count == 0 ? $"There are no generic-rig characters to prepare: put a rigged model in a folder of its own in {ModelsFolder}."
-                : $"Prepared {results.Count - failed} generic-rig character(s)" + (failed > 0 ? $"; {failed} couldn't be (see the Console)." : "."), "OK");
+            ModelPreparation.ShowSummary(LogName, results.Count == 0 ? $"There are no generic-rig characters to prepare: put a rigged model in a folder of its own in {ModelsFolder}."
+                : $"Prepared {results.Count - failed} generic-rig character(s)" + (failed > 0 ? $"; {failed} couldn't be (see the Console)." : "."));
         }
 
         /// <summary>For -executeMethod: prepares every generic-rig character (or only -model [path]), then exits (code 1 if one failed).</summary>
-        public static void PrepareAllFromCommandLine()
+        public static void PrepareAllFromCommandLine() => ModelPreparation.FromCommandLine(() =>
         {
             string path = CommandLine.Argument("-model");
-            List<Result> results = path != null ? new List<Result> { Prepare(path) } : PrepareAll();
-            CommandLine.Finish(results.All(r => r.Succeeded));
-        }
+            return path != null ? new List<Result> { Prepare(path) } : PrepareAll();
+        }, result => result.Succeeded);
 
         /// <summary>Prepares every generic-rig character in the generic-rig characters' folders.</summary>
         public static List<Result> PrepareAll() => PrepareMany(onlyChanged: false);
@@ -124,7 +120,7 @@ namespace MeridianMotion.EditorTools
         private static List<Result> PrepareMany(bool onlyChanged)
         {
             var results = new List<Result>();
-            using (HumanoidModelImporter.Busy())
+            using (ModelPreparation.Busy())
             {
                 foreach (string modelPath in FindModelFiles())
                 {
@@ -150,7 +146,7 @@ namespace MeridianMotion.EditorTools
                 result.problem = $"'{modelPath}' isn't a model file.";
                 return result;
             }
-            using (HumanoidModelImporter.Busy())
+            using (ModelPreparation.Busy())
             {
                 ConfigureImport(modelPath, takesAnew: false);
                 GenericRigSetup setup = LoadOrMakeSetup(modelPath, result);
@@ -171,7 +167,7 @@ namespace MeridianMotion.EditorTools
                 return result;
             }
             result.name = NameOf(modelPath);
-            using (HumanoidModelImporter.Busy())
+            using (ModelPreparation.Busy())
             {
                 AnimatorController controller = BuildController(setup, result);
                 if (controller == null) { return result; }
@@ -284,7 +280,7 @@ namespace MeridianMotion.EditorTools
             var setup = AssetDatabase.LoadAssetAtPath<GenericRigSetup>(SetupPathFor(modelPath));
             var source = AssetDatabase.LoadAssetAtPath<PrefabModelSource>(SourcePathFor(modelPath));
             if (setup == null || source == null || source.ModelPrefab == null) { return false; }
-            return !LoadRecords().TryGetValue(modelPath, out string recorded) || recorded == RecordFor(modelPath, setup);
+            return !PreparedRecords.Load(RecordsPath).TryGet(modelPath, out string recorded) || recorded == RecordFor(modelPath, setup);
         }
 
         /// <summary>What preparing the generic-rig character now would be preparing it from: a hash of its model file, its setup, and its animation set and layout.</summary>
@@ -303,25 +299,7 @@ namespace MeridianMotion.EditorTools
         }
 
         /// <summary>Records a generic-rig character as prepared as it is now (so it isn't prepared again until something changes).</summary>
-        public static void MarkPrepared(string modelPath, GenericRigSetup setup)
-        {
-            Dictionary<string, string> records = LoadRecords();
-            records[modelPath] = RecordFor(modelPath, setup);
-            Directory.CreateDirectory(Path.GetDirectoryName(RecordsPath));
-            File.WriteAllLines(RecordsPath, records.OrderBy(r => r.Key, System.StringComparer.Ordinal).Select(r => $"{r.Value}\t{r.Key}"));
-        }
-
-        // One line per generic-rig character: "hash<tab>model path".
-        private static Dictionary<string, string> LoadRecords()
-        {
-            var records = new Dictionary<string, string>();
-            if (!File.Exists(RecordsPath)) { return records; }
-            foreach (string line in File.ReadAllLines(RecordsPath))
-            {
-                string[] parts = line.Split('\t');
-                if (parts.Length == 2) { records[parts[1]] = parts[0]; }
-            }
-            return records;
-        }
+        public static void MarkPrepared(string modelPath, GenericRigSetup setup) =>
+            PreparedRecords.Mark(RecordsPath, modelPath, RecordFor(modelPath, setup));
     }
 }

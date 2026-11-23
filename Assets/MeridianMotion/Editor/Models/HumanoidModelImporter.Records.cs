@@ -18,13 +18,13 @@ namespace MeridianMotion.EditorTools
         /// changed since it was last prepared on this machine. A model never prepared here (as after cloning the
         /// project, where the prepared assets come with it) counts as up to date.
         /// </summary>
-        private static bool IsUpToDate(string modelPath, Dictionary<string, PreparedRecord> prepared, AnimatorController controller)
+        private static bool IsUpToDate(string modelPath, PreparedRecords prepared, AnimatorController controller)
         {
             var source = AssetDatabase.LoadAssetAtPath<PrefabModelSource>(SourcePathFor(modelPath, NameOf(modelPath)));
             if (source == null || Validate(source) != null || ControllerOf(source) != controller) { return false; }
             var prefabSource = PrefabUtility.GetCorrespondingObjectFromOriginalSource(source.ModelPrefab);
             if (prefabSource == null || AssetDatabase.GetAssetPath(prefabSource) != modelPath) { return false; }
-            return !prepared.TryGetValue(modelPath, out PreparedRecord recorded) || recorded.Equals(RecordFor(modelPath, ControllerOf(source)));
+            return !prepared.TryGet(modelPath, out string recorded) || PreparedRecord.Parse(recorded).Equals(RecordFor(modelPath, ControllerOf(source)));
         }
 
         // Bump to re-prepare every model once, when what preparing does changes.
@@ -50,6 +50,19 @@ namespace MeridianMotion.EditorTools
             /// </summary>
             public string Animation { get; }
 
+            /// <summary>As it's kept in the records: "file hash&lt;tab&gt;animation hash".</summary>
+            public override string ToString() => $"{File}\t{Animation}";
+
+            /// <summary>
+            /// A record as it's kept (see ToString). One from before the animation was recorded has no animation hash, so
+            /// its model is prepared again once.
+            /// </summary>
+            public static PreparedRecord Parse(string record)
+            {
+                string[] parts = (record ?? "").Split('\t');
+                return new PreparedRecord(parts[0], parts.Length > 1 ? parts[1] : "");
+            }
+
             public bool Equals(PreparedRecord other) => File == other.File && Animation == other.Animation;
             public override bool Equals(object obj) => obj is PreparedRecord other && Equals(other);
             public override int GetHashCode() => System.HashCode.Combine(File, Animation);
@@ -72,37 +85,12 @@ namespace MeridianMotion.EditorTools
         /// controller made by hand mustn't count.
         /// </summary>
         public static bool HasChangedSincePrepared(string modelPath) =>
-            LoadPreparedRecords().TryGetValue(modelPath, out PreparedRecord recorded) && recorded.File != RecordFor(modelPath, null).File;
+            PreparedRecords.Load(PreparedHashesPath).TryGet(modelPath, out string recorded)
+            && PreparedRecord.Parse(recorded).File != RecordFor(modelPath, null).File;
 
         /// <summary>Records a model as prepared as it is now, for tools that prepare a model themselves (a model generator).</summary>
-        public static void MarkPrepared(string modelPath, RuntimeAnimatorController controller)
-        {
-            Dictionary<string, PreparedRecord> prepared = LoadPreparedRecords();
-            prepared[modelPath] = RecordFor(modelPath, controller);
-            SavePreparedRecords(prepared);
-        }
-
-        // One line per model: "file hash<tab>animation hash<tab>path". (Lines from before the animation was recorded
-        // have no animation hash, so those models are prepared again once.)
-        private static Dictionary<string, PreparedRecord> LoadPreparedRecords()
-        {
-            var records = new Dictionary<string, PreparedRecord>();
-            if (!File.Exists(PreparedHashesPath)) { return records; }
-            foreach (string line in File.ReadAllLines(PreparedHashesPath))
-            {
-                string[] parts = line.Split('\t');
-                if (parts.Length == 3) { records[parts[2]] = new PreparedRecord(parts[0], parts[1]); }
-                else if (parts.Length == 2) { records[parts[1]] = new PreparedRecord(parts[0], ""); }
-            }
-            return records;
-        }
-
-        private static void SavePreparedRecords(Dictionary<string, PreparedRecord> records)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(PreparedHashesPath));
-            File.WriteAllLines(PreparedHashesPath, records.OrderBy(r => r.Key, System.StringComparer.Ordinal)
-                .Select(r => $"{r.Value.File}\t{r.Value.Animation}\t{r.Key}"));
-        }
+        public static void MarkPrepared(string modelPath, RuntimeAnimatorController controller) =>
+            PreparedRecords.Mark(PreparedHashesPath, modelPath, RecordFor(modelPath, controller).ToString());
 
         /// <summary>
         /// Moves a model prefab and source made for this model under other names to the names it should have, keeping
