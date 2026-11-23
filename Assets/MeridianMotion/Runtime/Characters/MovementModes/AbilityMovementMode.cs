@@ -27,13 +27,6 @@ namespace MeridianMotion.Characters
         /// <summary>The components a new mode of this type starts with, in order.</summary>
         protected abstract IEnumerable<MovementComponent> DefaultComponents();
 
-        /// <summary>Replaces the mode's components with the ones a new mode of this type starts with, at their defaults.</summary>
-        public void ResetComponents()
-        {
-            components = new List<MovementComponent>(DefaultComponents());
-            foreach (MovementComponent component in components) { component.Mode = this; }
-        }
-
         /// <summary>The mode's components, in order (turned-off ones included; an entry is null if its type is missing).</summary>
         public IReadOnlyList<MovementComponent> Components => components;
 

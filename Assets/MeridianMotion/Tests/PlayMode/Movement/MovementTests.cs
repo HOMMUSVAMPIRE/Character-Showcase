@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using MeridianMotion.Characters;
 using NUnit.Framework;
 using UnityEngine.TestTools;
@@ -15,6 +16,38 @@ namespace MeridianMotion.Tests.Movement
     public class MovementTests : CharacterRigFixture
     {
 
+
+        /// <summary>
+        /// A force (MMotionMotor.AddForce) pushes the character for the next step only, as the velocity change it makes over
+        /// that step: force times the step's length over the Rigidbody's mass. Forces added before a step add up. Held to
+        /// AddVelocityChange: the same moment, put back (SaveState, RestoreState) and pushed by that change instead, moves
+        /// bit for bit the same, so the force is neither spread over another step's length nor applied twice.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator AForce_PushesForTheNextStep_AsTheVelocityChangeItMakesOverIt()
+        {
+            yield return rig.StandOnFloor();
+            MMotionMotor motor = rig.Movement;
+            MovementStateSnapshot saved = motor.SaveState();
+            long levelTick = rig.LevelTick;
+            Vector3 start = rig.Position;
+            var force = new Vector3(300f, 800f, -200f);
+
+            var pushed = new List<Vector3>();
+            motor.AddForce(force * 0.5f);
+            motor.AddForce(force * 0.5f);
+            yield return rig.Run(5, _ => CharacterTestRig.Idle(), _ => pushed.Add(rig.Position));
+
+            Assert.That(motor.RestoreState(saved), Is.True);
+            rig.LevelTick = levelTick;
+            var changed = new List<Vector3>();
+            motor.AddVelocityChange(force * motor.StepLength / motor.GetComponent<Rigidbody>().mass);
+            yield return rig.Run(5, _ => CharacterTestRig.Idle(), _ => changed.Add(rig.Position));
+
+            Assert.That(Vector3.Distance(pushed[pushed.Count - 1], start), Is.GreaterThan(0.01f), "The force should move the character.");
+            Assert.That(pushed, Is.EqualTo(changed),
+                "Pushed by a force, the character should move exactly as by the velocity change it makes over the step.");
+        }
 
         /// <summary>
         /// The move input is relative to the input's own look (each frame's: see CharacterInputFrame), not to a camera: with

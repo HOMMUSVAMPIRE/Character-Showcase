@@ -176,7 +176,7 @@ namespace MeridianMotion.Characters
             Vector3 approach = Approach(step, slide, motor);
             bool approaching = approach.magnitude >= wallSlideMinApproachSpeed * motor.SpeedScale;
             Vector3 heading = approaching ? approach.normalized
-                : steer.sqrMagnitude > 0.01f ? steer.normalized : Facing(step);
+                : NormalizedOr(steer, Facing(step), 0.01f);
             Vector3 feet = step.initialPosition;
             if (!FindWallAhead(motor, feet, heading, out Vector3 normal, out Vector3 point)) { return false; }
             if (Vector3.Angle(heading, -normal) > wallSlideMaxAngle) { return false; }
@@ -214,7 +214,7 @@ namespace MeridianMotion.Characters
         private static void RememberApproach(MovementStep step, WallSlideState slide, long now)
         {
             Vector3 inertia = step.initialInertia;
-            Vector3 horizontal = new Vector3(inertia.x, 0f, inertia.z);
+            Vector3 horizontal = Flat(inertia);
             if (step.initialGrounded) { slide.approachTick = MMotionMotor.NeverTick; return; }
             if (horizontal.sqrMagnitude > 0.25f)
             {
@@ -230,7 +230,7 @@ namespace MeridianMotion.Characters
         internal static Vector3 Approach(MovementStep step, WallSlideState slide, MMotionMotor motor)
         {
             Vector3 inertia = step.initialInertia;
-            Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
+            Vector3 moving = Flat(inertia);
             bool remembered = motor.SecondsSince(slide.approachTick) <= WallSlideApproachMemory * motor.DurationScale;
             return remembered && slide.approachVelocity.sqrMagnitude > moving.sqrMagnitude ? slide.approachVelocity : moving;
         }

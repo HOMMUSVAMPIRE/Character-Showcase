@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -110,7 +111,7 @@ namespace MeridianMotion.Characters
             {
                 dash.timeRemaining = 0f;
                     Vector3 momentum = dash.direction * (topSpeed * dashJumpSpeedRetention);
-                step.initialInertia = new Vector3(momentum.x, 0f, momentum.z);
+                step.initialInertia = Flat(momentum);
                 step.directMovementVector = Vector3.zero; // Momentum only, so walking doesn't stack on top of it.
                 return;
             }

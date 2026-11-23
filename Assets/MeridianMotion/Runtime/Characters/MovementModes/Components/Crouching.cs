@@ -165,7 +165,7 @@ namespace MeridianMotion.Characters
 
             // The slide's speed is its momentum as the last step left it, so hitting a wall slows or stops it.
             Vector3 inertia = step.initialInertia;
-            Vector3 velocity = new Vector3(inertia.x, 0f, inertia.z);
+            Vector3 velocity = Flat(inertia);
             float speed = velocity.magnitude;
             if (speed > 1e-3f) { slide.direction = velocity / speed; }
             Vector3 steer = InputDirection(step, inputs);
@@ -196,7 +196,7 @@ namespace MeridianMotion.Characters
             if (!canSlide || slideMaxDuration <= 0f || !step.initialGrounded || motor.crouch.IsCrouched || Mode.AbilityInProgress(motor)) { return false; }
             if (inputs.sprint == null || !inputs.sprint.held) { return false; }
             Vector3 velocity = step.initialVelocity;
-            Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 horizontal = Flat(velocity);
             float speed = horizontal.magnitude;
             if (speed < slideMinStartSpeed * motor.SpeedScale || speed < 1e-3f) { return false; }
             if (!Mode.ConsumeCrouchPress(inputs, motor)) { return false; }

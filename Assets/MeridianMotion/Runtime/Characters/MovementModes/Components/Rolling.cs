@@ -80,7 +80,7 @@ namespace MeridianMotion.Characters
                     return false;
                 }
                 Vector3 direction = InputDirection(step, inputs);
-                roll.direction = direction.sqrMagnitude > 0.01f ? direction.normalized : Facing(step);
+                roll.direction = NormalizedOr(direction, Facing(step), 0.01f);
                 roll.timeRemaining = roll.duration = rollDuration * motor.DurationScale;
             }
 
@@ -120,7 +120,7 @@ namespace MeridianMotion.Characters
             if (rollDuration <= 0f || landingRollMinFall <= 0f || !step.initialGrounded || Mode.AbilityInProgress(motor)) { return false; }
             if (roll.landingFall < landingRollMinFall * motor.Body.StandingHeight || Mode.HasFreshJumpPress(inputs, motor)) { return false; }
             Vector3 inertia = step.initialInertia;
-            Vector3 moving = new Vector3(inertia.x, 0f, inertia.z);
+            Vector3 moving = Flat(inertia);
             Vector3 steer = InputDirection(step, inputs);
             Vector3 direction = moving.magnitude >= landingRollMinSpeed * motor.SpeedScale ? moving
                 : steer.magnitude >= 0.3f ? steer : Vector3.zero;

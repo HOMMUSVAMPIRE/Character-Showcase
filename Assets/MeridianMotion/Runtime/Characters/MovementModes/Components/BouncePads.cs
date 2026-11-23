@@ -1,6 +1,7 @@
 using System;
 using MeridianMotion.Levels;
 using UnityEngine;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -62,7 +63,7 @@ namespace MeridianMotion.Characters
             float riseSpeed = MovementRules.LaunchSpeedFor(height, Mode.GravityAcceleration(motor), step.deltaTime);
 
             Vector3 velocity = step.initialVelocity;
-            Vector3 kept = new Vector3(velocity.x, 0f, velocity.z) * pad.MomentumKept;
+            Vector3 kept = Flat(velocity) * pad.MomentumKept;
             step.velocityOverride = kept + up * (riseSpeed / upShare);
             step.directMovementVector = Vector3.zero;
 

@@ -50,6 +50,10 @@ namespace MeridianMotion.Characters
         /// gets thrown by an explosion); added to with AddVelocityChange, and cleared once applied.
         /// </summary>
         [HideInInspector] public Vector3 pendingVelocityChange;
+        // Forces (N) added with AddForce for the next physics step, turned into a velocity change when it starts (over
+        // its length, given to Step), and cleared then. Kept as a force, not converted when it's added, so it's spread
+        // over the step it's applied in, not the last one, and needs no step to have run first.
+        private Vector3 pendingForce;
         /// <summary>
         /// A complete override on the character's velocity, in m/s, to be applied in the next physics step (set with
         /// OverrideVelocity), or null for none. Cleared once applied.
@@ -357,8 +361,9 @@ namespace MeridianMotion.Characters
             data.initialPitch = bodyPitch;
             data.targetPitch = 0f;
 
-            data.velocityChange = pendingVelocityChange;
+            data.velocityChange = pendingVelocityChange + pendingForce * data.deltaTime / rb.mass;
             pendingVelocityChange = Vector3.zero;
+            pendingForce = Vector3.zero;
 
             data.velocityOverride = velocityOverride;
             velocityOverride = null;
@@ -464,13 +469,14 @@ namespace MeridianMotion.Characters
         }
 
         /// <summary>
-        /// Add a force to the character to be applied in the next fixed update
+        /// Pushes the character with a force (N, world space) for the next physics step, as Rigidbody.AddForce's
+        /// ForceMode.Force does: its velocity changes by force times the step's length over the Rigidbody's mass. Forces
+        /// added before a step add up. To push it for longer, add the force each step; for a push of a set speed whatever
+        /// the step's length or the mass (a launch, a knockback), use AddVelocityChange.
         /// </summary>
-        /// <param name="force"></param>
         public void AddForce(Vector3 force)
         {
-            // Over a step: the last step's length (the physics step's before the first).
-            AddVelocityChange(force * (StepLength > 0f ? StepLength : Time.fixedDeltaTime) / rb.mass);
+            pendingForce += force;
         }
 
         /// <summary>

@@ -68,8 +68,6 @@ namespace MeridianMotion.Characters
         /// <summary>The highest it can climb, any way (m).</summary>
         public float HighestClimb => climbs.Count > 0 ? climbs.Max(c => c.Reach) : 0f;
 
-        /// <summary>The first (least) of its moves that crosses a gap this wide, or null if none does.</summary>
-        public Move? MoveAcross(float gap) => FirstReaching(jumps, gap);
         /// <summary>The first (least) of its moves that climbs this high, or null if none does.</summary>
         public Move? MoveUp(float height) => FirstReaching(climbs, height);
 

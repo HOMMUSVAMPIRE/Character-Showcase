@@ -1,4 +1,5 @@
 using UnityEngine;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -47,7 +48,7 @@ namespace MeridianMotion.Characters
         /// <summary>Turns the character (about the vertical) to face the way the direction heads across, if it heads across at all.</summary>
         public static void FaceAcross(MovementStep step, Vector3 direction)
         {
-            Vector3 across = new Vector3(direction.x, 0f, direction.z);
+            Vector3 across = Flat(direction);
             if (across.sqrMagnitude > SteeringThreshold) { step.targetRotation = Quaternion.LookRotation(across.normalized, Vector3.up); }
         }
 

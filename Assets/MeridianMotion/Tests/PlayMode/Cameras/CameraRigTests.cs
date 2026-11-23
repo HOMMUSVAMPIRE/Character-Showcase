@@ -124,12 +124,15 @@ namespace MeridianMotion.Tests.Cameras
         }
 
         /// <summary>Where the third person camera should sit for the current settings, with nothing in the way.</summary>
-        private Vector3 ExpectedThirdPersonPosition(float distance)
+        private Vector3 ExpectedThirdPersonPosition(float distance) => ExpectedThirdPersonPosition(distance, rig.ThirdPerson.startOnRightShoulder);
+
+        /// <summary>Where the third person camera should sit over the right shoulder (or the left), with nothing in the way.</summary>
+        private Vector3 ExpectedThirdPersonPosition(float distance, bool rightShoulder)
         {
             ThirdPersonSettings tp = rig.ThirdPerson;
             Quaternion yaw = Quaternion.Euler(0f, rig.Yaw, 0f);
             Vector3 shoulder = target.position + Vector3.up * (tp.pivotHeight + tp.shoulderOffset.y)
-                               + yaw * Vector3.right * (tp.shoulderOffset.x * (tp.startOnRightShoulder ? 1f : -1f));
+                               + yaw * Vector3.right * (tp.shoulderOffset.x * (rightShoulder ? 1f : -1f));
             return shoulder + rig.LookRotation * Vector3.back * distance;
         }
 
@@ -148,6 +151,24 @@ namespace MeridianMotion.Tests.Cameras
             Assert.That(Vector3.Distance(cam.transform.position, ExpectedThirdPersonPosition(rig.Zoom.defaultDistance)), Is.LessThan(0.01f));
             Assert.That(Quaternion.Angle(cam.transform.rotation, rig.LookRotation), Is.LessThan(0.1f), "Camera should face its look rotation.");
             Assert.That(cam.fieldOfView, Is.EqualTo(rig.ThirdPerson.fieldOfView).Within(0.1f));
+        }
+
+        [UnityTest]
+        public IEnumerator SetShoulder_SlidesTheCameraOverTheOtherShoulder()
+        {
+            yield return Frames(3);
+            bool other = !rig.ThirdPerson.startOnRightShoulder;
+            Vector3 from = cam.transform.position;
+
+            rig.SetShoulder(other);
+            yield return PhysicsStepAndFrame();
+            Vector3 sliding = cam.transform.position;
+            yield return WaitUntilSettled(() => cam.transform.position.x + cam.transform.position.z, 0.0005f);
+
+            Vector3 to = ExpectedThirdPersonPosition(rig.Zoom.defaultDistance, other);
+            Assert.That(Vector3.Distance(cam.transform.position, to), Is.LessThan(0.01f), "The camera should end over the other shoulder.");
+            Assert.That(Vector3.Distance(sliding, from), Is.GreaterThan(0f), "The camera should start moving at once.");
+            Assert.That(Vector3.Distance(sliding, to), Is.GreaterThan(0.01f), "The camera should slide across, not cut.");
         }
 
         [UnityTest]

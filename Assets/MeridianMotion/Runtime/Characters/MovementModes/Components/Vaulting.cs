@@ -95,7 +95,7 @@ namespace MeridianMotion.Characters
 
             Vector3 start = obstaclePosition + obstacleRotation * vault.localStart;
             Vector3 end = obstaclePosition + obstacleRotation * vault.localEnd;
-            Vector3 travel = new Vector3(end.x - start.x, 0f, end.z - start.z);
+            Vector3 travel = Flat(end - start);
             float length = travel.magnitude;
             Vector3 direction = length > 1e-5f ? travel / length : Facing(step);
 
@@ -158,7 +158,7 @@ namespace MeridianMotion.Characters
             Vector3 edge = obstaclePosition + obstacleRotation * vault.localEdge;
             Vector3 wallNormal = obstacleRotation * vault.localWallNormal;
             wallNormal.y = 0f;
-            wallNormal = wallNormal.sqrMagnitude > 1e-6f ? wallNormal.normalized : -Facing(step);
+            wallNormal = NormalizedOr(wallNormal, -Facing(step));
             Vector3 feet = step.initialPosition;
             float rise = edge.y + VaultClearance(motor) - feet.y;
             float past = Vector3.Dot(feet - edge, -wallNormal);
@@ -203,9 +203,9 @@ namespace MeridianMotion.Characters
 
             // Which way the character is heading: as steered, or else as it's moving.
             Vector3 velocity = step.initialVelocity;
-            Vector3 moving = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 moving = Flat(velocity);
             Vector3 heading = steer.sqrMagnitude > 0.01f ? steer.normalized
-                : moving.sqrMagnitude > 0.01f ? moving.normalized : Vector3.zero;
+                : NormalizedOr(moving, Vector3.zero, 0.01f);
             if (heading == Vector3.zero) { return false; }
 
             // From just over a step to just under a ledge the character could grab.
@@ -241,7 +241,7 @@ namespace MeridianMotion.Characters
         {
             VaultState vault = motor.vault;
             Vector3 velocity = step.initialVelocity;
-            Vector3 moving = new Vector3(velocity.x, 0f, velocity.z);
+            Vector3 moving = Flat(velocity);
             float stepHeight = motor.MaxStepHeight * motor.HeightScale;
             // Looked for far enough ahead that a fast approach is caught before the next step takes it into the wall, and
             // that the rise can slow evenly from the speed coming in to its share of it (the take off speed) over its time.
@@ -306,7 +306,7 @@ namespace MeridianMotion.Characters
 
             // A vault: the rise closes the gap to the wall (from the capsule's front to the face), and the swing over
             // carries the body the rest of the way, speeding up to the speed it leaves with. All along the heading.
-            float length = Vector3.Distance(new Vector3(feet.x, 0f, feet.z), new Vector3(end.x, 0f, end.z));
+            float length = Vector3.Distance(Flat(feet), Flat(end));
             float gap = Mathf.Max(0f, toFace - motor.Body.FrontExtent) / headingIn;
             vault.phase = VaultState.Phase.Vaulting;
             vault.localStart = toObstacleSpace * (feet - obstaclePosition);

@@ -198,16 +198,6 @@ namespace MeridianMotion.Characters
             s.proceduralRotationWeight = Mathf.Clamp01(rotationWeight);
         }
 
-        /// <summary>Fades every limb back to pure animation.</summary>
-        public void ClearAll()
-        {
-            for (int i = 0; i < 4; i++)
-            {
-                ClearGoal((IKLimb)i);
-                ClearHint((IKLimb)i);
-            }
-        }
-
         /// <summary>Sets every weight instantly, skipping the blend (e.g. after teleporting the character).</summary>
         public void SnapWeights()
         {

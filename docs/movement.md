@@ -127,6 +127,14 @@ Everything else follows:
 - **The model's measurements**, the eye point and the placeholder all follow, and models loaded while the character is resized are measured at its size.
 - **The camera** frames the character alike at any size, through the size reference a spawned character hands it (its model parent: see [Spawning the Character](spawning.md)). What scales is in [Camera System](camera.md#at-any-size).
 
+## Pushing the Character
+Code outside the movement (an explosion, a fan, a knockback) pushes the character through its `MMotionMotor`. Each push is applied in the next physics step, along with the movement mode's own changes, and then cleared:
+- `AddVelocityChange(change)` adds a change of velocity (m/s), whatever the step's length or the character's mass: for a launch or a knockback of a set speed.
+- `AddForce(force)` pushes with a force (N) for that one step, as Rigidbody.AddForce does: the velocity changes by the force times the step's length, over the mass of the Rigidbody on the MMotionMotor. To keep pushing (a fan, a current), add it every step.
+- `OverrideVelocity(velocity)` replaces the velocity outright for that step.
+
+Pushes added before a step add up. They're part of the character's state, so a character saved between steps keeps them (see [Determinism and state](#determinism-and-state)).
+
 ## Moving Ground
 The character rides along with whatever it stands on. Each physics step, before moving, the character is carried by however far its ground moved, and turned with it if it spins. It then moves relative to the ground as normal. Leaving moving ground, by jumping or walking off, keeps the ground's velocity, so the character doesn't stop dead in mid-air.
 

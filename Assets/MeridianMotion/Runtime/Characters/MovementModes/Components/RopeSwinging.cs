@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using MeridianMotion.Levels;
 using UnityEngine;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -111,7 +112,7 @@ namespace MeridianMotion.Characters
             velocity *= Mathf.Max(0f, 1f - ropeSwingDamping * dt);
             velocity = Vector3.ClampMagnitude(velocity, ropeMaxSwingSpeed * motor.SpeedScale);
             Vector3 next = offset + velocity * dt;
-            next = next.sqrMagnitude > 1e-8f ? next.normalized : outward;
+            next = NormalizedOr(next, outward, 1e-8f);
             // No further out than the largest swing angle: held there, it swings back.
             if (Vector3.Angle(next, Vector3.down) > ropeMaxSwingAngle)
             {
@@ -195,7 +196,7 @@ namespace MeridianMotion.Characters
             // Held where the hands are: the rope swings to them (they're within reach of it).
             Vector3 offset = grip - best.Anchor;
             float radius = Mathf.Clamp(offset.magnitude, Mathf.Min(ropeMinGripDistance, best.Length), best.Length);
-            Vector3 outward = offset.sqrMagnitude > 1e-8f ? offset.normalized : Vector3.down;
+            Vector3 outward = NormalizedOr(offset, Vector3.down, 1e-8f);
             if (Vector3.Angle(outward, Vector3.down) > ropeMaxSwingAngle)
             {
                 outward = Vector3.RotateTowards(Vector3.down, outward, ropeMaxSwingAngle * Mathf.Deg2Rad, 0f).normalized;

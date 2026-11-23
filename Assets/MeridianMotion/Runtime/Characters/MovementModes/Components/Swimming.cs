@@ -1,6 +1,7 @@
 using System;
 using MeridianMotion.Levels;
 using UnityEngine;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -176,7 +177,7 @@ namespace MeridianMotion.Characters
             // Across the water: speeding up toward the input's way and speed (relative to the look), or slowing to a
             // stop, facing the way it swims.
             float topSpeed = SwimSpeedFor(inputs) * motor.SpeedScale * motor.speedMultiplier;
-            Vector3 horizontal = Vector3.MoveTowards(new Vector3(velocity.x, 0f, velocity.z), input * topSpeed,
+            Vector3 horizontal = Vector3.MoveTowards(Flat(velocity), input * topSpeed,
                 swimAcceleration * motor.AccelerationScale * dt);
             if (input.sqrMagnitude > 1e-4f && topSpeed > 0f) { step.targetRotation = Quaternion.LookRotation(input.normalized, Vector3.up); }
 

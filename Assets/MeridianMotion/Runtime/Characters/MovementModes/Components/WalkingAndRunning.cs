@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Serialization;
+using static MeridianMotion.Characters.MovementRules;
 
 namespace MeridianMotion.Characters
 {
@@ -79,7 +80,7 @@ namespace MeridianMotion.Characters
                     Vector3 direction = steer.normalized;
                     walking = PickingUp(step, motor, direction, walking);
                     Vector3 carried = step.initialInertia;
-                    float carriedAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(carried.x, 0f, carried.z), direction));
+                    float carriedAlong = Mathf.Max(0f, Vector3.Dot(Flat(carried), direction));
                     step.directMovementVector = direction * (Mathf.Max(0f, walking - carriedAlong) * step.deltaTime);
                     step.targetRotation = Quaternion.Lerp(step.initialRotation, Quaternion.LookRotation(direction, Vector3.up), steeringEffectiveness);
                 }
@@ -100,7 +101,7 @@ namespace MeridianMotion.Characters
             if (step.previousState.HasAny(SlowHandOvers)) { walk.pickingUp = speedRecoveryTime > 0f; }
             if (!walk.pickingUp) { return walking; }
             Vector3 was = step.initialVelocity;
-            float wasAlong = Mathf.Max(0f, Vector3.Dot(new Vector3(was.x, 0f, was.z), direction));
+            float wasAlong = Mathf.Max(0f, Vector3.Dot(Flat(was), direction));
             float rate = Mathf.Max(runSpeed, walkSpeed) * motor.SpeedScale / (speedRecoveryTime * motor.DurationScale);
             float now = wasAlong + rate * step.deltaTime;
             if (now >= walking) { walk.pickingUp = false; return walking; }

@@ -126,7 +126,7 @@ namespace MeridianMotion.Characters
             }
             run.wallNormal = normal;
             run.wallPoint = wallPoint;
-            Vector3 along = Vector3.ProjectOnPlane(new Vector3(inertia.x, 0f, inertia.z), normal);
+            Vector3 along = Vector3.ProjectOnPlane(Flat(inertia), normal);
             along.y = 0f;
             float speed = along.magnitude;
             Vector3 tangent = speed > 1e-3f ? along / speed : Vector3.zero;
@@ -178,7 +178,7 @@ namespace MeridianMotion.Characters
             }
 
             Vector3 inertia = step.initialInertia;
-            Vector3 horizontal = new Vector3(inertia.x, 0f, inertia.z);
+            Vector3 horizontal = Flat(inertia);
             float speed = horizontal.magnitude;
             if (speed < wallRunMinSpeed * motor.SpeedScale) { return false; }
             Vector3 direction = horizontal / speed;
@@ -311,7 +311,7 @@ namespace MeridianMotion.Characters
             EndWallRun(motor);
             Vector3 velocity = alongWall + normal * (wallJumpAwaySpeed * motor.SpeedScale) + Vector3.up * (wallJumpUpSpeed * motor.SpeedScale);
             // Facing the way it's launched.
-            MovementRules.JumpOffWall(step, motor, velocity, normal, new Vector3(velocity.x, 0f, velocity.z));
+            MovementRules.JumpOffWall(step, motor, velocity, normal, Flat(velocity));
         }
 
         private void EndWallRun(MMotionMotor motor)

@@ -8,13 +8,23 @@ namespace MeridianMotion.Characters
     /// </summary>
     public static class MovementRules
     {
+        /// <summary>A vector with its height dropped: what of it goes across the ground plane (not normalized).</summary>
+        public static Vector3 Flat(Vector3 vector) => new Vector3(vector.x, 0f, vector.z);
+
+        /// <summary>
+        /// A vector normalized, or fallback if it's too short to have a direction to speak of: its square magnitude no
+        /// more than minSqrMagnitude (a speed or offset that small is noise, not a heading).
+        /// </summary>
+        public static Vector3 NormalizedOr(Vector3 vector, Vector3 fallback, float minSqrMagnitude = 1e-6f) =>
+            vector.sqrMagnitude > minSqrMagnitude ? vector.normalized : fallback;
+
         /// <summary>
         /// A vector flattened onto the ground plane (y dropped) and normalized: false, leaving it unnormalized, if it's
         /// nearly vertical, with no direction across the ground to speak of.
         /// </summary>
         public static bool TryFlatten(Vector3 vector, out Vector3 flat)
         {
-            flat = new Vector3(vector.x, 0f, vector.z);
+            flat = Flat(vector);
             if (flat.sqrMagnitude < 1e-6f) { return false; }
             flat.Normalize();
             return true;
@@ -69,7 +79,7 @@ namespace MeridianMotion.Characters
         {
             Vector3 forward = step.initialRotation * Vector3.forward;
             forward.y = 0f;
-            return forward.sqrMagnitude > 1e-6f ? forward.normalized : Vector3.forward;
+            return NormalizedOr(forward, Vector3.forward);
         }
 
         /// <summary>

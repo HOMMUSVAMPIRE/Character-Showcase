@@ -91,7 +91,7 @@ namespace MeridianMotion.Characters
             MMotionMotor.GetPhysicsPose(ledge.ledge, out Vector3 ledgePosition, out Quaternion ledgeRotation);
             Vector3 wallNormal = ledgeRotation * ledge.localWallNormal;
             wallNormal.y = 0f;
-            wallNormal = wallNormal.sqrMagnitude > 1e-6f ? wallNormal.normalized : -Facing(step);
+            wallNormal = NormalizedOr(wallNormal, -Facing(step));
             step.directMovementVector = Vector3.zero;
             step.targetRotation = Quaternion.LookRotation(-wallNormal, Vector3.up);
 
@@ -137,7 +137,7 @@ namespace MeridianMotion.Characters
             if (step.initialVelocity.y > ledgeMaxGrabRiseSpeed * motor.SpeedScale) { return false; }
 
             Vector3 heading = InputDirection(step, inputs);
-            heading = heading.sqrMagnitude > 0.01f ? heading.normalized : Facing(step);
+            heading = NormalizedOr(heading, Facing(step), 0.01f);
             Vector3 feet = step.initialPosition;
             float height = motor.Body.StandingHeight;
             if (!FindLedge(motor, feet, heading, ledgeGrabMinHeight * height, ledgeGrabMaxHeight * height,
@@ -245,7 +245,7 @@ namespace MeridianMotion.Characters
 
             // A wall in front, low in the window, facing the character.
             if (!motor.Raycast(feet + Vector3.up * low, heading, reach, out RaycastHit wall)) { return false; }
-            wallNormal = new Vector3(wall.normal.x, 0f, wall.normal.z);
+            wallNormal = Flat(wall.normal);
             if (Mathf.Abs(wall.normal.y) > 0.3f || wallNormal.sqrMagnitude < 1e-6f) { return false; }
             wallNormal.Normalize();
             if (Vector3.Angle(heading, -wallNormal) > ledgeMaxGrabAngle) { return false; }
