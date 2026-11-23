@@ -22,7 +22,7 @@ namespace MeridianMotion.Tests
         public const string Camera = "Camera";
         /// <summary>Spawning the character and setting up scenes (docs/spawning.md).</summary>
         public const string Spawning = "Spawning";
-        /// <summary>The levels: specs, the Level Editor, fixtures, climbable paint and timing gates (docs/levels.md, docs/level-specs.md).</summary>
+        /// <summary>The levels: specs, the Level Editor, fixtures, climbable paint and timing gates (docs/showcase/levels.md, docs/showcase/level-specs.md).</summary>
         public const string Levels = "Levels";
     }
 }

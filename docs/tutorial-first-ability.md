@@ -64,7 +64,7 @@ Replace the two settings (from the `groundPoundDuration` line to the `groundPoun
 [Min(0f)] [SerializeField] private float groundPoundInputBuffer = 0.1f;
 ```
 
-Some rules every setting follows:
+Some rules every setting follows (the full list is in [The component](adding-an-ability.md#1-the-component)):
 - a `[Tooltip]` saying what it does, for a designer;
 - a name no other setting in the movement has (tests and tuning presets find settings by name);
 - "at its authored size": the code multiplies by the character's scale (`SpeedScale`, `DurationScale`), so it works at any size;
@@ -265,4 +265,4 @@ A ground pound doesn't place hands or feet on anything. An ability that does (ha
 - [Movement Abilities](abilities.md) and [Climbing and Traversal](traversal.md): the abilities there are, to read and copy from (`Dashing` and `Rolling` are short).
 - [Tuning the Character](tuning.md): tuning abilities, and saving tunings as presets.
 
-<!-- This page is kept true by TutorialTests (Assets/MeridianMotion/Tests/EditMode/Movement): it runs New Ability with the answers above, applies each code block where its marker says, and compiles the result (the ability as an assembly of its own, against the package's). Change a block, and the test says whether it still compiles. -->
+<!-- This page is kept true by TutorialTests (Assets/MeridianMotion/Tests/EditMode/Movement): it runs New Ability with the answers above, applies each code block where its marker says, and compiles the result (the ability and its tests, in one build, against the package's as built). Change a block, and the test says whether it still compiles. -->

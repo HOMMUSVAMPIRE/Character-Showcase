@@ -236,7 +236,7 @@ namespace MeridianMotion.Characters
             }
         }
 
-        // The Profiler's CPU Usage marker for animating the character each frame (see docs/testing.md, Performance).
+        // The Profiler's CPU Usage marker for animating the character each frame (see docs/running-tests.md, Performance).
         private static readonly ProfilerMarker UpdateMarker = new("Animation.Update");
 
         private void HandleMovementEvent(MovementEvents movementEvent, MovementStep step)

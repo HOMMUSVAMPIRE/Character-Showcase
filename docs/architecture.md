@@ -1,6 +1,8 @@
 # Architecture
 How the project fits together: what happens in one physics step, which code may know about which, and where each kind of thing lives. The rules for changing it are in AGENTS.md; this page is the map. Terms used here are in the [Glossary](glossary.md).
 
+*See also:* [Troubleshooting](troubleshooting.md), [Unity Basics](unity-basics.md).
+
 ## The parts
 The package is one folder, `Assets/MeridianMotion` (its code in Runtime/ and Editor/, its assets in Content/, its tests in Tests/); the showcase, which doesn't ship, is `Assets/Showcase`.
 - **The character** (Assets/MeridianMotion/Runtime/Characters: Character/, Motor/, Body/):
@@ -13,8 +15,8 @@ The package is one folder, `Assets/MeridianMotion` (its code in Runtime/ and Edi
 - **Animation, IK and models** (Assets/MeridianMotion/Runtime/Characters/Animation, IK, Models): `MMotionAnimator` turns what the movement did into an animation state for the model; `CharacterModelSlot` gets the model from a model source; IK components keep hands and feet on things. See [Character Model and Animations](animation.md).
 - **Effects** (Assets/MeridianMotion/Runtime/Characters/Effects): `WaterEffects` plays splashes and ripples from the movement's events and state, as prefabs anyone can replace (see [Climbing and Traversal](traversal.md#splashes-and-ripples)).
 - **The camera** (Assets/MeridianMotion/Runtime/Cameras): `MMotionCameraRig`, which follows any Transform. See [Camera System](camera.md).
-- **The level elements** (Assets/MeridianMotion/Runtime/LevelElements, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
-- **The level builders** (Assets/Showcase/Editor/Levels): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](levels.md) and [Level Specs](level-specs.md).
+- **The level elements** (Assets/MeridianMotion/Runtime/LevelElements, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](showcase/levels.md).
+- **The level builders** (Assets/Showcase/Editor/Levels): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](showcase/levels.md) and [Level Specs](showcase/level-specs.md).
 - **The pipeline and the level checks** (Assets/Showcase/Editor/Pipeline, Assets/Showcase/Editor/LevelChecks): the mannequin's and the fox's generators, which run Blender (and only that: the fox is then prepared as any generic-rig character, by the shipped `GenericRigModelImporter`), and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
 
 ## One physics step

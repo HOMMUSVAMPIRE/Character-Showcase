@@ -2,6 +2,8 @@
 
 The camera lives in Assets/MeridianMotion/Runtime/Cameras, in its own assembly with no dependency on the character code. Add a MMotionCameraRig component to a camera, give it a target, and every feature can be tuned or toggled from its inspector (the MMotionCameraRig's settings, grouped by feature). How it frames a resized target is under [At any size](#at-any-size).
 
+*See also:* [Why the movement never reads a camera](decisions.md#the-movement-never-reads-a-camera-november-2026).
+
 Features: first person (at a fixed eye height, or following an eye anchor Transform such as a character's eye point) and over-the-shoulder third person (scaled with an optional target size reference, so resized targets are framed alike) with smooth blending between them, zoom (zooming all the way in switches to first person), shoulder swapping (automatic when a wall blocks the current side), aiming, camera collision, follow damping, target interpolation for physics-driven targets, speed-based FOV, head bob, landing dips, trauma-based camera shake, optional auto-recentering, hiding the character up close, and CameraZone volumes that override camera behaviour in an area.
 
 Beside a wall that blocks its shoulder even partly (running along one, say), the camera glides to the other shoulder and keeps its distance, rather than being squeezed in behind the target's head against the wall; it returns once the wall is gone. A target closer to a wall or ceiling than the collision probe (Collision's Probe Radius) is wide, a slim character pressed against one or squeezing through a tight space, doesn't pull the camera in either: the probe starts from just clear of it, and where even that leaves no room (a corridor narrower than the probe), the probe shrinks to fit.

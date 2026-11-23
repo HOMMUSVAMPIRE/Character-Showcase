@@ -6,7 +6,7 @@ The exact dimensions of every layout are in its builder (Assets/Showcase/Editor/
 ## Test Level: The Meridian Complex
 The Meridian Complex is a large graybox level for putting the character through its paces: terraces, stairs, ramps, bridges, towers, tunnels and measured test courses, in connected areas round a central hub. It's built from blockout diagrams (the MeridianComplex-*.png sheets in ReferenceAssets/, which git ignores, so they're only on the machine that has them, not in a clone).
 
-The character isn't placed in the scene: the level marks where it can start (spawn markers on the Concourse plaza), and Set Up Scene makes it spawn at one of them when you press Play (see [Spawning the Character](spawning.md)).
+The character isn't placed in the scene: the level marks where it can start (spawn markers on the Concourse plaza), and Set Up Scene makes it spawn at one of them when you press Play (see [Spawning the Character](../spawning.md)).
 
 | Area | Where | What it's for |
 | --- | --- | --- |
@@ -142,21 +142,10 @@ The Level Playground (Assets/Showcase/Scenes/LevelPlayground) is a small test sc
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Meridian Motion > Showcase > Levels > Build Level Playground, or `-executeMethod MeridianMotion.Showcase.Levels.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
 ## Level mechanics
-The level builders reference no character code, so a mechanic is built as a fixture: its geometry, named for what it is, with its settings after the name. `LevelFixtureSetup` (in the level elements' editor assembly, Assets/MeridianMotion/Editor/LevelElements) turns each into the level element it stands for (see [Climbing and Traversal](traversal.md)). Every build runs it before saving the scene, so a built level's mechanics work as it is; Set Up Scene runs it again, leaving what's set up as it is, for a scene built some other way. The names are the level elements' convention, which any scene can use:
-- "Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a kinematic Rigidbody and a TickedPlatform with those settings;
-- "Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableBlock (Can Be Pulled, Speed Multiplier);
-- "Ladder | height=m | width=m | spacing=m | rail=m | rung=m" gets a Ladder with those settings, which keeps the level's mesh ("Ladder (future): …" markers aren't ladders);
-- "Rope | length=m | thickness=m" (at its anchor) gets a Rope, which draws itself as it swings, in the level's material ("Rope Anchor" placeholders and "Rope Swing (future)" markers aren't ropes);
-- "Zipline | length=m | speed=m/s" (at the cable's start, its +Z along it) gets a Zipline that keeps the level's cable;
-- "Bounce Pad | height=m | keep=f" gets a LaunchPad, its "Spring" child squashing on each launch;
-- "Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that keeps the level's surface;
-- "Climbable Panel | speed=f" gets a ClimbableSurface (the whole panel climbable, at that speed multiplier); only the panel is climbable, not the wall it stands on, so a climb stops at its edges;
-- "Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, and each course a CourseTimer, the scene's own or one made in a Course Timers group at the scene's root (`LevelFixtureSetup.CoursesName`), which Set Up Scene has the spawner tell who's racing; a gate's display, "Timing Display | course=name", shows its course's time under way, the last and best, and (with a distance) the speed.
-
-A CourseTimer times laps through one start-and-finish gate, or runs from a start gate to a finish gate, in game time. A pass too soon after a lap starts (the CourseTimer's Minimum Run Time) is ignored. Only its racer counts once it has one; until then anything passing with a Rigidbody does. The fixtures can also be added and named by hand in any scene that's then set up. Spawn markers, objects named "Spawn Point …" (`LevelFixtureSetup.SpawnMarkerPrefix`), aren't level elements: Set Up Scene makes them the spawner's spawn points (see [Spawning the Character](spawning.md#setting-up-a-scene)).
+The level's mechanics (its moving platforms, ropes, ladders, water...) are fixtures: geometry named for what it is, which `LevelFixtureSetup` turns into the level element it stands for as each level's built. Their names and settings, and how to add a new one, are in [Adding Level Content](../traversal.md#level-fixtures).
 
 ## Mechanics in the showcase levels
-Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose geometry is named as its fixture (above), and the Level Playground has one of each:
+Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose geometry is named as its fixture (see [Level fixtures](../traversal.md#level-fixtures)), and the Level Playground has one of each:
 - **Ladders:** the Ladder piece builds one (orange rails, steel rungs) with its back against a wall, climbed onto the floor level with its top. The Level Playground has one up the side of the lift's landing, and one up its pool's east wall.
 - **Ropes:** the Rope piece hangs one from a small graphite bracket, which hangs from something (a gantry's beam). The Level Playground has one on a gantry over a gap meant to be crossed on the rope.
 - **Ziplines:** the Zipline piece builds a steel cable between two graphite posts. The Level Playground has one from the top of a tower down to the ground.
@@ -165,7 +154,7 @@ Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose g
 - **Water:** the Water piece draws the surface over a footprint (in the Water material, below), and what's under it (a pool's basin) is built as any other floor. The Level Playground's pool has a beach, a shallow shelf, a deep end and an arch to swim under along its floor.
 
 ### Climbable paint on the levels' materials
-The levels' concrete shader (NoiseConcrete) shows painted climbable areas (see [Painting climbable areas](traversal.md#painting-climbable-areas)): it has the Climbable Mask texture and a second set of its look's settings for climbable areas (Climbable Tint, Climbable Grain, Climbable Panels and the rest of them; by default an ochre, rougher concrete in finer panels), blended in where the mask is white. The level materials made with it are given ClimbableMask_None as their own mask when they're made, so unpainted objects show none.
+The levels' concrete shader (NoiseConcrete) shows painted climbable areas (see [Painting climbable areas](../traversal.md#painting-climbable-areas)): it has the Climbable Mask texture and a second set of its look's settings for climbable areas (Climbable Tint, Climbable Grain, Climbable Panels and the rest of them; by default an ochre, rougher concrete in finer panels), blended in where the mask is white. The level materials made with it are given ClimbableMask_None as their own mask when they're made, so unpainted objects show none.
 
 The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale; the grass tufts, which nothing's painted on, are left out), and the levels' boxes use Graybox Cube (Assets/Showcase/Models/Level), Unity's cube with a UV2.
 
@@ -176,4 +165,4 @@ The levels' water is drawn with its own shader, Assets/MeridianMotion/Content/Ma
 - how much water is under each point (from the camera's depth texture) tints it from Shallow Colour to Deep Colour, from see-through to nearly opaque (Depth To Deep, Shallow Opacity, Deep Opacity);
 - and foam rims what stands in the water, broken up by noise (Foam Colour, Foam Distance, Foam Breakup).
 
-From under the surface it's a murky ceiling. The depth effects need the render pipeline asset's Depth Texture on (the PC asset has it); without it, the water all looks deep and has no foam. What a camera under the water sees is the UnderwaterView's (see [The view underwater](traversal.md#the-view-underwater)).
+From under the surface it's a murky ceiling. The depth effects need the render pipeline asset's Depth Texture on (the PC asset has it); without it, the water all looks deep and has no foam. What a camera under the water sees is the UnderwaterView's (see [The view underwater](../traversal.md#the-view-underwater)).

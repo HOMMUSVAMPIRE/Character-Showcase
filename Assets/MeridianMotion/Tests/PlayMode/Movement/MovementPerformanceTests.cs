@@ -17,7 +17,7 @@ namespace MeridianMotion.Tests.Movement
     /// something to find. It reports how long a step of all of them takes (the average and the worst, per character) in
     /// the test's output and the Console, and fails only far over budget, as a guard against a step becoming many times
     /// slower: timings vary between machines, so it's for spotting a change, not for exact numbers. For where a step's
-    /// time goes, run it with the Profiler open: each part of a step has a marker (see docs/testing.md, Performance).
+    /// time goes, run it with the Profiler open: each part of a step has a marker (see docs/running-tests.md, Performance).
     /// </summary>
     [Category(TestArea.Movement)]
     [Category("Performance")]
@@ -136,7 +136,7 @@ namespace MeridianMotion.Tests.Movement
             Debug.Log(report);
             TestContext.WriteLine(report);
             Assert.That(average, Is.LessThan(BudgetMillisecondsPerCharacter),
-                $"A character's step averaged {average:0.000} ms, many times its usual cost: profile it (see docs/testing.md, Performance).");
+                $"A character's step averaged {average:0.000} ms, many times its usual cost: profile it (see docs/running-tests.md, Performance).");
         }
     }
 }

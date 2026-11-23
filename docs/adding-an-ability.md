@@ -1,18 +1,13 @@
 # Adding a Movement Ability
 The steps for adding a new part to the character's movement: a new `MovementComponent` in the StandardMovementMode's list (see [Movement Components](movement.md#movement-components)). `RopeSwinging` and `Ziplines` (Assets/MeridianMotion/Runtime/Characters/MovementModes/Components) are good examples to copy.
 
+*See also:* [Why a project's abilities live in their own assembly](decisions.md#a-projects-abilities-live-in-its-own-assembly-stateof-movementflags-and-a-ledger-november-2026), [why states and events are 256-bit flags](decisions.md#ability-states-and-events-are-256-bit-flags-the-packages-and-a-projects-apart-november-2026), [Glossary](glossary.md), [Unity Basics](unity-basics.md).
+
 The inspector (its toggle, moving it up and down, removing it, Add Component), tuning presets and letting go when it's turned off mid-use come with being a component: they all work from the class and its fields, with nothing to add.
 
 ## Your first ability
 
-New to this? The short path, which [Your First Ability](tutorial-first-ability.md) walks through with a real ability (Ground Pound), step by step:
-
-1. **Make it:** Tools > Meridian Motion > New Ability…, answer its questions, press Make It. It makes a small ability that already works, with its tests (see [The quick way](#the-quick-way-new-ability)).
-2. **Write what it does:** in its file (`<output folder>/Abilities/<Name>/<Name>.cs` for one of your project's own, the default: see [An ability of your project's own](#an-ability-of-your-projects-own)), change its settings and replace what its `TakeOver` does (or `AfterLocomotion`, for one on top of walking).
-3. **Press Play** and try it; tune it on the movement mode asset's Components list.
-4. **Run its tests:** close Unity, then `python3 Tools/run_tests.py --changed` (see [Automated Tests](testing.md)), and the hygiene check, `python3 Tools/CI/check_project_hygiene.py`.
-
-The rest of this page is the full reference: what each part is for, and what to do by hand.
+New to this? [Your First Ability](tutorial-first-ability.md) is the walk-through: it makes a real ability (Ground Pound) from start to finish, in your project's own folders, saying what to change and why. This page is the reference it points to: what each part of an ability is for, and what to do by hand.
 
 ## The quick way: New Ability
 **Tools > Meridian Motion > New Ability…** makes the start of an ability, with everything below that isn't its logic already done, and shows each file it will make or change before it does. Its questions:
@@ -36,8 +31,6 @@ In the package, Make It writes:
 - **With At A Level Element:** a level element in Assets/MeridianMotion/Runtime/LevelElements (`<Name>Point`) that it starts within reach of (section 6).
 
 Then make it yours: replace what its `TakeOver` or `AfterLocomotion` does, change its settings, write its docs section and add tests of what it does. Run its tests as you go: `python3 Tools/run_tests.py --changed`. A look of its own (section 5) is still to add. Unity's command line can make one too: `-executeMethod MeridianMotion.EditorTools.NewAbilityWindow.MakeFromCommandLine -target Package -abilityName Gliding -kind TakesOver -button Interact -after Rolling -area Abilities` (and `-levelElement`), then `MovementModeSync.AddToAllModesFromCommandLine` once it's compiled.
-
-The sections below are the full reference: what each part is for, and what to do by hand.
 
 ## An ability of your project's own
 With Where: Project, New Ability writes nothing into the package (`Assets/MeridianMotion`, which an upgrade replaces). Everything goes in `Abilities/` in the output folder (Project Settings > Meridian Motion):
@@ -117,7 +110,7 @@ The state is saved and put back with the character's (`MMotionMotor.SaveState`, 
 For an ability used on something in the level (as ropes and ziplines are), in two parts.
 
 **The level element** (ships with the character):
-1. A runtime component for it in `Assets/MeridianMotion/Runtime/LevelElements` (the level elements' assembly, namespace `MeridianMotion.Levels`), knowing nothing about the character. The rules it keeps (the level's clock, moving before the characters, `StableId`) are in [Adding Level Content](adding-level-content.md#a-new-level-mechanic-a-fixture).
+1. A runtime component for it in `Assets/MeridianMotion/Runtime/LevelElements` (the level elements' assembly, namespace `MeridianMotion.Levels`), knowing nothing about the character. The rules it keeps (the level's clock, moving before the characters, `StableId`) are in [Adding Level Content](showcase/adding-level-content.md#a-new-level-mechanic-a-fixture).
 2. If levels should get it from a named marker, a set-up step in `LevelFixtureSetup` (Assets/MeridianMotion/Editor/LevelElements) for its name's prefix, with a `LevelFixtureSetupTests` case.
 
 **The showcase levels** (the builders: optional, and not part of the character):
@@ -125,10 +118,10 @@ For an ability used on something in the level (as ropes and ziplines are), in tw
 2. An example in the Level Playground.
 3. An outline in `Tools/LevelSpec/levelspec/geometry.py`.
 
-The level builders know nothing about the character: see [Test Levels](levels.md) and [Level Specs](level-specs.md).
+The level builders know nothing about the character: see [Test Levels](showcase/levels.md) and [Level Specs](showcase/level-specs.md).
 
 ## 7. Tests and docs
-- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `AbilityFixture<T>` (T your component: see The ability test kit, below), itself a `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/MeridianMotion/Tests/PlayMode/Abilities` or `Traversal`, namespace `MeridianMotion.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](testing.md#how-long-each-test-takes)).
+- **PlayMode tests on `CharacterTestRig`**, in a fixture deriving from `AbilityFixture<T>` (T your component: see The ability test kit, below), itself a `CharacterRigFixture` (which makes and disposes the rig for each test, and gives it `[TestTiming]`). The fixture goes in its area's folder and namespace (`Assets/MeridianMotion/Tests/PlayMode/Abilities` or `Traversal`, namespace `MeridianMotion.Tests.Abilities` or `.Traversal`: see [Automated Tests](testing.md#play-mode-tests)) and needs its area's `[Category(TestArea.…)]` of its own, which the base doesn't give: the hygiene check fails without it. Tests of the movement alone step the physics themselves, which keeps them fast; a fixture whose tests need Unity's frames (animation, IK) overrides `MovementOnly` to false (see [Automated Tests](running-tests.md#how-long-each-test-takes)).
   - Reach its settings by name with `rig.MovementSetting<T>("name")` and `rig.SetMovementSetting`, and the component with `rig.Component<T>()`.
   - Read expected values from the settings rather than hard-coding tuning, so retuning doesn't break the tests.
   - A test that needs a particular tuning (no air jumps, say) sets it on the rig: that changes only the rig's own copy of the movement mode.

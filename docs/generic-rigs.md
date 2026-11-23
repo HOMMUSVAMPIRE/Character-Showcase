@@ -2,6 +2,8 @@
 
 Characters don't have to be humanoids. Any rigged model that isn't built and animated as a person (on four legs, two, or more) can be prepared, on a Generic rig (Unity's word for any skeleton that isn't its Humanoid), as a character from its model and its own animations: see [A generic rig of your own](#a-generic-rig-of-your-own). The first is a fox: a wolf-sized, low-poly fox with flat-coloured regions (an orange coat, a white chest, muzzle and tail tip, dark legs, ear tips and nose), on four legs, with its own body, movement and animations, prepared the same way.
 
+*See also:* [Troubleshooting: generic rigs](troubleshooting.md#generic-rigs), [Why a long body is made of several parts](decisions.md#a-long-body-is-made-of-several-parts-november-2026).
+
 This page is in three parts. The first, [A generic rig of your own](#a-generic-rig-of-your-own), is how a generic-rig character is prepared. The second is the fox as a character and its paw placement. Both are the package's. The third, [Generating the fox (the model pipeline)](#generating-the-fox-the-model-pipeline), is how the fox's model is made: generated in Blender by scripts, as the mannequin is. That isn't part of the package.
 
 ## A generic rig of your own

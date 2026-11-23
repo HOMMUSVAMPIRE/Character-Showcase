@@ -17,7 +17,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Body Fit.** The CharacterModelSlot setting that fits the character's body to its model (by height, or the model's own Body Definition). The body its source was prepared with is fitted in `Start`, before the first step, so the character moves the same body before its model arrives, or without one (`LoadModelOnStart` off). See [Replacing the model](animation.md#replacing-the-model).
 
-**Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](levels.md).
+**Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](showcase/levels.md).
 
 **Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MMotionMotor.Capabilities`). See [Capabilities](movement.md#capabilities).
 
@@ -31,7 +31,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Extra parts.** More primitives beside a body's shape, together one body (a Body Definition's Extra Parts): the fox's back and head. See [Collision](movement.md#collision).
 
-**Fixture.** A level element as a level is built: geometry named "Name | key=value | ..." (a moving platform, a rope, a bounce pad) that `LevelFixtureSetup`, in the level elements' editor assembly, gives its component. The builders' levels have theirs attached as they're built; Set Up Scene runs it too, for a scene built some other way. The names are `LevelFixtureSetup`'s constants, the one source the builders and Set Up Scene use. See [Adding Level Content](adding-level-content.md).
+**Fixture.** A level element as a level is built: geometry named "Name | key=value | ..." (a moving platform, a rope, a bounce pad) that `LevelFixtureSetup`, in the level elements' editor assembly, gives its component. The builders' levels have theirs attached as they're built; Set Up Scene runs it too, for a scene built some other way. The names are `LevelFixtureSetup`'s constants, the one source the builders and Set Up Scene use. See [Adding Level Content](showcase/adding-level-content.md).
 
 **Generated asset.** An asset written by an editor tool (the mannequin, the level scenes, the envelope, ...), changed by changing its generator and running it again, never by hand. The table in AGENTS.md lists them.
 
@@ -59,9 +59,9 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Level clock.** The tick the level's moving mechanics (platforms, pushables, ropes) go by (`MeridianMotion.Levels.LevelClock`): Unity's fixed steps, unless something sets it (a networked game's tick, the test rig's). The test rig owns it while it's in use (`LevelClock.TickSource`) and resets it when it's disposed; a test that sets it without the rig must set it back to null.
 
-**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/MeridianMotion/Runtime/LevelElements, the `MeridianMotion.Levels` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](levels.md).
+**Level element.** A part of a level the character traverses or meets (water, a rope, a ladder, a moving platform, a timing gate, ...): a component in Assets/MeridianMotion/Runtime/LevelElements, the `MeridianMotion.Levels` assembly, which the character finds and uses but which knows nothing of the character. See [Climbing and Traversal](traversal.md) and [Test Levels](showcase/levels.md).
 
-**Level spec.** *(showcase levels)* A level recorded as data: the list of pieces its builder called, with their settings, which builds the same level again. Edited in the Level Editor or by the levelspec tool. See [Level Specs](level-specs.md).
+**Level spec.** *(showcase levels)* A level recorded as data: the list of pieces its builder called, with their settings, which builds the same level again. Edited in the Level Editor or by the levelspec tool. See [Level Specs](showcase/level-specs.md).
 
 **Marker.** An object a level places only to be found later: a spawn marker ("Spawn Point (...)", named by `LevelFixtureSetup.SpawnMarkerPrefix`) becomes one of the spawner's spawn points when Set Up Scene runs, and a "(future)" marker shows where a mechanic is planned.
 

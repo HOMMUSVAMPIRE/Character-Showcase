@@ -2,6 +2,8 @@
 
 A scene doesn't need the character placed in it: a **CharacterSpawner** (Add Component > CharacterSpawner) spawns it. It takes:
 
+*See also:* [Troubleshooting: input, NPCs and determinism](troubleshooting.md#input-npcs-and-determinism), [Why what drives a character is its input source](decisions.md#what-drives-a-character-is-its-input-source-and-owner-november-2026).
+
 - a character prefab, and optionally a model and a movement mode asset to give the spawned character instead of the prefab's own;
 - a list of spawn points: a world position for the character's feet and a rotation for the way it faces;
 - a Spawn On Start checkbox.
@@ -56,7 +58,7 @@ The choices start from the scene: its existing setup's, or else its placed chara
 
 The scene gets a Meridian Motion Setup object with a Character Spawner that spawns the character on Start and hands it to a camera. The camera is the scene's own camera rig if it has one, or else an instance of the Camera Rig prefab (`Assets/MeridianMotion/Content/Prefabs/Camera Rig.prefab`), so it's set up and tuned the same, and retuning the prefab retunes every scene set up with it. The input manager is likewise the scene's own, or an instance of the Input Manager prefab. Only the model and movement mode that differ from the prefab's are stored on the spawner, so later changes to the prefab carry through.
 
-The level's mechanics (its ropes, water, moving platforms, timing gates and the rest) are attached by the level's build (see [Level mechanics](levels.md#level-mechanics)). Set Up Scene runs the same fixture setup (`LevelFixtureSetup`) anyway, for a scene built some other way, leaving what's set up as it is. It then connects what needs the character: each course's timer is told who's racing by the spawner's On Character Spawned, and a scene with water gets an UnderwaterView on its camera (see [The view underwater](traversal.md#the-view-underwater)).
+The level's mechanics (its ropes, water, moving platforms, timing gates and the rest) are attached by the level's build (see [Level fixtures](traversal.md#level-fixtures)). Set Up Scene runs the same fixture setup (`LevelFixtureSetup`) anyway, for a scene built some other way, leaving what's set up as it is. It then connects what needs the character: each course's timer is told who's racing by the spawner's On Character Spawned, and a scene with water gets an UnderwaterView on its camera (see [The view underwater](traversal.md#the-view-underwater)).
 
 Where the character spawns, in order of preference:
 1. The scene's existing setup's spawn points: setting up a scene again replaces its setup but keeps them, and keeps its spawner's NPC routes too.
@@ -73,6 +75,6 @@ To change a level's model, open it and set it up again with the model you want: 
 
 ## Levels and the command line
 
-The Meridian Complex's builder places its spawn markers (see [Test Levels](levels.md)), so after rebuilding the level (which replaces its scene, setup included), open it and press Set Up to spawn there again.
+The Meridian Complex's builder places its spawn markers (see [Test Levels](showcase/levels.md)), so after rebuilding the level (which replaces its scene, setup included), open it and press Set Up to spawn there again.
 
 From the command line, with Unity closed, `-executeMethod MeridianMotion.EditorTools.CharacterSceneSetup.SetUpFromCommandLine -scene <scene path>` sets a scene up and saves it, optionally with `-prefab <path>`, `-model <a prepared model's name or source path>` and `-movementMode <asset path>`. Run after building the level, it sets that up too.

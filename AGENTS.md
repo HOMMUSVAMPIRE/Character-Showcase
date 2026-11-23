@@ -92,7 +92,7 @@ assemblies are split along that line:
   tests that reference it, `Cameras/`, with it).
 - *Doesn't ship* (`Assets/Showcase`): the level builders (`MeridianMotion.Showcase.Levels`), the pipeline
   (`MeridianMotion.Showcase.Pipeline`), the level checks (`MeridianMotion.Showcase.LevelChecks`), their tests
-  (`MeridianMotion.Showcase.Tests.Levels`), and their content; and `Tools/`.
+  (`MeridianMotion.Showcase.Tests.Levels`), and their content; `Tools/`; and their docs, `docs/showcase/` (the levels, the level specs, adding level content).
 
 So nothing that ships may reference what doesn't. Shipped code reaches the pipeline only through a hook the pipeline
 registers with (`HumanoidModelPostprocessor.BeforePreparing`, which `MannequinRegeneration` uses); the mannequin's paths
@@ -119,7 +119,7 @@ where it's missing), and nothing that ships names Blender or the generators (the
    read as another type), two movement settings sharing a name, a test fixture without `[TestTiming]` or a test area
    (`[Category(TestArea.…)]`), on it or on a class it derives from, a movement asset naming a component class that
    no longer exists (renamed without `[MovedFrom]`), two `CharacterState` or `MovementEvents` members sharing a bit
-   (or a bit number without its value, or a package flag past the package's bits), a `...FromCommandLine` entry point the docs or tools name that the code doesn't declare, and an `"Assets/..."` path in shipped code (find the asset by its GUID, `MeridianMotionAssets`, or write into the output folder). And it holds every movement component
+   (or a bit number without its value, or a package flag past the package's bits), a `...FromCommandLine` entry point the docs or tools name that the code doesn't declare, a link in the docs to a page or heading that isn't there (or a `docs/….md` path named in the code that isn't), and an `"Assets/..."` path in shipped code (find the asset by its GUID, `MeridianMotionAssets`, or write into the output folder). And it holds every movement component
    to docs/adding-an-ability.md: a `[Tooltip]` on each setting, settings of kinds presets copy (numbers, bools, enums,
    curves), `Traits` and `StateEvents` on a takeover, its states set, a PlayMode fixture naming it (on the ability test
    kit, `AbilityFixture<T>`, unless the script's `NOT_YET_ON_THE_KIT` lists it), its inspector name in movement.md's
@@ -129,7 +129,7 @@ where it's missing), and nothing that ships names Blender or the generators (the
    `python3 Tools/run_tests.py --all` (or `--changed`, `--area`, `--filter`: see step 5). It finds the project's Unity
    (from `ProjectVersion.txt`, the Hub's folders, `UNITY_PATH` or `--unity`), refuses while the editor has the project
    open, runs both suites in batch mode and prints what failed, with the results and logs in `Logs/TestRuns/`
-   (docs/testing.md, Running them). The raw commands it runs:
+   (docs/running-tests.md, Running them). The raw commands it runs:
    ```
    <Unity> -batchmode -projectPath . -runTests -testPlatform EditMode -testResults EditModeResults.xml
    <Unity> -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults PlayModeResults.xml
@@ -276,7 +276,7 @@ out by its ledger (`Character Flags.json`). A flag's bit is saved data: never re
 
 **Generated assets: regenerate, don't edit.** Edit the generator and regenerate. All but the climbable paint masks
 (repainted from their surface's inspector only) have `-executeMethod` entry points (see docs/animation.md,
-docs/levels.md, docs/level-specs.md, docs/spawning.md). If you can't run Blender or Unity, make the source
+docs/showcase/levels.md, docs/showcase/level-specs.md, docs/spawning.md). If you can't run Blender or Unity, make the source
 change and say regeneration is still needed.
 
 | Generated | Generator |
@@ -318,7 +318,7 @@ characters (a generic-rig character's in its Generic rigs). A generic-rig charac
 your own). Every character prefab in the project is spawned and walked by `EveryCharacterTests`.
 
 **A new level mechanic, a new level piece, or a change to a builder:** follow
-[docs/adding-level-content.md](docs/adding-level-content.md).
+[docs/showcase/adding-level-content.md](docs/showcase/adding-level-content.md).
 
 **Retuning the movement:** follow [docs/tuning.md](docs/tuning.md). In short: change the asset, not the code defaults;
 saving it in the editor writes the movement envelope again (`MovementEnvelopeAutoWriter`), but a change made outside

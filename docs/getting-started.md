@@ -1,6 +1,8 @@
 # Getting Started in Your Project
 How to use Meridian Motion in a Unity project of your own: what it needs, putting it in, the two things a new project has to set up (the hitbox layer and the output folder), and a character in a scene you already have. To try it in this repository instead, open a showcase level and press Play (see the [README](../README.md#how-to-open-this-project)). New to Unity? [Unity Basics](unity-basics.md) explains the words used here.
 
+*See also:* [Glossary](glossary.md).
+
 ## What it needs
 - **Unity:** the version in the package's `package.json` (its `unity` field), or newer.
 - **Packages:** the ones `package.json` lists under `dependencies` (the Input System and the Universal Render Pipeline), installed with the Package Manager (Window > Package Manager). Your project should already render with URP: the package's water shaders are URP's.

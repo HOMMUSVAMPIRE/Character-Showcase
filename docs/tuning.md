@@ -1,6 +1,8 @@
 # Tuning the Character
 How to change how the character moves, keep tunings you like, and what changes with them. What each setting does is in its tooltip, and in [Movement](movement.md), [Movement Abilities](abilities.md) and [Climbing and Traversal](traversal.md).
 
+*See also:* [Troubleshooting: the movement asset](troubleshooting.md#the-movement-asset), [Why tuning presets set values, never components](decisions.md#tuning-presets-set-values-never-the-components-november-2026), [why no tuning is set in stone](decisions.md#no-tuning-is-set-in-stone-november-2026).
+
 ## Where the settings are
 - **The movement:** the StandardMovementMode asset (Assets/MeridianMotion/Content/Movement/StandardMovementMode.asset). Every part of the movement is a component in its Components list, each with its settings under its name: Walking & Running, Fall & Air Handling (gravity, the fall speed limit, air steering, and the ground's friction on landing), Jumping, Dashing, and each ability. Each character prefab has its own mode: the fox's is Assets/Showcase/Movement/Fox Movement.asset (see [Generic rigs](generic-rigs.md)).
 - **The character itself:** the MMotionMotor on the Character prefab (Assets/MeridianMotion/Content/Prefabs/Character.prefab): its step height, walkable slope, collision and moving-ground settings, and Size Scaling.
@@ -30,7 +32,7 @@ What the character can do as it's tuned (how high it steps and jumps, how far ea
 Saving the tuning is all the character needs. In this project, saving also updates the level checks, an optional level-side export rather than part of tuning the character (the level checks' editor assembly, Assets/Showcase/Editor/LevelChecks, which the character doesn't need): the showcase levels are checked against the default character's capabilities, written as the movement envelope (Tools/LevelSpec/envelope.json).
 
 - **Saving the movement asset** (or the Character prefab, a model source, or the level generation settings) writes the envelope again by itself (`MovementEnvelopeAutoWriter`), and the Console logs what changed, such as a jump that reaches further, or a double jump added or gone.
-- **Then check the levels:** the levelspec tool's movement checks grade every gap and climb in a level by the moves that cross it, and warn of any out of reach (see [Level Specs](level-specs.md)).
+- **Then check the levels:** the levelspec tool's movement checks grade every gap and climb in a level by the moves that cross it, and warn of any out of reach (see [Level Specs](showcase/level-specs.md)).
 - **A change made outside the editor** (an edit to the asset's file, or in batch mode) doesn't write the envelope: run Tools > Meridian Motion > Showcase > Levels > Specs > Write Movement Envelope, or `MovementEnvelopeTests` fails.
 
 ## Things to tune together

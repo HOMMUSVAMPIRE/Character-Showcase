@@ -261,7 +261,7 @@ namespace MeridianMotion.Characters
         private const float MaxTimeSinceGrounded = 1000f;
 
         // Profiler markers for the parts of a step (the Profiler's CPU Usage; each movement component has its own too,
-        // "Movement.<Component>": see MovementComponent.Marker). See docs/testing.md, Performance.
+        // "Movement.<Component>": see MovementComponent.Marker). See docs/running-tests.md, Performance.
         private static readonly ProfilerMarker StepMarker = new("Movement.Step");
         private static readonly ProfilerMarker ModeMarker = new("Movement.Mode");
         private static readonly ProfilerMarker CollisionMarker = new("Movement.Collision");

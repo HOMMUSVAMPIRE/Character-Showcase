@@ -28,7 +28,7 @@ Tests should read expected values from the settings (`rig.MovementSetting<T>("na
 `CharacterTestRig` ignores a test whose ability the character doesn't have: `rig.Component<T>()` when the mode has no T, or `rig.MovementSetting` for a setting no component has.
 
 **Something removed in a test is still there.**
-`Object.Destroy` waits for the end of the frame, and a movement-only test steps the physics itself, with no frames between its steps. Use `Object.DestroyImmediate` in tests (see [Automated Tests](testing.md#how-long-each-test-takes)).
+`Object.Destroy` waits for the end of the frame, and a movement-only test steps the physics itself, with no frames between its steps. Use `Object.DestroyImmediate` in tests (see [Automated Tests](running-tests.md#how-long-each-test-takes)).
 
 **Running the tests from the command line gives no results.**
 Unity can't open a project that's open in the editor, so a batch-mode run quits at once, with no results file. Close the editor first, or run the tests from the Test Runner window.
@@ -40,7 +40,7 @@ Unity can't open a project that's open in the editor, so a batch-mode run quits 
 - *Two settings share a name:* setting names must be unique across the movement mode and all its components, since tests find them by name alone.
 - *A field the tests read by name is read as another type* (`MovementSetting<int>` for a float setting): ask for it as the type it's declared, or the test fails (the rig won't skip it).
 - *An assembly references what it may not, or isn't in the table:* AGENTS.md's assembly table says what each may reference; the check's `ALLOWED_REFERENCES` holds it. A new assembly or reference goes in both, if it keeps the rules (the camera, the level elements and the level builders know nothing of the character, and nothing that ships references what doesn't: AGENTS.md, The package line).
-- *The camera, a level element or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character). A level element knows nothing of the character (the character finds it), and a level builder makes geometry, lighting, fixtures and markers and attaches the level elements; Set Up Scene connects the character side (see [Adding Level Content](adding-level-content.md)).
+- *The camera, a level element or a level builder uses character code* (`using Character;`): for the camera, see [Adding a camera feature that needs the character](camera.md#adding-a-camera-feature-that-needs-the-character). A level element knows nothing of the character (the character finds it), and a level builder makes geometry, lighting, fixtures and markers and attaches the level elements; Set Up Scene connects the character side (see [Adding Level Content](showcase/adding-level-content.md)).
 - *A movement asset names a class that no longer exists:* a movement component was renamed or moved. Give the class `[UnityEngine.Scripting.APIUpdating.MovedFrom(... sourceClassName: "OldName")]`, or the asset shows it as a missing component, its settings lost.
 
 ## New characters
@@ -120,10 +120,10 @@ The mannequin, the model prefabs, the level scenes, the level specs, the climbab
 A build attaches the level's mechanics (moving platforms, ropes, water, course timers) itself, but makes a new scene, without its game setup. Run Set Up Scene on it again, which also tells the course timers who's racing (see [Spawning the Character](spawning.md)).
 
 **A fixture doesn't work in a scene that wasn't built by a builder.**
-Its name has to start with one of `LevelFixtureSetup`'s names, with its settings after it ("Rope | length=m"): Set Up Scene runs `LevelFixtureSetup`, which sets up what matches and leaves the rest (see [Adding Level Content](adding-level-content.md)).
+Its name has to start with one of `LevelFixtureSetup`'s names, with its settings after it ("Rope | length=m"): Set Up Scene runs `LevelFixtureSetup`, which sets up what matches and leaves the rest (see [Adding Level Content](showcase/adding-level-content.md)).
 
 **Exporting a level's spec refuses to replace it.**
-The spec has changed since it was exported (in the Level Editor, say). Check that only your changes differ, then export with `-force` (see [Level Specs](level-specs.md)).
+The spec has changed since it was exported (in the Level Editor, say). Check that only your changes differ, then export with `-force` (see [Level Specs](showcase/level-specs.md)).
 
 ## Movement oddities
 **Something reads a lagging position.**

@@ -388,7 +388,7 @@ namespace MeridianMotion.Cameras
             speedFov.maxSpeed = Mathf.Max(speedFov.maxSpeed, speedFov.minSpeed);
         }
 
-        // The Profiler's CPU Usage marker for updating the camera each frame (see docs/testing.md, Performance).
+        // The Profiler's CPU Usage marker for updating the camera each frame (see docs/running-tests.md, Performance).
         private static readonly ProfilerMarker UpdateMarker = new("Camera.Update");
 
         // Landings are judged step by step (see CameraTargetTracker.Step).

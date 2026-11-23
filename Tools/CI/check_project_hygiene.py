@@ -48,6 +48,10 @@ Checks:
  19. Every command-line entry point the docs and tools name (Namespace.Class.SomethingFromCommandLine, run with
      -executeMethod) is a static method of that class in that namespace: renamed without them, a command fails only
      when someone runs it.
+ 21. Every link in the docs (README.md, AGENTS.md, docs/) leads somewhere: a relative link to a file that exists, and a
+     #section to a heading there (as GitHub names it); and every docs/….md path the code, the tools and the docs name
+     in their text is a page that exists. Moving or renaming a page, or a heading others link to, fails until its links
+     follow.
 """
 import json
 import os
@@ -908,6 +912,65 @@ def check_command_line_entry_points():
                                     f"of a class of that name and namespace (renamed or moved?): name it as it's declared now")
 
 
+MARKDOWN_LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+DOCS_PATH = re.compile(r"\bdocs/[\w/.-]+?\.md\b")
+
+
+def heading_anchors(path):
+    """The anchors GitHub gives a page's headings: lower case, punctuation dropped, spaces as hyphens, repeats numbered."""
+    anchors, seen = set(), {}
+    in_code = False
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        if line.lstrip().startswith("```"):
+            in_code = not in_code
+        if in_code:
+            continue
+        match = re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if not match:
+            continue
+        text = re.sub(r"`([^`]*)`", r"\1", match.group(1))
+        text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+        slug = re.sub(r"[^\w\- ]", "", text.lower()).replace(" ", "-")
+        count = seen.get(slug, 0)
+        seen[slug] = count + 1
+        anchors.add(slug if count == 0 else f"{slug}-{count}")
+    return anchors
+
+
+def check_doc_links():
+    pages = [ROOT / "README.md", ROOT / "AGENTS.md"] + sorted((ROOT / "docs").rglob("*.md"))
+    anchors = {}
+    for page in pages:
+        in_code = False
+        for number, line in enumerate(page.read_text(encoding="utf-8").split("\n"), 1):
+            if line.lstrip().startswith("```"):
+                in_code = not in_code
+            if in_code:
+                continue
+            for target in MARKDOWN_LINK.findall(re.sub(r"`[^`]*`", "", line)):
+                if re.match(r"^[a-z]+:", target):
+                    continue  # A web or mail link: not the check's to follow.
+                file_part, _, anchor = target.partition("#")
+                linked = (page.parent / file_part).resolve() if file_part else page
+                where = f"{page.relative_to(ROOT)}:{number}"
+                if not linked.exists():
+                    problems.append(f"{where}: links to {target}, which isn't there (moved or renamed?): link it where it is now")
+                    continue
+                if anchor and linked.suffix == ".md":
+                    if linked not in anchors:
+                        anchors[linked] = heading_anchors(linked)
+                    if anchor not in anchors[linked]:
+                        problems.append(f"{where}: links to {target}, but {linked.relative_to(ROOT)} has no heading "
+                                        f"#{anchor} (renamed?): link the heading as it's named now")
+    named_in = sorted(ASSETS.rglob("*.cs")) + sorted((ROOT / "Tools").rglob("*.py")) + pages
+    for path in named_in:
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            for named in DOCS_PATH.findall(line):
+                if not (ROOT / named).exists():
+                    problems.append(f"{path.relative_to(ROOT)}:{number}: names {named}, which isn't there (moved or "
+                                    f"renamed?): name the page where it is now")
+
+
 def main():
     if not ASSETS.is_dir():
         print(f"No Assets folder at {ASSETS}; run this from the repository.", file=sys.stderr)
@@ -925,6 +988,7 @@ def main():
     check_ability_conventions()
     check_command_line_entry_points()
     check_no_asset_paths_in_package()
+    check_doc_links()
     if problems:
         print(f"{len(problems)} problem(s) found:")
         for problem in problems:

@@ -2,6 +2,8 @@
 
 Start here to put a character of your own in the project. This page is written for someone new to Unity: the Unity words it uses (prefab, inspector, Project window and so on) are explained in [Unity Basics](unity-basics.md). It gives the steps; each links to the page with the details.
 
+*See also:* [Glossary](glossary.md).
+
 Before you start, open the project as the README says ([How to open this Project](../README.md#how-to-open-this-project)), with Git LFS installed: without it, the models are placeholder text files.
 
 ## What do you have?

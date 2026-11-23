@@ -30,7 +30,7 @@ New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the 
 7. Open the project
 8. Open Assets/Showcase/Scenes/LevelPlayground/LevelPlayground.unity (the graybox level with every mechanic) and click "Play"
 
-The test levels are in Assets/Showcase/Scenes: the Meridian Complex and the Level Playground (see [docs/levels.md](docs/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Showcase/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/level-specs.md](docs/level-specs.md)).
+The test levels are in Assets/Showcase/Scenes: the Meridian Complex and the Level Playground (see [docs/showcase/levels.md](docs/showcase/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Showcase/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/showcase/level-specs.md](docs/showcase/level-specs.md)).
 
 ## How to see the code in this project
 The project is two folders. **Assets/MeridianMotion** is the package, what would ship: its code (Runtime/, Editor/), the assets it comes with (Content/: the prefabs, the mannequin and its animation, the water shaders) and its tests (Tests/). **Assets/Showcase** is everything else: the levels and their builders, the Blender pipeline, the fox and the sample models.
@@ -75,27 +75,33 @@ If you intend to get a full understanding of the project, start with Characters/
 | Release cursor | Escape (click to re-lock) | |
 
 ## Documentation
+### Using the package
+For using Meridian Motion in a project of your own: about what ships (Assets/MeridianMotion), with the showcase's own examples (the fox, the levels) where they help.
 - [Getting started in your project](docs/getting-started.md): what the package needs, installing it, the hitbox layer, the output folder, a character in your own scene
 - [Architecture](docs/architecture.md): how the parts fit together, one physics step, what may reference what
 - [Movement](docs/movement.md): walking and sprinting, jumping, dashing, turning and leaning, collision, character size, moving ground
 - [Movement abilities](docs/abilities.md): crouching, sliding and rolling, wall running, wall sliding, ledges, vaulting
-- [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming
+- [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming; the level fixtures that set up a level's mechanics
 - [Camera system](docs/camera.md)
 - [Character model and animations](docs/animation.md): the mannequin, replacing the model, the animation libraries, IK
-- [Test levels](docs/levels.md): the Meridian Complex, the Level Playground, level mechanics
-- [Level specs](docs/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Spawning the character](docs/spawning.md): players, NPCs, input sources
 - [Generic rigs](docs/generic-rigs.md): the fox, a character on four legs, and generating it
-- [Automated tests](docs/testing.md)
 - [Tuning the character](docs/tuning.md): where the settings are, tuning presets, what changes when you save
 - [Adding a character](docs/adding-a-character.md): a new look for the humanoid, a character of your own, or a generic-rig character; the place to start
 - [Your first ability](docs/tutorial-first-ability.md): a tutorial building one small ability (Ground Pound) end to end
-- [Adding a movement ability](docs/adding-an-ability.md): the steps, from the component to its animation, tests and docs
-- [Adding level content](docs/adding-level-content.md): a new level mechanic, a new piece, changing a builder
+- [Adding a movement ability](docs/adding-an-ability.md): the reference, from the component to its animation, tests and docs
+- [Automated tests](docs/testing.md): writing tests on the test rig and the ability kit, and what each fixture checks
+- [Running the tests](docs/running-tests.md): the Test Runner and the runner script, how long each takes, profiling and recording them
 - [Troubleshooting](docs/troubleshooting.md)
 - [Design decisions](docs/decisions.md): why it's built the way it is
 - [Glossary](docs/glossary.md)
 - [Unity basics](docs/unity-basics.md): the Unity terms the docs use, for newcomers to Unity
+
+### The showcase
+About this repository's own levels and tools, which don't ship with the package (Assets/Showcase, docs/showcase).
+- [Test levels](docs/showcase/levels.md): the Meridian Complex, the Level Playground, the mechanics in them
+- [Level specs](docs/showcase/level-specs.md): the level format, the Level Editor and the levelspec tool
+- [Adding level content](docs/showcase/adding-level-content.md): a new level mechanic, a new piece, changing a builder
 
 Every tunable value is a setting in the inspector: the movement assets in Assets/MeridianMotion/Content/Movement for the movement and its abilities (StandardMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Showcase/Editor/Levels/LevelBuilderSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 
