@@ -222,5 +222,25 @@ namespace MeridianMotion.Tests.Cameras
             Assert.That(rig.Mode, Is.EqualTo(CameraMode.ThirdPerson), "Leaving the zone should restore the player's choice.");
             Assert.That(changes, Is.EqualTo(new[] { CameraMode.FirstPerson, CameraMode.ThirdPerson }));
         }
+
+        /// <summary>
+        /// With the cursor requested (a window open over the game: the UI's On Cursor Needed Changed), the rig frees the
+        /// cursor and a click doesn't lock it again; cleared, the cursor locks again.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ACursorRequested_IsFreed_AndLockedAgainWhenCleared()
+        {
+            yield return Frames(2);
+            Assume.That(rig.CursorSettings.manageCursor, Is.True, "Test setup: the rig should manage the cursor.");
+            Assert.That(rig.CursorLockWanted, Is.True, "Test setup: enabled, the rig locks the cursor.");
+
+            rig.CursorRequested = true;
+            yield return Frames(2);
+            Assert.That(rig.CursorLockWanted, Is.False, "Requested, the cursor should be freed.");
+
+            rig.CursorRequested = false;
+            yield return Frames(2);
+            Assert.That(rig.CursorLockWanted, Is.True, "Cleared, the cursor should lock again.");
+        }
     }
 }

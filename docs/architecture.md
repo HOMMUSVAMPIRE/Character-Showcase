@@ -69,6 +69,8 @@ flowchart LR
         PlayTests["PlayMode tests"]
     end
     Camera["MeridianMotion.Cameras<br/>(the camera rig; shipping undecided)"]
+    UI["MeridianMotion.UI<br/>(windows, dialogs; shipping undecided)"]
+    UIEditor["MeridianMotion.UI.EditorTools<br/>(Create UI Assets)"]
     subgraph Showcase_only["The showcase's own (doesn't ship)"]
         LevelEditor["MeridianMotion.Showcase.Levels<br/>(level builders, specs, Level Editor)"]
         Pipeline["MeridianMotion.Showcase.Pipeline<br/>(mannequin and fox generators, Blender)"]
@@ -93,6 +95,9 @@ flowchart LR
     EditTests --> ElementsEditor
     PlayTests --> Showcase
     PlayTests --> Camera
+    PlayTests --> UI
+    UIEditor --> UI
+    UIEditor --> Editor
     PlayTests --> Shared
     PlayTests --> Queries
     PlayTests --> Elements
@@ -111,9 +116,10 @@ flowchart LR
     LevelTests --> ElementsEditor
 ```
 
-The character's code and the camera's don't reference each other at all (both use `MeridianMotion.PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `MeridianMotion.PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)
+The character's code, the camera's and the UI's don't reference each other at all (both use `MeridianMotion.PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `MeridianMotion.PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)
 
 The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#architectural-rules-do-not-break-these), which are the ones to keep (this is a summary of them, kept in step):
+- **The UI knows nothing about the character, the level or the camera.** It tells the game what its windows need (the pointer, the game's input stopped) through UnityEvents on its `UIManager`, which the scene connects to the camera's `CursorRequested` and `PlayerInputReader.Suppressed`.
 - **The camera knows nothing about the character.** It follows a plain Transform, connected in the scene, not in code: Set Up Scene wires the spawner's On Camera Target Spawned event to `MMotionCameraRig.Follow`, which gets the character, its eye point and its size reference (see [Camera System](camera.md#connecting-it-to-something)).
 - **The levels know nothing about the character or the camera.** The level elements are the level's, and the character uses them (the abilities find them, as with `MeridianMotion.Levels.SwingRope.All`). The builders make geometry, lighting and named fixtures and markers, and each build attaches the level elements to them (`LevelFixtureSetup`, whose names both sides use). Set Up Scene (`CharacterSceneSetup`) connects the character side: the spawner and its spawn points, the camera, the input manager, and who's racing the course timers.
 - **Movement and animation are separate.** Movement code never touches Animators, models or IK; a model's own needs belong in its animation translator.
@@ -138,6 +144,7 @@ The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#archit
 | The growing physics query buffers | Assets/MeridianMotion/Runtime/PhysicsQueries (its own assembly) |
 | Animation and its translators; IK; model sources and hitboxes | Assets/MeridianMotion/Runtime/Characters/Animation, IK, Models |
 | The camera rig | Assets/MeridianMotion/Runtime/Cameras |
+| The UI framework | Assets/MeridianMotion/Runtime/UI (its own assembly), its prefabs in Assets/MeridianMotion/Content/UI, and Assets/MeridianMotion/Editor/UI (Create UI Assets) |
 | The level elements | Assets/MeridianMotion/Runtime/LevelElements (its own assembly), and Assets/MeridianMotion/Editor/LevelElements (`LevelFixtureSetup` and the fixtures' names, the climbable paint tool) |
 | Importers, Set Up Scene, inspectors, finding the package's assets | Assets/MeridianMotion/Editor (Models/, Animation/, Scene/, Effects/, Movement/, Settings/) |
 | The assets that ship (the prefabs, the mannequin, its animation, the water shaders) | Assets/MeridianMotion/Content |

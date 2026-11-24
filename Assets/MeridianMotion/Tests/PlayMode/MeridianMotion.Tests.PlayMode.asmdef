@@ -8,7 +8,11 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "MeridianMotion.PhysicsQueries",
-        "MeridianMotion.Levels"
+        "MeridianMotion.Levels",
+        "MeridianMotion.UI",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

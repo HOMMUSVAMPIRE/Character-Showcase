@@ -78,6 +78,8 @@ namespace MeridianMotion.Cameras
         public ThirdPersonSettings ThirdPerson => thirdPerson;
         /// <summary>The third person zoom settings.</summary>
         public CameraZoomSettings Zoom => zoom;
+        /// <summary>Whether and how the rig locks the cursor (not "Cursor", which would hide Unity's inside the rig).</summary>
+        public CameraCursorSettings CursorSettings => cursor;
         /// <summary>The aiming settings.</summary>
         public CameraAimSettings Aim => aim;
         /// <summary>The settings that keep the third person camera out of walls.</summary>
@@ -369,7 +371,7 @@ namespace MeridianMotion.Cameras
             tracker.Reset(target);
             Snap();
 
-            if (cursor.manageCursor) { LockCursor(true); }
+            if (cursor.manageCursor) { LockCursor(!cursorRequested); }
         }
 
         private void OnDisable()

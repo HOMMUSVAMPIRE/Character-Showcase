@@ -66,6 +66,9 @@ ANIMATION = ("Animation", "Models")
 LEVELS = ("Levels", "Traversal")
 CHANGE_RULES = (
     ("Assets/MeridianMotion/Runtime/Cameras/", ("Camera",), "the camera"),
+    ("Assets/MeridianMotion/Runtime/UI/", ("UI",), "the UI"),
+    ("Assets/MeridianMotion/Editor/UI/", ("UI",), "the UI's editor tools (making its prefabs)"),
+    ("Assets/MeridianMotion/Content/UI/", ("UI",), "the UI's prefabs"),
     ("Assets/MeridianMotion/Runtime/PhysicsQueries/", MOVEMENT + ("Camera",), "the query buffers the movement and the camera share"),
     ("Assets/MeridianMotion/Runtime/Characters/Character/CharacterSpawner.cs", ("Spawning",), "spawning"),
     ("Assets/MeridianMotion/Runtime/Characters/Character/", MOVEMENT, "the movement"),
@@ -113,7 +116,7 @@ EVERYTHING_RULES = (
 TEST_FOLDER_AREAS = {
     "Movement": "Movement", "InputAndDeterminism": "Movement", "GoldenPaths": "Movement", "Abilities": "Abilities",
     "Traversal": "Traversal", "Animations": "Animation", "Models": "Models", "Levels": "Levels",
-    "LevelElements": "Levels", "Cameras": "Camera", "Spawning": "Spawning",
+    "LevelElements": "Levels", "Cameras": "Camera", "Spawning": "Spawning", "UI": "UI",
 }
 
 

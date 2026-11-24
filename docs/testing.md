@@ -92,6 +92,12 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | CameraCollisionTests | Cameras | Camera | the camera's collision and shoulder swap |
 | CameraFollowTests | Cameras | Camera | following the target, at any size, and the landing dip |
 | CameraEffectsTests | Cameras | Camera | shake and the speed FOV |
+| UIUtilityTests | UI | UI | the UI's helpers and its clock |
+| UIManagerTests | UI | UI | opening, reusing and closing windows |
+| WindowLifecycleTests | UI | UI | a window's events, close animation and click blocker |
+| BackKeyTests | UI | UI | the Back key, its fallback, and what the game is told |
+| MessageBoxTests | UI | UI | the dialogs and the text prompt |
+| UIContentTests | UI | UI | the UI's own prefabs |
 | SpawnerTests | Spawning | Spawning | the character spawner |
 | EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
 
@@ -311,6 +317,15 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - CameraFollowTests: smooth follow and teleport snapping; framing and clip planes scaled with the target, across a wide range of sizes; the landing dip, as deep as the landing settings make it, in proportion to the target's size, and recovering (landings are judged by the fastest fall since the target last rose, so a frame holding several physics steps, as in the editor, doesn't halve the impact); following a new target with `Follow`: snapping to it and looking the way it faces, and taking its eye anchor and size reference in place of the old target's.
   - CameraEffectsTests: shake and ShakeAll; speed FOV judging speed relative to the target's size, and settling once it stops;
 
+### UI (the UI category)
+The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canvases and an EventSystem and no character (the UI knows nothing of the game), windows opened from templates made in code, and the UI's clock (`UIClock`) driven by the test.
+- **UIUtilityTests**: the helpers safe on null and destroyed objects; a world position put on a canvas where the camera sees it; the clock going by its time source.
+- **UIManagerTests**: a window opening on its canvas (or the one asked for); opened again, the open one brought to the front (or a copy, when it allows several); closed, destroyed, and made again by the next open; finding it by its prefab; closing all but the one excepted and those exempt; the window catalog's windows opened by their component; and the canvases scaled together.
+- **WindowLifecycleTests**: its events in order, once each; a close animation played (in unscaled time, so with the game paused too) before it's destroyed, its animation event ending it, and a close that never plays through ending all the same; its click blocker behind it on its canvas, stopping clicks and closing with it; hiding and showing again keeping its state, stacking and blocker.
+- **BackKeyTests**: Back closing the windows from the top down (passing over one still closing), then running the fallback; Cancel Action Overrides run instead; windows that don't take Back, and hidden ones, passed over; a text field with the keyboard keeping it; and the game told when the windows need the pointer or stop its input.
+- **MessageBoxTests**: each dialog opening with its text and returning at once, its buttons running their callbacks (a second press counting once) and closing it with its blocker; Enter pressing OK; Back declining a yes/no dialog and dismissing an OK one; the prompt passing on what's typed; and a dialog opened without a manager saying so.
+- **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons.
+
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
 - **EveryCharacterTests**: every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.
 - **SpawnerTests**: the character spawner:
@@ -334,6 +349,7 @@ They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests 
 | MovementTuningPresetTests | Movement | Movement | tuning presets |
 | QueryBufferTests | Movement | Movement | the physics query buffers growing |
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
+| InputSuppressionTests | InputAndDeterminism | Movement | the player's input suppressed while a window is open |
 | AnimationSetTests | Animations | Animation | animation sets and fallback clip slots |
 | LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
 | MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |
@@ -358,6 +374,7 @@ They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests 
 - **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
 
 ### InputAndDeterminism (the Movement category; see [Input](movement.md#input))
+- **InputSuppressionTests**: the player's input suppressed (nothing held or pressed), a button held through it left out until let go, and one pressed after it counting at once.
 - **InputFrameTests**:
   - the input frame staying unmanaged and its size;
   - presses, releases and hold durations worked out from successive frames, in steps;

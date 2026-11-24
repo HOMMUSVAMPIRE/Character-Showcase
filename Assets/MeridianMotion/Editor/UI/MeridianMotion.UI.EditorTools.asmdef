@@ -1,0 +1,22 @@
+{
+    "name": "MeridianMotion.UI.EditorTools",
+    "rootNamespace": "MeridianMotion.UI.EditorTools",
+    "references": [
+        "MeridianMotion.UI",
+        "MeridianMotion.EditorTools",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

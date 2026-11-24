@@ -22,6 +22,17 @@ namespace MeridianMotion.Characters
         [FormerlySerializedAs("inputSource")] public PlayerInput playerInput = null;
 
         private readonly InputLatch latch = new();
+        private readonly InputSuppression suppression = new();
+
+        /// <summary>
+        /// Whether the player's input stops reaching the character (a window open over the game: the UI's On Game Input
+        /// Blocked Changed sets it): nothing held, nothing pressed. A button held through it counts again only once it's let
+        /// go and pressed again (see InputSuppression). The look still follows the camera.
+        /// </summary>
+        public bool Suppressed { get => suppression.Suppressed; set => suppression.Suppressed = value; }
+
+        /// <summary>Sets Suppressed (for a UnityEvent&lt;bool&gt; to call).</summary>
+        public void SetSuppressed(bool suppressed) => Suppressed = suppressed;
 
         // The actions read, looked up by name once (FindAction searches by string) and again only if the action map
         // changes; null for one the map doesn't have, which reads as never pressed.
@@ -62,6 +73,7 @@ namespace MeridianMotion.Characters
             // Grabbing objects to push or pull is the Interact button, held.
             ReadButton(interact, InputButtons.Interact, ref down, ref pressed);
             ReadButton(attack, InputButtons.Attack, ref down, ref pressed);
+            suppression.Apply(ref moveInput, ref down, ref pressed);
 
             // The player looks the way their camera does: the move input is relative to it. Without one, along +Z.
             Camera view = Camera.main;

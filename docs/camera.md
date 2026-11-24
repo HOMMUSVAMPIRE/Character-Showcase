@@ -44,6 +44,8 @@ The camera follows a plain Transform: `MMotionCameraRig.Follow(target)`, or `Fol
 
 From code, the rig can also be steered: `SetMode(mode)` and `ToggleMode()` change the view (each returns false for a mode that isn't allowed), `SetLookRotation(yaw, pitch)` points it (the pitch clamped to the mode's limits), `SetDistance(distance, instant)` zooms, `SetShoulder(right)` picks the third-person shoulder, and `Snap()` skips this frame's smoothing, jumping straight to where it should be.
 
+Something over the game that needs the pointer (a window, a menu) sets `CursorRequested` (or calls `SetCursorRequested`, as a UnityEvent can): while it's set, the rig frees the cursor and neither its unlock key nor a click locks it again; cleared, the cursor locks again. The UI's UI Manager says when through its On Cursor Needed Changed event. (`CursorLockWanted` says what the rig last asked of the cursor, which a player without a window, in batch mode, can't lock.)
+
 How fast the target moves, when it lands and how it's scaled are worked out by watching the Transform (`CameraTargetTracker`), not by asking the target's code.
 
 In the levels, the character and the camera are connected in the scene: Set Up Scene wires the CharacterSpawner's On Camera Target Spawned event to the rig's Follow, which then gets each spawned character, its eye point and its model parent as the size reference (see [Spawning the Character](spawning.md)).

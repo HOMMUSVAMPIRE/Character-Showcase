@@ -189,3 +189,12 @@ The package's own abilities keep their parts of the partial `MMotionMotor` and t
 
 **Against:** moving every Animator float into values the movement publishes, as first planned. The animation's own floats (a vault's progress paced by Vault Min Duration, a climb's held as it blends out) are presentation, worked out each frame: in the movement, they'd break "movement and animation are separate" and "movement runs on physics steps". So they stay the animation state's, and only what the movement itself has is published.
 
+## The UI is its own assembly, knowing nothing of the game (November 2026)
+The UI framework (ReferenceAssets/UI_Framework_Blueprint.md's window manager, windows, dialogs and the rest) is `MeridianMotion.UI`, referencing only uGUI, TextMeshPro and the Input System. Like the camera, its shipping is undecided: nothing else that ships references it (its own editor assembly, its prefabs and its tests aside), so the package can be cut with or without it.
+
+**Why:** a buyer's game has its own screens; a window manager tied to the character would be one more thing to work around. Kept apart, it's a framework for any game, and the character doesn't change for it.
+
+**How it meets the game:** through generic hooks the scene connects, as the camera does: the UI Manager's On Cursor Needed Changed and On Game Input Blocked Changed, to the camera's `CursorRequested` and `PlayerInputReader.Suppressed`. The UI runs on its own unscaled clock (`UIClock`), so it keeps going while the game is paused, and tests drive it. A project's own windows are listed in a window catalog asset, not as fields on the manager as the blueprint has them, so a project adds a window without editing the framework; the framework's own dialogs and blockers stay fields, as the blueprint's class diagram shows.
+
+**Against:** UI Toolkit, which the blueprint isn't written for (it's uGUI throughout), and putting the UI in the showcase, which would leave a package user without a menu or a dialog.
+

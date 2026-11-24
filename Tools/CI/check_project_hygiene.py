@@ -9,8 +9,9 @@ Checks:
   2. No two .meta files share a GUID (copy-pasted .meta files break references silently).
   3. Every assembly references only what AGENTS.md's assembly table allows it (ALLOWED_REFERENCES), and no
      assembly is missing from the table.
-  4. The camera uses no character or level code, and the level elements and the level builders no character code:
-     no `using MeridianMotion.Characters` or the like (the level builders may use the level elements, `MeridianMotion.Levels`).
+  4. The camera uses no character or level code, the UI none of the game's (character, level or camera), and the level
+     elements and the level builders no character code: no `using MeridianMotion.Characters` or the like (the level
+     builders may use the level elements, `MeridianMotion.Levels`).
   5. Every serialized field the tests read or set by name (rig.MovementSetting<T>("name"),
      rig.SetMovementSetting("name", value), an ability fixture's OffSetting => "name") still exists, and is of
      the type the test asks for it as (<T>).
@@ -112,6 +113,9 @@ ALLOWED_REFERENCES = {
     "MeridianMotion.Levels.EditorTools": {"MeridianMotion.Levels"},
     "MeridianMotion.Characters": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels"},
     "MeridianMotion.Cameras": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries"},
+    "MeridianMotion.UI": {"Unity.InputSystem", "Unity.TextMeshPro", "UnityEngine.UI"},
+    "MeridianMotion.UI.EditorTools": {"MeridianMotion.UI", "MeridianMotion.EditorTools", "Unity.InputSystem",
+                                      "Unity.TextMeshPro", "UnityEngine.UI"},
     "MeridianMotion.EditorTools": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Levels",
                                    "MeridianMotion.Levels.EditorTools"},
     "MeridianMotion.Showcase.Pipeline": {"MeridianMotion.Characters", "MeridianMotion.EditorTools"},
@@ -127,7 +131,8 @@ ALLOWED_REFERENCES = {
                                              "MeridianMotion.Levels",
                                              "MeridianMotion.Levels.EditorTools"} | TEST_RUNNER,
     "MeridianMotion.Tests.PlayMode": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Tests.Shared",
-                                      "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels"} | TEST_RUNNER,
+                                      "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels", "MeridianMotion.UI",
+                                      "UnityEngine.UI", "Unity.TextMeshPro", "Unity.InputSystem"} | TEST_RUNNER,
     "MeridianMotion.Tests.Shared": {"MeridianMotion.Characters"} | TEST_RUNNER,
 }
 
@@ -175,8 +180,10 @@ def check_assembly_references():
 # them, use the level elements (MeridianMotion.Levels) but nothing of the character's or the camera's.
 CHARACTER_AND_LEVEL = r"MeridianMotion\.(Characters|Levels|EditorTools|Showcase)\b"
 CHARACTER_ONLY = r"MeridianMotion\.(Characters|Cameras|EditorTools)\b"
+ANY_OF_THE_GAMES = r"MeridianMotion\.(Characters|Levels|Cameras|EditorTools|Showcase)\b"
 INDEPENDENT_FOLDERS = {
     RUNTIME / "Cameras": ("the camera follows a plain Transform", CHARACTER_AND_LEVEL),
+    RUNTIME / "UI": ("the UI knows nothing of the game, reached only through its hooks", ANY_OF_THE_GAMES),
     RUNTIME / "LevelElements": ("the level elements are the level's, used by the character", CHARACTER_ONLY),
     SHOWCASE / "Editor" / "Levels": ("the level builders make geometry, lighting and the level elements only", CHARACTER_ONLY),
 }

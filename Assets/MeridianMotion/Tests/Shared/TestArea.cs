@@ -24,5 +24,7 @@ namespace MeridianMotion.Tests
         public const string Spawning = "Spawning";
         /// <summary>The levels: specs, the Level Editor, fixtures, climbable paint and timing gates (docs/showcase/levels.md, docs/showcase/level-specs.md).</summary>
         public const string Levels = "Levels";
+        /// <summary>The UI framework: its windows, the Back key, dialogs, lists and the rest.</summary>
+        public const string UI = "UI";
     }
 }
