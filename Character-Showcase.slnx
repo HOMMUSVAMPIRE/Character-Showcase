@@ -14,13 +14,14 @@
   <Project Path="MeridianMotion.UI.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.Levels.csproj" />
   <Project Path="MeridianMotion.CharacterUI.csproj" />
+  <Project Path="MeridianMotion.Showcase.Grass.EditorTools.csproj" />
   <Project Path="MeridianMotion.Tests.Shared.csproj" />
   <Project Path="MeridianMotion.Levels.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.TutorialRing.csproj" />
-  <Project Path="MeridianMotion.Showcase.Grass.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.HUD.csproj" />
   <Project Path="MeridianMotion.Showcase.LevelChecks.csproj" />
   <Project Path="MeridianMotion.PhysicsQueries.csproj" />
   <Project Path="MeridianMotion.Showcase.TutorialRing.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Grass.csproj" />
+  <Project Path="MeridianMotion.Showcase.Tests.Grass.csproj" />
 </Solution>

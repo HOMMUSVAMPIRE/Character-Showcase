@@ -6,19 +6,10 @@
 #pragma kernel Generate
 #pragma kernel Finish
 
-// A blade, as Grass.shader reads it: 8 floats.
-struct Blade
-{
-    float3 position; // its root, in the world
-    float facing;    // which way it bends (radians about the vertical)
-    float length;    // m
-    float width;     // at the root, m
-    float bend;      // 0 straight up, 1 its tip its length forward
-    float hash;      // 0 to 1, for variation
-};
+#include "GrassCommon.hlsl"
 
 StructuredBuffer<float4> _Chunks;   // each in view: its corner (x, z, in the field's space), layer, floor height
-Texture2DArray<float> _Mask;
+Texture2DArray<float2> _Mask;       // r: density, g: how near the lawn's edge (1 at it)
 SamplerState sampler_linear_clamp;
 RWStructuredBuffer<Blade> _NearBlades, _FarBlades;
 RWByteAddressBuffer _NearArgs, _FarArgs; // indexed draw arguments: the instance count at byte 4
@@ -34,18 +25,7 @@ uint _BladesPerSide;
 float4 _Distances; // draw distance, detail distance, thinning starts
 float4 _Thinning;  // x: the fraction left at the draw distance
 float2 _Length, _Width, _Bend;
-
-// A well-mixed hash of three integers (Jarzynski and Olano's pcg3d), each output a different random.
-uint3 Hash(uint3 v)
-{
-    v = v * 1664525u + 1013904223u;
-    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
-    v ^= v >> 16u;
-    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
-    return v;
-}
-
-float3 Random(uint3 v) { return float3(Hash(v)) * (1.0 / 4294967296.0); }
+float4 _Clumps;    // size, how much length varies by clump, how much a clump's blades lean out from its middle, edge length
 
 [numthreads(8, 8, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
@@ -56,25 +36,36 @@ void Generate(uint3 id : SV_DispatchThreadID)
 
     // The cell, counted from the mask's corner, so its hash is the same whichever chunks are in view.
     int2 cell = int2(round((chunk.xy - _MaskOrigin) / _Spacing)) + int2(id.xy);
-    float3 r0 = Random(uint3(cell.x, cell.y, layer * 2u));
-    float3 r1 = Random(uint3(cell.x, cell.y, layer * 2u + 1u));
+    float3 r0 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), layer * 3u));
+    float3 r1 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), layer * 3u + 1u));
 
     float2 local = _MaskOrigin + (float2(cell) + r0.xy) * _Spacing;
-    float density = _Mask.SampleLevel(sampler_linear_clamp, float3((local - _MaskOrigin) / _MaskSize, layer), 0);
-    if (r0.z >= density) { return; }
+    float2 mask = _Mask.SampleLevel(sampler_linear_clamp, float3((local - _MaskOrigin) / _MaskSize, layer), 0);
+    if (r0.z >= mask.r) { return; }
 
     float3 root = mul(_LocalToWorld, float4(local.x, chunk.w, local.y, 1.0)).xyz;
     float drawDistance = _Distances.x;
     float distance = length(root - _CameraPosition);
     if (distance >= drawDistance) { return; }
 
-    // Fewer blades with distance (by the hash, so the same ones go), those left widened to cover as many pixels.
+    // Fewer blades with distance (by the hash, so the same ones go), those left widened to cover as many pixels. A
+    // blade about to go shrinks into the ground first (over the last fifth of its hash's margin), so blades don't pop
+    // in and out as the camera moves: a pop is a flash of a blade where there was ground.
     float keep = lerp(1.0, _Thinning.x, saturate((distance - _Distances.z) / max(drawDistance - _Distances.z, 0.001)));
     if (r1.x >= keep) { return; }
+    float leaving = saturate((keep - r1.x) / (0.2 * keep));
 
+    // Its clump: longer or shorter together, leaning out from the clump's middle.
+    float2 clumpCentre;
+    float clump;
+    GrassClump(root.xz, _Clumps.x, clumpCentre, clump);
+
+    float3 r2 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), layer * 3u + 2u));
     float bladeLength = lerp(_Length.x, _Length.y, r1.y);
+    bladeLength *= 1.0 + (clump - 0.5) * 2.0 * _Clumps.y;
+    bladeLength *= lerp(1.0, _Clumps.w, mask.g);
     // Shrinking into the ground over the last tenth of the draw distance, so nothing pops.
-    bladeLength *= saturate((drawDistance - distance) / (0.1 * drawDistance));
+    bladeLength *= saturate((drawDistance - distance) / (0.1 * drawDistance)) * leaving;
     if (bladeLength <= 0.001) { return; }
 
     // Culled by the view: a sphere round the blade.
@@ -84,14 +75,22 @@ void Generate(uint3 id : SV_DispatchThreadID)
         if (dot(_FrustumPlanes[p].xyz, middle) + _FrustumPlanes[p].w < -bladeLength) { return; }
     }
 
-    float3 r2 = Random(uint3(cell.x, cell.y, layer * 2u + 7919u));
+    // Which way it bends: its own way, turned toward pointing out from its clump's middle.
+    float angle = r1.z * 6.2831853;
+    float2 own = float2(cos(angle), sin(angle));
+    float2 away = root.xz - clumpCentre;
+    away = dot(away, away) > 1e-6 ? normalize(away) : own;
+    float2 facing = lerp(own, away, _Clumps.z);
+    facing = dot(facing, facing) > 1e-6 ? normalize(facing) : own;
+
     Blade blade;
     blade.position = root;
-    blade.facing = r1.z * 6.2831853;
+    blade.facing = atan2(facing.y, facing.x);
     blade.length = bladeLength;
     blade.width = lerp(_Width.x, _Width.y, r2.x) * min(rsqrt(keep), 3.0);
     blade.bend = lerp(_Bend.x, _Bend.y, r2.y);
     blade.hash = r2.z;
+    blade.clump = clump;
 
     uint index;
     if (distance < _Distances.y)

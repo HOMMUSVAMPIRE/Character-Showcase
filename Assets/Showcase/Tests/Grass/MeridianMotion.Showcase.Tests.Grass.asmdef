@@ -1,0 +1,24 @@
+{
+    "name": "MeridianMotion.Showcase.Tests.Grass",
+    "rootNamespace": "MeridianMotion.Showcase.Tests.Grass",
+    "references": [
+        "MeridianMotion.Showcase.Grass",
+        "MeridianMotion.Tests.Shared",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

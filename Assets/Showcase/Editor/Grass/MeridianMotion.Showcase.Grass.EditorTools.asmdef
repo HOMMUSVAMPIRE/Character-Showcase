@@ -1,7 +1,10 @@
 {
     "name": "MeridianMotion.Showcase.Grass.EditorTools",
     "rootNamespace": "MeridianMotion.Showcase.Grass.EditorTools",
-    "references": [],
+    "references": [
+        "MeridianMotion.Showcase.Grass",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
     "includePlatforms": [
         "Editor"
     ],

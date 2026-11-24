@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using GrassField = MeridianMotion.Showcase.Grass.GrassField;
+using GrassStyle = MeridianMotion.Showcase.Grass.GrassStyle;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -121,8 +122,10 @@ namespace MeridianMotion.Showcase.Levels
         /// within the settings' clearance (so paving is left round walls, stairs, rails and columns, and routes up and
         /// down stay paved). Each lawn has, along its edges, the odd shrub, and grass over it: a GrassField ("Grass", in
         /// the Lawns group) whose blades are made on the GPU from a mask of the lawns, one layer per floor (see LawnMask).
-        /// Raised a little, with no collider. Placed once the level's built (see Defer), before any trees put off after
-        /// it; the lawns in chunks, so each mesh stays small and is culled on its own. spacing scales the cells (bigger
+        /// Raised a little, with no collider, their tops cut across the cells' corners rather than round them in steps
+        /// and their edges bevelled (see LawnSquare), drawn with the lawn material (coloured by the field to match its
+        /// grass). Placed once the level's built (see Defer), before any trees put off after it; the lawns in chunks, so
+        /// each mesh stays small and is culled on its own. spacing scales the cells (bigger
         /// for wide, sparse ground) and density the grass (1 is its style's full density).
         /// </summary>
         [Piece]
@@ -137,6 +140,7 @@ namespace MeridianMotion.Showcase.Levels
                 int nx = Mathf.FloorToInt(area.width / cell), nz = Mathf.FloorToInt(area.height / cell);
                 Transform lawns = Group(parent, "Lawns");
                 var masks = new List<(float height, bool[,] grass)>();
+                var lawnRenderers = new List<MeshRenderer>();
                 bool FloorAt(float x, float z, float height) =>
                     FloorUnder(parent, new Vector2(x, z), height, out float under) && Mathf.Abs(under - height) < 0.06f;
                 foreach (float floor in floors)
@@ -160,31 +164,32 @@ namespace MeridianMotion.Showcase.Levels
                     if (anyGrass) { masks.Add((floor + t, grass)); }
                     bool Grass(int i, int j) => i >= 0 && j >= 0 && i < nx && j < nz && grass[i, j];
 
+                    // In chunks of the squares between the cells' middles (see LawnSquare), which reach half a cell past
+                    // the cells on every side; the shrubs by the cells themselves.
                     const int chunk = 16;
-                    for (int ci = 0; ci < nx; ci += chunk)
+                    float top = floor + t;
+                    for (int ci = 0; ci <= nx; ci += chunk)
                     {
-                        for (int cj = 0; cj < nz; cj += chunk)
+                        for (int cj = 0; cj <= nz; cj += chunk)
                         {
                             var mesh = new GrayboxMesh();
                             bool any = false;
+                            for (int si = ci; si < Mathf.Min(ci + chunk, nx + 1); si++)
+                            {
+                                for (int sj = cj; sj < Mathf.Min(cj + chunk, nz + 1); sj++)
+                                {
+                                    any |= LawnSquare(mesh, Grass, si, sj, area.min, cell, floor, top);
+                                }
+                            }
                             for (int i = ci; i < Mathf.Min(ci + chunk, nx); i++)
                             {
                                 for (int j = cj; j < Mathf.Min(cj + chunk, nz); j++)
                                 {
                                     if (!grass[i, j]) { continue; }
-                                    any = true;
-                                    float x0 = area.xMin + i * cell, z0 = area.yMin + j * cell, x1 = x0 + cell, z1 = z0 + cell, top = floor + t;
-                                    mesh.Quad(GrayboxMaterial.Grass, Vector3.up, new(x0, top, z0), new(x1, top, z0), new(x1, top, z1), new(x0, top, z1));
-                                    // Sides only at the lawn's edge, where the cell beside it is paving.
-                                    if (!Grass(i - 1, j)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.left, new(x0, floor, z0), new(x0, top, z0), new(x0, top, z1), new(x0, floor, z1)); }
-                                    if (!Grass(i + 1, j)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.right, new(x1, floor, z0), new(x1, floor, z1), new(x1, top, z1), new(x1, top, z0)); }
-                                    if (!Grass(i, j - 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.back, new(x0, floor, z0), new(x1, floor, z0), new(x1, top, z0), new(x0, top, z0)); }
-                                    if (!Grass(i, j + 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.forward, new(x0, floor, z1), new(x0, top, z1), new(x1, top, z1), new(x1, floor, z1)); }
-
                                     bool border = !Grass(i - 1, j) || !Grass(i + 1, j) || !Grass(i, j - 1) || !Grass(i, j + 1);
                                     if (border && random.NextDouble() < f.borderShrubChance)
                                     {
-                                        Shrub(mesh, new Vector3((x0 + x1) / 2f, top, (z0 + z1) / 2f), random);
+                                        Shrub(mesh, new Vector3(area.xMin + (i + 0.5f) * cell, top, area.yMin + (j + 0.5f) * cell), random);
                                     }
                                 }
                             }
@@ -193,70 +198,200 @@ namespace MeridianMotion.Showcase.Levels
                             lawn.transform.SetParent(lawns, false);
                             mesh.AddTo(lawn, lawn.name);
                             MakeStatic(lawn, occluder: false);
+                            lawnRenderers.Add(lawn.GetComponent<MeshRenderer>());
                         }
                     }
                 }
-                if (masks.Count > 0) { AddGrass(lawns, area.min, cell, nx, nz, masks, density); }
+                if (masks.Count > 0) { AddGrass(lawns, area.min, cell, nx, nz, masks, density, lawnRenderers); }
             });
         }
 
         /// <summary>The mask's texel size (m): fine enough for its edges to follow the lawns' cells.</summary>
         public const float GrassTexel = 0.25f;
 
-        /// <summary>How far in from a lawn's edge (m) its grass thins to nothing, so it doesn't stop in a hard line.</summary>
+        /// <summary>How far in from a lawn's edge (m) its grass thins out, so it doesn't stop in a hard line.</summary>
         public const float GrassEdgeFade = 0.5f;
 
-        /// <summary>Where the grass's shaders are.</summary>
+        /// <summary>How far in from a lawn's edge (m) the grass is longer (the style's Edge Length), most at the edge.</summary>
+        public const float GrassEdgeReach = 1f;
+
+        /// <summary>How far out a lawn's edge slopes down to the floor (m): a small bevel, not a step.</summary>
+        public const float LawnBevel = 0.06f;
+
+        /// <summary>Where the grass's shaders, styles and the lawn's material are.</summary>
         private const string GrassFolder = "Assets/Showcase/Grass/";
+
+        /// <summary>The style lawns' grass is given (Create Grass Assets makes it); without it, the style's defaults.</summary>
+        public const string LawnStylePath = GrassFolder + "Styles/Lawn.asset";
+
+        /// <summary>The lawns' material, the Lawn shader (Create Grass Assets makes it); without it, the palette's Grass.</summary>
+        public const string LawnMaterialPath = GrassFolder + "Lawn.mat";
 
         /// <summary>
         /// A GrassField ("Grass") in lawns, over the lawns' cells (cell wide, nx by nz from corner, in lawns' space), with a
-        /// layer for each floor that has any (its lawns' top, and which cells are lawn): see LawnMask.
+        /// layer for each floor that has any (its lawns' top, and which cells are lawn: see LawnMask), and the lawns under
+        /// it (given the lawn material, so the field can colour them to match its grass).
         /// </summary>
-        private static void AddGrass(Transform lawns, Vector2 corner, float cell, int nx, int nz, List<(float height, bool[,] grass)> masks, float density)
+        private static void AddGrass(Transform lawns, Vector2 corner, float cell, int nx, int nz, List<(float height, bool[,] grass)> masks, float density,
+            List<MeshRenderer> lawnRenderers)
         {
             var size = new Vector2Int(Mathf.CeilToInt(nx * cell / GrassTexel), Mathf.CeilToInt(nz * cell / GrassTexel));
             var layers = new List<GrassField.Layer>();
             foreach ((float height, bool[,] grass) in masks)
             {
-                layers.Add(new GrassField.Layer { height = height, density = LawnMask(grass, cell, size, density) });
+                (byte[] densityMask, byte[] edgeMask) = LawnMask(grass, cell, size, density);
+                layers.Add(new GrassField.Layer { height = height, density = densityMask, edge = edgeMask });
             }
             var obj = new GameObject("Grass");
             obj.transform.SetParent(lawns, false);
             var field = obj.AddComponent<GrassField>();
             field.SetMask(corner, GrassTexel, size, layers);
+            field.Style = AssetDatabase.LoadAssetAtPath<GrassStyle>(LawnStylePath);
+            var lawnMaterial = AssetDatabase.LoadAssetAtPath<Material>(LawnMaterialPath);
+            if (lawnMaterial != null)
+            {
+                Material palette = For(GrayboxMaterial.Grass);
+                foreach (MeshRenderer renderer in lawnRenderers)
+                {
+                    Material[] materials = renderer.sharedMaterials;
+                    for (int i = 0; i < materials.Length; i++) { if (materials[i] == palette) { materials[i] = lawnMaterial; } }
+                    renderer.sharedMaterials = materials;
+                }
+                field.SetLawns(lawnRenderers);
+            }
             field.SetShaders(AssetDatabase.LoadAssetAtPath<ComputeShader>(GrassFolder + "GrassBlades.compute"),
                 AssetDatabase.LoadAssetAtPath<Shader>(GrassFolder + "Grass.shader"));
         }
 
         /// <summary>
-        /// A floor's grass mask: size texels (GrassTexel square), each 0 to 255 by how much grass it has. A texel's in the
-        /// lawn if its cell (cell wide, grass saying which are lawn) is; the mask is that, blurred and kept inside the lawn,
-        /// so the grass thins out over GrassEdgeFade in from the lawn's edge; times density (at most 1).
+        /// The shape of the lawn in a square between four cells' middles, as marching squares cut it: in unit coordinates
+        /// (0 to 1 across the square, from its corner cell), the corners that are lawn and the points halfway along the
+        /// sides where it changes, in order round the square (always convex). By which corners are lawn: bit 0 the
+        /// square's corner cell, then round it (+x, then +x and +z, then +z). Where only two opposite corners are, the
+        /// lawn joins them across the middle.
         /// </summary>
-        public static byte[] LawnMask(bool[,] grass, float cell, Vector2Int size, float density)
+        private static readonly (Vector2 at, bool middle)[][] SquareShapes = MakeSquareShapes();
+
+        private static (Vector2, bool)[][] MakeSquareShapes()
+        {
+            var corners = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+            var shapes = new (Vector2, bool)[16][];
+            for (int c = 0; c < 16; c++)
+            {
+                var shape = new List<(Vector2, bool)>();
+                for (int k = 0; k < 4; k++)
+                {
+                    bool here = (c & (1 << k)) != 0, next = (c & (1 << ((k + 1) % 4))) != 0;
+                    if (here) { shape.Add((corners[k], false)); }
+                    if (here != next) { shape.Add(((corners[k] + corners[(k + 1) % 4]) / 2f, true)); }
+                }
+                shapes[c] = shape.ToArray();
+            }
+            return shapes;
+        }
+
+        /// <summary>Which corners of square (si, sj) are lawn (see SquareShapes): its corner cell is (si - 1, sj - 1).</summary>
+        private static int SquareCase(System.Func<int, int, bool> lawn, int si, int sj) =>
+            (lawn(si - 1, sj - 1) ? 1 : 0) | (lawn(si, sj - 1) ? 2 : 0) | (lawn(si, sj) ? 4 : 0) | (lawn(si - 1, sj) ? 8 : 0);
+
+        /// <summary>
+        /// The lawn in square (si, sj), between the middles of cells (si - 1, sj - 1) and (si, sj) (cell wide, from corner,
+        /// lawn saying which cells are lawn): its top at top, cut as SquareShapes says, so its edges run along the cells'
+        /// sides and across their corners rather than round them in steps; and where its edge crosses the square, a bevel
+        /// down to the floor. Whether there was any.
+        /// </summary>
+        private static bool LawnSquare(GrayboxMesh mesh, System.Func<int, int, bool> lawn, int si, int sj, Vector2 corner, float cell, float floor, float top)
+        {
+            int c = SquareCase(lawn, si, sj);
+            if (c == 0) { return false; }
+            (Vector2 at, bool middle)[] shape = SquareShapes[c];
+            Vector2 origin = corner + new Vector2((si - 0.5f) * cell, (sj - 0.5f) * cell);
+            Vector3 Point(Vector2 unit, float height, Vector2 outward = default) =>
+                new(origin.x + unit.x * cell + outward.x, height, origin.y + unit.y * cell + outward.y);
+
+            var points = new Vector3[shape.Length];
+            for (int k = 0; k < shape.Length; k++) { points[k] = Point(shape[k].at, top); }
+            int first = mesh.Face(Vector3.up, points);
+            for (int k = 1; k + 1 < shape.Length; k++) { mesh.Triangle(GrayboxMaterial.Grass, first, first + k, first + k + 1, Vector3.up); }
+
+            // The edge: between two middles in a row, sloping out and down to the floor, away from the corners that aren't lawn.
+            Vector2 outside = Vector2.zero;
+            for (int k = 0; k < 4; k++) { if ((c & (1 << k)) == 0) { outside += new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up }[k]; } }
+            for (int k = 0; k < shape.Length; k++)
+            {
+                (Vector2 a, bool am) = shape[k];
+                (Vector2 b, bool bm) = shape[(k + 1) % shape.Length];
+                if (!am || !bm) { continue; }
+                Vector2 along = (b - a).normalized, outward = new(along.y, -along.x);
+                // Toward the nearest corner that isn't lawn (in a saddle, each edge has one beside it).
+                Vector2 mid = (a + b) / 2f, nearest = Vector2.zero;
+                float best = float.MaxValue;
+                for (int q = 0; q < 4; q++)
+                {
+                    if ((c & (1 << q)) != 0) { continue; }
+                    Vector2 cq = new[] { Vector2.zero, Vector2.right, Vector2.one, Vector2.up }[q];
+                    if ((cq - mid).sqrMagnitude < best) { best = (cq - mid).sqrMagnitude; nearest = cq; }
+                }
+                if (Vector2.Dot(outward, nearest - mid) < 0f) { outward = -outward; }
+                Vector3 normal = new Vector3(outward.x * (top - floor), LawnBevel, outward.y * (top - floor)).normalized;
+                mesh.Quad(GrayboxMaterial.Grass, normal, Point(a, top), Point(b, top), Point(b, floor, outward * LawnBevel), Point(a, floor, outward * LawnBevel));
+            }
+            return true;
+        }
+
+        /// <summary>Whether a point (in unit coordinates) is in a convex shape from SquareShapes (or on its edge).</summary>
+        private static bool InShape((Vector2 at, bool middle)[] shape, Vector2 p)
+        {
+            if (shape.Length < 3) { return false; }
+            float sign = 0f;
+            for (int k = 0; k < shape.Length; k++)
+            {
+                Vector2 a = shape[k].at, b = shape[(k + 1) % shape.Length].at;
+                float cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+                if (Mathf.Abs(cross) < 1e-6f) { continue; }
+                if (sign == 0f) { sign = Mathf.Sign(cross); }
+                else if (Mathf.Sign(cross) != sign) { return false; }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// A floor's grass mask: size texels (GrassTexel square), each 0 to 255. A texel's in the lawn if it's inside the
+        /// lawn's top (see LawnSquare: so the grass follows its cut corners). Its density is that, blurred and kept inside
+        /// the lawn, so the grass thins out over GrassEdgeFade in from the lawn's edge, times density (at most 1). Its edge
+        /// is how near the lawn's edge it is: 255 at it, falling to nothing GrassEdgeReach in.
+        /// </summary>
+        public static (byte[] density, byte[] edge) LawnMask(bool[,] grass, float cell, Vector2Int size, float density)
         {
             int nx = grass.GetLength(0), nz = grass.GetLength(1);
+            bool Lawn(int i, int j) => i >= 0 && j >= 0 && i < nx && j < nz && grass[i, j];
             var coverage = new float[size.x * size.y];
             for (int z = 0; z < size.y; z++)
             {
                 for (int x = 0; x < size.x; x++)
                 {
-                    int i = Mathf.Min(nx - 1, Mathf.FloorToInt((x + 0.5f) * GrassTexel / cell)), j = Mathf.Min(nz - 1, Mathf.FloorToInt((z + 0.5f) * GrassTexel / cell));
-                    coverage[z * size.x + x] = grass[i, j] ? 1f : 0f;
+                    // Which square the texel's middle is in, and where in it.
+                    float u = (x + 0.5f) * GrassTexel / cell + 0.5f, v = (z + 0.5f) * GrassTexel / cell + 0.5f;
+                    int si = Mathf.FloorToInt(u), sj = Mathf.FloorToInt(v);
+                    int c = SquareCase(Lawn, si, sj);
+                    coverage[z * size.x + x] = c != 0 && InShape(SquareShapes[c], new Vector2(u - si, v - sj)) ? 1f : 0f;
                 }
             }
-            // A box blur across GrassEdgeFade, in x then z: inside the lawn it's 1, at its edge a half, outside less.
-            int r = Mathf.Max(1, Mathf.RoundToInt(GrassEdgeFade / GrassTexel / 2f));
-            float[] blurred = Blur(Blur(coverage, size, r, 1, 0), size, r, 0, 1);
-            var mask = new byte[size.x * size.y];
+            // Box blurs, in x then z: inside the lawn they're 1, at its edge a half, outside less.
+            int fade = Mathf.Max(1, Mathf.RoundToInt(GrassEdgeFade / GrassTexel / 2f));
+            int reach = Mathf.Max(1, Mathf.RoundToInt(GrassEdgeReach / GrassTexel));
+            float[] near = Blur(Blur(coverage, size, fade, 1, 0), size, fade, 0, 1);
+            float[] wide = Blur(Blur(coverage, size, reach, 1, 0), size, reach, 0, 1);
+            var densityMask = new byte[size.x * size.y];
+            var edgeMask = new byte[size.x * size.y];
             float most = Mathf.Clamp01(density);
-            for (int k = 0; k < mask.Length; k++)
+            for (int k = 0; k < densityMask.Length; k++)
             {
-                float inside = coverage[k] > 0f ? Mathf.Clamp01((blurred[k] - 0.5f) * 2f) : 0f;
-                mask[k] = (byte)Mathf.RoundToInt(255f * inside * most);
+                if (coverage[k] <= 0f) { continue; }
+                densityMask[k] = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01((near[k] - 0.5f) * 2f) * most);
+                edgeMask[k] = (byte)Mathf.RoundToInt(255f * Mathf.Clamp01((1f - wide[k]) * 2f));
             }
-            return mask;
+            return (densityMask, edgeMask);
         }
 
         private static float[] Blur(float[] values, Vector2Int size, int r, int dx, int dz)

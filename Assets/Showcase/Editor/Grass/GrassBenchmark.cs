@@ -18,8 +18,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
     /// and renders fixed camera spots over its largest lawns, once with the grass and once without, and writes a report,
     /// and a picture of each spot with the grass, to Logs/GrassBenchmark/[time]. Its spots come from the lawns' own meshes ("Lawn (+…)" under each "Lawns" group), which
     /// the old grass and the new both have, so runs before and after a change are comparable. "The grass" is whatever
-    /// draws blades: the old baked "Grass Tufts" objects, and any behaviour named GrassField (found by name, so this
-    /// tool needs neither).
+    /// draws blades: the old baked "Grass Tufts" objects (none since O3), and the GrassFields.
     /// </summary>
     public static class GrassBenchmark
     {
@@ -53,7 +52,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
 
         /// <summary>
         /// The command line's way in: <c>-executeMethod MeridianMotion.Showcase.Grass.EditorTools.GrassBenchmark.MeasureFromCommandLine</c>,
-        /// with <c>-scene [path]</c> for one level only.
+        /// with <c>-scene [path]</c> for one level only, and <c>-style [path]</c> for every level's grass in that style.
         /// </summary>
         public static void MeasureFromCommandLine()
         {
@@ -79,6 +78,10 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             string[] arguments = Environment.GetCommandLineArgs();
             int given = Array.IndexOf(arguments, "-scene");
             string[] scenes = given >= 0 && given + 1 < arguments.Length ? new[] { arguments[given + 1] } : Scenes;
+            // -style [path] measures (and pictures) every level's grass in that style instead of its own (not saved).
+            int styled = Array.IndexOf(arguments, "-style");
+            style = styled >= 0 && styled + 1 < arguments.Length ? AssetDatabase.LoadAssetAtPath<GrassStyle>(arguments[styled + 1]) : null;
+            if (style != null) { report.AppendLine($"Every level's grass in the style {AssetDatabase.GetAssetPath(style)}."); report.AppendLine(); }
             foreach (string scene in scenes)
             {
                 if (!File.Exists(scene)) { report.AppendLine($"## {scene}\n\nMissing.\n"); continue; }
@@ -90,9 +93,16 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             return path;
         }
 
+        /// <summary>The style every field is given for the run, if one was (-style).</summary>
+        private static GrassStyle style;
+
         private static void MeasureScene(string scenePath, StringBuilder report)
         {
             EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            if (style != null)
+            {
+                foreach (GrassField field in AllObjects().SelectMany(o => o.GetComponents<GrassField>())) { field.Style = style; }
+            }
             report.AppendLine($"## {Path.GetFileNameWithoutExtension(scenePath)}");
             report.AppendLine();
             report.AppendLine($"Scene file: {new FileInfo(scenePath).Length / (1024f * 1024f):0.0} MB.");
@@ -130,11 +140,17 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             try
             {
                 int spotNumber = 1;
+                highlights.Clear();
                 foreach ((string name, Vector3 position, Quaternion rotation) in spots)
                 {
                     cameraObject.transform.SetPositionAndRotation(position, rotation);
                     (Sample with, Sample without) = RenderBoth(camera, target, tufts, fields);
                     SavePicture(camera, target, $"{Path.GetFileNameWithoutExtension(scenePath)} {spotNumber++} {name.Replace('/', ' ')}");
+                    (int nans, int bright, float brightest) = Brightness(camera, target);
+                    SetGrass(tufts, fields, false);
+                    (int nansWithout, int brightWithout, float brightestWithout) = Brightness(camera, target);
+                    SetGrass(tufts, fields, true);
+                    highlights.AppendLine($"| {name} | {nans:N0} | {nansWithout:N0} | {bright:N0} | {brightWithout:N0} | {brightest:0.00} | {brightestWithout:0.00} |");
                     report.AppendLine($"| {name} | {with.ms:0.00} | {without.ms:0.00} | {with.ms - without.ms:0.00} | {Ms(with.gpuMs)} | {Ms(without.gpuMs)} | " +
                         $"{Ms(with.gpuMs - without.gpuMs)} | {VisibleTuftTriangles(camera, tufts):N0} |");
                 }
@@ -147,6 +163,12 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                 target.Release();
                 UnityEngine.Object.DestroyImmediate(target);
             }
+            report.AppendLine();
+            report.AppendLine($"Highlights, before the post-processing: pixels that aren't numbers (NaN or infinite, which bloom spreads into flashes), and pixels brighter than {BloomThreshold} (bloom's threshold), with the grass and without.");
+            report.AppendLine();
+            report.AppendLine("| Spot | NaN, grass | NaN, none | Over threshold, grass | Over threshold, none | Brightest, grass | Brightest, none |");
+            report.AppendLine("| --- | --- | --- | --- | --- | --- | --- |");
+            report.Append(highlights);
             report.AppendLine();
             foreach ((string name, Vector3 position, Quaternion rotation) in spots)
             {
@@ -172,6 +194,143 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             RenderTexture.ReleaseTemporary(ldr);
             File.WriteAllBytes(Path.Combine(runFolder, name + ".png"), picture.EncodeToPNG());
             UnityEngine.Object.DestroyImmediate(picture);
+        }
+
+        /// <summary>
+        /// Looks for flashes as the camera moves (a diagnostic, -executeMethod ...GrassBenchmark.FlashesFromCommandLine
+        /// -scene [path]): walks the camera across the level's largest lawn at eye height, a little each frame, renders
+        /// each frame without post-processing, and counts the pixels that are much brighter than in the frames either
+        /// side (a flash lasts a frame). Writes the counts, and the frames with the most, to Logs/GrassBenchmark/[time].
+        /// </summary>
+        public static void FlashesFromCommandLine()
+        {
+            int code = 0;
+            try
+            {
+                string[] arguments = Environment.GetCommandLineArgs();
+                int given = Array.IndexOf(arguments, "-scene");
+                string scenePath = given >= 0 ? arguments[given + 1] : Scenes[0];
+                runFolder = Path.Combine("Logs", "GrassBenchmark", "Flashes-" + DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+                Directory.CreateDirectory(runFolder);
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                (string name, Vector3 position, Quaternion rotation) spot = Spots()[0];
+                var cameraObject = new GameObject("Grass Benchmark Camera") { hideFlags = HideFlags.DontSave };
+                var camera = cameraObject.AddComponent<Camera>();
+                camera.fieldOfView = 60f;
+                camera.nearClipPlane = 0.1f;
+                camera.farClipPlane = 1000f;
+                var data = cameraObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                data.renderPostProcessing = false;
+                const int frames = 300, w = 960, h = 540, Block = 16;
+                const float Step = 0.05f, Turn = 0.15f;
+                var target = new RenderTexture(w, h, 24, RenderTextureFormat.ARGBHalf);
+                camera.targetTexture = target;
+                var images = new List<float[]>();
+                Vector3 forward = spot.rotation * Vector3.forward;
+                forward.y = 0f;
+                forward.Normalize();
+                var report = new StringBuilder($"# Flashes in {Path.GetFileNameWithoutExtension(scenePath)}, from {spot.name}\n\nThe camera moves {Step} m and turns {Turn}° a frame.\n\n| Frame | Blocks flashing | Brightest flash |\n| --- | --- | --- |\n");
+                for (int f = 0; f < frames; f++)
+                {
+                    // Walking forward and turning slowly, as a player would.
+                    cameraObject.transform.SetPositionAndRotation(spot.position + forward * (Step * f), Quaternion.Euler(0f, Turn * f, 0f) * spot.rotation);
+                    camera.Render();
+                    AsyncGPUReadback.WaitAllRequests();
+                    AsyncGPUReadbackRequest request = AsyncGPUReadback.Request(target, 0, TextureFormat.RGBAFloat);
+                    request.WaitForCompletion();
+                    Unity.Collections.NativeArray<Color> pixels = request.GetData<Color>();
+                    var luminance = new float[pixels.Length];
+                    for (int k = 0; k < pixels.Length; k++) { Color c = pixels[k]; luminance[k] = 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b; }
+                    images.Add(luminance);
+                }
+                // By blocks of pixels, not pixels: a block whose average brightness jumps for one frame against both
+                // frames either side is a flash over an area (a blade sliding across a pixel only shimmers).
+                int bw = w / Block, bh = h / Block;
+                var blocks = new List<float[]>();
+                foreach (float[] image in images)
+                {
+                    var b = new float[bw * bh];
+                    for (int k = 0; k < image.Length; k++)
+                    {
+                        int bx = (k % w) / Block, by = (k / w) / Block;
+                        if (bx < bw && by < bh) { b[by * bw + bx] += image[k] / (Block * Block); }
+                    }
+                    blocks.Add(b);
+                }
+                var counts = new int[frames];
+                for (int f = 1; f + 1 < frames; f++)
+                {
+                    float most = 0f;
+                    for (int k = 0; k < bw * bh; k++)
+                    {
+                        float a = blocks[f - 1][k], b = blocks[f][k], c = blocks[f + 1][k];
+                        float over = b - Mathf.Max(a, c);
+                        if (float.IsNaN(b) || over > 0.04f + 0.15f * Mathf.Max(a, c)) { counts[f]++; most = Mathf.Max(most, float.IsNaN(b) ? 99f : over); }
+                    }
+                    report.AppendLine($"| {f} | {counts[f]:N0} | {most:0.00} |");
+                }
+                // The frames with the most flashing, with the frames either side, as pictures.
+                foreach (int f in Enumerable.Range(1, frames - 2).OrderByDescending(f => counts[f]).Take(3))
+                {
+                    for (int g = f - 1; g <= f + 1; g++)
+                    {
+                        var picture = new Texture2D(w, h, TextureFormat.RGB24, false);
+                        for (int k = 0; k < images[g].Length; k++)
+                        {
+                            float v = Mathf.Clamp01(images[g][k]);
+                            int bk = Mathf.Min((k / w) / Block, bh - 1) * bw + Mathf.Min((k % w) / Block, bw - 1);
+                            bool edge = (k % w) % Block == 0 || (k / w) % Block == 0;
+                            bool flash = g == f && edge && blocks[f][bk] - Mathf.Max(blocks[f - 1][bk], blocks[f + 1][bk]) > 0.04f + 0.15f * Mathf.Max(blocks[f - 1][bk], blocks[f + 1][bk]);
+                            picture.SetPixel(k % w, k / w, flash ? Color.magenta : new Color(v, v, v));
+                        }
+                        File.WriteAllBytes(Path.Combine(runFolder, $"frame {f:00} ({g - f:+0;-0;0}).png"), picture.EncodeToPNG());
+                        UnityEngine.Object.DestroyImmediate(picture);
+                    }
+                }
+                report.Insert(report.ToString().IndexOf("| Frame"), $"Blocks ({Block} pixels square) flashing, a frame on average: {counts.Skip(1).Take(frames - 2).Average():N1} of {(w / Block) * (h / Block):N0}; frames with any: {counts.Count(c => c > 0)}.\n\n");
+                File.WriteAllText(Path.Combine(runFolder, "Flashes.md"), report.ToString());
+                camera.targetTexture = null;
+                UnityEngine.Object.DestroyImmediate(cameraObject);
+                target.Release();
+            }
+            catch (Exception e) { Debug.LogException(e); code = 1; }
+            EditorApplication.Exit(code);
+        }
+
+        /// <summary>The levels' bloom threshold (LevelDefinition's grade): what's brighter glows.</summary>
+        private const float BloomThreshold = 1.1f;
+
+        private static readonly StringBuilder highlights = new();
+
+        /// <summary>
+        /// The camera's view before post-processing (rendered with it off): how many pixels aren't numbers, how many are
+        /// brighter than BloomThreshold, and the brightest (its largest channel).
+        /// </summary>
+        private static (int nans, int bright, float brightest) Brightness(Camera camera, RenderTexture target)
+        {
+            var data = camera.GetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+            bool post = data != null && data.renderPostProcessing;
+            if (data != null) { data.renderPostProcessing = false; }
+            var linear = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGBHalf) { name = "Grass Benchmark Highlights" };
+            camera.targetTexture = linear;
+            camera.Render();
+            AsyncGPUReadbackRequest request = AsyncGPUReadback.Request(linear, 0, TextureFormat.RGBAFloat);
+            request.WaitForCompletion();
+            int nans = 0, bright = 0;
+            float brightest = 0f;
+            Unity.Collections.NativeArray<Color> pixels = request.GetData<Color>();
+            foreach (Color c in pixels)
+            {
+                float most = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+                if (float.IsNaN(most) || float.IsInfinity(most)) { nans++; continue; }
+                if (most > BloomThreshold) { bright++; }
+                brightest = Mathf.Max(brightest, most);
+            }
+            camera.targetTexture = target;
+            if (data != null) { data.renderPostProcessing = post; }
+            linear.Release();
+            UnityEngine.Object.DestroyImmediate(linear);
+            return (nans, bright, brightest);
         }
 
         private struct Sample { public double ms, gpuMs; }

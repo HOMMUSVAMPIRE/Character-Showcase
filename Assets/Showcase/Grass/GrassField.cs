@@ -15,7 +15,8 @@ namespace MeridianMotion.Showcase.Grass
     /// the mask has grass, culled by the view and thinned out with distance, into a near list and a far list;</item>
     /// <item>draws each list in one indirect draw (Grass.shader), the near blades curved and the far ones a triangle each.</item>
     /// </list>
-    /// A blade is placed by a hash of its cell, so it stays put as the camera moves. The level builders lay the mask
+    /// A blade is placed by a hash of its cell, so it stays put as the camera moves. The field also colours the lawns
+    /// under it (SetLawns), so they match its grass. The level builders lay the mask
     /// (Graybox.Lawns); the field knows nothing of the level, the character or the camera rig. It has no collider.
     /// Without compute shaders (or indirect draws), it draws nothing, and the lawn under it is all there is.
     /// </summary>
@@ -26,7 +27,10 @@ namespace MeridianMotion.Showcase.Grass
         /// <summary>The mask's chunks are this many texels square: the unit the CPU culls by.</summary>
         public const int ChunkTexels = 32;
 
-        /// <summary>One floor's mask: its height in the field's space, and its density (0 to 255) a texel at a time, row by row in x.</summary>
+        /// <summary>
+        /// One floor's mask: its height in the field's space, and at each texel (a row of x at a time from the mask's
+        /// corner, 0 to 255) how much grass there is and how near the lawn's edge it is.
+        /// </summary>
         [Serializable]
         public sealed class Layer
         {
@@ -34,6 +38,8 @@ namespace MeridianMotion.Showcase.Grass
             public float height;
             [Tooltip("How much grass there is at each texel (0: none, 255: the style's full density), a row of x at a time from the mask's corner.")]
             public byte[] density;
+            [Tooltip("How near each texel is to the lawn's edge (255: at it, 0: well inside), where the style's Edge Length makes the grass longer. Empty: none is.")]
+            public byte[] edge;
         }
 
         [Tooltip("How the grass looks: its blades, colour, spacing and draw distance. Without one, a short lawn.")]
@@ -42,6 +48,9 @@ namespace MeridianMotion.Showcase.Grass
         [SerializeField] private ComputeShader generator;
         [Tooltip("The shader the blades are drawn with (Grass.shader).")]
         [SerializeField] private Shader shader;
+
+        [Tooltip("The lawns under the grass, drawn with the Lawn shader: their colours are set from the style.")]
+        [SerializeField] private List<Renderer> lawns = new();
 
         [Tooltip("The mask's corner (m, x and z in the field's space).")]
         [SerializeField] private Vector2 origin;
@@ -61,7 +70,7 @@ namespace MeridianMotion.Showcase.Grass
                 if (defaultStyle == null) { defaultStyle = ScriptableObject.CreateInstance<GrassStyle>(); defaultStyle.hideFlags = HideFlags.HideAndDontSave; }
                 return defaultStyle;
             }
-            set => style = value;
+            set { style = value; lawnLook = default; }
         }
 
         private static GrassStyle defaultStyle;
@@ -74,6 +83,16 @@ namespace MeridianMotion.Showcase.Grass
 
         /// <summary>Whether this platform can draw the grass (compute shaders and indirect draws).</summary>
         public static bool Supported => SystemInfo.supportsComputeShaders && SystemInfo.supportsIndirectArgumentsBuffer;
+
+        /// <summary>
+        /// Gives the field the lawns under its grass (the level builders do, as they add it), drawn with the Lawn shader:
+        /// it sets their colours from its style, so they match its blades.
+        /// </summary>
+        public void SetLawns(IEnumerable<Renderer> lawns)
+        {
+            this.lawns = new List<Renderer>(lawns);
+            lawnLook = default;
+        }
 
         /// <summary>Gives the field the shaders it draws with (the level builders do, as they add it).</summary>
         public void SetShaders(ComputeShader generator, Shader shader)
@@ -99,6 +118,10 @@ namespace MeridianMotion.Showcase.Grass
                 {
                     throw new ArgumentException($"A layer's density has {layer.density?.Length ?? 0} texels, not {size.x} × {size.y}.");
                 }
+                if (layer.edge != null && layer.edge.Length != 0 && layer.edge.Length != size.x * size.y)
+                {
+                    throw new ArgumentException($"A layer's edge has {layer.edge.Length} texels, not {size.x} × {size.y}.");
+                }
             }
             Rebuild();
         }
@@ -108,8 +131,8 @@ namespace MeridianMotion.Showcase.Grass
         /// <summary>A chunk of the mask with grass in it: its corner (in the field's space), its layer and its floor's height.</summary>
         private struct Chunk { public Vector2 corner; public int layer; public float height; }
 
-        /// <summary>A blade, as the compute shader writes it and Grass.shader reads it: 8 floats.</summary>
-        private const int BladeStride = 8 * sizeof(float);
+        /// <summary>A blade, as the compute shader writes it and Grass.shader reads it: 9 floats (Blade, in GrassCommon.hlsl).</summary>
+        private const int BladeStride = 9 * sizeof(float);
 
         private readonly List<Chunk> chunks = new();
         private Vector4[] visible = Array.Empty<Vector4>();
@@ -117,10 +140,61 @@ namespace MeridianMotion.Showcase.Grass
         private readonly Plane[] frustum = new Plane[6];
         private Texture2DArray maskTexture;
         private Material material;
-        private GraphicsBuffer chunkBuffer, nearBlades, farBlades, nearArgs, farArgs, counts, nearIndices, farIndices;
-        private int nearCapacity = 65536, farCapacity = 131072, segments;
-        private MaterialPropertyBlock nearProperties, farProperties;
-        private bool readingBack, ready, stale;
+        private GraphicsBuffer nearIndices, farIndices;
+        private int segments;
+        private bool ready, stale;
+
+        /// <summary>
+        /// A camera's own blade lists, the chunks it sees, and their draw arguments. Each camera has its own (the game's,
+        /// the Scene view's), so one camera placing its blades can never change what another draws: a camera drawing
+        /// another's blades would show whole stretches of them culled and thinned for somewhere else, for a frame.
+        /// </summary>
+        private sealed class Lists
+        {
+            public GraphicsBuffer chunks, nearBlades, farBlades, nearArgs, farArgs, counts;
+            public int nearCapacity = 65536, farCapacity = 131072;
+            public bool readingBack;
+            public readonly MaterialPropertyBlock nearProperties = new(), farProperties = new();
+
+            public Lists(int chunkCount)
+            {
+                chunks = new GraphicsBuffer(GraphicsBuffer.Target.Structured, chunkCount, 4 * sizeof(float));
+                nearArgs = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.Raw, 5, sizeof(uint));
+                farArgs = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.Raw, 5, sizeof(uint));
+                counts = new GraphicsBuffer(GraphicsBuffer.Target.Raw, 2, sizeof(uint));
+                MakeBlades();
+            }
+
+            public void MakeBlades()
+            {
+                nearBlades?.Release();
+                farBlades?.Release();
+                nearBlades = new GraphicsBuffer(GraphicsBuffer.Target.Structured, nearCapacity, BladeStride);
+                farBlades = new GraphicsBuffer(GraphicsBuffer.Target.Structured, farCapacity, BladeStride);
+            }
+
+            public void Release()
+            {
+                foreach (GraphicsBuffer b in new[] { chunks, nearBlades, farBlades, nearArgs, farArgs, counts }) { b?.Release(); }
+                chunks = nearBlades = farBlades = nearArgs = farArgs = counts = null;
+            }
+
+            /// <summary>Grows the blade lists if the frame read back asked for more blades than they hold (they never shrink).</summary>
+            public void GrowIfShort(AsyncGPUReadbackRequest request)
+            {
+                readingBack = false;
+                if (counts == null || request.hasError) { return; }
+                Unity.Collections.NativeArray<uint> asked = request.GetData<uint>();
+                bool grow = false;
+                const int most = 1 << 22;
+                if (asked[0] > nearCapacity && nearCapacity < most) { nearCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[0] + 1)); grow = true; }
+                if (asked[1] > farCapacity && farCapacity < most) { farCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[1] + 1)); grow = true; }
+                if (grow) { MakeBlades(); }
+            }
+        }
+
+        private readonly Dictionary<Camera, Lists> lists = new();
+        private readonly List<Camera> gone = new();
         private int kernelGenerate, kernelFinish;
         private static readonly uint[] ResetArgs = new uint[5];
 
@@ -138,7 +212,12 @@ namespace MeridianMotion.Showcase.Grass
             public static readonly int Length = Shader.PropertyToID("_Length"), Width = Shader.PropertyToID("_Width"), Bend = Shader.PropertyToID("_Bend");
             public static readonly int Blades = Shader.PropertyToID("_Blades"), Segments = Shader.PropertyToID("_Segments");
             public static readonly int RootColour = Shader.PropertyToID("_RootColour"), TipColour = Shader.PropertyToID("_TipColour");
-            public static readonly int ColourVariation = Shader.PropertyToID("_ColourVariation");
+            public static readonly int ColourVariation = Shader.PropertyToID("_ColourVariation"), ClumpTint = Shader.PropertyToID("_ClumpTint");
+            public static readonly int RootShade = Shader.PropertyToID("_RootShade"), Translucency = Shader.PropertyToID("_Translucency");
+            public static readonly int SegmentLength = Shader.PropertyToID("_SegmentLength"), Droop = Shader.PropertyToID("_Droop");
+            public static readonly int DrawDistance = Shader.PropertyToID("_DrawDistance"), Clumps = Shader.PropertyToID("_Clumps");
+            public static readonly int ClumpSize = Shader.PropertyToID("_ClumpSize"), GroundShade = Shader.PropertyToID("_GroundShade");
+            public static readonly int ThinFrom = Shader.PropertyToID("_ThinFrom"), DetailDistance = Shader.PropertyToID("_DetailDistance");
         }
 
         private void OnEnable()
@@ -167,34 +246,32 @@ namespace MeridianMotion.Showcase.Grass
 
             FindChunks();
             if (chunks.Count == 0) { return; }
-            maskTexture = new Texture2DArray(size.x, size.y, layers.Count, TextureFormat.R8, false, true)
+            // Density in red, the edge in green.
+            maskTexture = new Texture2DArray(size.x, size.y, layers.Count, TextureFormat.RG16, false, true)
             {
                 name = "Grass Mask", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave,
             };
-            for (int i = 0; i < layers.Count; i++) { maskTexture.SetPixelData(layers[i].density, 0, i); }
+            var texels = new byte[2 * size.x * size.y];
+            for (int i = 0; i < layers.Count; i++)
+            {
+                byte[] density = layers[i].density, edge = layers[i].edge;
+                bool hasEdge = edge != null && edge.Length == density.Length;
+                for (int k = 0; k < density.Length; k++)
+                {
+                    texels[2 * k] = density[k];
+                    texels[2 * k + 1] = hasEdge ? edge[k] : (byte)0;
+                }
+                maskTexture.SetPixelData(texels, 0, i);
+            }
             maskTexture.Apply(false, true);
 
             material = new Material(shader) { name = "Grass Blades", hideFlags = HideFlags.HideAndDontSave };
-            chunkBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, chunks.Count, 4 * sizeof(float));
             visible = new Vector4[chunks.Count];
-            nearArgs = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.Raw, 5, sizeof(uint));
-            farArgs = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments | GraphicsBuffer.Target.Raw, 5, sizeof(uint));
-            counts = new GraphicsBuffer(GraphicsBuffer.Target.Raw, 2, sizeof(uint));
-            MakeBladeBuffers();
-            nearProperties = new MaterialPropertyBlock();
-            farProperties = new MaterialPropertyBlock();
             kernelGenerate = generator.FindKernel("Generate");
             kernelFinish = generator.FindKernel("Finish");
             segments = 0;
+            lawnLook = default;
             ready = true;
-        }
-
-        private void MakeBladeBuffers()
-        {
-            nearBlades?.Release();
-            farBlades?.Release();
-            nearBlades = new GraphicsBuffer(GraphicsBuffer.Target.Structured, nearCapacity, BladeStride);
-            farBlades = new GraphicsBuffer(GraphicsBuffer.Target.Structured, farCapacity, BladeStride);
         }
 
         /// <summary>The index buffer of a blade drawn in n segments: a strip of quads up to a tip triangle (see Grass.shader).</summary>
@@ -216,8 +293,11 @@ namespace MeridianMotion.Showcase.Grass
         private void Release()
         {
             ready = false;
-            foreach (GraphicsBuffer b in new[] { chunkBuffer, nearBlades, farBlades, nearArgs, farArgs, counts, nearIndices, farIndices }) { b?.Release(); }
-            chunkBuffer = nearBlades = farBlades = nearArgs = farArgs = counts = nearIndices = farIndices = null;
+            foreach (Lists l in lists.Values) { l.Release(); }
+            lists.Clear();
+            nearIndices?.Release();
+            farIndices?.Release();
+            nearIndices = farIndices = null;
             if (maskTexture != null) { DestroyImmediate(maskTexture); }
             if (material != null) { DestroyImmediate(material); }
             chunks.Clear();
@@ -256,11 +336,12 @@ namespace MeridianMotion.Showcase.Grass
             if (stale && isActiveAndEnabled) { stale = false; Rebuild(); }
             if (!ready || !Draws(camera)) { return; }
             GrassStyle s = Style;
+            UpdateLawns(s);
             float chunkSize = ChunkTexels * texelSize;
             // The grid fits a whole number of cells in a chunk, so every cell is in exactly one chunk.
             int perSide = Mathf.Max(1, Mathf.CeilToInt(chunkSize / s.spacing));
             float spacing = chunkSize / perSide;
-            float draw = s.drawDistance, tallest = s.length.y * 1.2f;
+            float draw = s.drawDistance, tallest = s.Tallest;
 
             // Which chunks are in view and near enough.
             GeometryUtility.CalculateFrustumPlanes(camera, frustum);
@@ -284,21 +365,22 @@ namespace MeridianMotion.Showcase.Grass
                 nearIndices = BladeIndices(segments);
                 farIndices = BladeIndices(1);
             }
+            Lists l = ListsFor(camera);
             ResetArgs[0] = (uint)nearIndices.count;
-            nearArgs.SetData(ResetArgs);
+            l.nearArgs.SetData(ResetArgs);
             ResetArgs[0] = (uint)farIndices.count;
-            farArgs.SetData(ResetArgs);
-            chunkBuffer.SetData(visible, 0, 0, count);
+            l.farArgs.SetData(ResetArgs);
+            l.chunks.SetData(visible, 0, 0, count);
 
             ComputeShader g = generator;
-            g.SetBuffer(kernelGenerate, Ids.Chunks, chunkBuffer);
+            g.SetBuffer(kernelGenerate, Ids.Chunks, l.chunks);
             g.SetTexture(kernelGenerate, Ids.Mask, maskTexture);
-            g.SetBuffer(kernelGenerate, Ids.NearBlades, nearBlades);
-            g.SetBuffer(kernelGenerate, Ids.FarBlades, farBlades);
-            g.SetBuffer(kernelGenerate, Ids.NearArgs, nearArgs);
-            g.SetBuffer(kernelGenerate, Ids.FarArgs, farArgs);
-            g.SetInt(Ids.NearCapacity, nearCapacity);
-            g.SetInt(Ids.FarCapacity, farCapacity);
+            g.SetBuffer(kernelGenerate, Ids.NearBlades, l.nearBlades);
+            g.SetBuffer(kernelGenerate, Ids.FarBlades, l.farBlades);
+            g.SetBuffer(kernelGenerate, Ids.NearArgs, l.nearArgs);
+            g.SetBuffer(kernelGenerate, Ids.FarArgs, l.farArgs);
+            g.SetInt(Ids.NearCapacity, l.nearCapacity);
+            g.SetInt(Ids.FarCapacity, l.farCapacity);
             g.SetMatrix(Ids.LocalToWorld, toWorld);
             g.SetVector(Ids.CameraPosition, eye);
             g.SetVectorArray(Ids.FrustumPlanes, planes);
@@ -311,28 +393,73 @@ namespace MeridianMotion.Showcase.Grass
             g.SetVector(Ids.Length, s.length);
             g.SetVector(Ids.Width, s.width);
             g.SetVector(Ids.Bend, s.bend);
+            g.SetVector(Ids.Clumps, new Vector4(s.clumpSize, s.clumpLength, s.clumpLean, s.edgeLength));
             int groups = Mathf.CeilToInt(perSide / 8f);
             g.Dispatch(kernelGenerate, groups, groups, count);
 
             // Clamp the counts to what the lists hold, keeping what was asked for, so the lists grow if they were short.
-            g.SetBuffer(kernelFinish, Ids.NearArgs, nearArgs);
-            g.SetBuffer(kernelFinish, Ids.FarArgs, farArgs);
-            g.SetBuffer(kernelFinish, Ids.Counts, counts);
+            g.SetBuffer(kernelFinish, Ids.NearArgs, l.nearArgs);
+            g.SetBuffer(kernelFinish, Ids.FarArgs, l.farArgs);
+            g.SetBuffer(kernelFinish, Ids.Counts, l.counts);
             g.Dispatch(kernelFinish, 1, 1, 1);
-            if (!readingBack)
+            if (!l.readingBack)
             {
-                readingBack = true;
-                AsyncGPUReadback.Request(counts, GrowIfShort);
+                l.readingBack = true;
+                AsyncGPUReadback.Request(l.counts, l.GrowIfShort);
             }
 
             material.SetColor(Ids.RootColour, s.rootColour);
             material.SetColor(Ids.TipColour, s.tipColour);
             material.SetFloat(Ids.ColourVariation, s.colourVariation);
+            material.SetFloat(Ids.ClumpTint, s.clumpTint);
+            material.SetFloat(Ids.RootShade, s.rootShade);
+            material.SetFloat(Ids.Translucency, s.translucency);
+            material.SetFloat(Ids.SegmentLength, s.segmentLength);
+            material.SetFloat(Ids.Droop, s.droop);
+            material.SetFloat(Ids.DrawDistance, draw);
+            material.SetFloat(Ids.DetailDistance, s.detailDistance);
+            material.SetFloat(Ids.ThinFrom, Mathf.Min(s.thinFrom, draw * 0.99f));
             var extent = new Vector2(size.x * texelSize, size.y * texelSize);
             Bounds all = WorldBounds(toWorld, origin, extent, layers[0].height, tallest);
             foreach (Layer layer in layers) { all.Encapsulate(WorldBounds(toWorld, origin, extent, layer.height, tallest)); }
-            Draw(camera, all, nearBlades, nearArgs, nearIndices, segments, nearProperties);
-            Draw(camera, all, farBlades, farArgs, farIndices, 1, farProperties);
+            Draw(camera, all, l.nearBlades, l.nearArgs, nearIndices, segments, l.nearProperties);
+            Draw(camera, all, l.farBlades, l.farArgs, farIndices, 1, l.farProperties);
+        }
+
+        /// <summary>A camera's lists (see Lists): made the first time it renders, and freed once it's gone.</summary>
+        private Lists ListsFor(Camera camera)
+        {
+            if (lists.TryGetValue(camera, out Lists l)) { return l; }
+            gone.Clear();
+            foreach (Camera c in lists.Keys) { if (c == null) { gone.Add(c); } }
+            foreach (Camera c in gone) { lists[c].Release(); lists.Remove(c); }
+            l = new Lists(chunks.Count);
+            lists.Add(camera, l);
+            return l;
+        }
+
+        /// <summary>What the lawns were last given, so they're only given it again when the style's changed.</summary>
+        private (Color root, Color tip, float clumpSize, float clumpTint, float groundShade, float thinFrom, float draw) lawnLook;
+        private MaterialPropertyBlock lawnProperties;
+
+        /// <summary>Gives the lawns the style's colours, clumps and distances (see SetLawns), if they've changed.</summary>
+        private void UpdateLawns(GrassStyle s)
+        {
+            var look = (s.rootColour, s.tipColour, s.clumpSize, s.clumpTint, s.groundShade, Mathf.Min(s.thinFrom, s.drawDistance * 0.99f), s.drawDistance);
+            if (look.Equals(lawnLook) || lawns.Count == 0) { return; }
+            lawnLook = look;
+            lawnProperties ??= new MaterialPropertyBlock();
+            lawnProperties.SetColor(Ids.RootColour, s.rootColour);
+            lawnProperties.SetColor(Ids.TipColour, s.tipColour);
+            lawnProperties.SetFloat(Ids.ClumpSize, s.clumpSize);
+            lawnProperties.SetFloat(Ids.ClumpTint, s.clumpTint);
+            lawnProperties.SetFloat(Ids.GroundShade, s.groundShade);
+            lawnProperties.SetFloat(Ids.ThinFrom, look.Item6);
+            lawnProperties.SetFloat(Ids.DrawDistance, s.drawDistance);
+            foreach (Renderer lawn in lawns)
+            {
+                if (lawn != null) { lawn.SetPropertyBlock(lawnProperties); }
+            }
         }
 
         private void Draw(Camera camera, Bounds bounds, GraphicsBuffer blades, GraphicsBuffer args, GraphicsBuffer indices, int n, MaterialPropertyBlock properties)
@@ -344,24 +471,11 @@ namespace MeridianMotion.Showcase.Grass
                 camera = camera,
                 worldBounds = bounds,
                 layer = gameObject.layer,
-                shadowCastingMode = ShadowCastingMode.Off,
+                shadowCastingMode = Style.castsShadows ? ShadowCastingMode.On : ShadowCastingMode.Off,
                 receiveShadows = true,
                 matProps = properties,
             };
             Graphics.RenderPrimitivesIndexedIndirect(parameters, MeshTopology.Triangles, indices, args);
-        }
-
-        /// <summary>Grows the blade lists if the last frame asked for more blades than they hold (they never shrink).</summary>
-        private void GrowIfShort(AsyncGPUReadbackRequest request)
-        {
-            readingBack = false;
-            if (!ready || request.hasError) { return; }
-            Unity.Collections.NativeArray<uint> asked = request.GetData<uint>();
-            bool grow = false;
-            const int most = 1 << 22;
-            if (asked[0] > nearCapacity && nearCapacity < most) { nearCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[0] + 1)); grow = true; }
-            if (asked[1] > farCapacity && farCapacity < most) { farCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[1] + 1)); grow = true; }
-            if (grow) { MakeBladeBuffers(); }
         }
 
         /// <summary>The world box of a rectangle of the mask (corner and sides in the field's space) on a floor, up to a height above it.</summary>
