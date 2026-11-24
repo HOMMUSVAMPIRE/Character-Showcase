@@ -63,13 +63,13 @@ MonoBehaviour:
     clearsOnlyWhile: 
   - id: L09-wallrun
     title: Wall run
-    prompt: Sprint, jump and steer along the wall to run across it.
+    prompt: Only plated walls with level grooves can be run along. Sprint, jump and steer along this one to run across.
     followUp: 
     clearsOn: WallRunStarted
     clearsOnlyWhile: 
   - id: L10-walljump
     title: Wall slide and wall jump
-    prompt: Jump at a wall to slide down it, then press {Jump} to leap to the other.
+    prompt: Only plated walls with upright grooves can be slid down. Jump at one, then press {Jump} to leap to the other.
     followUp: 'Keep going: wall to wall, up the shaft.'
     clearsOn: WallJumped
     clearsOnlyWhile: 

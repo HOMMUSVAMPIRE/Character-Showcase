@@ -1,5 +1,5 @@
 """Generates the Tutorial Ring level spec: a ring whose first arc teaches every move, one lesson each, and whose second
-arc is an agility course mixing them, harder as it goes (ReferenceAssets/TutorialRingDocs; docs/showcase/levels.md, The
+arc is an agility course mixing them, harder as it goes (ReferenceAssets/Implementation Guidance/TutorialRingDocs; docs/showcase/levels.md, The
 Tutorial Ring). Every lesson's lock and course crossing is sized from what the character can do (envelope.json, without
 its air jumps: the tutorial's character has one jump) and checked by the lock check (levelspec.locks): if a crossing can
 be passed without its intended move, or its move doesn't reach it with room to spare, nothing is written and it exits 1.
@@ -50,21 +50,21 @@ SHUTTLE_SIZE = 8.0            # The lessons shortcut's shuttle: a platform this 
 SHUTTLE_TRIP = 10.0           # crossing the middle in this many seconds (eased in and out),
 SHUTTLE_PAUSE = 5.0           # and waiting this long at each end.
 DOCK_WIDTH = 8.0              # The docks it stops at, at the lessons' end and the hub.
-# The ring's walls, along both edges of the lanes' plain stretches. A wall beside the way is a second jump (a wall run
-# along it and a jump off its end, or a jump off it), and its top could be stood on, so they stop short of every crossing
-# (gaps, climbs, the pool, steps: wherever the lane isn't plain floor): before a gap, far enough that a jump off a wall's
-# end can't carry the character across it (gap_clear); before a climb, CLIMB_CLEAR; after either, a metre; and they're
-# too tall to get onto from any floor near them.
-WALL_CLEAR = 12.0             # From anything the script hasn't said how close the walls may come to.
-CLIMB_CLEAR = 7.0             # Before a climb: a jump off a wall's end there can't reach its top.
-WALL_JUMP_EXTRA = 2.0         # How much further than a sprint jump a jump off a wall run's end carries (its height).
+# The ring's walls, along both edges of every lane, gaps and climbs included: only walls marked for it can be wall-run
+# along or slid down (a MarkedWall: the lessons and stretches meant for those moves have them, in the ring wall's place),
+# so a plain wall beside a crossing is no help across it. They're too tall to get onto from any floor near them.
+CHIMNEY_WIDTH = 3.5           # How far apart the wall-jump lesson's shaft's walls are.
+CORRIDOR_WIDTH = 4.0          # How far apart the walls of the course's wall-run corridor are.
 WALL_HEIGHT = 17.0            # How far the walls rise over the decks: out of reach from any climb's top (checked).
 GROUND = 0.0                  # Where every wall and block goes down to.
 SKIRT = 0.5                   # The walls under the decks' edges, from the ground up to them: how thick.
 GATE_POST = 0.3               # A timing gate's posts' width (LevelBuilderSettings' Gate Post): its posts stand in the walls.
+GATE_TOP = 4.6               # A timing gate's top over its floor: its posts (LevelBuilderSettings' Gate Height) and its beam on them;
+GATE_SIGN = 1.1               # and its sign's height over that, where it has one (Gate Panel's). A wall fills above it to the walls' top.
 TIMING_GATE_AT = 6.0          # How far into a course stretch its timing gate stands: where the lane's walls are.
 
 # ---- The look: all to see only (Trim, stripes, labels, banners: no colliders), so none of it changes how it plays ----
+COPING_BAND = 0.32            # How far below a deck's top its coping band (the Platform's) reaches: Coping Height and Gap.
 BAND = 1.2                    # The graphite band along the foot of the tall walls, at deck height (and its orange stripe above).
 COPING = 0.35                 # The graphite coping along the tall walls' tops.
 LINTEL = 1.2                  # The graphite beam over a short break in a tall wall, at its top, tying the two ends together.
@@ -76,8 +76,22 @@ LESSON_TITLES = {
     "L11-climb": "CLIMB", "L12-ladder": "LADDER", "L13-crate": "PUSH AND PULL", "L14-bounce": "BOUNCE PAD",
     "L15-rope": "ROPE SWING", "L16-zipline": "ZIPLINE", "L17-swim": "SWIM AND DIVE", "L18-dash": "DASH",
 }
-#: The course's stretches: each a name and a colour of its own (its timing gate's frame and its own accents).
-STRETCH_THEMES = [("RIGGING YARD", "Light"), ("RUN WALL", "Cyan"), ("THE CUT", "Accent"), ("FINALE", "White")]
+#: The course's stretches' names: at their starts, and on the ground before their faces.
+STRETCH_NAMES = ["RIGGING YARD", "RUN WALL", "THE CUT", "FINALE"]
+PILASTER_SPACING = 8.0        # How far apart the walls' pilasters are (LevelBuilderSettings' Pilaster Spacing): lamps go between.
+PILASTER_MIN = 12.0           # and the shortest wall that has them (its Pilaster Min Wall Length).
+LAMP_HEIGHT = 8.0             # How high over the decks the walls' lamps are, every other bay: out of reach, as the walls' tops are.
+PIPE_HEIGHT = 12.0            # How high over the decks the pipes along the course's outer walls run.
+# Windows in the ring's inner walls and the shuttle's, to see out over the middle by: glass flush with the walls' lane side,
+# from over the deck's band to GLASS_BELOW_TOP under the walls' top. It blocks as the wall it's in does.
+GLASS_BELOW_TOP = 2.5         # How far below the walls' top a window stops.
+GLASS_MIN = 16.0              # The shortest stretch of plain floor an inner wall gets a window beside,
+GLASS_MAX = 24.0              # and the longest a window is.
+MULLION_EVERY = 4.0           # How far apart a window's mullions are.
+ROOF_THICKNESS = 0.08         # The glass roof over the lanes, the hub and the shuttle's way, at the walls' top: its glass,
+ROOF_RIB = 8.0                # and its graphite ribs this far apart (under it, from wall to wall).
+GROUND_REACH = 1500.0         # How far the ground reaches past the ring, into the haze.
+SKYLINE = 40                  # How many blocks stand far off round the ring, in the haze, so the ground doesn't end at the sky.
 WALL_THICKNESS = 1.0          # Every wall along an edge stands just inside it, its outer face on the edge, so the tall
                               # walls, the walls under the decks, the pool's and the wall runs' all line up.
 GATE_HEIGHT = 6.0             # A shortcut gate's height: over the highest jump, so it can't be jumped.
@@ -97,6 +111,7 @@ ROLL_APPROACH = 16.0          # The low approach before the blockers: longer tha
 VAULT_WALL = 0.9              # The vault lesson's wall: over the step height, under a ledge grab.
 CRATE = 1.5                   # The crates' size.
 ROPE_LENGTH = 6.0
+ROPE_BRACKET = 0.3            # How tall a rope's bracket is over its anchor (LevelBuilderSettings' Rope Bracket): its beam sits on it.
 ZIPLINE_RISE = 3.2            # How high over its deck a zipline's cable starts (jumped up to).
 POOL_DEPTH = 4.0
 ARCH_CLEAR = 1.6              # The underwater arch's clearance over the pool's floor.
@@ -109,11 +124,6 @@ BASE_MOVES = {"walk"}
 
 def reach(move, kind=None):
     return locks.reach(move, ENV, kind)
-
-
-def gap_clear(gap):
-    """How far before a gap the ring's walls stop: a jump off a wall run's end there can't carry the character across."""
-    return max(2.0, r((reach("sprint jump", "gap") + WALL_JUMP_EXTRA) / locks.OTHER_SHARE - gap))
 
 
 def between(lo, hi, t=0.5):
@@ -150,24 +160,13 @@ class Stretch:
     def __init__(self, s, parent, name):
         self.s, self.g, self.name, self.z = s, f"{parent}/{name}", name, 0.0
         self.zone_low = FLOOR - 3  # How low its lesson zone reaches (a lesson that goes lower sets it).
-        self.floors = []           # Its plain floor (full-width decks at FLOOR): (z0, z1), where the ring's walls may go.
-        self.keep_clear = []       # Stretches (z0, z1) the outer wall stays out of though the floor's plain (a blocker's way).
-        self.features = []         # Its crossings (z0, z1, clear before, clear after): how close the walls may come.
-        self.walled = []           # Stretches (z0, z1) the ring's walls run straight through (a wall run's gap: it's for it).
+        self.keep_clear = []       # Stretches (z0, z1) the outer wall stays out of (a blocker's way).
+        self.open = []             # Stretches (z0, z1) with no ring wall either side: something of its own is the wall (the pool).
+        self.marked = []           # Walls marked for wall runs or slides: (z0, z1, sides), where the ring's own stop for them.
+        self.decks = []            # Its decks (z0, z1, top, x0, x1): the walls' bands follow the deck beside them.
 
-    def feature(self, z0, z1, before, after=0.0):
-        """A crossing from z0 to z1, which the ring's walls stop before before it and start after after it."""
-        self.features.append((z0, z1, before, after))
-
-    def gap(self, z0, z1, before=None, after=0.0, walled=False):
-        """
-        A gap from z0 to z1, the walls kept back from it as gap_clear says (or before); walled, they run on along both
-        sides of it (a gap a wall run is meant for: a wall either side of it changes nothing).
-        """
-        if walled:
-            self.walled.append((z0, z1))
-        else:
-            self.feature(z0, z1, gap_clear(z1 - z0) if before is None else before, after)
+    def gap(self, z0, z1):
+        """A gap from z0 to z1 (the ring's walls run on beside it: unmarked, they're no help across it)."""
         # Both lips striped, so the drop reads from either side.
         self.stripes(z0, -1)
         self.stripes(z1, 1)
@@ -179,12 +178,20 @@ class Stretch:
         if z1 - z0 > 1e-6:
             self.A("Platform", name=name, x0=r(x0), x1=r(x1), z0=r(z0), z1=r(z1), y0=r(top - DECK), top=r(top), coping=coping)
             TOPS.append(top - FLOOR)
-            # A wall under each side edge, from the ground up to the deck, flush with it: the deck stands on something.
+            self.decks.append((z0, z1, top, x0, x1))
+            # A dark fascia under its lip at both ends, below its coping band (clear of it, not in front of it), so a deck
+            # reads as a deck, not a block of wall.
+            for z, side in ((z0, -1), (z1, 1)):
+                # A centimetre in from the deck's sides, so its ends aren't in the plane of the skirts' sides.
+                self.A("Trim", name="Deck Fascia", centre=[r((x0 + x1) / 2), r(z + side * 0.02)], size=[r(x1 - x0 - 0.02), 0.04],
+                       y0=r(top - DECK + 0.1), y1=r(top - COPING_BAND), yaw=0, surface="Graphite")
+            # A wall under every edge, from the ground up to the deck, flush with it: the deck stands on something, and
+            # there's no seeing under it from a gap.
             if top - DECK - GROUND > 0.5:
                 for a, b in ((x0, x0 + SKIRT), (x1 - SKIRT, x1)):
                     self.A("Block", name="Deck Skirt", x0=r(a), x1=r(b), z0=r(z0), z1=r(z1), y0=GROUND, y1=r(top - DECK), surface="Panel")
-            if abs(top - FLOOR) < 1e-6 and x0 <= -LANE / 2 + 1e-6 and x1 >= LANE / 2 - 1e-6:
-                self.floors.append((z0, z1))
+                for a, b in ((z0, z0 + SKIRT), (z1 - SKIRT, z1)):
+                    self.A("Block", name="Deck Skirt", x0=r(x0 + SKIRT), x1=r(x1 - SKIRT), z0=r(a), z1=r(b), y0=GROUND, y1=r(top - DECK), surface="Panel")
 
     def block(self, z0, z1, y0, y1, name="Block", x0=-LANE / 2, x1=LANE / 2, surface="Panel"):
         self.A("Block", name=name, x0=r(x0), x1=r(x1), z0=r(z0), z1=r(z1), y0=r(y0), y1=r(y1), surface=surface)
@@ -198,20 +205,44 @@ class Stretch:
         """Hazard stripes across the lane at z on the floor, reaching inward (+1 or -1 along the way) onto it."""
         self.A("HazardStripes", a=[-LANE / 2, r(z)], b=[LANE / 2, r(z)], inward=[0, inward], height=r(floor))
 
-    def face_bars(self, z, x0, x1, y0, y1, every, surface="Accent"):
-        """Horizontal bars on a face across the lane at z (facing back along the way), every so high from y0 to y1."""
-        y = y0
-        while y + 0.15 <= y1:
-            self.trim("Bar", x0, x1, z - 0.05, z, y, y + 0.15, surface)
-            y += every
+    def run_wall(self, z0, z1):
+        """
+        A wall marked for wall runs along the lane's outer edge from z0 to z1, as tall as the ring's and from the ground,
+        in the ring wall's place there (which stops for it), dressed as they are.
+        """
+        edge = LANE / 2 - WALL_THICKNESS / 2
+        a, b = [edge, r(z0)], [edge, r(z1)]
+        self.A("MarkedWall", name=self.name, a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS, move="WallRun")
+        dress_wall(self.s.add, self.g, a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT, band=False)
+        self.marked.append((z0, z1, ("outer",)))
 
-    def tall_wall(self, name, a, b):
-        """A tall wall from a to b (to the ground, as tall as the ring's), dressed as they are."""
-        self.A("Wall", name=name, a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS)
-        dress_wall(self.s.add, self.g, a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT)
+    def marked_block(self, name, z0, z1, y0, y1, x0, x1, move):
+        """
+        A block from x0 to x1 across, z0 to z1 along, marked for a move ("WallRun" or "WallSlide": never both), its
+        pattern on its sides (the faces along the way).
+        """
+        a, b = [r((x0 + x1) / 2), r(z0)], [r((x0 + x1) / 2), r(z1)]
+        self.A("MarkedWall", name=name, a=a, b=b, y0=r(y0), y1=r(y1), thickness=r(x1 - x0), move=move)
+        if y1 >= FLOOR + WALL_HEIGHT - 1e-6:
+            dress_wall(self.s.add, self.g, a, b, x1 - x0, y1, band=False)  # Coped as the walls it stands among are.
 
     def checkpoint(self, cid, z=1.0, start=False, floor=FLOOR):
-        self.A("Checkpoint", id=cid, feet=[0, floor, r(z)], yaw=0, size=[LANE, 3, 2], start=start or None)
+        # Unmarked: where a lesson starts, its number and name on the floor say so.
+        self.A("Checkpoint", id=cid, feet=[0, floor, r(z)], yaw=0, size=[LANE, 3, 2], start=start or None, marked=False)
+
+    def rope(self, z):
+        """
+        A rope over the lane at z, hanging from an I-beam across the hall from wall to wall (on the rope's bracket), on a
+        plate on each wall.
+        """
+        anchor = FLOOR + ROPE_LENGTH + 1.5
+        self.A("Rope", anchor=[0, r(anchor), r(z)], length=ROPE_LENGTH)
+        face_in = LANE / 2 - WALL_THICKNESS
+        y = anchor + ROPE_BRACKET
+        for name, half, y0, y1 in (("Bottom Flange", 0.2, y, y + 0.08), ("Web", 0.04, y + 0.08, y + 0.5), ("Top Flange", 0.2, y + 0.5, y + 0.58)):
+            self.trim(f"I-Beam {name}", -face_in, face_in, z - half, z + half, y0, y1, "Graphite")
+        for x0, x1 in ((-face_in, -face_in + 0.1), (face_in - 0.1, face_in)):
+            self.trim("I-Beam Plate", x0, x1, z - 0.5, z + 0.5, y - 0.4, y + 1.0, "Accent")
 
     def zone(self, lesson, length, low=None, high=FLOOR + 12):
         low = self.zone_low if low is None else low
@@ -238,7 +269,6 @@ def lesson_L02(st, taught):
     st.deck(0, 5)
     st.deck(5, 11, FLOOR + h, name=f"Step (+{h:g})")
     st.block(5, 11, GROUND, FLOOR + h - DECK, name="Step Base")
-    st.walled.append((5, 11))  # Walled past: a step this low is a jump up whatever's beside it.
     st.deck(11, 14)
     taught = taught | {"jump", "step up", "jump up"}
     cross(Crossing("L02 step", "climb", h, {"jump up"}), taught)
@@ -302,6 +332,7 @@ def lesson_L06(st, taught):
 def lesson_L07(st, taught):
     st.deck(0, 12)
     st.block(6, 6.6, FLOOR, FLOOR + VAULT_WALL, name=f"Low Wall ({VAULT_WALL:g} m)", surface="Graphite")
+    st.trim("Low Wall Top", -LANE / 2, LANE / 2, 6, 6.6, FLOOR + VAULT_WALL, FLOOR + VAULT_WALL + 0.02, "Accent")  # Its top, to vault.
     # Shown, not locked: a jump gets over a wall this low too.
     return 12, {"vault"}
 
@@ -311,7 +342,6 @@ def climb_lesson(st, name, height, approach=8.0, top_length=6.0):
     st.deck(0, approach)
     face = approach
     st.block(face, face + top_length, GROUND, FLOOR + height - DECK, name=f"{name} (+{height:g})")
-    st.feature(face, face + top_length, CLIMB_CLEAR)
     st.deck(face, face + top_length, FLOOR + height, name=f"{name} Top")
     st.stripes(face, 1, FLOOR + height)  # The lip to reach for.
     st.deck(face + top_length, face + top_length + 6, name="Below")
@@ -330,25 +360,25 @@ def lesson_L09(st, taught):
     run_up = 16.0
     st.deck(0, run_up, name="Run-up")
     st.deck(run_up + g, run_up + g + 8, name="Landing")
-    edge = LANE / 2 - WALL_THICKNESS / 2
-    st.tall_wall("Wall-Run Wall", [edge, 4], [edge, r(run_up + g + 4)])
-    st.gap(run_up, run_up + g, walled=True)  # A wall run is what it's for.
+    st.run_wall(4, run_up + g + 4)
+    st.gap(run_up, run_up + g)
     cross(Crossing("L09 wall run", "gap", g, {"wall run"}, wall_beside=True), taught | {"wall run"})
     return run_up + g + 8, {"wall run"}
 
 
 def lesson_L10(st, taught):
     h = r(max(7.0, reach("jump to the ledge", "climb") / locks.OTHER_SHARE + 0.5))
-    shaft, depth = 3.5, 3.5
+    shaft, depth = CHIMNEY_WIDTH, 3.5
     st.deck(0, 6)
     st.deck(6, 6 + depth, name="Shaft Floor", x0=-shaft / 2, x1=shaft / 2)
-    st.block(6, 6 + depth, GROUND, FLOOR + h + 4, name="Shaft Side", x0=-LANE / 2, x1=-shaft / 2)
-    st.block(6, 6 + depth, GROUND, FLOOR + h + 4, name="Shaft Side", x0=shaft / 2, x1=LANE / 2)
+    # Its sides marked for wall slides (and so wall jumps): kicking between them is the way up. Its back, the wall
+    # between them it's climbed to the top of, is plain: it isn't slid down, so it's no help. The ring's walls stop
+    # beside it, its sides reaching the lane's edges.
+    st.marked_block("Shaft Side", 6, 6 + depth, GROUND, FLOOR + WALL_HEIGHT, -LANE / 2, -shaft / 2, "WallSlide")
+    st.marked_block("Shaft Side", 6, 6 + depth, GROUND, FLOOR + WALL_HEIGHT, shaft / 2, LANE / 2, "WallSlide")
+    st.marked.append((6, 6 + depth, ("inner", "outer")))
     st.block(6 + depth, 12 + depth, GROUND, FLOOR + h - DECK, name=f"Shaft Back (+{h:g})")
-    st.feature(6, 12 + depth, CLIMB_CLEAR)
     st.deck(6 + depth, 12 + depth, FLOOR + h, name="Shaft Top")
-    # Rungs of orange up the shaft's back, to the lip: the way out is up.
-    st.face_bars(6 + depth, -shaft / 2 + 0.2, shaft / 2 - 0.2, FLOOR + 1, FLOOR + h - 0.6, 1.2)
     st.deck(12 + depth, 18 + depth, name="Below")
     cross(Crossing("L10 shaft", "climb", h, {"wall jump"}, fixtures={"walls"}), taught | {"wall jump"})
     return 18 + depth, {"wall jump"}
@@ -404,7 +434,7 @@ def lesson_L15(st, taught):
     st.deck(0, run_up, name="Run-up")
     st.deck(run_up + g, run_up + g + 6, name="Landing")
     st.gap(run_up, run_up + g)
-    st.A("Rope", anchor=[0, r(FLOOR + ROPE_LENGTH + 1.5), r(run_up + g / 2)], length=ROPE_LENGTH)
+    st.rope(run_up + g / 2)
     cross(Crossing("L15 rope", "gap", g, {"rope"}, fixtures={"rope"}), taught | {"rope"})
     return run_up + g + 6, {"rope"}
 
@@ -418,15 +448,18 @@ def zipline_gap(st, z, length, drop=2.0):
     start = [0, r(FLOOR + ZIPLINE_RISE), r(z + 2)]
     end = [0, r(far + ZIPLINE_RISE - 0.4), r(z + 5 + length + 4)]
     st.A("Zipline", start=start, end=end, startFloor=FLOOR, endFloor=r(far))
+    # A footing under each post, so they stand on something.
+    for at, floor in ((start[2], FLOOR), (end[2], far)):
+        st.trim("Zipline Footing", -0.6, 0.6, at - 0.6, at + 0.6, floor, floor + 0.06, "Accent")
     st.block(z + 11 + length, z + 15 + length, GROUND, FLOOR - DECK, name="Step Up Base")
-    st.feature(z + 5, z + 15 + length, gap_clear(length))
     st.deck(z + 11 + length, z + 15 + length, name="Step Up")
     return z + 15 + length, drop
 
 
 def lesson_L16(st, taught):
     g = r(max(16.0, reach("sprint jump", "gap") / locks.OTHER_SHARE * 2))
-    end, drop = zipline_gap(st, 0, g)
+    st.deck(0, 6)  # Its labels clear of the zipline's post (2 m into its start deck).
+    end, drop = zipline_gap(st, 6, g)
     cross(Crossing("L16 zipline", "gap", g, {"zipline"}, fixtures={"zipline"}), taught | {"zipline"})
     return end, {"zipline"}
 
@@ -435,31 +468,34 @@ def lesson_L17(st, taught):
     pool = 18.0
     bottom = FLOOR - POOL_DEPTH
     st.zone_low = bottom - 1  # Its zone reaches the pool's floor, so diving under the arch stays in it.
-    st.deck(0, 4)
+    start = 7.0  # Where the pool starts: past the lesson's number and name at its start, so they're on the deck.
+    st.deck(0, start)
     inside = LANE / 2 - WALL_THICKNESS
-    st.A("Platform", name="Pool Floor", x0=-inside, x1=inside, z0=4, z1=4 + pool, y0=bottom - DECK, top=bottom, surface="Concrete")
+    st.A("Platform", name="Pool Floor", x0=-inside, x1=inside, z0=start, z1=start + pool, y0=bottom - DECK, top=bottom, surface="Concrete")
     # Its sides as tall as the ring's walls, which they carry on, so nothing can be walked along them past the arch.
     for x0, x1 in ((-LANE / 2, -inside), (inside, LANE / 2)):
-        st.block(4, 4 + pool, GROUND, FLOOR + WALL_HEIGHT, name="Pool Side", x0=x0, x1=x1)
+        st.block(start, start + pool, GROUND, FLOOR + WALL_HEIGHT, name="Pool Side", x0=x0, x1=x1)
     # Its ends, under the decks either side, so it's walled all round (the ladder out stands against the far one).
-    for z0, z1 in ((3, 4), (4 + pool, 5 + pool)):
+    for z0, z1 in ((start - 1, start), (start + pool, start + 1 + pool)):
         st.block(z0, z1, GROUND, FLOOR - DECK, name="Pool End", x0=-LANE / 2, x1=LANE / 2)
-    st.A("Water", name="Pool", centre=[0, r(4 + pool / 2)], size=[2 * inside, pool], bottom=bottom, surface=r(FLOOR - 0.4))
-    arch = 4 + pool / 2
-    # Across the pool's sides too, and too high to get over from a wall run along them.
+    st.A("Water", name="Pool", centre=[0, r(start + pool / 2)], size=[2 * inside, pool], bottom=bottom, surface=r(FLOOR - 0.4))
+    arch = start + pool / 2
+    # Across the pool's sides too, and too high to get over.
     st.block(arch - 1, arch + 1, bottom + ARCH_CLEAR, FLOOR + ARCH_TOP, name=f"Arch ({ARCH_CLEAR:g} m clear under water)",
              x0=-LANE / 2, x1=LANE / 2)
-    st.feature(4, 4 + pool, 0.0, 0.0)
-    st.A("Ladder", at=[0, r(4 + pool)], floor=bottom, height=POOL_DEPTH, facing=[0, -1])
+    st.open.append((start, start + pool))  # Its sides are the walls here.
+    st.A("Ladder", at=[0, r(start + pool)], floor=bottom, height=POOL_DEPTH, facing=[0, -1])
     # A pool's look: white walls under the water, lane lines on its floor, and a cyan light under the arch to dive for.
     for x0, x1 in ((-inside, -inside + 0.05), (inside - 0.05, inside)):
-        st.trim("Pool Tiles", x0, x1, 4, 4 + pool, bottom, FLOOR - 0.5, "White")
+        st.trim("Pool Tiles", x0, x1, start, start + pool, bottom, FLOOR - 0.5, "White")
     for x in (-inside / 2, inside / 2):
-        st.trim("Lane Line", x - 0.15, x + 0.15, 5, 3 + pool, bottom, bottom + 0.02, "Graphite")
+        st.trim("Lane Line", x - 0.15, x + 0.15, start + 1, start - 1 + pool, bottom, bottom + 0.02, "Graphite")
     st.trim("Arch Light", -inside, inside, arch - 1, arch + 1, bottom + ARCH_CLEAR - 0.12, bottom + ARCH_CLEAR, "Cyan")
-    st.deck(4 + pool, 10 + pool)
+    for z0, z1 in ((start - 0.3, start), (start + pool, start + 0.3 + pool)):
+        st.trim("Pool Rim", -inside, inside, z0, z1, FLOOR, FLOOR + 0.02, "White")
+    st.deck(start + pool, start + 6 + pool)
     cross(Crossing("L17 arch", "passage", 2.0, {"swim"}, ceiling=ARCH_CLEAR, underwater=True, fixtures={"water"}), taught | {"swim"})
-    return 10 + pool, {"swim"}
+    return start + 6 + pool, {"swim"}
 
 
 def lesson_L18(st, taught):
@@ -503,7 +539,6 @@ def slide_into_jump(st, z, share, taught):
 def ledge(st, z, share, taught, name="Ledge"):
     h = r(max(share * reach("jump to the ledge", "climb"), reach("jump up", "climb") / locks.OTHER_SHARE + 0.05))
     st.block(z, z + 5, GROUND, FLOOR + h - DECK, name=f"{name} (+{h:g})")
-    st.feature(z, z + 5, CLIMB_CLEAR)
     st.deck(z, z + 5, FLOOR + h, name=f"{name} Top")
     st.stripes(z, 1, FLOOR + h)  # The lip to reach for.
     st.deck(z + 5, z + 10, name="Below")
@@ -518,13 +553,7 @@ def stretch_0(st, share, taught):
     st.deck(z + g, z + g + 4, name="Rope Landing")
     st.gap(z, z + g)
     for i in (1, 2):
-        anchor = FLOOR + ROPE_LENGTH + 1.5
-        st.A("Rope", anchor=[0, r(anchor), r(z + g * i / 3)], length=ROPE_LENGTH)
-        # A gantry it hangs from: a beam across the gap on two posts outside the lane, from the ground.
-        za = z + g * i / 3
-        st.trim("Rope Gantry", -LANE / 2 - 2, LANE / 2 + 2, za - 0.25, za + 0.25, anchor + 0.15, anchor + 0.75, "Graphite")
-        for x in (-LANE / 2 - 1.75, LANE / 2 + 1.75):
-            st.trim("Gantry Post", x - 0.25, x + 0.25, za - 0.25, za + 0.25, GROUND, anchor + 0.75, "Steel")
+        st.rope(z + g * i / 3)
     cross(Crossing(f"{st.name}: ropes", "gap", g, {"rope"}, fixtures={"rope"}), taught)
     z, drop = zipline_gap(st, z + g + 4, g)
     cross(Crossing(f"{st.name}: zipline", "gap", g, {"zipline"}, fixtures={"zipline"}), taught)
@@ -537,18 +566,14 @@ def stretch_1(st, share, taught):
     g = r(max(share * reach("wall run", "gap"), reach("sprint jump", "gap") / locks.OTHER_SHARE + 0.1))
     st.deck(z, z + 8, name="Pad Deck")
     st.A("BouncePad", at=[r(LANE / 2 - 2), r(z + 6)], floor=FLOOR, size=2, height=3)
-    edge = LANE / 2 - WALL_THICKNESS / 2
-    st.tall_wall("Wall-Run Wall", [edge, r(z + 4)], [edge, r(z + 8 + g + 4)])
-    # Its run line: a cyan band along the wall at the height a wall run holds, from the pad to past the gap.
-    face = LANE / 2 - WALL_THICKNESS
-    st.trim("Run Line", face - 0.05, face, z + 4, z + 8 + g + 4, FLOOR + 1.5, FLOOR + 1.8, "Cyan")
+    st.run_wall(z + 4, z + 8 + g + 4)
     # The bounce pad picked out.
     px, pz, half_pad = LANE / 2 - 2, z + 6, 1.4
     for a, b, inward in (([px - half_pad, pz - half_pad], [px + half_pad, pz - half_pad], [0, 1]),
                          ([px - half_pad, pz + half_pad], [px + half_pad, pz + half_pad], [0, -1]),
                          ([px - half_pad, pz - half_pad], [px - half_pad, pz + half_pad], [1, 0])):
         st.A("HazardStripes", a=[r(a[0]), r(a[1])], b=[r(b[0]), r(b[1])], inward=inward, height=FLOOR)
-    st.gap(z + 8, z + 8 + g, walled=True)  # A wall run is what it's for.
+    st.gap(z + 8, z + 8 + g)
     st.deck(z + 8 + g, z + 16 + g, name="Landing")
     cross(Crossing(f"{st.name}: bounce into a wall run", "gap", g, {"wall run", "bounce"}, wall_beside=True,
                    fixtures={"bounce pad"}, also_allowed={"sprint jump and air dash"}), taught)
@@ -557,22 +582,19 @@ def stretch_1(st, share, taught):
 
 def stretch_2(st, share, taught):
     z = slide_into_jump(st, 0, share, taught)
-    # A wall run along a corridor of two walls into wall jumps up its far end.
+    # Wall runs along a corridor over a gap, from one side to the other and back (a jump off a wall run is a wall jump),
+    # up to the top of the wall that ends it.
     g = r(max(share * reach("wall run", "gap"), reach("sprint jump", "gap") / locks.OTHER_SHARE + 0.1))
-    corridor = 4.0
+    corridor = CORRIDOR_WIDTH
     st.deck(z, z + 14, name="Run-up")
     h = r(max(6.0, reach("jump to the ledge", "climb") / locks.OTHER_SHARE + 0.5))
-    top = z + 14 + g
-    # The corridor is cut through solid wall: from its sides out to the lane's edges, from the ground to the walls' top.
+    top = z + 14 + g              # The wall that ends it, its top climbed to.
+    # The corridor is cut through solid wall: from its sides out to the lane's edges, from the ground to the walls' top,
+    # wall-run walls all along; the wall that ends it is plain (the way up is off the sides). The ring's walls stop beside it.
     for x0, x1 in ((-LANE / 2, -corridor / 2), (corridor / 2, LANE / 2)):
-        st.block(z + 10, top + 6, GROUND, FLOOR + WALL_HEIGHT, name="Corridor Wall", x0=x0, x1=x1)
+        st.marked_block("Corridor", z + 10, top + 6, GROUND, FLOOR + WALL_HEIGHT, x0, x1, "WallRun")
+    st.marked.append((z + 10, top + 6, ("inner", "outer")))
     st.block(top, top + 6, GROUND, FLOOR + h - DECK, name=f"Corridor End (+{h:g})", x0=-corridor / 2, x1=corridor / 2)
-    st.walled.append((z + 14, top + 6))  # Walled through: a wall run, then wall jumps, are what it's for.
-    # The cut's look: dark faces, a cyan line along each at its foot, and orange rungs up the end to the lip.
-    for x0, x1 in ((-corridor / 2, -corridor / 2 + 0.05), (corridor / 2 - 0.05, corridor / 2)):
-        st.trim("Cut Face", x0, x1, z + 10, top, FLOOR, FLOOR + WALL_HEIGHT - 2, "Graphite")
-        st.trim("Cut Light", x0, x1, z + 10, top, FLOOR + 0.3, FLOOR + 0.5, "Cyan")
-    st.face_bars(top, -corridor / 2 + 0.2, corridor / 2 - 0.2, FLOOR + 1, FLOOR + h - 0.6, 1.2)
     st.deck(top, top + 6, FLOOR + h, name="Corridor End Top", x0=-corridor / 2, x1=corridor / 2)
     st.deck(top + 6, top + 12, name="Below")
     cross(Crossing(f"{st.name}: wall run", "gap", g, {"wall run", "wall jump"}, wall_beside=True, fixtures={"walls"},
@@ -597,20 +619,20 @@ def stretch_3(st, share, taught):
     st.deck(z, z + 8, name="Crate Deck")
     st.A("PushableCrate", at=[0, r(z + 3)], floor=FLOOR, size=CRATE, reset="C4-start")
     st.block(z + 8, z + 13, GROUND, FLOOR + hc - DECK, name=f"Crate Wall (+{hc:g})")
-    st.feature(z + 8, z + 18, CLIMB_CLEAR)
     st.deck(z + 8, z + 13, FLOOR + hc, name="Crate Wall Top")
     cross(Crossing(f"{st.name}: crate", "climb", hc, {"crate"}, fixtures={"crate"}), taught)
     hp = r(max(6.0, ledge_reach / locks.OTHER_SHARE + 0.5))
     base = FLOOR + hc
     st.block(z + 13, z + 18, GROUND, base + hp - DECK, name=f"Panel Wall (+{hp:g})")
     st.A("ClimbablePanel", a=[-2.5, r(z + 13)], b=[2.5, r(z + 13)], y0=r(base), y1=r(base + hp), facing=[0, -1])
-    # The panel framed in light, so the last climb reads from the crate.
-    for x0, x1 in ((-2.9, -2.65), (2.65, 2.9)):
-        st.trim("Panel Light", x0, x1, z + 12.9, z + 13, base, base + hp, "Light")
-    st.trim("Panel Light", -2.9, 2.9, z + 12.9, z + 13, base + hp - 0.25, base + hp, "Light")
     st.deck(z + 13, z + 18, base + hp, name="Panel Wall Top")
     st.deck(z + 18, z + 24, name="Below")
-    st.label("FINISH", z + 21, size=2.0)
+    # The finish: a lit line across the floor, a pylon of light up each wall beside it, and FINISH beyond.
+    face_in = LANE / 2 - WALL_THICKNESS
+    st.trim("Finish Line", -face_in, face_in, z + 19.2, z + 19.6, FLOOR, FLOOR + 0.03, "Light")
+    for x0, x1 in ((-face_in, -face_in + 0.12), (face_in - 0.12, face_in)):
+        st.trim("Finish Pylon", x0, x1, z + 19, z + 19.8, FLOOR, FLOOR + 7, "Light")
+    st.label("FINISH", z + 21.5, size=3.0)
     cross(Crossing(f"{st.name}: panel", "climb", hp, {"climb"}, fixtures={"panel"}), taught)
     return z + 24
 
@@ -651,22 +673,36 @@ def build():
     s.part("Ground and Hub")
     A("Group", parent="", name="Tutorial Ring")
     root = "Tutorial Ring"
-    A("Ground", parent=root, half=r(outer + 60), openings=[])
+    # Far wider than the ring, so its edge is lost in the haze (the scene's setup thickens it: TutorialRingSceneSetup).
+    A("Ground", parent=root, half=r(outer + GROUND_REACH), openings=[])
+    # Darker under and round the ring, where a fall lands: it's the hazard.
+    A("Trim", parent=root, name="Hazard Ground", centre=[0, 0], size=[r(2 * (outer + 40)), r(2 * (outer + 40))], y0=GROUND, y1=GROUND + 0.03,
+      yaw=0, surface="Asphalt")
     A("HazardVolume", parent=root, name="Fall", centre=[0, 1, 0], size=[r(2 * (outer + 60)), 6, r(2 * (outer + 60))])
     hub_centre = world(RING_APOTHEM / math.cos(math.radians(22.5)), HUB_ANGLE)
     A("Prism", parent=root, name="Hub", shape=octagon(HUB_APOTHEM, *hub_centre), y0=FLOOR - DECK, y1=FLOOR, surface="Concrete")
+    skirt = octagon(HUB_APOTHEM - SKIRT / 2, *hub_centre)
+    wall_chain(A, root, skirt + [skirt[0]], SKIRT, GROUND, FLOOR - DECK, "Hub Skirt")  # Its edges walled from the ground up to it.
     A("Group", parent=root, name="Spawn Points")
     # Facing the way the first lesson's lane runs (its face's -x).
     facing = (45 * RUN_FACES[0] - 90) % 360
     A("SpawnMarker", parent=f"{root}/Spawn Points", name="Hub", at=hub_centre, height=FLOOR + 0.1, yaw=facing)
-    A("Checkpoint", parent=root, id="hub", feet=[hub_centre[0], FLOOR, hub_centre[1]], yaw=facing, size=[10, 3, 10], start=True)
+    A("Checkpoint", parent=root, id="hub", feet=[hub_centre[0], FLOOR, hub_centre[1]], yaw=facing, size=[10, 3, 10], start=True, marked=False)
     # The hub marked as the start and the finish: an inlaid octagon on its floor and its name, read facing the first lane.
     A("GuideLine", parent=root, name="Hub Inlay", points=octagon(HUB_APOTHEM - 3, *hub_centre), height=FLOOR, surface="Accent", closed=True)
-    ahead = [r(math.sin(math.radians(facing))), r(math.cos(math.radians(facing)))]
-    A("FloorLabel", parent=root, text="START / FINISH", at=hub_centre, height=FLOOR, facing=ahead, size=1.4)
-    # The ground marked out under the ring, inside and out, so the drop has a scale.
+    A("GuideLine", parent=root, name="Hub Ring", points=octagon(HUB_APOTHEM - 10, *hub_centre), height=FLOOR, surface="White", closed=True)
+    ahead = [math.sin(math.radians(facing)), math.cos(math.radians(facing))]
+    # Behind the middle (the first lesson's start, its checkpoint line and number, are just ahead of it), between the rings.
+    label_at = [r(hub_centre[0] - ahead[0] * 7), r(hub_centre[1] - ahead[1] * 7)]
+    A("FloorLabel", parent=root, text="START / FINISH", at=label_at, height=FLOOR, facing=[r(ahead[0]), r(ahead[1])], size=1.4)
+    # The ground marked out under the ring, inside and out, so the drop has a scale; and in front of each face, what it is,
+    # in letters as big as the lane is wide, reading from the middle.
     for apothem in (inner - 10, inner - 30, outer + 10, outer + 30):
-        A("GuideLine", parent=root, name="Ground Line", points=octagon(apothem), height=GROUND, surface="Light", closed=True)
+        A("GuideLine", parent=root, name="Ground Line", points=octagon(apothem), height=GROUND + 0.04, surface="Light", closed=True)
+    for i, k in enumerate(RUN_FACES):
+        text = f"{LESSONS[i][0][0][:3]} - {LESSONS[i][-1][0][:3]}" if i < 4 else f"{i - 3}  {STRETCH_NAMES[i - 4]}"
+        out = [math.sin(math.radians(45 * k)), math.cos(math.radians(45 * k))]
+        A("FloorLabel", parent=root, text=text, at=world(inner - 22, 45 * k), height=GROUND + 0.05, facing=[r(out[0]), r(out[1])], size=8.0)
 
     # ---- The lanes and corners, face by face, with their lessons and stretches ----
     taught = set(BASE_MOVES)
@@ -680,15 +716,15 @@ def build():
         wall_chain(A, face, corner_line(h, outer - SKIRT / 2), SKIRT, GROUND, FLOOR - DECK, "Corner Skirt")
         inner_joint(A, k, h, inner, SKIRT, GROUND, FLOOR - DECK, "Corner Skirt")
         cursor = h
-        plan = {"face": k, "frame": face, "floors": [], "keep_clear": [], "registered": [], "starts": []}
+        plan = {"face": k, "frame": face, "keep_clear": [], "open": [], "marked": [], "starts": [], "decks": []}
         WALL_PLAN.append(plan)
 
         def note(st, at):
-            """The stretch's plain floor and keep-clear zones, along its face's lane (u: metres from its start)."""
-            plan["floors"] += [(at + z0, at + z1) for z0, z1 in st.floors]
+            """Where the stretch's ring walls stop, along its face's lane (u: metres from its start)."""
             plan["keep_clear"] += [(at + z0, at + z1) for z0, z1 in st.keep_clear]  # The outer side's only.
-            plan["registered"] += [(at + z0, at + z1, before, after) for z0, z1, before, after in st.features]
-            plan["floors"] += [(at + z0, at + z1) for z0, z1 in st.walled]
+            plan["open"] += [(at + z0, at + z1) for z0, z1 in st.open]
+            plan["marked"] += [(at + z0, at + z1, sides) for z0, z1, sides in st.marked]
+            plan["decks"] += [(at + z0, at + z1, top, x0, x1) for z0, z1, top, x0, x1 in st.decks]
 
         if i < 4:
             for lesson, make in LESSONS[i]:
@@ -709,22 +745,21 @@ def build():
             name = f"Stretch {n + 1}"
             A("Placed", parent=face, name=name, position=[r(cursor), 0, RING_APOTHEM], yaw=-90)
             st = Stretch(s, face, name)
+            title = STRETCH_NAMES[n]
             st.checkpoint(f"C{n + 1}-start")
             role, index = ("start", None) if n == 0 else ("split", n - 1)
             # Its posts in the lane's walls, where they stand.
             post = LANE / 2 - WALL_THICKNESS / 2 - GATE_POST / 2
             st.A("TimingGate", course="Agility", role=role, a=[-post, TIMING_GATE_AT], b=[post, TIMING_GATE_AT], floor=FLOOR,
                  approach=[0, 1], display=True if n == 0 else None, index=index)
-            # Its number and name at its start, and its gate framed in its colour: a bar overhead and one up each wall.
-            title, colour = STRETCH_THEMES[n]
-            st.label(str(n + 1), TIMING_GATE_AT + 5, size=3.0)
-            st.label(title, TIMING_GATE_AT + 2.5, size=0.8)
+            # Walled over from its top (its sign's, where it has one) to the walls' top, so it's a doorway in them.
+            over = FLOOR + GATE_TOP + (GATE_SIGN if n == 0 else 0)
+            st.block(TIMING_GATE_AT - GATE_POST / 2, TIMING_GATE_AT + GATE_POST / 2, over, FLOOR + WALL_HEIGHT, name="Over the Gate")
+            # Its number and name at its start.
+            # Before the gate, on clear floor: past it, the first gap's stripes are.
+            st.label(str(n + 1), TIMING_GATE_AT - 1.8, size=2.0)
+            st.label(title, TIMING_GATE_AT - 3.6, size=0.8)
             plan["starts"].append((h - cursor, str(n + 1)))
-            face_in = LANE / 2 - WALL_THICKNESS
-            st.trim("Gate Frame", -face_in, face_in, TIMING_GATE_AT - 0.3, TIMING_GATE_AT + 0.3, FLOOR + WALL_HEIGHT - 2.4,
-                    FLOOR + WALL_HEIGHT - 1.8, colour)
-            for x0, x1 in ((-face_in, -face_in + 0.06), (face_in - 0.06, face_in)):
-                st.trim("Gate Frame", x0, x1, TIMING_GATE_AT - 0.3, TIMING_GATE_AT + 0.3, FLOOR, FLOOR + WALL_HEIGHT - 1.8, colour)
             length = STRETCHES[n](st, SHARES[n], taught)
             note(st, h - cursor)
             cursor -= length
@@ -734,13 +769,78 @@ def build():
             A("Platform", parent=face, name="Lane", x0=r(-h), x1=r(cursor), z0=r(inner), z1=r(outer), y0=FLOOR - DECK, top=FLOOR, coping="Accent")
             for z0, z1 in ((inner, inner + SKIRT), (outer - SKIRT, outer)):
                 A("Block", parent=face, name="Deck Skirt", x0=r(-h), x1=r(cursor), z0=r(z0), z1=r(z1), y0=GROUND, y1=FLOOR - DECK, surface="Panel")
-            plan["floors"].append((h - cursor, 2 * h))
+            plan["decks"].append((h - cursor, 2 * h, FLOOR, -LANE / 2, LANE / 2))
         if i == 3:
             build_lessons_end(s, face, h)
     build_walls(s, h)
     build_course_end(s, f"{root}/Face {RUN_FACES[-1]}", h)
     build_hub_walls(s, h)
+    build_roof(s, h)
+    build_skyline(s, outer)
     return s.spec
+
+
+def build_roof(s, h):
+    """
+    A glass roof at the walls' top over everywhere the way goes (the lanes, their corners, the hub and the shuttle's way;
+    not the open ground in the ring's middle), from wall to wall, on graphite ribs across it every ROOF_RIB. Glass blocks
+    as anything does, but it's too high to reach (as the walls' tops are), so nothing about the play changes.
+    """
+    s.part("Roof")
+    A = s.add
+    root = "Tutorial Ring"
+    top = FLOOR + WALL_HEIGHT
+    y0 = top - ROOF_THICKNESS
+    inner, outer = RING_APOTHEM - LANE / 2 + WALL_THICKNESS, RING_APOTHEM + LANE / 2 - WALL_THICKNESS  # Between the walls' faces.
+    span = 2 * h
+    hub_clear = HUB_APOTHEM - (half(RING_APOTHEM) - h)
+    hub_centre = world(RING_APOTHEM / math.cos(math.radians(22.5)), HUB_ANGLE)
+    n = len(WALL_PLAN)
+    for i, plan in enumerate(WALL_PLAN):
+        frame, k = plan["frame"], plan["face"]
+        # Over the lane, but not into the hub, which has a roof of its own.
+        u0 = hub_clear if i == 0 else 0.0
+        u1 = span - hub_clear if i == n - 1 else span
+        A("Block", parent=frame, name="Roof", x0=r(h - u1), x1=r(h - u0), z0=r(inner), z1=r(outer), y0=r(y0), y1=r(top), surface="Glass")
+        u = u0 + ROOF_RIB / 2
+        while u < u1:
+            A("Trim", parent=frame, name="Roof Rib", centre=[r(h - u), RING_APOTHEM], size=[0.2, r(outer - inner)], y0=r(top - 0.45), y1=r(y0),
+              yaw=0, surface="Graphite")
+            u += ROOF_RIB
+        # Over the corner at the face's start (from the lane's edge, so it meets the lane's roof), unless it's the hub's.
+        shape = corner(RING_APOTHEM - LANE / 2, outer)
+        middle = face_to_world([sum(p[0] for p in shape) / len(shape), sum(p[1] for p in shape) / len(shape)], k)
+        if math.dist(middle, hub_centre) > hub_reach():
+            A("Prism", parent=frame, name="Roof (corner)", shape=shape, y0=r(y0), y1=r(top), surface="Glass")
+    A("Prism", parent=root, name="Roof (hub)", shape=octagon(HUB_APOTHEM, *hub_centre), y0=r(y0), y1=r(top), surface="Glass")
+    # The shuttle's way: its ends follow the lane's inner edge and the hub's, which come back toward the way's middle off its line.
+    cos, slope = math.cos(math.radians(22.5)), math.tan(math.radians(22.5))
+    corner_z, edge_z, w = RING_APOTHEM / cos, (RING_APOTHEM - LANE / 2) / cos, DOCK_WIDTH / 2
+    near, far = -edge_z, corner_z - hub_reach()
+    shape = [[-w, r(near + w * slope)], [0, r(near)], [w, r(near + w * slope)], [w, r(far + w * slope)], [0, r(far)], [-w, r(far + w * slope)]]
+    frame = f"{root}/Lessons Shortcut"
+    A("Prism", parent=frame, name="Roof (shuttle)", shape=shape, y0=r(y0), y1=r(top), surface="Glass")
+    z = near + w * slope + ROOF_RIB / 2
+    while z < far:
+        A("Trim", parent=frame, name="Roof Rib", centre=[0, r(z)], size=[2 * w, 0.2], y0=r(top - 0.45), y1=r(y0), yaw=0, surface="Graphite")
+        z += ROOF_RIB
+
+
+def build_skyline(s, outer):
+    """
+    Blocks standing far off round the ring, of varied size (spread by fixed steps, not at random, so the build is always
+    the same), in the haze: so the ground doesn't end against the sky. To see only (no colliders), far from anywhere a
+    character goes.
+    """
+    s.part("Surroundings")
+    s.add("Group", parent="Tutorial Ring", name="Skyline")
+    for j in range(SKYLINE):
+        angle = j * 360 / SKYLINE + 4.0 * math.sin(j * 1.7)
+        radius = outer + 330 + 140 * ((j * 37) % 10) / 10
+        width = 30 + 10 * ((j * 13) % 5)
+        height = 25 + 10 * ((j * 29) % 9)
+        s.add("Trim", parent="Tutorial Ring/Skyline", name="Skyline Block", centre=world(radius, angle), size=[r(width), r(width * 0.8)],
+              y0=GROUND, y1=r(height), yaw=r(angle), surface="Panel")
 
 
 def _to_frame(point, yaw, origin=(0.0, 0.0)):
@@ -796,6 +896,13 @@ def build_hub_walls(s, h):
                 p1 = [r(a[0] + (b[0] - a[0]) * t1 + out[0]), r(a[1] + (b[1] - a[1]) * t1 + out[1])]
                 A("Wall", parent=root, name="Hub Wall", a=p0, b=p1, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS)
                 dress_wall(A, root, p0, p1, WALL_THICKNESS, FLOOR + WALL_HEIGHT)
+                # A pier where it stops at a way in, so its end isn't a raw slab.
+                yaw = math.degrees(math.atan2(b[0] - a[0], b[1] - a[1]))
+                d = ((b[0] - a[0]) / length, (b[1] - a[1]) / length)
+                if j > 0:
+                    pier(A, root, p0, d, yaw)
+                if k < n:
+                    pier(A, root, p1, (-d[0], -d[1]), yaw)
                 if j == 0:
                     starts[i] = (p0, p1)
                 if k == n:
@@ -844,75 +951,69 @@ def _subtract(intervals, cuts):
 
 def build_walls(s, h):
     """
-    The ring's walls: along both edges of each lane, wherever its floor is plain and WALL_CLEAR from anything that isn't
-    (a gap, a climb, the pool, a step: the lane's crossings), the neighbouring faces' near ends counted too (through
-    the corner between, as if it had no length); out of the keep-clear zones; and clear of the hub, and of the inner
-    corner the shuttle's dock comes in at. Each face's outer corner gets walls too where both lanes either side have
-    them up to it. From the ground to WALL_HEIGHT over the decks.
+    The ring's walls: along both edges of each lane the whole way round, gaps and climbs included, from the ground to
+    WALL_HEIGHT over the decks; but where something else stands in their place (the pool's sides, a wall marked for wall
+    runs or slides: a stretch's open and marked spans), out of the keep-clear zones (the outer side's), and clear of the
+    hub and of the inner corner the shuttle's dock comes in at. They're unmarked, so they can't be run along or slid
+    down: a wall beside a crossing is no help across it. Each face's outer corner gets walls too where both lanes either
+    side have them up to it.
     """
-    if WALL_CLEAR < gap_clear(0.0):
-        raise LockError(f"WALL_CLEAR ({WALL_CLEAR} m) is shorter than a jump off a wall's end carries: it could reach a crossing.")
     tops = reach("jump to the ledge", "climb") / locks.OTHER_SHARE
-    if CLIMB_CLEAR < reach("sprint jump", "gap") or WALL_HEIGHT < max(TOPS, default=0.0) + tops:
-        raise LockError("The walls come too close to a climb, or are low enough to get onto from a climb's top.")
+    if WALL_HEIGHT < max(TOPS, default=0.0) + tops:
+        raise LockError("The walls are low enough to get onto from a climb's top.")
     A = s.add
     span = 2 * h
     # The lanes' walls meet the hub's at its edge: the hub's middle is the ring's corner, past the lane's end (its u = 0,
     # at the inner apothem's corner) by the difference between the corner's half-widths.
     hub_clear = HUB_APOTHEM - (half(RING_APOTHEM) - h)
     dock_clear = (DOCK_WIDTH / 2 + WALL_THICKNESS) / math.cos(math.radians(22.5))  # and the shortcut's at the lessons' end.
-    # Each face's crossings: where its lane isn't plain floor, each with the clearance its crossing asked for (the
-    # closest of those it holds), or WALL_CLEAR if none did.
-    for plan in WALL_PLAN:
-        floors = _merge(plan["floors"])
-        plan["features"] = []
-        for a, b in _subtract([(0.0, span)], floors):
-            asked = [(before, after) for f0, f1, before, after in plan["registered"] if f0 < b - 1e-6 and f1 > a + 1e-6]
-            before = max((x for x, _ in asked), default=WALL_CLEAR)
-            after = max((y for _, y in asked), default=0.0)
-            plan["features"].append((a, b, before, after))
     n = len(WALL_PLAN)
     for i, plan in enumerate(WALL_PLAN):
-        before, after = WALL_PLAN[i - 1], WALL_PLAN[(i + 1) % n]
-        near = list(plan["features"])
-        near += [(a - span, b - span, c, d) for a, b, c, d in before["features"]]   # The face run before ends where this starts.
-        near += [(a + span, b + span, c, d) for a, b, c, d in after["features"]]    # The one after starts where this ends.
-        cuts = [(a - c, b + d) for a, b, c, d in near]
+        cuts = list(plan["open"])
         if i == 0:
             cuts.append((-1.0, hub_clear))                               # The hub, at the first face's start
         if i == n - 1:
             cuts.append((span - hub_clear, span + 1))                    # and the last face's end.
         walls = {}
         for side in ("inner", "outer"):
-            side_cuts = list(cuts) + (plan["keep_clear"] if side == "outer" else [])
+            side_cuts = cuts + [(a, b) for a, b, sides in plan["marked"] if side in sides]
+            if side == "outer":
+                side_cuts += plan["keep_clear"]
             if side == "inner" and i == 3:
                 side_cuts.append((span - dock_clear, span + 1))          # The shuttle's dock, at the lessons' end
             if side == "inner" and i == 4:
                 side_cuts.append((-1.0, dock_clear))                     # (the corner between the fourth face and the fifth).
-            walls[side] = [w for w in _subtract(_merge(plan["floors"]), side_cuts) if w[1] - w[0] >= 2.0]
+            walls[side] = [w for w in _subtract([(0.0, span)], side_cuts) if w[1] - w[0] > 0.05]
         plan["walls"] = walls
-        joined = {hub_clear} if i == 0 else {span - hub_clear} if i == n - 1 else set()
         for side, edge in (("inner", RING_APOTHEM - LANE / 2 + WALL_THICKNESS / 2), ("outer", RING_APOTHEM + LANE / 2 - WALL_THICKNESS / 2)):
-            side_joined = joined | ({span - dock_clear} if side == "inner" and i == 3 else {dock_clear} if side == "inner" and i == 4 else set())
             toward_lane = 1 if side == "inner" else -1
+            # The breaks that are openings (a blocker's way): elsewhere a wall stops where another stands on (the hub's,
+            # the pool's sides, a marked wall), and needs no end.
+            openings = plan["keep_clear"] if side == "outer" else []
             for u0, u1 in walls[side]:
                 a, b = [r(h - u0), r(edge)], [r(h - u1), r(edge)]
-                A("Wall", parent=plan["frame"], name=f"Ring Wall ({side})", a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS)
-                dress_wall(A, plan["frame"], a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT)
-                # Where it stops for a crossing (not at a corner, the hub or the shortcut, where another wall meets it), an
-                # end post with an orange strip down its lane side, so the break reads as meant.
+                windows = ring_windows(plan, u0, u1) if side == "inner" else []
+                glazed = [[[r(h - (w0 + w1) / 2), r(edge)], r(w1 - w0), r(FLOOR + BAND + 0.12), r(FLOOR + WALL_HEIGHT - GLASS_BELOW_TOP)]
+                            for w0, w1 in windows]
+                A("Wall", parent=plan["frame"], name=f"Ring Wall ({side})", a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS,
+                  openings=glazed or None)
+                for w0, w1 in windows:
+                    face = edge + toward_lane * WALL_THICKNESS / 2
+                    window(A, plan["frame"], [h - w0, face], [h - w1, face], -toward_lane)
+                dress_wall(A, plan["frame"], a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT, band=False)
+                ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h, pipes=i >= 4 and side == "outer", skip=windows)
+                # Where it stops for an opening, an end post with an orange strip down its lane side, so the break reads as meant.
                 for u in (u0, u1):
-                    if u <= 1e-6 or u >= span - 1e-6 or any(abs(u - j) < 0.6 for j in side_joined):
-                        continue
-                    end_post(A, plan["frame"], h - u, edge, toward_lane)
-            # A beam across each short break, at the walls' top, tying the two ends together (far out of reach).
+                    if any(abs(u - k0) < 0.6 or abs(u - k1) < 0.6 for k0, k1 in openings):
+                        end_post(A, plan["frame"], h - u, edge, toward_lane)
+            # A beam across each opening short enough, at the walls' top, tying the two ends together (far out of reach).
             for (_, e0), (s1, _) in zip(walls[side], walls[side][1:]):
-                if s1 - e0 <= LINTEL_SPAN:
+                if s1 - e0 <= LINTEL_SPAN and any(k0 < s1 and k1 > e0 for k0, k1 in openings):
                     A("Trim", parent=plan["frame"], name="Ring Wall (lintel)", centre=[r(h - (e0 + s1) / 2), r(edge)], size=[r(s1 - e0), WALL_THICKNESS],
                       y0=FLOOR + WALL_HEIGHT - LINTEL, y1=FLOOR + WALL_HEIGHT, yaw=0, surface="Graphite")
         # A banner with the number of each lesson and stretch on a wall at its start, where there's one.
         for u, number in plan["starts"]:
-            for side, face_z, outward in (("inner", RING_APOTHEM - LANE / 2 + WALL_THICKNESS, 1), ("outer", RING_APOTHEM + LANE / 2 - WALL_THICKNESS, -1)):
+            for side, face_z, outward in (("outer", RING_APOTHEM + LANE / 2 - WALL_THICKNESS, -1), ("inner", RING_APOTHEM - LANE / 2 + WALL_THICKNESS, 1)):
                 if any(w0 <= u + 3 and w1 >= u + 9 for w0, w1 in walls[side]):
                     A("Banner", parent=plan["frame"], wallPoint=[r(h - u - 6), r(face_z)], outward=[0, outward], top=FLOOR + 10, length=5.0, number=number)
                     break
@@ -981,10 +1082,87 @@ def wall_chain(A, parent, points, thickness, y0, y1, name, piece="Wall"):
             A("Prism", parent=parent, name=f"{name} (join)", shape=ccw([[r(x), r(z)] for x, z in wedge]), y0=y0, y1=y1, surface="Panel")
 
 
-def dress_wall(A, parent, a, b, thickness, top):
+def ring_windows(plan, u0, u1):
     """
-    A tall wall's dressing, to see only: a graphite coping along its top, and on both faces a graphite band at its foot at
-    deck height (BAND high) with an orange stripe along its top, so the deck's level reads along every wall.
+    The windows in an inner ring wall from u0 to u1: one in the middle of each stretch of it beside plain floor (a deck
+    at FLOOR the lane's width) GLASS_MIN long or more, up to GLASS_MAX long and 3 m clear of the stretch's ends.
+    """
+    plain = _merge([(max(u0, d0), min(u1, d1)) for d0, d1, top, x0, x1 in plan["decks"]
+                    if abs(top - FLOOR) < 1e-6 and x0 <= -LANE / 2 + 1e-6 and min(u1, d1) - max(u0, d0) > 0.05])
+    out = []
+    for p0, p1 in plain:
+        if p1 - p0 >= GLASS_MIN:
+            length = min(GLASS_MAX, p1 - p0 - 6)
+            mid = (p0 + p1) / 2
+            out.append((mid - length / 2, mid + length / 2))
+    return out
+
+
+def window(A, parent, a, b, outward):
+    """
+    A window's glass from a to b (points on a wall's lane-side face, in its frame), flush with that face and set into
+    the wall outward of it (outward: the face's normal away from the lane, along the frame's z or x as the wall runs), from
+    over the deck's band to GLASS_BELOW_TOP under the walls' top; and graphite mullions on it every MULLION_EVERY.
+    """
+    y0, y1 = FLOOR + BAND + 0.12, FLOOR + WALL_HEIGHT - GLASS_BELOW_TOP
+    along_x = abs(b[0] - a[0]) > abs(b[1] - a[1])
+    length = abs(b[0] - a[0]) if along_x else abs(b[1] - a[1])
+    lo, hi = (min(a[0], b[0]), max(a[0], b[0])) if along_x else (min(a[1], b[1]), max(a[1], b[1]))
+    f = a[1] if along_x else a[0]
+    g0, g1 = sorted((f, f + outward * 0.1))
+    if along_x:
+        A("Block", parent=parent, name="Window", x0=r(lo), x1=r(hi), z0=r(g0), z1=r(g1), y0=r(y0), y1=r(y1), surface="Glass")
+    else:
+        A("Block", parent=parent, name="Window", x0=r(g0), x1=r(g1), z0=r(lo), z1=r(hi), y0=r(y0), y1=r(y1), surface="Glass")
+    count = int(length // MULLION_EVERY)
+    for j in range(1, count):
+        t = lo + (hi - lo) * j / count
+        c = [t, f - outward * 0.03] if along_x else [f - outward * 0.03, t]
+        A("Trim", parent=parent, name="Mullion", centre=[r(c[0]), r(c[1])], size=[0.15, 0.06] if along_x else [0.06, 0.15],
+          y0=r(y0), y1=r(y1), yaw=0, surface="Graphite")
+
+
+def ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h, pipes=False, skip=()):
+    """
+    A ring wall's dressing on its lane side, from u0 to u1 along its face (its line at edge, the lane toward_lane of it):
+    the band at its foot at the height of the deck beside it (stepping with it, and none beside a gap), with an orange stripe
+    along its top; warm lamps high up, between the pilasters, every other bay; and with pipes, two pipe
+    runs high along it on brackets at the pilasters.
+    """
+    frame = plan["frame"]
+    face = edge + toward_lane * WALL_THICKNESS / 2
+    beside = [(max(u0, d0), min(u1, d1), top) for d0, d1, top, x0, x1 in plan["decks"]
+              if (x0 <= -LANE / 2 + 1e-6 if side == "inner" else x1 >= LANE / 2 - 1e-6) and min(u1, d1) - max(u0, d0) > 0.05]
+    for b0, b1, top in beside:
+        for offset, y0, y1, surface, thick in ((0.02, top, top + BAND, "Graphite", 0.04), (0.025, top + BAND, top + BAND + 0.12, "Accent", 0.05)):
+            A("Trim", parent=frame, name="Wall Band", centre=[r(h - (b0 + b1) / 2), r(face + toward_lane * offset)], size=[r(b1 - b0), thick],
+              y0=r(y0), y1=r(y1), yaw=0, surface=surface)
+    # The pilasters' places, as the Wall piece spaces them (centred on the wall, PILASTER_SPACING apart).
+    length = u1 - u0
+    if length < PILASTER_MIN:
+        return
+    count = int((length - 2) // PILASTER_SPACING) + 1
+    first = u0 + (length - (count - 1) * PILASTER_SPACING) / 2
+    for i in range(count - 1):
+        u = first + (i + 0.5) * PILASTER_SPACING
+        if i % 2 == 0 and not any(w0 - 1 <= u <= w1 + 1 for w0, w1 in skip):  # Not on a window.
+            A("Trim", parent=frame, name="Wall Lamp", centre=[r(h - u), r(face + toward_lane * 0.05)], size=[1.6, 0.1],
+              y0=FLOOR + LAMP_HEIGHT, y1=FLOOR + LAMP_HEIGHT + 0.25, yaw=0, surface="Light")
+    if pipes:
+        for y in (PIPE_HEIGHT, PIPE_HEIGHT + 0.45):
+            A("Trim", parent=frame, name="Pipe", centre=[r(h - (u0 + u1) / 2), r(face + toward_lane * 0.35)], size=[r(length - 0.4), 0.2],
+              y0=FLOOR + y, y1=FLOOR + y + 0.2, yaw=0, surface="Steel")
+        for i in range(count):
+            u = first + i * PILASTER_SPACING
+            A("Trim", parent=frame, name="Pipe Bracket", centre=[r(h - u), r(face + toward_lane * 0.25)], size=[0.12, 0.42],
+              y0=FLOOR + PIPE_HEIGHT - 0.15, y1=FLOOR + PIPE_HEIGHT + 0.8, yaw=0, surface="Graphite")
+
+
+def dress_wall(A, parent, a, b, thickness, top, band=True):
+    """
+    A tall wall's dressing, to see only: a graphite coping along its top, and (with band) on both faces a graphite band at
+    its foot at deck height (BAND high) with an orange stripe along its top, so the deck's level reads along every wall. A
+    marked wall has no band: its pattern is its look.
     """
     dx, dz = b[0] - a[0], b[1] - a[1]
     length = math.hypot(dx, dz)
@@ -995,11 +1173,27 @@ def dress_wall(A, parent, a, b, thickness, top):
     px, pz = dz / length, -dx / length
     A("Trim", parent=parent, name="Coping", centre=[r(mid[0]), r(mid[1])], size=[r(thickness + 0.12), r(length)],
       y0=r(top - COPING), y1=r(top + 0.06), yaw=yaw, surface="Graphite")
-    for side in (1, -1):
+    for side in (1, -1) if band else ():
         for offset, y0, y1, surface in ((thickness / 2 + 0.02, FLOOR, FLOOR + BAND, "Graphite"), (thickness / 2 + 0.025, FLOOR + BAND, FLOOR + BAND + 0.12, "Accent")):
             c = (mid[0] + px * side * offset, mid[1] + pz * side * offset)
-            A("Trim", parent=parent, name="Wall Band", centre=[r(c[0]), r(c[1])], size=[0.05 if surface == "Accent" else 0.04, r(length)],
+            A("Trim", parent=parent, name="Wall Band", centre=[r(c[0]), r(c[1])], size=[0.04 if surface == "Graphite" else 0.05, r(length)],
               y0=r(y0), y1=r(y1), yaw=yaw, surface=surface)
+
+
+PIER = 1.4                    # How long a pier capping a wall's end is, along the wall,
+PIER_PROUD = 0.03             # and how far past the end it stands.
+
+
+def pier(A, parent, end, back, yaw):
+    """
+    A graphite pier capping a wall's end (end, in the parent's frame), from the ground to just over the walls' top: as
+    thick as the wall, and PIER long back along it (back: the unit direction from the end into the wall), so it's flush
+    with the wall's faces and nothing of it stands in a way or on a floor.
+    """
+    # Standing a little past the wall's end, so its end face isn't in the same plane as the wall's (they'd flicker).
+    at = [end[0] + back[0] * (PIER / 2 - PIER_PROUD), end[1] + back[1] * (PIER / 2 - PIER_PROUD)]
+    A("Trim", parent=parent, name="Pier", centre=[r(at[0]), r(at[1])], size=[WALL_THICKNESS + 0.06, PIER], y0=GROUND,
+      y1=FLOOR + WALL_HEIGHT + 0.5, yaw=r(yaw), surface="Graphite")
 
 
 def end_post(A, parent, x, z, toward_lane):
@@ -1050,6 +1244,9 @@ def build_lessons_end(s, face, h):
     dock_b = (corner - hub_reach() - 4, corner - HUB_APOTHEM / 2)
     for name, (z0, z1) in (("Lessons Dock", dock_a), ("Hub Dock", dock_b)):
         A("Platform", parent=frame, name=name, x0=-w, x1=w, z0=r(z0), z1=r(z1), y0=FLOOR - DECK, top=FLOOR, coping="Accent")
+        # Skirted all round from the ground, as the lanes' decks are.
+        wall_chain(A, frame, [[-w + SKIRT / 2, r(z0 + SKIRT / 2)], [w - SKIRT / 2, r(z0 + SKIRT / 2)], [w - SKIRT / 2, r(z1 - SKIRT / 2)],
+                              [-w + SKIRT / 2, r(z1 - SKIRT / 2)], [-w + SKIRT / 2, r(z0 + SKIRT / 2)]], SKIRT, GROUND, FLOOR - DECK, "Dock Skirt")
     # The shuttle, from the lessons' dock to the hub's and back, its deck level with theirs.
     size = SHUTTLE_SIZE
     za, zb = dock_a[1] + size / 2 + 0.05, dock_b[0] - size / 2 - 0.05
@@ -1063,9 +1260,23 @@ def build_lessons_end(s, face, h):
     # point of their octagons, so each wall's end is set where its line crosses them.
     slope = math.tan(math.radians(22.5))
     for x in (-(DOCK_WIDTH / 2 + WALL_THICKNESS / 2), DOCK_WIDTH / 2 + WALL_THICKNESS / 2):
-        a, b = [r(x), r(-inner - abs(x) * slope)], [r(x), r(corner - hub_reach() + abs(x) * slope)]
-        A("Wall", parent=frame, name="Shortcut Wall", a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS)
+        # The lane's inner edge, beside the corner, comes back toward the middle as it runs off to either side of the
+        # way (so -inner, plus): there each wall's outer face meets the end of the ring's inner wall, which stops for the
+        # dock (dock_clear, in build_walls) just where it does.
+        a, b = [r(x), r(-inner + abs(x) * slope)], [r(x), r(corner - hub_reach() + abs(x) * slope)]
+        # Glass in its first and last thirds (clear of the piers at its ends), to see out over the middle; its middle opaque.
+        length = b[1] - a[1]
+        windows = [(a[1] + 1.5, a[1] + length / 3), (b[1] - length / 3, b[1] - 1.5)]
+        openings = [[[r(x), r((w0 + w1) / 2)], r(w1 - w0), r(FLOOR + BAND + 0.12), r(FLOOR + WALL_HEIGHT - GLASS_BELOW_TOP)] for w0, w1 in windows]
+        A("Wall", parent=frame, name="Shortcut Wall", a=a, b=b, y0=GROUND, y1=FLOOR + WALL_HEIGHT, thickness=WALL_THICKNESS, openings=openings)
+        out = 1 if x > 0 else -1
+        for w0, w1 in windows:
+            face = x - out * WALL_THICKNESS / 2
+            window(A, frame, [face, w0], [face, w1], out)
         dress_wall(A, frame, a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT)
+        # A pier at each end, where it meets the ring's walls and the hub's at an angle, over the join.
+        pier(A, frame, a, (0, 1), 0.0)
+        pier(A, frame, b, (0, -1), 0.0)
     # Its mouth at the lessons' end framed: a beam across at the walls' top, with a light under it.
     mouth = -inner + 2
     A("Trim", parent=frame, name="Shortcut Mouth", centre=[0, r(mouth)], size=[DOCK_WIDTH + 2 * WALL_THICKNESS, 1.0],
@@ -1100,9 +1311,19 @@ def build_course_end(s, face, h):
     post = LANE / 2 - WALL_THICKNESS / 2 - GATE_POST / 2
     A("TimingGate", parent=face, course="Agility", role="finish", a=[r(gate_x + 7), r(RING_APOTHEM - post)],
       b=[r(gate_x + 7), r(RING_APOTHEM + post)], floor=FLOOR, approach=[-1, 0])
+    A("Block", parent=face, name="Over the Finish Gate", x0=r(gate_x + 7 - GATE_POST / 2), x1=r(gate_x + 7 + GATE_POST / 2),
+      z0=r(RING_APOTHEM - LANE / 2), z1=r(RING_APOTHEM + LANE / 2), y0=FLOOR + GATE_TOP, y1=FLOOR + WALL_HEIGHT, surface="Panel")
     # Over the gate, wall up to the walls' top: it's a doorway in them.
     A("Block", parent=face, name="Over the Course Gate", x0=r(gate_x - WALL_THICKNESS / 2), x1=r(gate_x + WALL_THICKNESS / 2),
       z0=r(RING_APOTHEM - width / 2), z1=r(RING_APOTHEM + width / 2), y0=FLOOR + GATE_HEIGHT, y1=FLOOR + WALL_HEIGHT, surface="Panel")
+    # Framed on the course's side (jambs and a head, proud of the wall over it), with HUB on the floor before it.
+    front = gate_x + WALL_THICKNESS / 2 + 0.15
+    for z0, z1 in ((RING_APOTHEM - width / 2, RING_APOTHEM - width / 2 + 0.5), (RING_APOTHEM + width / 2 - 0.5, RING_APOTHEM + width / 2)):
+        A("Trim", parent=face, name="Hub Gate Frame", centre=[r(front), r((z0 + z1) / 2)], size=[0.3, r(z1 - z0)], y0=FLOOR,
+          y1=FLOOR + GATE_HEIGHT + 0.5, yaw=0, surface="Graphite")
+    A("Trim", parent=face, name="Hub Gate Frame", centre=[r(front), RING_APOTHEM], size=[0.3, r(width)], y0=FLOOR + GATE_HEIGHT,
+      y1=FLOOR + GATE_HEIGHT + 0.5, yaw=0, surface="Graphite")
+    A("FloorLabel", parent=face, text="HUB", at=[r(gate_x + 3.5), RING_APOTHEM], height=FLOOR, facing=[-1, 0], size=2.0)
 
 
 def check_locks():

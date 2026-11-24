@@ -126,6 +126,9 @@ Its name has to start with one of `LevelFixtureSetup`'s names, with its settings
 The spec has changed since it was exported (in the Level Editor, say). Check that only your changes differ, then export with `-force` (see [Level Specs](showcase/level-specs.md)).
 
 ## Movement oddities
+**The character won't wall-run along a wall, or slide down it.**
+Only walls marked for it are run along or slid down: a TraversableWall on the wall's collider or a parent, its Move the move wanted (Wall Run or Wall Slide: a wall is for one, never both), and the component turned on (see [Walls for wall runs and slides](traversal.md#walls-for-wall-runs-and-slides)). In the showcase's levels, name the wall "Wall-Run Wall", "Wall-Slide Wall" or "Wall-Run and Slide Wall", or build it with the Graybox's MarkedWall. To let every wall be run along or slid down, turn on Wall Running's Wall Run On Any Wall or Wall Sliding's Wall Slide On Any Wall. A test's wall needs marking too (the rig's `TraversableBox`, or `WallAhead`/`WallBeside` with `wallRun`/`wallSlide`).
+
 **Something reads a lagging position.**
 The character's Rigidbody is interpolated, and moving platforms interpolate themselves, so their Transforms show a pose between physics steps. Movement code reads `Rigidbody.position` and `rotation` (see `MMotionMotor.GetPhysicsPose`).
 

@@ -1,4 +1,5 @@
 using System.Globalization;
+using MeridianMotion.Levels;
 using MeridianMotion.Levels.EditorTools;
 using TMPro;
 using UnityEditor;
@@ -38,6 +39,10 @@ namespace MeridianMotion.Showcase.Levels
         public const string WaterPrefix = LevelFixtureSetup.WaterPrefix;
         /// <summary>How a climbable panel's name starts.</summary>
         public const string ClimbablePrefix = LevelFixtureSetup.ClimbablePrefix;
+        /// <summary>How a wall for wall runs is named.</summary>
+        public const string WallRunWallPrefix = LevelFixtureSetup.WallRunWallPrefix;
+        /// <summary>How a wall for wall slides is named.</summary>
+        public const string WallSlideWallPrefix = LevelFixtureSetup.WallSlideWallPrefix;
         /// <summary>The name of a bounce pad's springy top, the child its LaunchPad squashes as it launches someone.</summary>
         public const string BouncePadSpringName = LevelFixtureSetup.BouncePadSpringName;
 
@@ -274,6 +279,68 @@ namespace MeridianMotion.Showcase.Levels
             water.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             GameObjectUtility.SetStaticEditorFlags(water, 0);
             return water;
+        }
+
+        // How tall (m) a marked wall's cyan line is.
+        private const float MarkedWallLine = 0.06f;
+
+        /// <summary>
+        /// A wall marked for a move (wall runs or wall slides, never both), along the line from a to b (centred on it), from
+        /// y0 to y1, thickness thick: painted plate (Plate), not the plain walls' concrete, with dark grooves on both faces that say
+        /// which, horizontal for a wall run (the way it's run along), vertical for a wall slide (the way it's slid down),
+        /// and a thin cyan line along the top of each face, the only cyan on it (cyan is an accent, used sparingly). Named for
+        /// what it's for (WallRunWallPrefix or WallSlideWallPrefix, then name in brackets, if any), which the game setup
+        /// marks it by (a TraversableWall: see LevelFixtureSetup). Only walls marked so can be run along or slid down. A box
+        /// collider over the wall (the pattern has none).
+        /// </summary>
+        [Piece]
+        public static GameObject MarkedWall(Transform parent, string name, Vector2 a, Vector2 b, float y0, float y1, float thickness, TraversableWall.WallMove move)
+        {
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(MarkedWall), parent, name, a, b, y0, y1, thickness, move);
+            string prefix = LevelFixtureSetup.MarkedWallPrefix(move);
+            bool run = move == TraversableWall.WallMove.WallRun;
+            LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
+            float length = Vector2.Distance(a, b), half = length / 2f, height = y1 - y0, t = thickness / 2f;
+            Vector2 along = length > 1e-4f ? (b - a) / length : Vector2.right;
+            Vector2 middle = (a + b) / 2f;
+            // Laid out in its own space: along x, up y, across z (its two faces at z = ±thickness/2).
+            var wall = new GameObject(string.IsNullOrEmpty(name) ? prefix : $"{prefix} ({name})");
+            wall.transform.SetParent(parent, false);
+            wall.transform.SetLocalPositionAndRotation(new Vector3(middle.x, y0, middle.y),
+                Quaternion.LookRotation(new Vector3(-along.y, 0f, along.x), Vector3.up));
+            var mesh = new GrayboxMesh();
+            mesh.Box(GrayboxMaterial.Plate, new Vector3(-half, 0f, -t), new Vector3(half, height, t));
+            float inset = m.markedWallInset, spacing = m.markedWallStripSpacing;
+            float x0 = -half + inset, x1 = half - inset, w = m.markedWallStripWidth / 2f;
+            // The cyan line just below the inset from the top (under a coping, if the wall has one), and the grooves stop
+            // a groove's spacing below it.
+            float line = height - inset - MarkedWallLine * 2f, top = line - spacing / 2f;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                float face = side * t, proud = side * (t + m.markedWallStripDepth);
+                float zMin = Mathf.Min(face, proud), zMax = Mathf.Max(face, proud);
+                if (run)
+                {
+                    for (float y = inset + spacing / 2f; y + w <= top; y += spacing)
+                    {
+                        mesh.Box(GrayboxMaterial.Graphite, new Vector3(x0, y - w, zMin), new Vector3(x1, y + w, zMax));
+                    }
+                }
+                else
+                {
+                    for (float x = x0 + spacing / 2f; x + w <= x1; x += spacing)
+                    {
+                        mesh.Box(GrayboxMaterial.Graphite, new Vector3(x - w, inset, zMin), new Vector3(x + w, top, zMax));
+                    }
+                }
+                mesh.Box(GrayboxMaterial.Cyan, new Vector3(x0, line - MarkedWallLine / 2f, zMin), new Vector3(x1, line + MarkedWallLine / 2f, zMax));
+            }
+            mesh.AddTo(wall, wall.name);
+            var collider = wall.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, height / 2f, 0f);
+            collider.size = new Vector3(length, height, thickness);
+            MakeStatic(wall);
+            return wall;
         }
 
         /// <summary>

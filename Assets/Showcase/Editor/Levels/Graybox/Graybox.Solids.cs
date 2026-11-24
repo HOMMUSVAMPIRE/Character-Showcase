@@ -56,8 +56,7 @@ namespace MeridianMotion.Showcase.Levels
             var solid = new GameObject(name);
             solid.transform.SetParent(parent, false);
             solid.AddComponent<MeshFilter>().sharedMesh = mesh;
-            solid.AddComponent<MeshRenderer>().sharedMaterial = For(surface);
-            MakeStatic(solid);
+            Surface(solid, solid.AddComponent<MeshRenderer>(), surface);
             foreach ((Vector2 centre, Vector2 size, float yaw) in FootprintBoxes(shape))
             {
                 var collider = new GameObject("Collider");

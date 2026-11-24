@@ -392,6 +392,14 @@ namespace MeridianMotion.Showcase.Levels
             public Vector2 climbableHoldSpacing = new(0.9f, 0.8f);
             [Tooltip("Climbable panels: a hold's size (m): across, up, and how far it stands out from the panel.")]
             public Vector3 climbableHold = new(0.22f, 0.14f, 0.06f);
+            [Tooltip("Marked walls (for wall runs or slides): how wide (m) the strips of their pattern are.")]
+            public float markedWallStripWidth = 0.18f;
+            [Tooltip("Marked walls: how far apart (m) their pattern's strips are, centre to centre.")]
+            public float markedWallStripSpacing = 0.9f;
+            [Tooltip("Marked walls: how far (m) their pattern stands proud of the wall.")]
+            public float markedWallStripDepth = 0.02f;
+            [Tooltip("Marked walls: how far in (m) from the wall's edges their pattern stops.")]
+            public float markedWallInset = 0.3f;
             [Tooltip("Water: the size (m) of the cells its surface is drawn in, fine enough for the water's waves to bend it.")]
             public float waterCell = 1f;
         }

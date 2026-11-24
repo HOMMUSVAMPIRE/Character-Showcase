@@ -21,8 +21,24 @@ namespace MeridianMotion.Characters
         [Tooltip("The PlayerInput the character's actions are read from.")]
         [FormerlySerializedAs("inputSource")] public PlayerInput playerInput = null;
 
+        [Tooltip("Whether Sprint toggles sprinting rather than having to be held: a press starts it, and the next press, or " +
+                 "stopping after moving, ends it. The player can change it on the pause menu's controls page")]
+        [SerializeField] private bool toggleSprint;
+
         private readonly InputLatch latch = new();
         private readonly InputSuppression suppression = new();
+        private readonly SprintToggle sprintToggle = new();
+
+        /// <summary>Whether Sprint toggles sprinting rather than having to be held (see SprintToggle). Setting it ends a toggled sprint.</summary>
+        public bool ToggleSprint
+        {
+            get => toggleSprint;
+            set
+            {
+                toggleSprint = value;
+                sprintToggle.Enabled = value;
+            }
+        }
 
         /// <summary>
         /// Whether the player's input stops reaching the character (a window open over the game: the UI's On Game Input
@@ -50,6 +66,12 @@ namespace MeridianMotion.Characters
                 return;
             }
             instance = this;
+            sprintToggle.Enabled = toggleSprint;
+        }
+
+        private void OnValidate()
+        {
+            if (sprintToggle.Enabled != toggleSprint) { sprintToggle.Enabled = toggleSprint; }
         }
 
         /// <summary>
@@ -74,6 +96,8 @@ namespace MeridianMotion.Characters
             ReadButton(interact, InputButtons.Interact, ref down, ref pressed);
             ReadButton(attack, InputButtons.Attack, ref down, ref pressed);
             suppression.Apply(ref moveInput, ref down, ref pressed);
+            // Sprint held while it's toggled on (not while the input's suppressed: a menu open over the game leaves it as it was).
+            if (!Suppressed) { sprintToggle.Apply(moveInput, ref down, ref pressed); }
 
             // The player looks the way their camera does: the move input is relative to it. Without one, along +Z.
             Camera view = Camera.main;

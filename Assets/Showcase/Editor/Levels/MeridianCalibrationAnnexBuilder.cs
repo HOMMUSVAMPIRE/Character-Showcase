@@ -1,5 +1,6 @@
 using UnityEngine;
 using static MeridianMotion.Showcase.Levels.Graybox;
+using MeridianMotion.Levels;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -224,7 +225,8 @@ namespace MeridianMotion.Showcase.Levels
         {
             const float wall0 = -79f, wall1 = -78f, near0 = -100f, near1 = -92f;
             float far1 = near0 - WallRunGap, far0 = far1 - 8f;
-            Block(test, "Wall-Run Wall (+20)", wall0, wall1, far1 - 2f, near0 + 2f, 0f, WallRunWall, GrayboxMaterial.Panel);
+            MarkedWall(test, $"+{WallRunWall:0}", new Vector2((wall0 + wall1) / 2f, far1 - 2f), new Vector2((wall0 + wall1) / 2f, near0 + 2f), 0f, WallRunWall,
+                wall1 - wall0, TraversableWall.WallMove.WallRun);
 
             // West: 16 m, a wall run and a jump.
             const float x0 = -88f;

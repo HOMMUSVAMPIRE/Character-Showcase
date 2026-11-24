@@ -129,7 +129,8 @@ namespace MeridianMotion.Tests.Traversal
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, 6f, 0f), settleSeconds: 0f);
             face = rig.FrontExtent + 0.1f;
-            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f));
+            // Marked for wall slides too, so it's the climb that wins, not the wall that can't be slid down.
+            rig.ClimbableBox("Wall", new Vector3(0f, 6f, face + 0.5f), new Vector3(10f, 12f, 1f)).gameObject.AddComponent<MeridianMotion.Levels.TraversableWall>().Move = MeridianMotion.Levels.TraversableWall.WallMove.WallSlide;
             bool slid = false;
             yield return rig.Run(0.3f, _ => Up, _ => slid |= rig.InState(CharacterState.WallSliding));
             Assert.That(Climbing, Is.True, "Falling into a climbable wall should take hold of it.");

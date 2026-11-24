@@ -114,7 +114,7 @@ namespace MeridianMotion.Tests.Animations
             yield return SpawnFox(new Vector3(0f, 0.05f, -10f));
             rig.Body.position = new Vector3(0f, 6f, -10f);
             float wallFace = rig.SideExtent + 0.1f;
-            rig.Box("Wall", new Vector3(side * (wallFace + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
+            rig.TraversableBox("Wall", new Vector3(side * (wallFace + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f), MeridianMotion.Levels.TraversableWall.WallMove.WallRun);
             Physics.SyncTransforms();
             face(wallFace);
             rig.Movement.OverrideVelocity(Vector3.forward * rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale);

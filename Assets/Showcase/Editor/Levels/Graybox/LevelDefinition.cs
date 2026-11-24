@@ -83,6 +83,14 @@ namespace MeridianMotion.Showcase.Levels
             /* Grass    */ new(new Color(0.3f, 0.46f, 0.19f), 0f, 0.1f, 0.018f, 0.85f, 0f, 0.3f),
             // Water is made with its own shader (see MakeWaterMaterial): only its tint is used, for its shallows.
             /* Water    */ new(new Color(0.16f, 0.52f, 0.6f), 0f, 0.92f, 0f, 0f, 0f, 0f),
+            // Asphalt: dark and rough, coarse grain and stains, no pits.
+            /* Asphalt  */ new(new Color(0.16f, 0.17f, 0.18f), 0f, 0.08f, 0.015f, 0.6f, 0f, 0.2f),
+            // Plate: painted, not bare, so a whole wall of it doesn't mirror the sky; in small panels, like bolted plate.
+            /* Plate    */ new(new Color(0.4f, 0.45f, 0.52f), 0f, 0.25f, 0.006f, 0.2f, 0f, 0.06f, panels: 1f, panelSize: 1.5f),
+            // Glass is made as URP Lit, see-through (see MakeGlassMaterial): only its tint (its alpha how much it shows) and
+            // smoothness are used.
+            // Enough of it shows (and reflects) to read as a pane, not a hole in the wall.
+            /* Glass    */ new(new Color(0.48f, 0.64f, 0.7f, 0.42f), 0f, 0.95f, 0f, 0f, 0f, 0f),
         };
 
 
@@ -283,7 +291,12 @@ namespace MeridianMotion.Showcase.Levels
                 Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
                 if (material == null)
                 {
-                    material = surface == Graybox.GrayboxMaterial.Water ? MakeWaterMaterial(Looks[(int)surface]) : MakeMaterial(shader, Looks[(int)surface]);
+                    material = surface switch
+                    {
+                        Graybox.GrayboxMaterial.Water => MakeWaterMaterial(Looks[(int)surface]),
+                        Graybox.GrayboxMaterial.Glass => MakeGlassMaterial(Looks[(int)surface]),
+                        _ => MakeMaterial(shader, Looks[(int)surface]),
+                    };
                     material.name = $"Level_{surface}";
                     AssetDatabase.CreateAsset(material, path);
                 }
@@ -324,6 +337,23 @@ namespace MeridianMotion.Showcase.Levels
         /// The Water surface's material, in the water shader (its other settings at the shader's defaults, to tune on the
         /// material), its shallows tinted as the look says; or, without the shader, plain see-through URP Lit.
         /// </summary>
+        /// <summary>Glass: URP Lit, transparent (alpha blended, no depth writes), in the look's tint (its alpha how much shows).</summary>
+        private static Material MakeGlassMaterial(Look look)
+        {
+            var glass = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            glass.SetFloat("_Surface", 1f);   // Transparent,
+            glass.SetFloat("_Blend", 0f);     // alpha blended.
+            glass.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            glass.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            glass.SetFloat("_ZWrite", 0f);
+            glass.SetOverrideTag("RenderType", "Transparent");
+            glass.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            glass.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            glass.SetColor("_BaseColor", look.tint);
+            glass.SetFloat("_Smoothness", look.smoothness);
+            return glass;
+        }
+
         private static Material MakeWaterMaterial(Look look)
         {
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(WaterShaderPath);

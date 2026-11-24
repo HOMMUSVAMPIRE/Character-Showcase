@@ -1,5 +1,6 @@
 using UnityEngine;
 using static MeridianMotion.Showcase.Levels.Graybox;
+using MeridianMotion.Levels;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -72,7 +73,9 @@ namespace MeridianMotion.Showcase.Levels
 
             // The south wing: up from the entry (±0) to a terrace at +8, and on up to the core.
             const float wingHalf = 14f, wingSouth = -46f;
-            BoxXZ(masses, "South Terrace (+8)", new Vector2(0f, (wingSouth - CoreApothem) / 2f), new Vector2(2f * wingHalf, -wingSouth - CoreApothem), 0f, Lower);
+            // Its east face is the wall run (see BuildMechanics): its last metre a wall marked for it, the rest plain.
+            BoxXZ(masses, "South Terrace (+8)", new Vector2(-0.5f, (wingSouth - CoreApothem) / 2f), new Vector2(2f * wingHalf - 1f, -wingSouth - CoreApothem), 0f, Lower);
+            MarkedWall(masses, "South Terrace East Face", new Vector2(wingHalf - 0.5f, wingSouth), new Vector2(wingHalf - 0.5f, -CoreApothem), 0f, Lower, 1f, TraversableWall.WallMove.WallRun);
             float entryFoot = wingSouth - FlightLength(0f, Lower);
             Flight(stairs, "Stair (Entry to South Terrace)", new Vector2(0f, entryFoot), Vector2.up, StairWidth, 0f, Lower);
             Flight(stairs, "Stair (South Terrace to Core)", new Vector2(0f, -CoreApothem - FlightLength(Lower, Core)), Vector2.up, StairWidth, Lower, Core);

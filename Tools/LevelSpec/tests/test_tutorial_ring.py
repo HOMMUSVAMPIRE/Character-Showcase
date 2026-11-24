@@ -94,18 +94,38 @@ class Ring(unittest.TestCase):
             under = [f for f in floors if abs(f.y1 - s.y0) < 0.05 and _inside(at, f.points)]
             self.assertTrue(under, f"Checkpoint {s.piece['id']} at {at} (y {feet[1]}) should stand on a floor, or a respawn there falls.")
 
-    def test_walls_keep_clear_of_every_crossing(self):
+    def test_the_ring_is_walled_all_round_but_for_its_ways_in(self):
         plans = tutorial_ring.WALL_PLAN
         self.assertEqual(len(plans), 8)
-        self.assertTrue(any(plan["walls"]["outer"] for plan in plans), "The ring should have walls.")
-        for plan in plans:
+        span = 2 * tutorial_ring.face_half_length()
+        for i, plan in enumerate(plans):
             for side in ("inner", "outer"):
-                for w0, w1 in plan["walls"][side]:
-                    for f0, f1, before, after in plan["features"]:
-                        self.assertTrue(w1 <= f0 - before + 1e-6 or w0 >= f1 + after - 1e-6,
-                                        f"Face {plan['face']}'s {side} wall {w0:.1f}-{w1:.1f} m comes closer than it may to a crossing at {f0:.1f}-{f1:.1f} m.")
-                    for k0, k1 in plan["keep_clear"] if side == "outer" else []:
-                        self.assertTrue(w1 <= k0 + 1e-6 or w0 >= k1 - 1e-6, f"Face {plan['face']}'s outer wall is in a keep-clear zone.")
+                marked = [(a, b) for a, b, sides in plan["marked"] if side in sides]
+                covered = plan["walls"][side] + marked + plan["open"] + (plan["keep_clear"] if side == "outer" else [])
+                for u0, u1 in tutorial_ring._subtract([(0.0, span)], covered):
+                    at_hub = (i == 0 and u0 < 1e-6) or (i == len(plans) - 1 and u1 > span - 1e-6)
+                    at_dock = side == "inner" and ((i == 3 and u1 > span - 1e-6) or (i == 4 and u0 < 1e-6))
+                    self.assertTrue(at_hub or at_dock, f"Face {plan['face']}'s {side} side has no wall from {u0:.1f} to {u1:.1f} m.")
+
+    def test_no_ring_wall_stands_on_a_marked_wall(self):
+        for plan in tutorial_ring.WALL_PLAN:
+            for side in ("inner", "outer"):
+                for m0, m1, sides in plan["marked"]:
+                    if side not in sides:
+                        continue
+                    for w0, w1 in plan["walls"][side]:
+                        self.assertTrue(w1 <= m0 + 1e-6 or w0 >= m1 - 1e-6,
+                                        f"Face {plan['face']}'s {side} ring wall {w0:.1f}-{w1:.1f} m overlaps a marked wall: it'd be swept into first.")
+
+    def test_only_the_wall_run_and_wall_jump_crossings_have_marked_walls(self):
+        for c, _ in tutorial_ring.CROSSINGS:
+            if c.wall_beside:
+                self.assertIn("wall run", c.intended, f"{c.name}: only a wall run's crossing has a wall marked for it beside it.")
+        parts = {part for part, _ in pieces(self.spec, "MarkedWall")}
+        self.assertEqual(parts, {"Lessons 2 (E)", "Lessons 3 (NE)", "Course 2 (W)", "Course 3 (SW)"},
+                         "Marked walls belong to the wall run and wall jump lessons and the stretches with wall runs.")
+        for _, w in pieces(self.spec, "MarkedWall"):
+            self.assertIn(w["move"], ("WallRun", "WallSlide"), "A marked wall is for one move, never both.")
 
     def test_a_hazard_covers_the_ring(self):
         hazards = [p for _, p in pieces(self.spec, "HazardVolume")]

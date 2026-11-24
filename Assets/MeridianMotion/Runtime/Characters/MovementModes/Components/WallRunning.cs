@@ -37,6 +37,9 @@ namespace MeridianMotion.Characters
         [Tooltip("A wall run only starts this high (m) or more above the ground, at the character's authored size, so " +
                  "brushing a wall in a small hop doesn't start one")]
         [SerializeField] private float wallRunMinHeight = 0.75f;
+        [Tooltip("Whether every wall can be run along. Off, only walls marked for it can (a Traversable Wall with Wall Run " +
+                 "on, on the wall or a parent), so a level says where wall runs go")]
+        [SerializeField] private bool wallRunOnAnyWall;
         [Tooltip("The steepest a wall can lean (degrees from vertical) to be run along")]
         [Range(0f, 45f)] [SerializeField] private float wallRunMaxWallTilt = 20f;
         [Tooltip("Seconds after a wall run ends (or a wall jump) before another can start")]
@@ -67,6 +70,8 @@ namespace MeridianMotion.Characters
         public float WallRunSpeed { get => wallRunSpeed; set => wallRunSpeed = value; }
         /// <summary>The longest a wall run lasts, in seconds. 0 turns wall-running off.</summary>
         public float WallRunMaxDuration { get => wallRunMaxDuration; set => wallRunMaxDuration = value; }
+        /// <summary>Whether every wall can be run along, or only those marked for it (a Levels.TraversableWall with Wall Run on).</summary>
+        public bool WallRunOnAnyWall { get => wallRunOnAnyWall; set => wallRunOnAnyWall = value; }
         /// <summary>The steepest a wall can lean (degrees from vertical) to be run along (and slid down: see WallSliding).</summary>
         public float WallRunMaxWallTilt => wallRunMaxWallTilt;
 
@@ -284,6 +289,8 @@ namespace MeridianMotion.Characters
             point = Vector3.zero;
             float reach = Reach(motor) + motor.Skin;
             if (!MovementRules.FindUprightWall(motor, feet, direction, reach, wallRunMaxWallTilt, out RaycastHit hit, out normal)) { return false; }
+            // Only along a wall marked for it, unless any will do: a wall without the mark isn't one to run along at all.
+            if (!wallRunOnAnyWall && !Levels.TraversableWall.AllowsWallRun(hit.collider)) { return false; }
             // Facing the character, not a surface it would only graze.
             if (Vector3.Dot(normal, -direction.normalized) < 0.5f) { return false; }
             distance = hit.distance;
@@ -381,7 +388,8 @@ namespace MeridianMotion.Characters
         private static void WallBeside(MovementSimulation simulation, float outFromWall)
         {
             float face = simulation.Motor.Body.SideExtent + outFromWall;
-            simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f));
+            // Marked for wall runs, so it's run along whether or not the mode runs on any wall.
+            simulation.Box(new Vector3(face + 0.5f, 15f, 200f), new Vector3(1f, 30f, 420f)).AddComponent<Levels.TraversableWall>();
         }
 
         /// <summary>

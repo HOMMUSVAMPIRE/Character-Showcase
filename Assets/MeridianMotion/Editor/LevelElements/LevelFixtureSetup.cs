@@ -32,6 +32,9 @@ namespace MeridianMotion.Levels.EditorTools
     /// the level's cable.</item>
     /// <item>"Bounce Pad | height=m | keep=f" gets a LaunchPad, squashing its "Spring" child when it launches someone.</item>
     /// <item>"Climbable Panel | speed=f" gets a ClimbableSurface (all of it climbable) with that speed multiplier.</item>
+    /// <item>"Wall-Run Wall" and "Wall-Slide Wall" (each alone, or followed by a space and anything: "Wall-Run Wall
+    /// (+8)") get a TraversableWall marking them for wall runs or for wall slides (never both): a wall without one is
+    /// neither (unless the character's movement says any wall will do).</item>
     /// <item>"Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that
     /// keeps the level's surface. Only names starting "Water |".</item>
     /// <item>"Checkpoint | id=name | start=0/1 | size=x,y,z" (at its respawn point, facing the way a character respawned
@@ -73,6 +76,10 @@ namespace MeridianMotion.Levels.EditorTools
         public const string BouncePadSpringName = "Spring";
         /// <summary>How a climbable panel's name starts (Graybox.ClimbablePrefix).</summary>
         public const string ClimbablePrefix = "Climbable Panel";
+        /// <summary>How a wall marked for wall runs is named (Graybox.MarkedWall).</summary>
+        public const string WallRunWallPrefix = "Wall-Run Wall";
+        /// <summary>How a wall marked for wall slides is named (Graybox.MarkedWall).</summary>
+        public const string WallSlideWallPrefix = "Wall-Slide Wall";
         /// <summary>The group at the scene's root that the courses' timers are made in.</summary>
         public const string CoursesName = "Course Timers";
         /// <summary>How a spawn marker's name starts: where a character can spawn (Set Up Scene makes them spawn points).</summary>
@@ -255,6 +262,22 @@ namespace MeridianMotion.Levels.EditorTools
             return surface;
         }
 
+        /// <summary>The name a wall marked for a move is given: WallRunWallPrefix or WallSlideWallPrefix.</summary>
+        public static string MarkedWallPrefix(TraversableWall.WallMove move) =>
+            move == TraversableWall.WallMove.WallSlide ? WallSlideWallPrefix : WallRunWallPrefix;
+
+        /// <summary>
+        /// Marks a wall for wall runs or wall slides (adding a TraversableWall), as its name says. Its mark is set from the
+        /// name each time, so renaming it and setting up again changes it.
+        /// </summary>
+        public static TraversableWall SetUpTraversableWall(GameObject obj, TraversableWall.WallMove move, bool withUndo)
+        {
+            TraversableWall wall = Need<TraversableWall>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(wall, "Set Up Scene"); }
+            wall.Move = move;
+            return wall;
+        }
+
         /// <summary>The role a timing gate's settings give it.</summary>
         public static TimingGateRole Role(Dictionary<string, string> p) =>
             p.TryGetValue("role", out string role) ? role switch
@@ -353,6 +376,14 @@ namespace MeridianMotion.Levels.EditorTools
             foreach (Transform t in all.Where(t => IsFixture(t.name, ZiplinePrefix))) { SetUpZipline(t.gameObject, withUndo); ziplines++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, BouncePadPrefix))) { SetUpBouncePad(t.gameObject, withUndo); pads++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, WaterPrefix))) { SetUpWater(t.gameObject, withUndo); waters++; }
+            int markedWalls = 0;
+            foreach (Transform t in all)
+            {
+                bool run = IsNamed(t.name, WallRunWallPrefix), slide = IsNamed(t.name, WallSlideWallPrefix);
+                if (!run && !slide) { continue; }
+                SetUpTraversableWall(t.gameObject, run ? TraversableWall.WallMove.WallRun : TraversableWall.WallMove.WallSlide, withUndo);
+                markedWalls++;
+            }
             int checkpoints = 0, hazards = 0, zones = 0, shortcuts = 0;
             foreach (Transform t in all.Where(t => IsFixture(t.name, CheckpointPrefix))) { SetUpCheckpoint(t.gameObject, withUndo); checkpoints++; }
             foreach (Transform t in all.Where(t => IsLabelledFixture(t.name, HazardPrefix))) { SetUpHazard(t.gameObject, withUndo); hazards++; }
@@ -433,6 +464,7 @@ namespace MeridianMotion.Levels.EditorTools
             if (pads > 0) { parts.Add($"{pads} bounce pad{(pads == 1 ? "" : "s")}"); }
             if (climbables > 0) { parts.Add($"{climbables} climbable panel{(climbables == 1 ? "" : "s")}"); }
             if (waters > 0) { parts.Add($"{waters} bod{(waters == 1 ? "y" : "ies")} of water"); }
+            if (markedWalls > 0) { parts.Add($"{markedWalls} wall{(markedWalls == 1 ? "" : "s")} for wall runs or slides"); }
             if (checkpoints > 0) { parts.Add($"{checkpoints} checkpoint{(checkpoints == 1 ? "" : "s")}"); }
             if (hazards > 0) { parts.Add($"{hazards} hazard volume{(hazards == 1 ? "" : "s")}"); }
             if (zones > 0) { parts.Add($"{zones} lesson zone{(zones == 1 ? "" : "s")}"); }

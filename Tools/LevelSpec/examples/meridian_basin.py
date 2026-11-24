@@ -6,7 +6,7 @@ worked out from the movement's limits. Run it from the project folder:
     python3 Tools/LevelSpec/examples/meridian_basin.py            # writes Assets/Showcase/Levels/MeridianBasin.level.json
     python3 Tools/LevelSpec/levelspec check Assets/Showcase/Levels/MeridianBasin.level.json
 
-The layout (metres, +z north, the ground at 0), after the terraced basin schematic in ReferenceAssets:
+The layout (metres, +z north, the ground at 0), after the terraced basin reference, MeridianBasinRef.png in ReferenceAssets/Image References/Concept Art:
 
 - Six levels, 9 m apart, stepping down to the middle: L0 Central Park (-45, the floor, 52 m across) and five
   terrace rings round it, each 12 to 16 m deep: L1 Kinetic Gardens (-36), L2 Research Terraces (-27), L3 Calibration
@@ -582,7 +582,7 @@ def _wall_run_hall(A, ig, k, y, up, wf, front):
     for x in (-14.0, -2.0):
         A("Block", parent=ig, name="Vault Wall", x0=x, x1=x + 6, z0=front + 6, z1=front + 6.5, y0=y, y1=y + 1.2, surface="Panel")
     for zw in (z + 4, z + 10):
-        A("Block", parent=ig, name="Wall-Run Wall", x0=-26, x1=4, z0=zw, z1=zw + 1, y0=y, y1=y + 12, surface="Panel")
+        A("MarkedWall", parent=ig, name="Hall", a=[-26, zw + 0.5], b=[4, zw + 0.5], y0=y, y1=y + 12, thickness=1, move="WallRun")
     A("Platform", parent=ig, name="Run-up (+4)", x0=5, x1=9, z0=z + 5.5, z1=z + 9.5, y0=y, top=y + 4, coping="Accent")
     A("FloorLabel", parent=ig, text="WALL RUN 11 m", at=[-6, z + 7.5], height=y, facing=[1, 0])
 

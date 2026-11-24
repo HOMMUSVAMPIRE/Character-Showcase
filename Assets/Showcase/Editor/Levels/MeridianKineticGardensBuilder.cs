@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using static MeridianMotion.Showcase.Levels.Graybox;
+using MeridianMotion.Levels;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -179,7 +180,7 @@ namespace MeridianMotion.Showcase.Levels
             // Advanced 5 to 4: a narrow beam out from the north-west terrace at +16, dropping to the north platform, beside a
             // wall to run along (planned: at least 4 m wide and 8 m high).
             BoxXZ(traversal, "Narrow Beam (+16)", new Vector2(-154f, -95f), new Vector2(12f, BeamWidth), h16 - 1f, h16, 0f, GrayboxMaterial.Steel);
-            BoxXZ(traversal, "Wall-Run Wall (planned)", new Vector2(-154f, -101.5f), new Vector2(12f, 1f), 0f, h20, 0f, GrayboxMaterial.Panel);
+            MarkedWall(traversal, "planned", new Vector2(-160f, -101.5f), new Vector2(-148f, -101.5f), 0f, h20, 1f, TraversableWall.WallMove.WallRun);
 
             // Beginner route 4 to 6: up from the north platform to the viewpoint, by a stair, a landing at +16 and a stair
             // into the viewpoint itself.

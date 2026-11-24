@@ -1001,6 +1001,7 @@ MonoBehaviour:
   darkenBlockerPrefab: {fileID: 7096571165704543847, guid: 0725892fccc6147278dd844b3c36352f, type: 3}
   blackoutBlockerPrefab: {fileID: 3016928515935328235, guid: 5670621cbe3664f3f8dae403ab7c9e3f, type: 3}
   cancelAction: {fileID: 7727032971491509709, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  menuAction: {fileID: 5500033644201141368, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   submitAction: {fileID: 392368643174621059, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   onCursorNeededChanged:
     m_PersistentCalls:

@@ -23,20 +23,23 @@ namespace MeridianMotion.Showcase.Levels
         /// <summary>
         /// A checkpoint: a character's feet coming into its box (size across, high and along, standing on feet, turned yaw
         /// degrees) make feet where it respawns, facing yaw. start: the level's start (one per level). Marked on the
-        /// floor by a cyan line across the box's middle. No collider.
+        /// floor by a cyan line across the box's middle, unless marked is false. No collider.
         /// </summary>
         [Piece]
-        public static GameObject Checkpoint(Transform parent, string id, Vector3 feet, float yaw, Vector3 size, bool start = false)
+        public static GameObject Checkpoint(Transform parent, string id, Vector3 feet, float yaw, Vector3 size, bool start = false, bool marked = true)
         {
-            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Checkpoint), parent, id, feet, yaw, size, start);
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Checkpoint), parent, id, feet, yaw, size, start, marked);
             var checkpoint = new GameObject($"{CheckpointPrefix} | id={id} | start={(start ? 1 : 0)} | size={F(size)}");
             checkpoint.transform.SetParent(parent, false);
             checkpoint.transform.SetLocalPositionAndRotation(feet, Quaternion.Euler(0f, yaw, 0f));
             float w = size.x / 2f, line = Settings.mechanics.edgeBand;
-            var mesh = new GrayboxMesh();
-            mesh.Box(GrayboxMaterial.Cyan, new Vector3(-w, 0.005f, -line), new Vector3(w, 0.02f, line), bottom: false);
-            mesh.AddTo(checkpoint, checkpoint.name);
-            MakeStatic(checkpoint, occluder: false);
+            if (marked)
+            {
+                var mesh = new GrayboxMesh();
+                mesh.Box(GrayboxMaterial.Cyan, new Vector3(-w, 0.005f, -line), new Vector3(w, 0.02f, line), bottom: false);
+                mesh.AddTo(checkpoint, checkpoint.name);
+                MakeStatic(checkpoint, occluder: false);
+            }
             return checkpoint;
         }
 

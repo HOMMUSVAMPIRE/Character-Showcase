@@ -1,5 +1,6 @@
 using System.Linq;
 using MeridianMotion.Cameras;
+using MeridianMotion.CharacterUI;
 using MeridianMotion.Characters;
 using MeridianMotion.EditorTools;
 using UnityEditor;
@@ -21,7 +22,8 @@ namespace MeridianMotion.UI.EditorTools
     /// - the UI Manager's On Cursor Needed Changed to the camera rig's SetCursorRequested, and its On Game Input Blocked
     ///   Changed to the player's input reader's SetSuppressed;
     /// - the Back key is the UI's (the pause menu opens on it, PauseMenuOnBack), so the camera's Unlock Key is set to None;
-    /// - one EventSystem: the scene's own, if it has one, and the UI Manager's turned off.
+    /// - one EventSystem: the scene's own, if it has one, and the UI Manager's turned off;
+    /// - the controls page's Sprint option (SprintModeOption) beside the player's input reader.
     /// </summary>
     [InitializeOnLoad]
     public static class UISceneSetup
@@ -55,7 +57,16 @@ namespace MeridianMotion.UI.EditorTools
                 Connect(manager.OnCursorNeededChanged, context.camera, context.camera.SetCursorRequested);
                 HandOverEscape(context.camera, context.withUndo);
             }
-            if (context.inputReader != null) { Connect(manager.OnGameInputBlockedChanged, context.inputReader, context.inputReader.SetSuppressed); }
+            if (context.inputReader != null)
+            {
+                Connect(manager.OnGameInputBlockedChanged, context.inputReader, context.inputReader.SetSuppressed);
+                // The controls page's Sprint option (held or toggled), beside the reader it sets.
+                if (!context.inputReader.TryGetComponent(out SprintModeOption _))
+                {
+                    if (context.withUndo) { Undo.AddComponent<SprintModeOption>(context.inputReader.gameObject); }
+                    else { context.inputReader.gameObject.AddComponent<SprintModeOption>(); }
+                }
+            }
             EditorUtility.SetDirty(manager);
             context.notes.Add("The UI frees the cursor and stops the player's input while its windows need it, and Back is the UI's.");
         }

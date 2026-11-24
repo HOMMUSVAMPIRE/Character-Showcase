@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 using UnityEngine;
@@ -12,7 +13,7 @@ namespace MeridianMotion.Tests.Abilities
     /// Tests of sliding down walls: falling into a wall head-on slides slowly down it, a fast fall braked to the slide
     /// speed; jumping kicks off it upward and away, gaining height and giving back air jumps (but not off the same wall twice in a row), only so many times before landing, hops alone not climbing it, air steering coming back only gradually;
     /// no slide while rising fast, close to the ground, or glancing along the wall, but one on hitting a wall whatever the steering; a chimney climbed by kicking between its walls; and steering away (for the release delay, not
-    /// just a moment), Crouch, landing or the slide's longest time end it. The character is in mid-air facing a tall wall just in front of it. Expected values
+    /// just a moment), Crouch, landing or the slide's longest time end it; only walls marked for wall slides are slid down (a TraversableWall), unless Wall Slide On Any Wall is on. The character is in mid-air facing a tall wall just in front of it. Expected values
     /// are read from the movement mode's settings. The checks every ability gets (turned off, letting go, its events,
     /// saved and put back, at another size) come from AbilityFixture: falling in front of the wall, steering into it.
     /// </summary>
@@ -31,19 +32,74 @@ namespace MeridianMotion.Tests.Abilities
             rig.Floor();
             yield return SpawnCharacter(new Vector3(0f, 12f * Scale, 0f), settleSeconds: 0f);
             face = rig.FrontExtent + 0.1f * Scale;
-            rig.Box("Wall", new Vector3(0f, 15f * Scale, face + 0.5f), new Vector3(10f, 30f * Scale, 1f));
+            rig.TraversableBox("Wall", new Vector3(0f, 15f * Scale, face + 0.5f), new Vector3(10f, 30f * Scale, 1f), TraversableWall.WallMove.WallSlide);
         }
 
         protected override StepInputs InputsFor(int step) => CharacterTestRig.Move(Vector3.forward);
 
         protected override string OffSetting => "wallSlideMaxDuration";
 
-        /// <summary>A floor, the character in mid-air (its model loaded) facing +Z, and a tall wall just in front of it.</summary>
-        private IEnumerator SetUpWall(float height = 12f)
+        /// <summary>
+        /// A floor, the character in mid-air (its model loaded) facing +Z, and a tall wall just in front of it, marked as
+        /// asked (for wall slides, unless a test says otherwise).
+        /// </summary>
+        private IEnumerator SetUpWall(float height = 12f, TraversableWall.WallMove? marked = TraversableWall.WallMove.WallSlide)
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, 0f), settleSeconds: 0f);
-            face = rig.WallAhead();
+            face = rig.WallAhead(marked: marked);
+        }
+
+        /// <summary>Falls into the wall for a while, steering into it: whether it slid down it.</summary>
+        private IEnumerator TryToSlide(System.Action<bool> slid)
+        {
+            bool any = false;
+            yield return rig.Run(1f, _ => CharacterTestRig.Move(Vector3.forward), _ => any |= Sliding);
+            slid(any);
+        }
+
+        // ---- Which walls: only those marked for it, unless any will do ----
+
+        [UnityTest]
+        public IEnumerator AWallNotMarkedForWallSlides_IsNotSlidDown([Values(false, true)] bool markedForRuns)
+        {
+            yield return SetUpWall(marked: markedForRuns ? TraversableWall.WallMove.WallRun : null);
+            bool slid = true;
+            yield return TryToSlide(r => slid = r);
+            Assert.That(slid, Is.False, markedForRuns
+                ? "A wall marked for wall runs only shouldn't be slid down."
+                : "An unmarked wall shouldn't be slid down.");
+        }
+
+        [UnityTest]
+        public IEnumerator AWallMarkedForWallSlides_IsSlidDown()
+        {
+            yield return SetUpWall(marked: TraversableWall.WallMove.WallSlide);
+            bool slid = false;
+            yield return TryToSlide(r => slid = r);
+            Assert.That(slid, Is.True, "A wall marked for wall slides should be slid down.");
+        }
+
+        [UnityTest]
+        public IEnumerator AnUnmarkedWall_IsSlidDown_WithWallSlideOnAnyWall()
+        {
+            yield return SetUpWall(marked: null);
+            rig.SetMovementSetting("wallSlideOnAnyWall", true);
+            bool slid = false;
+            yield return TryToSlide(r => slid = r);
+            Assert.That(slid, Is.True, "With Wall Slide On Any Wall on, any wall should be slid down.");
+        }
+
+        [UnityTest]
+        public IEnumerator AMarkedWallWithItsMarkTurnedOff_IsNotSlidDown()
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(new Vector3(0f, 12f, 0f), settleSeconds: 0f);
+            face = rig.FrontExtent + 0.1f;
+            rig.TraversableBox("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f), TraversableWall.WallMove.WallSlide).enabled = false;
+            bool slid = true;
+            yield return TryToSlide(r => slid = r);
+            Assert.That(slid, Is.False, "A wall whose Traversable Wall is turned off shouldn't be slid down.");
         }
 
         /// <summary>Falls into the wall, steering into it, until sliding down it.</summary>
@@ -170,8 +226,8 @@ namespace MeridianMotion.Tests.Abilities
             // A slot 2.5 m wide, 10.5 m deep from its floor to its top.
             const float width = 2.5f, depth = 10.5f;
             rig.Floor();
-            rig.Box("Chimney (West)", new Vector3(-width / 2f - 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f));
-            rig.Box("Chimney (East)", new Vector3(width / 2f + 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f));
+            rig.TraversableBox("Chimney (West)", new Vector3(-width / 2f - 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f), TraversableWall.WallMove.WallSlide);
+            rig.TraversableBox("Chimney (East)", new Vector3(width / 2f + 0.5f, 15f, 0f), new Vector3(1f, 30f, 8f), TraversableWall.WallMove.WallSlide);
             yield return rig.SpawnSettled(new Vector3(0f, 1.5f, 0f), settleSeconds: 0f);
             float start = rig.Position.y, highest = start;
 

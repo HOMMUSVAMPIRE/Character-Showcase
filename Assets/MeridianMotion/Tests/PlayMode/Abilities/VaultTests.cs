@@ -70,7 +70,8 @@ namespace MeridianMotion.Tests.Abilities
             top = rig.Position.y + (topAbove != null ? topAbove() : LowWallShare) * rig.StandingHeight;
             face = rig.Position.z + rig.FrontExtent + distance;
             back = face + thickness;
-            rig.Box("Low Wall", new Vector3(0f, top / 2f, face + thickness / 2f), new Vector3(10f, top, thickness));
+            // Marked for wall slides, so the tests show a vault isn't taken for one (an unmarked wall can't be slid down).
+            rig.TraversableBox("Low Wall", new Vector3(0f, top / 2f, face + thickness / 2f), new Vector3(10f, top, thickness), MeridianMotion.Levels.TraversableWall.WallMove.WallSlide);
         }
 
         /// <summary>
@@ -270,7 +271,7 @@ namespace MeridianMotion.Tests.Abilities
             top = rig.Position.y + height;
             face = rig.Position.z + rig.FrontExtent + 1.5f;
             back = face + depth;
-            rig.Box("Obstacle", new Vector3(0f, top / 2f, face + depth / 2f), new Vector3(10f, top, depth));
+            rig.TraversableBox("Obstacle", new Vector3(0f, top / 2f, face + depth / 2f), new Vector3(10f, top, depth), MeridianMotion.Levels.TraversableWall.WallMove.WallSlide);
 
             bool passed = false;
             yield return rig.RunUntil(() => passed, step => sprinting ? CharacterTestRig.Sprint(Vector3.forward) : CharacterTestRig.Move(Vector3.forward),

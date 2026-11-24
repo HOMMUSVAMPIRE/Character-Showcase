@@ -58,6 +58,14 @@ namespace MeridianMotion.Showcase.Levels
             Grass,
             /// <summary>Water's surface: see-through, rippling, darker where it's deeper (its own shader: see LevelDefinition).</summary>
             Water,
+            /// <summary>Dark asphalt: ground that's a hazard, darker than the paving, so a fall reads as one.</summary>
+            Asphalt,
+            /// <summary>Matte blue-grey painted plate, in small panels: walls marked for a move (a MarkedWall), set apart from
+            /// the plain walls' concrete without the steel's mirror-like shine on a wall that large.</summary>
+            Plate,
+            /// <summary>Glass: see-through, faintly tinted and glossy (its own material: see LevelDefinition), for windows
+            /// out of a level.</summary>
+            Glass,
         }
 
         private static Material[] palette;
@@ -261,8 +269,7 @@ namespace MeridianMotion.Showcase.Levels
             box.transform.localScale = size;
             // Unity's cube with a UV2, so things can be painted onto one face of it (see GrayboxUV2).
             box.GetComponent<MeshFilter>().sharedMesh = GrayboxUV2.Cube;
-            box.GetComponent<MeshRenderer>().sharedMaterial = For(surface);
-            MakeStatic(box);
+            Surface(box, box.GetComponent<MeshRenderer>(), surface);
             return box;
         }
 
@@ -303,6 +310,18 @@ namespace MeridianMotion.Showcase.Levels
         /// can be seen through or round (railings, trusses, frames, foliage, lawns, markings, fixtures, pipes, signs) is
         /// only hidden, never hides: as an occluder it would only cost the bake and risk culling what shows through it.
         /// </summary>
+        /// <summary>
+        /// Gives a solid piece its surface's material and makes it static (see MakeStatic). Glass is seen through: it hides
+        /// nothing in the occlusion bake, and casts no shadow.
+        /// </summary>
+        private static void Surface(GameObject obj, MeshRenderer renderer, GrayboxMaterial surface)
+        {
+            renderer.sharedMaterial = For(surface);
+            bool glass = surface == GrayboxMaterial.Glass;
+            if (glass) { renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; }
+            MakeStatic(obj, occluder: !glass);
+        }
+
         public static void MakeStatic(GameObject obj, bool occluder = true) =>
             GameObjectUtility.SetStaticEditorFlags(obj, StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccludeeStatic
                 | StaticEditorFlags.ReflectionProbeStatic | (occluder ? StaticEditorFlags.OccluderStatic : 0));

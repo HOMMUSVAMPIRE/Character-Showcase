@@ -114,7 +114,7 @@ namespace MeridianMotion.UI.EditorTools
         private static readonly Vector2 ReferenceResolution = new(1920f, 1080f);
         private static readonly Vector2 ChoiceDialogSize = new(720f, 240f), ChoiceButtonSize = new(210f, 48f);
         private static readonly Vector2 DialogSize = new(560f, 260f), PromptSize = new(560f, 320f), ButtonSize = new(160f, 48f);
-        private static readonly Vector2 PauseMenuSize = new(760f, 640f), MenuButtonSize = new(320f, 56f);
+        private static readonly Vector2 PauseMenuSize = new(760f, 640f), MenuButtonSize = new(320f, 56f), OptionButtonSize = new(300f, 48f);
         private const float Padding = 28f, AccentHeight = 6f, BodyFontSize = 28f, ButtonFontSize = 24f, FieldHeight = 52f;
         // The panels' trim: the header tab's height, the corner brackets (how far outside the panel, how long, how thick),
         // and the chamfer of small pieces (fields, small buttons, menu entries).
@@ -195,6 +195,13 @@ namespace MeridianMotion.UI.EditorTools
 
             GameObject controlRow = PrefabAt(ControlRowPath, ControlRow);
             GameObject pauseMenu = PrefabAt(PauseMenuPath, () => PauseMenuWindow(actions, controlRow));
+            // A pause menu made before its controls page had the Sprint option gets it (nothing else of it changes).
+            Transform controlsPage = pauseMenu.transform.Find("Controls Page");
+            if (controlsPage != null && controlsPage.GetComponentInChildren<ControlOptionToggle>(true) == null)
+            {
+                using var editing = new PrefabUtility.EditPrefabContentsScope(AssetDatabase.GetAssetPath(pauseMenu));
+                AddSprintOption(editing.prefabContentsRoot.transform.Find("Controls Page"));
+            }
             if (!catalog.Windows.Contains(pauseMenu))
             {
                 catalog.Windows.Add(pauseMenu);
@@ -240,6 +247,7 @@ namespace MeridianMotion.UI.EditorTools
                 SetIfEmpty(fields, "darkenBlockerPrefab", darken);
                 SetIfEmpty(fields, "blackoutBlockerPrefab", blackout);
                 SetIfEmpty(fields, "cancelAction", ActionReference(actions, "UI", "Cancel"));
+                SetIfEmpty(fields, "menuAction", ActionReference(actions, "UI", "Menu"));
                 SetIfEmpty(fields, "submitAction", ActionReference(actions, "UI", "Submit"));
                 fields.ApplyModifiedPropertiesWithoutUndo();
                 AddNotifications(editing.prefabContentsRoot.GetComponent<UIManager>(), notificationPrefabs);
@@ -425,6 +433,22 @@ namespace MeridianMotion.UI.EditorTools
         // A themed button labelled label, of the kind and size, anchored (and pivoted) at anchor and placed at position from
         // it, calling pressed when clicked (a persistent listener, saved with the prefab): a chamfered shape, its hatching
         // (shown while it can't be used) and its label.
+        // The controls page's Sprint option (a ControlOptionToggle: its button shown only while the game's registered the
+        // option, as SprintModeOption does beside the player's input reader), at its bottom left.
+        private static void AddSprintOption(Transform controls)
+        {
+            var holder = new GameObject("Sprint Option", typeof(RectTransform));
+            holder.transform.SetParent(controls, false);
+            Stretch((RectTransform)holder.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            var toggle = holder.AddComponent<ControlOptionToggle>();
+            GameObject button = MakeButton(holder.transform, "Sprint: Hold", ThemedButton.Kind.Outline, toggle.Flip, OptionButtonSize, Vector2.zero,
+                new Vector2(Padding, Padding));
+            var fields = new SerializedObject(toggle);
+            fields.FindProperty("button").objectReferenceValue = button.GetComponent<Button>();
+            fields.FindProperty("label").objectReferenceValue = button.GetComponentInChildren<TMP_Text>(true);
+            fields.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         private static GameObject MakeButton(Transform parent, string label, ThemedButton.Kind kind, UnityAction pressed, Vector2 size, Vector2 anchor, Vector2 position)
         {
             GameObject button = ThemedButtonObject(label, kind, size);
@@ -562,6 +586,7 @@ namespace MeridianMotion.UI.EditorTools
             MakeButton(controls, "Back", ThemedButton.Kind.Outline, menu.ShowMain, ButtonSize, new Vector2(1f, 0f), new Vector2(-Padding, Padding));
             MakeButton(controls, "Reset", ThemedButton.Kind.Outline, menu.ResetControls, ButtonSize, new Vector2(1f, 0f),
                 new Vector2(-Padding - ButtonSize.x - Padding * 0.5f, Padding));
+            AddSprintOption(controls);
 
             // The replays page: Save Replay and Load Replay down the middle, and their status (its tab shown only while
             // the game's registered replay controls).

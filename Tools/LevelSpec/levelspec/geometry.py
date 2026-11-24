@@ -197,9 +197,12 @@ def _shapes(piece, f, state):
         length = g("length") if name == "Walkway" else state["bridgeLength"]
         h = g("height")
         return [("deck", "poly", _along(g("start"), g("direction"), length, g("width")), h - state["deck"], h, {"label": label or name})]
-    if name == "Wall":
+    if name in ("Wall", "MarkedWall"):
         a, b = g("a"), g("b")
         length = math.hypot(b[0] - a[0], b[1] - a[1])
+        if name == "MarkedWall":
+            # A wall marked for wall runs or wall slides: solid, and named for what it's for.
+            label = f"{label or 'Wall'} ({'wall slide' if g('move', 'WallRun') == 'WallSlide' else 'wall run'})"
         return [("solid", "poly", _along(a, (b[0] - a[0], b[1] - a[1]), length, g("thickness")), g("y0"), g("y1"), {"label": label})]
     if name == "Rail":
         h = g("height")

@@ -163,7 +163,7 @@ namespace MeridianMotion.Tests.Movement
                 Assume.That(rig.MovementSetting<float>("wallRunMaxSteerAngle"), Is.GreaterThanOrEqualTo(angle), "Test setup: a run should be able to start steering this steeply.");
             }
             const float wallFace = 3f;
-            rig.Box("Wall", new Vector3(side * (wallFace + 0.5f), 5f, 15f), new Vector3(1f, 10f, 40f));
+            rig.TraversableBox("Wall", new Vector3(side * (wallFace + 0.5f), 5f, 15f), new Vector3(1f, 10f, 40f), MeridianMotion.Levels.TraversableWall.WallMove.WallRun);
             Physics.SyncTransforms();
             float a = angle * Mathf.Deg2Rad;
             Vector3 approach = new Vector3(side * Mathf.Sin(a), 0f, Mathf.Cos(a)), along = new Vector3(side * 0.35f, 0f, 1f).normalized;

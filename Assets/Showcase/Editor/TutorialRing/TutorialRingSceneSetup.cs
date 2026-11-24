@@ -3,6 +3,7 @@ using MeridianMotion.EditorTools;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace MeridianMotion.Showcase.TutorialRing.EditorTools
 {
@@ -10,7 +11,7 @@ namespace MeridianMotion.Showcase.TutorialRing.EditorTools
     /// Adds the Tutorial Ring's game to its scene as Set Up Scene sets it up (registered with
     /// CharacterSceneSetup.AfterSettingUp, as the showcase HUD is, so nothing that ships names it): a "Tutorial Ring"
     /// object in the setup with its TutorialRingSetup (the lessons), TutorialPromptPresenter (the Lesson Prompt),
-    /// TutorialRingDevKeys and HeightShade (darker low down); the spawner's On Character Spawned connected to TutorialRingSetup.CharacterSpawned; and the
+    /// TutorialRingDevKeys and HeightShade (darker low down); the scene's denser haze (SetHaze); the spawner's On Character Spawned connected to TutorialRingSetup.CharacterSpawned; and the
     /// spawner's Tuning Preset set to the tutorial's one jump. Only for the Tutorial Ring's scene (ScenePath). The scene is
     /// built from its spec, so this is what puts them back after each rebuild.
     /// </summary>
@@ -21,8 +22,34 @@ namespace MeridianMotion.Showcase.TutorialRing.EditorTools
         public const string ScenePath = "Assets/Showcase/Scenes/TutorialRing/TutorialRing.unity";
         /// <summary>The name of the object its game is on, in the scene's setup.</summary>
         public const string ObjectName = "Tutorial Ring";
+        /// <summary>
+        /// The scene's haze (exponential fog density): denser than the other levels' (the level builder's), so the open
+        /// ground the ring stands over fades into it rather than ending in a hard edge against the sky.
+        /// </summary>
+        public const float HazeDensity = 0.003f;
+        /// <summary>The haze's colour, and the sky's below the horizon, so the two meet without a line.</summary>
+        public static readonly Color HazeColour = new(0.72f, 0.79f, 0.86f);
 
         static TutorialRingSceneSetup() => CharacterSceneSetup.AfterSettingUp += AddTutorial;
+
+        /// <summary>
+        /// The scene's haze (HazeDensity, HazeColour), and its sky below the horizon the haze's colour. Fog is a scene's own
+        /// setting, and its sky material its own (beside it, in its Environment folder), so no other level changes.
+        /// </summary>
+        public static void SetHaze(Scene scene)
+        {
+            if (SceneManager.GetActiveScene() != scene) { return; }
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Exponential;
+            RenderSettings.fogDensity = HazeDensity;
+            RenderSettings.fogColor = HazeColour;
+            Material sky = RenderSettings.skybox;
+            if (sky != null && sky.HasProperty("_GroundColor") && AssetDatabase.GetAssetPath(sky).StartsWith(System.IO.Path.GetDirectoryName(ScenePath).Replace('\\', '/') + "/"))
+            {
+                sky.SetColor("_GroundColor", HazeColour);
+                EditorUtility.SetDirty(sky);
+            }
+        }
 
         /// <summary>Adds the tutorial's game to the Tutorial Ring's scene, as Set Up Scene has just set it up (see the class).</summary>
         public static void AddTutorial(CharacterSceneSetup.SetupContext context)
@@ -49,6 +76,7 @@ namespace MeridianMotion.Showcase.TutorialRing.EditorTools
             TutorialRingDevKeys keys = Need<TutorialRingDevKeys>(obj, context.withUndo);
             // Darker low down, untinted at the walls' tops (the defaults are the ring's: see HeightShade).
             Need<HeightShade>(obj, context.withUndo);
+            SetHaze(context.scene);
             setup.Catalog = catalog;
             setup.Presenter = presenter;
             presenter.PromptPrefab = prompt;

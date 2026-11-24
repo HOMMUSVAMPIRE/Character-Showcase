@@ -16,7 +16,8 @@ namespace MeridianMotion.Tests.UI
     /// Tests of the controls list (ControlsList, ControlBindingDisplay, ControlSchemeTracker, SavedBindings): a row per
     /// action (but the hidden ones) with its binding in the scheme in use, a button's rebindable and a stick's or a
     /// composite's not; switching to a gamepad listing the gamepad's bindings; a button rebound by pressing the new one,
-    /// the UI's Back held off meanwhile; a rebinding saved, and reset.
+    /// the UI's Back held off meanwhile (with a gamepad, the button that started it, still held, not taken for the new
+    /// one); a rebinding saved, and reset.
     /// </summary>
     [Category(TestArea.UI)]
     public class ControlsListTests : UITestsBase
@@ -106,7 +107,9 @@ namespace MeridianMotion.Tests.UI
         private IEnumerator Shown(int rows)
         {
             list.Populate((List<string>)null);
-            yield return Waits.WaitUntil(() => !list.IsUpdating && list.ShownItems.Count() == rows);
+            // Its rows for the scheme it shows now: the list filled itself as it was turned on, with whatever device was
+            // used last (a gamepad, after a test with one), and those rows count as many.
+            yield return Waits.WaitUntil(() => !list.IsUpdating && list.ShownItems.Count() == rows && list.ShownItems.All(row => row.Data.Scheme == list.Scheme));
         }
 
         private ControlBindingDisplay Row(string name) => list.ShownItems.First(row => row.Data.DisplayName == name);
@@ -130,6 +133,10 @@ namespace MeridianMotion.Tests.UI
         {
             Keyboard keyboard = Add<Keyboard>();
             Gamepad gamepad = Add<Gamepad>();
+            // The devices settled first: a device just added sends its state over the next updates, which an action
+            // still bound to gamepads (another test's) can take as the gamepad being used.
+            yield return null;
+            yield return null;
             ControlSchemeTracker.NoteDeviceUsed(keyboard);
             yield return Shown(3);
             Assert.That(list.Scheme, Is.EqualTo("Keyboard&Mouse"));
@@ -174,6 +181,41 @@ namespace MeridianMotion.Tests.UI
             yield return Waits.WaitUntil(() => !list.IsUpdating && Row("Jump").Data.Overridden);
             yield return null;
             Assert.That(UIManager.IsInputCaptured, Is.False, "Back should be the windows' again.");
+        }
+
+        [UnityTest]
+        public IEnumerator RebindingWithAGamepad_DoesntTakeTheHeldButtonThatStartedIt()
+        {
+            Gamepad gamepad = Add<Gamepad>();
+            list.ForcedScheme = "Gamepad";
+            yield return Shown(3);
+            ControlBinding jump = Row("Jump").Data;
+
+            // A pressed (as it is when it starts the rebinding) and still held, the gamepad reporting its state again.
+            InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+            InputSystem.Update();
+            yield return null;
+            Assert.That(gamepad.buttonSouth.isPressed, Is.True, "Test setup: A should be held.");
+            Assert.That(list.StartRebind(jump), Is.True);
+            for (int i = 0; i < 5; i++)
+            {
+                InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.South));
+                InputSystem.Update();
+                yield return null;
+            }
+            Assert.That(list.Rebinding, Is.Not.Null, "The held A shouldn't be taken as the new binding.");
+
+            InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            InputSystem.Update();
+            yield return null;
+            yield return null;
+            InputSystem.QueueStateEvent(gamepad, new GamepadState().WithButton(GamepadButton.North));
+            InputSystem.Update();
+            yield return Waits.WaitUntil(() => list.Rebinding == null);
+            InputSystem.QueueStateEvent(gamepad, new GamepadState());
+            InputSystem.Update();
+            Assert.That(actions.FindAction("Jump").bindings[jump.BindingIndex].effectivePath, Is.EqualTo("<Gamepad>/buttonNorth"),
+                "Once A's let go, the next button pressed should be the new binding.");
         }
 
         [UnityTest]

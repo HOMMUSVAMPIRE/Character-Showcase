@@ -190,7 +190,7 @@ The package's own abilities keep their parts of the partial `MMotionMotor` and t
 **Against:** moving every Animator float into values the movement publishes, as first planned. The animation's own floats (a vault's progress paced by Vault Min Duration, a climb's held as it blends out) are presentation, worked out each frame: in the movement, they'd break "movement and animation are separate" and "movement runs on physics steps". So they stay the animation state's, and only what the movement itself has is published.
 
 ## The UI is its own assembly, knowing nothing of the game (November 2026)
-The UI framework (ReferenceAssets/UI_Framework_Blueprint.md's window manager, windows, dialogs and the rest) is `MeridianMotion.UI`, referencing only uGUI, TextMeshPro and the Input System. Like the camera, its shipping is undecided: nothing else that ships references it (its own editor assembly, its prefabs and its tests aside), so the package can be cut with or without it.
+The UI framework (ReferenceAssets/Implementation Guidance/UI_Framework_Blueprint.md's window manager, windows, dialogs and the rest) is `MeridianMotion.UI`, referencing only uGUI, TextMeshPro and the Input System. Like the camera, its shipping is undecided: nothing else that ships references it (its own editor assembly, its prefabs and its tests aside), so the package can be cut with or without it.
 
 **Why:** a buyer's game has its own screens; a window manager tied to the character would be one more thing to work around. Kept apart, it's a framework for any game, and the character doesn't change for it.
 
@@ -199,11 +199,18 @@ The UI framework (ReferenceAssets/UI_Framework_Blueprint.md's window manager, wi
 **Against:** UI Toolkit, which the blueprint isn't written for (it's uGUI throughout), and putting the UI in the showcase, which would leave a package user without a menu or a dialog.
 
 ## The UI's shapes and icons are meshes drawn in code, not sprites (November 2026)
-The UI's look (ReferenceAssets/MeridianMotion UI Reference.png) is drawn by graphics that build their own meshes: the shapes (`UIShapeGraphic`: chamfered panels, slanted bars, diamonds, rings, stripes, brackets) and the icons (`UIIcon`, from `UIIconLibrary`, on a grid of their own), their edges smoothed by a feathered band of vertex alpha. Every colour is a role of one theme asset (`UITheme`).
+The UI's look (ReferenceAssets/Image References/Concept Art/MeridianMotion UI Reference.png) is drawn by graphics that build their own meshes: the shapes (`UIShapeGraphic`: chamfered panels, slanted bars, diamonds, rings, stripes, brackets) and the icons (`UIIcon`, from `UIIconLibrary`, on a grid of their own), their edges smoothed by a feathered band of vertex alpha. Every colour is a role of one theme asset (`UITheme`).
 
 **Why:** the reference sheet couldn't be cut up (its transparency is broken), and sprites would have had to be drawn again for each size, colour and state. Meshes are sharp at any size and canvas scale, recolour from the theme at once (so retheming is editing one asset), need no package (Vector Graphics, sprite atlases) and no art pipeline, and can be tested: a mesh can be checked against its rect, a ring against its fraction.
 
 **Against:** sprites from an artist, which look richer and can't be matched by strokes and polygons. So a theme can put a sprite in any icon's place by name (its Icon Overrides): an artist's set can replace the drawn icons one at a time, with no code changed. The display font is a real font (Chakra Petch, SIL OFL), not drawn: text needs kerning and shaping a mesh of strokes wouldn't have.
+
+## Wall runs and wall slides only on walls marked for them (November 2026)
+A wall is run along or slid down (and so wall-jumped off) only if it's marked for that move: a `TraversableWall` on it, for Wall Run or Wall Slide, never both. Wall Running's Wall Run On Any Wall and Wall Sliding's Wall Slide On Any Wall put back the old way, every upright wall, for a character or game that wants it; both are off by default.
+
+**Why:** with every wall runnable, the moves were hard to balance. Every wall in every level was a wall run and a wall jump, so a level had to keep its walls away from whatever it didn't want crossed (the Tutorial Ring's walls stopped short of every gap and climb, leaving it full of openings), and making the moves more forgiving made every wall more of a shortcut. Marked walls make the moves a level's choice, as climbing already was (`ClimbableSurface`): a plain wall beside a gap is just a wall, and the moves can be as forgiving as they like where they're meant to be. A wall is for one move, never both, because they're different promises: a wall to run along isn't one to climb by kicking off, and a player reading the wall's pattern should know which it is.
+
+**Against:** a per-level list of walls, or a physics layer. A layer would cost one of the project's few, clash with what a game uses its layers for, and couldn't mark a wall for one move and not the other. A component goes where the wall is, is found the same way as climbing's, and can be turned off.
 
 ## The Tutorial Ring's height shading is a full-screen pass (November 2026)
 The Tutorial Ring darkens things by their height (lower, darker; the walls' tops untouched), so its long white walls and decks read by depth. It's one full-screen pass after post-processing (a URP Full Screen Pass renderer feature with the Height Shade shader) that works out each pixel's world height from the depth and scales its colour, turned on by a `HeightShade` component in the scene through a global shader value.

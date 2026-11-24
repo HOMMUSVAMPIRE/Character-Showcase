@@ -88,7 +88,7 @@ namespace MeridianMotion.Tests.Animations
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 6f, -10f);
             float face = rig.FrontExtent + 0.1f;
-            rig.Box("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f));
+            rig.TraversableBox("Wall", new Vector3(side * (face + 0.5f), 10f, 0f), new Vector3(1f, 20f, 40f), MeridianMotion.Levels.TraversableWall.WallMove.WallRun);
             float speed = rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale;
             rig.Movement.OverrideVelocity(Vector3.forward * speed);
             yield return ExpectState(HumanoidAnimatorStates.WallRun, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
@@ -121,7 +121,7 @@ namespace MeridianMotion.Tests.Animations
             if (wideBody) { Assume.That(rig.Movement.SetBody(BodyShape.Capsule(0.5f, 2f), checkRoom: false), Is.True); }
             rig.Body.position = new Vector3(0f, 6f, -10f);
             float face = rig.SideExtent + 0.1f;
-            rig.Box("Wall", new Vector3(face + 0.5f, 10f, 0f), new Vector3(1f, 20f, 40f));
+            rig.TraversableBox("Wall", new Vector3(face + 0.5f, 10f, 0f), new Vector3(1f, 20f, 40f), MeridianMotion.Levels.TraversableWall.WallMove.WallRun);
             rig.Movement.OverrideVelocity(Vector3.forward * rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale);
             yield return ExpectState(HumanoidAnimatorStates.WallRun, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             HumanBodyBones[] bones = { HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot, HumanBodyBones.LeftHand, HumanBodyBones.RightHand, HumanBodyBones.Hips, HumanBodyBones.Head };
@@ -268,7 +268,7 @@ namespace MeridianMotion.Tests.Animations
             yield return Spawn();
             rig.Body.position = new Vector3(0f, 8f, 0f);
             float face = rig.FrontExtent + 0.1f;
-            rig.Box("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f));
+            rig.TraversableBox("Wall", new Vector3(0f, 15f, face + 0.5f), new Vector3(10f, 30f, 1f), MeridianMotion.Levels.TraversableWall.WallMove.WallSlide);
             yield return ExpectState(HumanoidAnimatorStates.WallSlide, 0.4f, _ => CharacterTestRig.Move(Vector3.forward));
             yield return rig.Run(0.3f, _ => CharacterTestRig.Move(Vector3.forward), StepAnimator);
             Assert.That(rig.InState(CharacterState.WallSliding), Is.True, "Test setup: the character should still be sliding.");

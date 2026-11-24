@@ -67,6 +67,9 @@ namespace MeridianMotion.Tests.EditMode.UI
             Assert.That(Calls(manager.OnGameInputBlockedChanged, reader, nameof(PlayerInputReader.SetSuppressed)), Is.EqualTo(1));
             Assert.That(rig.CursorSettings.unlockKey, Is.EqualTo(Key.None), "Back (Escape) should be the UI's: the camera's unlock key goes.");
             Assert.That(manager.GetComponent<PauseMenuOnBack>(), Is.Not.Null, "Back with no window should open the pause menu.");
+            // By its name: the bridge is CharacterUI's, which these tests don't reference.
+            Assert.That(reader.GetComponents<MonoBehaviour>().Count(c => c != null && c.GetType().Name == "SprintModeOption"), Is.EqualTo(1),
+                "The controls page's Sprint option should be beside the player's input reader.");
             Assert.That(scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<EventSystem>()).Count(), Is.EqualTo(1));
         }
 

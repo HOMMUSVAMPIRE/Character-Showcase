@@ -34,7 +34,7 @@ namespace MeridianMotion.Showcase.TutorialRing.EditorTools
         private const float PromptAboveBottom = 150f, PromptFontSize = 34f, BackingOpacity = 0.8f, BackingChamfer = 12f, TextPadding = 24f;
 
         /// <summary>
-        /// The lessons, in the order they're taught (the design's: ReferenceAssets/TutorialRingDocs): id, title, prompt,
+        /// The lessons, in the order they're taught (the design's: ReferenceAssets/Implementation Guidance/TutorialRingDocs): id, title, prompt,
         /// follow-up, the event that does it and the state it must be in. The level's zones name the ids.
         /// </summary>
         public static readonly (string id, string title, string prompt, string followUp, string clearsOn, string clearsOnlyWhile)[] Lessons =
@@ -47,8 +47,8 @@ namespace MeridianMotion.Showcase.TutorialRing.EditorTools
             ("L06-roll", "Roll", "Press {Roll} to roll through before the blockers close.", "", "RollStarted", ""),
             ("L07-vault", "Vault", "Run at the low wall: you vault it by yourself.", "", "VaultStarted", ""),
             ("L08-ledge", "Ledge grab and climb", "Jump at the wall to grab its ledge, then press {Jump} to climb up.", "", "LedgeClimbStarted", ""),
-            ("L09-wallrun", "Wall run", "Sprint, jump and steer along the wall to run across it.", "", "WallRunStarted", ""),
-            ("L10-walljump", "Wall slide and wall jump", "Jump at a wall to slide down it, then press {Jump} to leap to the other.", "Keep going: wall to wall, up the shaft.", "WallJumped", ""),
+            ("L09-wallrun", "Wall run", "Only plated walls with level grooves can be run along. Sprint, jump and steer along this one to run across.", "", "WallRunStarted", ""),
+            ("L10-walljump", "Wall slide and wall jump", "Only plated walls with upright grooves can be slid down. Jump at one, then press {Jump} to leap to the other.", "Keep going: wall to wall, up the shaft.", "WallJumped", ""),
             ("L11-climb", "Climbable panel", "Move into the marked panel to climb it. {Jump} leaps off.", "", "WallClimbStarted", ""),
             ("L12-ladder", "Ladder", "Walk into the ladder to climb it.", "", "WallClimbStarted", ""),
             ("L13-crate", "Push and pull", "Hold {Interact} at the crate, then steer to push or pull it.", "Push it against the ledge and climb up.", "GrabStarted", ""),

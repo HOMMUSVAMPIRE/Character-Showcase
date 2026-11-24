@@ -10,7 +10,8 @@ A crossing names its intended moves. It passes when:
   90%, of the need), or is ruled out by the crossing's geometry:
   - a ceiling lower than the character's standing height rules out every jump (and the wall run, which starts with one);
     a ceiling over standing height only shortens a jump, so it isn't counted (the check stays on the safe side);
-  - no wall beside it rules out the wall run and the wall jump;
+  - no marked wall beside it (wall_beside, or "walls" among its fixtures) rules out the wall run and the wall jump: the
+    character only runs along or slides down a wall marked for it (a TraversableWall), so a plain wall is no help;
   - something in the dash's straight line (dash_blocked) rules out the dash;
   - no run-up (run_up False) rules out what needs sprinting speed (the sprint jump, the slide);
   - timing (timed: moving blockers) rules out the slow way through (crouch-walking);

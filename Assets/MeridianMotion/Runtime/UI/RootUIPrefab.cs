@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 namespace MeridianMotion.UI
 {
@@ -50,6 +51,10 @@ namespace MeridianMotion.UI
         [Tooltip("Plays its opening and closing, in unscaled time (so it runs while the game is paused): its \"Close\" trigger into a state tagged \"Close\". Found on the window if left empty; none closes at once")]
         [SerializeField] private Animator animator;
 
+        [Header("Gamepad and keyboard")]
+        [Tooltip("What's selected first when it's navigated by a gamepad or the keyboard and nothing of it is (empty: its first control that can be used)")]
+        [SerializeField] private Selectable firstSelected;
+
         [Header("The game")]
         [Tooltip("Whether the pointer is needed while it's open: the UIManager tells the game (OnCursorNeededChanged), which frees the cursor")]
         [SerializeField] private bool needsCursor = true;
@@ -74,6 +79,22 @@ namespace MeridianMotion.UI
         public bool NeedsCursor { get => needsCursor; set => needsCursor = value; }
         /// <summary>Whether the game's own input stops while it's open.</summary>
         public bool BlocksGameInput { get => blocksGameInput; set => blocksGameInput = value; }
+        /// <summary>What's selected first when it's navigated by a gamepad or the keyboard (null: its first control that can be used).</summary>
+        public Selectable FirstSelected { get => firstSelected; set => firstSelected = value; }
+
+        /// <summary>
+        /// What a gamepad or the keyboard starts from in it: its First Selected, if that can be used now, else its first
+        /// control (in the hierarchy's order) that's shown and can be used; null if it has none.
+        /// </summary>
+        public Selectable FirstSelectable()
+        {
+            if (firstSelected != null && firstSelected.isActiveAndEnabled && firstSelected.IsInteractable()) { return firstSelected; }
+            foreach (Selectable selectable in GetComponentsInChildren<Selectable>())
+            {
+                if (selectable.IsInteractable() && selectable.navigation.mode != Navigation.Mode.None) { return selectable; }
+            }
+            return null;
+        }
 
         /// <summary>The click blocker open behind it, or null.</summary>
         public RootUIPrefab BlockerPrefab { get; private set; }
@@ -196,6 +217,7 @@ namespace MeridianMotion.UI
         {
             if (BlockerPrefab != null && BlockerPrefab.transform.parent == transform.parent) { BlockerPrefab.transform.SetAsLastSibling(); }
             transform.SetAsLastSibling();
+            if (UIManager.instance != null && isActiveAndEnabled) { UIManager.instance.Track(this); }
         }
 
         private void CloseBlocker()

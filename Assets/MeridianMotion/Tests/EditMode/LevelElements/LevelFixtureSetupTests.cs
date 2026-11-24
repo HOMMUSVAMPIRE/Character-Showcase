@@ -197,6 +197,21 @@ namespace MeridianMotion.Tests.EditMode.LevelElements
         }
 
         [Test]
+        public void SetUp_MarksWallRunAndWallSlideWalls_ForWhatTheirNamesSay()
+        {
+            GameObject run = Add("Wall-Run Wall (+8)");
+            GameObject slide = Add("Wall-Slide Wall");
+            GameObject plain = Add("Wall-Run Walls Ahead (a sign, not a wall)");
+
+            string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
+
+            Assert.That(run.GetComponent<TraversableWall>() is { Move: TraversableWall.WallMove.WallRun }, "A wall-run wall is for wall runs.");
+            Assert.That(slide.GetComponent<TraversableWall>() is { Move: TraversableWall.WallMove.WallSlide }, "A wall-slide wall is for wall slides.");
+            Assert.IsNull(plain.GetComponent<TraversableWall>(), "Only the names themselves (alone, or followed by a space) mark a wall.");
+            StringAssert.Contains("2 walls for wall runs or slides", summary);
+        }
+
+        [Test]
         public void SetUp_MakesWaterSwimmable_KeepingTheLevelsSurface_ButNotFutureWaterMarkers()
         {
             GameObject pool = Add("Water | size=22,2.6,12 | label=Pool");

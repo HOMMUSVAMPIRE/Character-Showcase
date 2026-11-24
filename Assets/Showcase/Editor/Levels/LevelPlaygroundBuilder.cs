@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using static MeridianMotion.Showcase.Levels.Graybox;
+using MeridianMotion.Levels;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -306,7 +307,7 @@ namespace MeridianMotion.Showcase.Levels
             HazardStripes(tests, new Vector2(-24f, -40f), new Vector2(-24f, -36f), Vector2.right, 4f);
             Flight(tests, "Stair (Beam Start)", new Vector2(-36f, -36f + FlightLength(0f, 4f)), Vector2.down, 4f, 0f, 4f);
             Ruler(tests, "Ruler (Beam)", new Vector2(-33.5f, -35.2f), Vector2.right, 9f, 0f);
-            Block(tests, "Wall-Run Wall (+8)", -33f, -23f, -33f, -32f, 0f, 8f, GrayboxMaterial.Panel);
+            MarkedWall(tests, "+8", new Vector2(-33f, -32.5f), new Vector2(-23f, -32.5f), 0f, 8f, 1f, TraversableWall.WallMove.WallRun);
         }
 
         // ---- South: one of each mechanic (fixtures the scene's game setup makes work: see Graybox.Mechanics) ----

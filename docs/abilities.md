@@ -19,7 +19,7 @@ A roll ends standing, or crouched where there's no room, or if it was rolled fro
 Crouching and sliding are one component, Crouching, whose Can Slide toggle turns sliding off (pressing Crouch while sprinting then just crouches); rolling is the Rolling component. A Slide Max Duration or Roll Duration of 0 turns that ability off too, and turning Crouching off leaves the character unable to crouch or slide. The crouch height is the character's posture, which the mode sets: rolls go low to Crouching's Crouch Height even with Crouching turned off.
 
 ## Wall-Running
-Moving fast along a wall beside the character in mid-air, high enough above the ground, while steering along it, runs along the wall. Its conditions:
+Moving fast along a wall beside the character in mid-air, high enough above the ground, while steering along it, runs along the wall. Only a wall marked for it is run along: one with a Traversable Wall component with Wall Run on (see [Walls for wall runs and slides](traversal.md#walls-for-wall-runs-and-slides)), unless Wall Run On Any Wall is on, which lets every wall be run along. Its conditions:
 
 - moving along the wall at least Wall Run Min Speed;
 - at least Wall Run Min Height above the ground;
@@ -37,6 +37,8 @@ Jumping jumps off the wall, away from it (Wall Jump Away Speed) and upward (Wall
 The same wall (one facing within `SameWallAngle` of it, in MovementRules.cs) can't be run along twice without touching the ground, but another can, after a short cooldown (Wall Run Cooldown), so wall jumps chain between facing walls. Everything else is in the StandardMovementMode asset's Wall Running component; turning it off, or a Wall Run Max Duration of 0, turns wall-running off.
 
 ## Wall Sliding
+Only a wall marked for it is slid down (and so jumped off): one with a Traversable Wall component with Wall Slide on (see [Walls for wall runs and slides](traversal.md#walls-for-wall-runs-and-slides)), unless Wall Slide On Any Wall is on, which lets every wall be slid down.
+
 Hitting a wall head-on in mid-air (within Wall Slide Max Angle of facing it, at least Wall Slide Min Height above the ground) slides slowly down it. What counts is how the character hits the wall: moving into it at Wall Slide Min Approach Speed or more, whatever the steering. The speed it hit with is remembered for `WallSlideApproachMemory` (Components/WallSliding.cs), as the wall stops it at once. Only a character barely moving needs to steer into it.
 
 The slide starts falling, or rising slower than Wall Slide Max Start Rise Speed (a fast rise carries on up the wall and is caught near its top, rising on into the slide under gravity). The character is pressed against the wall facing it, and its fall is braked (Wall Slide Braking) to Wall Slide Speed.

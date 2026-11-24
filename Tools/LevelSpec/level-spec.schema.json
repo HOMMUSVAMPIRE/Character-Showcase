@@ -104,7 +104,10 @@
       "additionalProperties": false
     },
     "grayboxmaterial": {
-      "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass", "Water"]
+      "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass", "Water", "Asphalt", "Plate", "Glass"]
+    },
+    "wallmove": {
+      "enum": ["WallRun", "WallSlide"]
     },
     "piece.State": {
       "type": "object",
@@ -579,6 +582,10 @@
         "start": {
           "type": "boolean",
           "default": false
+        },
+        "marked": {
+          "type": "boolean",
+          "default": true
         }
       },
       "required": ["piece", "parent", "id", "feet", "yaw", "size"],
@@ -1069,6 +1076,40 @@
         }
       },
       "required": ["piece", "parent", "name", "a", "b", "floor", "clear"],
+      "additionalProperties": false
+    },
+    "piece.MarkedWall": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "MarkedWall"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "a": {
+          "$ref": "#/$defs/point2"
+        },
+        "b": {
+          "$ref": "#/$defs/point2"
+        },
+        "y0": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "thickness": {
+          "type": "number"
+        },
+        "move": {
+          "$ref": "#/$defs/wallmove"
+        }
+      },
+      "required": ["piece", "parent", "name", "a", "b", "y0", "y1", "thickness", "move"],
       "additionalProperties": false
     },
     "piece.Marker": {
@@ -2134,6 +2175,9 @@
         },
         {
           "$ref": "#/$defs/piece.LowBeam"
+        },
+        {
+          "$ref": "#/$defs/piece.MarkedWall"
         },
         {
           "$ref": "#/$defs/piece.Marker"

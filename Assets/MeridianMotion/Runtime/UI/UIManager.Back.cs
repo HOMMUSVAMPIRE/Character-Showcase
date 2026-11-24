@@ -51,15 +51,16 @@ namespace MeridianMotion.UI
 
         /// <summary>
         /// The Back key, pressed: the top window that takes it gets it (OnCancelButton: its CancelActionOverrides, or it
-        /// closes); with none, the fallback handler runs. Nothing while a text field has the keyboard, or the input's captured (CaptureInput). Update calls it
-        /// for the Cancel action; a test, or another input layer, can call it itself.
+        /// closes); with none, the fallback handler runs, if allowFallback (the Menu key's, not Back's alone: see Update).
+        /// Nothing while a text field has the keyboard, or the input's captured (CaptureInput). Update calls it for the
+        /// Menu and Cancel actions; a test, or another input layer, can call it itself.
         /// </summary>
-        public void HandleBack()
+        public void HandleBack(bool allowFallback = true)
         {
             if (IsFocusedOnText() || IsInputCaptured) { return; }
             RootUIPrefab top = TopWindow;
             if (top != null) { top.OnCancelButton(); }
-            else { fallbackBackHandler?.Invoke(); }
+            else if (allowFallback) { fallbackBackHandler?.Invoke(); }
         }
 
         /// <summary>

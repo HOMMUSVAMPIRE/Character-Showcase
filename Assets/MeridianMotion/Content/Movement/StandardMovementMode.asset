@@ -83,6 +83,7 @@ MonoBehaviour:
         enabled: 1
         vaultRiseDuration: 0.25
         vaultSpeedRetention: 0.75
+        vaultTakeOffSpeed: 0.5
         vaultMinSpeed: 3
         vaultFromGround: 1
         vaultGroundMaxAngle: 25
@@ -121,9 +122,11 @@ MonoBehaviour:
         wallRunMaxDuration: 1.2
         wallRunGravity: 5
         wallRunMaxRiseSpeed: 4
-        wallRunMaxSteerAngle: 60
+        wallRunMaxSteerAngle: 90
         wallRunCheckDistance: 0.3
+        wallRunClearance: 0.25
         wallRunMinHeight: 0.75
+        wallRunOnAnyWall: 0
         wallRunMaxWallTilt: 45
         wallRunCooldown: 0.35
         wallRunFootHeight: 0.2
@@ -137,8 +140,9 @@ MonoBehaviour:
         wallSlideSpeed: 2.5
         wallSlideBraking: 30
         wallSlideMaxDuration: 3
-        wallSlideMaxAngle: 15
+        wallSlideMaxAngle: 60
         wallSlideCheckDistance: 0.2
+        wallSlideOnAnyWall: 0
         wallSlideMinHeight: 0.5
         wallSlideJumpUpSpeed: 12
         wallSlideJumpAwaySpeed: 9
@@ -323,6 +327,7 @@ MonoBehaviour:
         enabled: 1
         walkSpeed: 5
         runSpeed: 10
+        speedRecoveryTime: 0.3
     - rid: 5929479671128260608
       type: {class: Swimming, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
@@ -338,9 +343,11 @@ MonoBehaviour:
         swimDiveSpeed: 4
         swimVerticalSpeed: 2.5
         swimBuoyancy: 0
+        swimMaxPitch: 60
     - rid: 5929479671128260609
       type: {class: Wading, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
       data:
         enabled: 1
         wadeStartDepth: 0.1
         wadeSpeedMultiplier: 0.5
+        wadeMaxDepth: 1

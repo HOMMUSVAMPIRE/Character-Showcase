@@ -21,6 +21,9 @@ namespace MeridianMotion.Characters
         [Range(0f, 80f)] [SerializeField] private float wallSlideMaxAngle = 45f;
         [Tooltip("How far (m) in front of the character a wall can be to slide down it, at its authored size")]
         [SerializeField] private float wallSlideCheckDistance = 0.2f;
+        [Tooltip("Whether every wall can be slid down (and jumped off). Off, only walls marked for it can (a Traversable " +
+                 "Wall with Wall Slide on, on the wall or a parent), so a level says where wall slides and wall jumps go")]
+        [SerializeField] private bool wallSlideOnAnyWall;
         [Tooltip("A slide down a wall only starts this high (m) or more above the ground, at the character's authored size")]
         [SerializeField] private float wallSlideMinHeight = 0.5f;
         [Tooltip("How fast (m/s) jumping off a wall the character is sliding down launches it upward")]
@@ -58,6 +61,8 @@ namespace MeridianMotion.Characters
         public float WallSlideSpeed { get => wallSlideSpeed; set => wallSlideSpeed = value; }
         /// <summary>The longest a slide down a wall lasts, in seconds. 0 turns wall sliding off.</summary>
         public float WallSlideMaxDuration { get => wallSlideMaxDuration; set => wallSlideMaxDuration = value; }
+        /// <summary>Whether every wall can be slid down, or only those marked for it (a Levels.TraversableWall with Wall Slide on).</summary>
+        public bool WallSlideOnAnyWall { get => wallSlideOnAnyWall; set => wallSlideOnAnyWall = value; }
 
         /// <summary>The events of a moment it raises (see MovementComponent.OneOffEvents): a jump off the wall (MovementRules.JumpOffWall).</summary>
         public override MovementEvents OneOffEvents => MovementEvents.WallJumped;
@@ -246,6 +251,8 @@ namespace MeridianMotion.Characters
             // As upright as a wall run's wall, whether or not walls are run along (see WallRunning).
             float maxTilt = SettingsOf<WallRunning>().WallRunMaxWallTilt;
             if (!MovementRules.FindUprightWall(motor, feet, direction, reach, maxTilt, out RaycastHit hit, out normal)) { return false; }
+            // Only down a wall marked for it, unless any will do (see WallRunning's the same).
+            if (!wallSlideOnAnyWall && !Levels.TraversableWall.AllowsWallSlide(hit.collider)) { return false; }
             point = hit.point;
             return true;
         }

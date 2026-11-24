@@ -1,10 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using MeridianMotion.UI;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.TestTools;
 
 namespace MeridianMotion.Tests.UI
@@ -14,7 +17,8 @@ namespace MeridianMotion.Tests.UI
     /// to the top window that takes it, closing the windows from the top down, then runs the fallback handler; a window's
     /// Cancel Action Overrides run instead of closing it; a window that doesn't take Back, a hidden one and a closing one
     /// are passed over (a hidden one taking it again once shown); a text field with the keyboard keeps it; and the
-    /// manager tells the game whether the shown windows need the pointer or stop its input, as they open and close.
+    /// manager tells the game whether the shown windows need the pointer or stop its input, as they open and close. And on a
+    /// gamepad, Back (B) closes windows but never runs the fallback (the pause menu): the Menu key (Start) does.
     /// </summary>
     [Category(TestArea.UI)]
     public class BackKeyTests : UITestsBase
@@ -54,6 +58,39 @@ namespace MeridianMotion.Tests.UI
         }
 
 #if UNITY_EDITOR
+        [UnityTest]
+        public IEnumerator OnAGamepad_BackClosesWindowsButOpensNothing_AndMenuRunsTheFallback()
+        {
+            // The UI map's Cancel and Menu, on a gamepad's B and Start, as the project's are.
+            var actions = ScriptableObject.CreateInstance<InputActionAsset>();
+            created.Add(actions);
+            InputActionMap ui = actions.AddActionMap("UI");
+            InputAction cancel = ui.AddAction("Cancel", InputActionType.Button, "<Gamepad>/buttonEast");
+            InputAction menu = ui.AddAction("Menu", InputActionType.Button, "<Gamepad>/start");
+            typeof(UIManager).GetField("cancelAction", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(manager, InputActionReference.Create(cancel));
+            typeof(UIManager).GetField("menuAction", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(manager, InputActionReference.Create(menu));
+            ui.Enable();
+            var gamepad = new VirtualGamepad();
+            try
+            {
+                IEnumerator Press(GamepadButton button) => gamepad.Press(button);
+                int fallbacks = 0;
+                manager.RegisterFallbackHandler(() => fallbacks++);
+                RootUIPrefab window = Open(Template("Window"));
+                yield return Press(GamepadButton.East);
+                Assert.That(window.IsClosing || Gone(window), Is.True, "B should close the window.");
+                yield return Press(GamepadButton.East);
+                Assert.That(fallbacks, Is.EqualTo(0), "With no window, B shouldn't open the pause menu (run the fallback).");
+                yield return Press(GamepadButton.Start);
+                Assert.That(fallbacks, Is.EqualTo(1), "Start (Menu) should.");
+            }
+            finally
+            {
+                gamepad.Dispose();
+                ui.Disable();
+            }
+        }
+
         [UnityTest]
         public IEnumerator AWindowsCancelActionOverrides_RunInsteadOfClosingIt()
         {

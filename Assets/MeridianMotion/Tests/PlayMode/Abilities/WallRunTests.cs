@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using MeridianMotion.Characters;
+using MeridianMotion.Levels;
 using NUnit.Framework;
 using UnityEngine.TestTools;
 using UnityEngine;
@@ -13,8 +14,8 @@ namespace MeridianMotion.Tests.Abilities
     /// slowly, until the run lasts its longest, the wall ends (or the feet drop below its bottom edge), or steering has
     /// stopped for the release delay (not just for a moment); jumping jumps off the wall and gives back air jumps; and
     /// no wall run starts without steering mostly along the wall, heading into the wall, close to the ground, or beside a wall that doesn't
-    /// reach down to the feet. The
-    /// character is launched in mid-air beside a long wall on its right. Expected values are read from the movement mode.
+    /// reach down to the feet; only walls marked for wall runs are run along (a TraversableWall), unless Wall Run On Any
+    /// Wall is on. The character is launched in mid-air beside a long wall on its right. Expected values are read from the movement mode.
     /// The checks every ability gets (turned off, letting go, its events, saved and put back, at another size) come from
     /// AbilityFixture: launched along the wall, as here, steering along it.
     /// </summary>
@@ -32,7 +33,7 @@ namespace MeridianMotion.Tests.Abilities
             rig.Floor();
             yield return SpawnCharacter(new Vector3(0f, 12f * Scale, -25f), settleSeconds: 0f);
             wallFace = rig.SideExtent + 0.1f * Scale;
-            rig.Box("Wall", new Vector3(wallFace + 0.5f, 20f * Scale, 4f), new Vector3(1f, 40f * Scale, 60f));
+            rig.TraversableBox("Wall", new Vector3(wallFace + 0.5f, 20f * Scale, 4f), new Vector3(1f, 40f * Scale, 60f), TraversableWall.WallMove.WallRun);
             // Launched along the wall on the kit's first step (as LaunchAlongWall, without its own step), so the start is the kit's.
             rig.Movement.OverrideVelocity(Vector3.forward * WallRunSpeed);
         }
@@ -43,13 +44,68 @@ namespace MeridianMotion.Tests.Abilities
 
         /// <summary>
         /// A floor, and a wall along +Z on the character's right (its face a little beside the character), wallLength
-        /// long from just behind the character; the character in mid-air beside it, feet height above the floor.
+        /// long from just behind the character, marked as asked (for wall runs, unless a test says otherwise); the
+        /// character in mid-air beside it, feet height above the floor.
         /// </summary>
-        private IEnumerator SetUpWall(float height = 12f, float wallLength = 60f)
+        private IEnumerator SetUpWall(float height = 12f, float wallLength = 60f, TraversableWall.WallMove? marked = TraversableWall.WallMove.WallRun)
         {
             rig.Floor();
             yield return rig.SpawnSettled(new Vector3(0f, height, -25f), settleSeconds: 0f);
-            wallFace = rig.WallBeside(length: wallLength);
+            wallFace = rig.WallBeside(length: wallLength, marked: marked);
+        }
+
+        /// <summary>Launches the character along the wall and runs it for a while, steering along: whether it wall-ran.</summary>
+        private IEnumerator TryToRun(System.Action<bool> ran)
+        {
+            bool any = false;
+            yield return LaunchAlongWall();
+            any |= WallRunning;
+            yield return rig.Run(0.6f, _ => CharacterTestRig.Move(Vector3.forward), _ => any |= WallRunning);
+            ran(any);
+        }
+
+        // ---- Which walls: only those marked for it, unless any will do ----
+
+        [UnityTest]
+        public IEnumerator AWallNotMarkedForWallRuns_IsNotRunAlong([Values(false, true)] bool markedForSlides)
+        {
+            yield return SetUpWall(marked: markedForSlides ? TraversableWall.WallMove.WallSlide : null);
+            bool ran = true;
+            yield return TryToRun(r => ran = r);
+            Assert.That(ran, Is.False, markedForSlides
+                ? "A wall marked for wall slides only shouldn't be run along."
+                : "An unmarked wall shouldn't be run along.");
+        }
+
+        [UnityTest]
+        public IEnumerator AWallMarkedForWallRuns_IsRunAlong()
+        {
+            yield return SetUpWall(marked: TraversableWall.WallMove.WallRun);
+            bool ran = false;
+            yield return TryToRun(r => ran = r);
+            Assert.That(ran, Is.True, "A wall marked for wall runs should be run along.");
+        }
+
+        [UnityTest]
+        public IEnumerator AnUnmarkedWall_IsRunAlong_WithWallRunOnAnyWall()
+        {
+            yield return SetUpWall(marked: null);
+            rig.SetMovementSetting("wallRunOnAnyWall", true);
+            bool ran = false;
+            yield return TryToRun(r => ran = r);
+            Assert.That(ran, Is.True, "With Wall Run On Any Wall on, any wall should be run along.");
+        }
+
+        [UnityTest]
+        public IEnumerator AMarkedWallWithItsMarkTurnedOff_IsNotRunAlong()
+        {
+            rig.Floor();
+            yield return rig.SpawnSettled(new Vector3(0f, 12f, -25f), settleSeconds: 0f);
+            wallFace = rig.SideExtent + 0.1f;
+            rig.TraversableBox("Wall", new Vector3(wallFace + 0.5f, 20f, 4f), new Vector3(1f, 40f, 60f), TraversableWall.WallMove.WallRun).enabled = false;
+            bool ran = true;
+            yield return TryToRun(r => ran = r);
+            Assert.That(ran, Is.False, "A wall whose Traversable Wall is turned off shouldn't be run along.");
         }
 
         /// <summary>Launches the character forward along the wall at the wall-run speed, steering forward.</summary>
@@ -122,7 +178,7 @@ namespace MeridianMotion.Tests.Abilities
         {
             yield return SetUpWall();
             // A second wall on the left, facing the first.
-            rig.Box("Facing Wall", new Vector3(-3f - 0.5f, 20f, 4f), new Vector3(1f, 40f, 60f));
+            rig.TraversableBox("Facing Wall", new Vector3(-3f - 0.5f, 20f, 4f), new Vector3(1f, 40f, 60f), TraversableWall.WallMove.WallRun);
             yield return LaunchAlongWall();
             yield return rig.RunUntil(() => WallRunning, _ => CharacterTestRig.Move(Vector3.forward), timeoutSeconds: 3f);
             Assert.That(WallRunning, Is.True, "Test setup: the character should be running along the right-hand wall.");
@@ -213,7 +269,7 @@ namespace MeridianMotion.Tests.Abilities
             wallFace = rig.SideExtent + 0.1f;
             // A wall hanging in the air, its bottom edge a little below the character's feet.
             float bottom = rig.Position.y - 0.4f;
-            rig.Box("Hanging Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));
+            rig.TraversableBox("Hanging Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f), TraversableWall.WallMove.WallRun);
             float footHeight = rig.MovementSetting<float>("wallRunFootHeight") * rig.StandingHeight;
             yield return LaunchAlongWall();
             bool ran = false, ranBelow = false;
@@ -235,7 +291,7 @@ namespace MeridianMotion.Tests.Abilities
             wallFace = rig.SideExtent + 0.1f;
             // Beside the character's upper body only: its bottom edge at the character's waist.
             float bottom = rig.Position.y + 0.5f * rig.StandingHeight;
-            rig.Box("High Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f));
+            rig.TraversableBox("High Wall", new Vector3(wallFace + 0.5f, bottom + 10f, 4f), new Vector3(1f, 20f, 60f), TraversableWall.WallMove.WallRun);
             yield return LaunchAlongWall();
             bool ran = false;
             yield return rig.Run(0.5f, _ => CharacterTestRig.Move(Vector3.forward), _ => ran |= WallRunning);

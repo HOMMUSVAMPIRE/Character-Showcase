@@ -84,8 +84,10 @@ namespace MeridianMotion.UI
         [SerializeField] private GameObject blackoutBlockerPrefab;
 
         [Header("Input")]
-        [Tooltip("The Back key: the UI action map's Cancel. It's ignored while a text field has focus")]
+        [Tooltip("The Back key: the UI action map's Cancel (a gamepad's B, Escape). It closes windows, but opens nothing (the fallback, the pause menu, is the Menu key's) unless there's no Menu key. It's ignored while a text field has focus")]
         [SerializeField] private InputActionReference cancelAction;
+        [Tooltip("The Menu key: the UI action map's Menu (a gamepad's Start, Escape). Back, and with no window to take it, the fallback (the pause menu). Pressed with Back (Escape is both), it's taken once, as Menu")]
+        [SerializeField] private InputActionReference menuAction;
         [Tooltip("The Submit key: the UI action map's Submit, which presses a dialog's OK")]
         [SerializeField] private InputActionReference submitAction;
 
@@ -156,6 +158,7 @@ namespace MeridianMotion.UI
         {
             if (instance != this) { return; }
             cancelAction?.action?.Enable();
+            menuAction?.action?.Enable();
             submitAction?.action?.Enable();
         }
 
@@ -167,8 +170,13 @@ namespace MeridianMotion.UI
         protected virtual void Update()
         {
             if (instance != this) { return; }
-            if (cancelAction != null && cancelAction.action != null && cancelAction.action.WasPressedThisFrame()) { HandleBack(); }
+            bool hasMenu = menuAction != null && menuAction.action != null;
+            if (hasMenu && menuAction.action.WasPressedThisFrame()) { HandleBack(); }
+            // Back alone (a gamepad's B) closes windows but opens nothing: the pause menu is the Menu key's (Start). Without
+            // a Menu key, Back does both, as it did.
+            else if (cancelAction != null && cancelAction.action != null && cancelAction.action.WasPressedThisFrame()) { HandleBack(allowFallback: !hasMenu); }
             if (submitAction != null && submitAction.action != null && submitAction.action.WasPressedThisFrame()) { HandleSubmit(); }
+            KeepSelection();
             UpdateGameEvents();
         }
 
@@ -337,9 +345,11 @@ namespace MeridianMotion.UI
 
         // ---- What the windows tell it ----
 
+        // Kept in the order they were opened or brought to the front, the frontmost last (see FocusedWindow).
         internal void Track(RootUIPrefab window)
         {
-            if (!openWindows.Contains(window)) { openWindows.Add(window); }
+            openWindows.Remove(window);
+            openWindows.Add(window);
         }
 
         internal void Untrack(RootUIPrefab window) => openWindows.Remove(window);

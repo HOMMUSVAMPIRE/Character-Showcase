@@ -34,6 +34,17 @@ namespace MeridianMotion.Tests
         }
 
         /// <summary>
+        /// A box the character can wall-run along or slide down, as move says (a TraversableWall): walls are neither
+        /// unless they're marked, or the mode's Wall Run On Any Wall / Wall Slide On Any Wall is on.
+        /// </summary>
+        public TraversableWall TraversableBox(string name, Vector3 center, Vector3 size, TraversableWall.WallMove move, Quaternion? rotation = null)
+        {
+            var wall = Box(name, center, size, rotation).AddComponent<TraversableWall>();
+            wall.Move = move;
+            return wall;
+        }
+
+        /// <summary>
         /// A ladder of the given height standing at bottom (the middle of its foot), facing -Z (climbed from that side,
         /// toward +Z, as the test camera looks), unless turned otherwise. It builds its own mesh and collider.
         /// </summary>
@@ -106,25 +117,33 @@ namespace MeridianMotion.Tests
 
         /// <summary>
         /// A wall a metre thick straight ahead of the character (+Z), its face gap past the front of its body, standing on
-        /// the ground (y 0) as tall as height and as wide as width, centred on the character. Returns the face's z.
+        /// the ground (y 0) as tall as height and as wide as width, centred on the character, marked for the move given
+        /// (a TraversableWall), if one is. Returns the face's z.
         /// </summary>
-        public float WallAhead(float gap = 0.1f, float height = 30f, float width = 10f)
+        public float WallAhead(float gap = 0.1f, float height = 30f, float width = 10f, TraversableWall.WallMove? marked = null)
         {
             float face = Position.z + FrontExtent + gap;
-            Box("Wall", new Vector3(Position.x, height / 2f, face + 0.5f), new Vector3(width, height, 1f));
+            Wall(new Vector3(Position.x, height / 2f, face + 0.5f), new Vector3(width, height, 1f), marked);
             return face;
         }
 
         /// <summary>
         /// A wall a metre thick on the character's right (+X), its face gap past the side of its body, standing on the
         /// ground (y 0) as tall as height, running length along Z from behind metres behind the character. Returns the
-        /// face's x.
+        /// face's x. Marked for the move given (a TraversableWall), if one is.
         /// </summary>
-        public float WallBeside(float gap = 0.1f, float height = 40f, float length = 60f, float behind = 1f)
+        public float WallBeside(float gap = 0.1f, float height = 40f, float length = 60f, float behind = 1f, TraversableWall.WallMove? marked = null)
         {
             float face = Position.x + SideExtent + gap;
-            Box("Wall", new Vector3(face + 0.5f, height / 2f, Position.z - behind + length / 2f), new Vector3(1f, height, length));
+            Wall(new Vector3(face + 0.5f, height / 2f, Position.z - behind + length / 2f), new Vector3(1f, height, length), marked);
             return face;
+        }
+
+        // A plain box named Wall, or a traversable one if it's marked for a move.
+        private void Wall(Vector3 center, Vector3 size, TraversableWall.WallMove? marked)
+        {
+            if (marked is { } move) { TraversableBox("Wall", center, size, move); }
+            else { Box("Wall", center, size); }
         }
 
         /// <summary>A box the character can grab, push and pull (a PushableBlock), resting with its bottom at center.y - size.y / 2.</summary>

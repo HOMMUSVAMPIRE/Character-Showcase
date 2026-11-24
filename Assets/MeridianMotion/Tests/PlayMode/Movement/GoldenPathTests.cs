@@ -196,7 +196,7 @@ namespace MeridianMotion.Tests.Movement
                     rig.Floor();
                     // As WallRunTests: in mid-air beside a long wall, launched along it.
                     float face = rig.FrontExtent + 0.1f;
-                    rig.Box("Wall", new Vector3(face + 0.5f, 20f, 5f), new Vector3(1f, 40f, 60f));
+                    rig.TraversableBox("Wall", new Vector3(face + 0.5f, 20f, 5f), new Vector3(1f, 40f, 60f), MeridianMotion.Levels.TraversableWall.WallMove.WallRun);
                     return new Vector3(0f, 12f, -25f);
                 },
                 launch = rig => Forward * (rig.Component<WallRunning>().WallRunSpeed * rig.Movement.SpeedScale),
