@@ -395,6 +395,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6133253475021078359}
   - component: {fileID: 1187479843275441341}
+  - component: {fileID: 3336586081535247924}
   m_Layer: 0
   m_Name: UI Manager
   m_TagString: Untagged
@@ -453,3 +454,15 @@ MonoBehaviour:
   onGameInputBlockedChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3336586081535247924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8972442780996372682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 090c4d51b7e545dcb483e22d2917ef6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.PauseMenuOnBack

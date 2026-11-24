@@ -6,7 +6,9 @@
         "MeridianMotion.EditorTools",
         "Unity.InputSystem",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "MeridianMotion.Characters",
+        "MeridianMotion.Cameras"
     ],
     "includePlatforms": [
         "Editor"

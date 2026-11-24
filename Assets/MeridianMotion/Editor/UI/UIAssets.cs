@@ -35,6 +35,7 @@ namespace MeridianMotion.UI.EditorTools
         private static string MessageBoxPath => Existing(MeridianMotionAssets.PathOf("a8e30522f4c89487697736d36ddbc8c6", "Assets/MeridianMotion/Content/UI/Dialogs/Message Box.prefab"), "Dialogs/Message Box.prefab");
         private static string ErrorMessageBoxPath => Existing(MeridianMotionAssets.PathOf("69dcadec54e00483594fe209a3d6a4a7", "Assets/MeridianMotion/Content/UI/Dialogs/Error Message Box.prefab"), "Dialogs/Error Message Box.prefab");
         private static string YesNoDialogPath => Existing(MeridianMotionAssets.PathOf("72e7f93d7f32c45fcafed8af60bd2966", "Assets/MeridianMotion/Content/UI/Dialogs/Yes No Dialog.prefab"), "Dialogs/Yes No Dialog.prefab");
+        private static string PauseMenuPath => Existing(MeridianMotionAssets.PathOf("079bb9af2a59246dd8fb6525db8da406", "Assets/MeridianMotion/Content/UI/Windows/Pause Menu.prefab"), "Windows/Pause Menu.prefab");
         private static string PromptForStringPath => Existing(MeridianMotionAssets.PathOf("f8a5a548bed7048da94af523f7c99945", "Assets/MeridianMotion/Content/UI/Dialogs/Prompt For String.prefab"), "Dialogs/Prompt For String.prefab");
 
         // The package's path if its asset is there, else the output folder's (inOutputFolder, within its UI folder).
@@ -48,7 +49,9 @@ namespace MeridianMotion.UI.EditorTools
         // How big the dialogs and their parts are, in reference pixels (the canvases scale with a 1920x1080 screen).
         private static readonly Vector2 ReferenceResolution = new(1920f, 1080f);
         private static readonly Vector2 DialogSize = new(560f, 260f), PromptSize = new(560f, 320f), ButtonSize = new(160f, 48f);
+        private static readonly Vector2 PauseMenuSize = new(760f, 640f), MenuButtonSize = new(320f, 56f);
         private const float Padding = 28f, AccentHeight = 6f, BodyFontSize = 28f, ButtonFontSize = 24f, FieldHeight = 52f;
+        private const float TitleFontSize = 44f, TitleHeight = 64f, ControlsFontSize = 22f, MenuButtonGap = 16f;
 
         [MenuItem("Tools/Meridian Motion/Utilities/Create UI Assets", priority = 61)]
         public static void CreateFromMenu() => Create();
@@ -94,10 +97,19 @@ namespace MeridianMotion.UI.EditorTools
             GameObject prompt = PrefabAt(PromptForStringPath,
                 () => Dialog<UIMessageBox_PromptForString>("Prompt For String", PromptSize, ("Cancel", false), ("OK", true)));
 
+            GameObject pauseMenu = PrefabAt(PauseMenuPath, () => PauseMenuWindow(actions));
+            if (!catalog.Windows.Contains(pauseMenu))
+            {
+                catalog.Windows.Add(pauseMenu);
+                EditorUtility.SetDirty(catalog);
+            }
+
             GameObject manager = PrefabAt(ManagerPath, () => Manager(actions));
             // Every field, so the manager made before a dialog or blocker was (or one whose fields were cleared) has them.
             using (var editing = new PrefabUtility.EditPrefabContentsScope(AssetDatabase.GetAssetPath(manager)))
             {
+                // The Back key opens the pause menu when no window takes it.
+                if (editing.prefabContentsRoot.GetComponent<PauseMenuOnBack>() == null) { editing.prefabContentsRoot.AddComponent<PauseMenuOnBack>(); }
                 var fields = new SerializedObject(editing.prefabContentsRoot.GetComponent<UIManager>());
                 SetIfEmpty(fields, "windowCatalog", catalog);
                 SetIfEmpty(fields, "messageBoxPrefab", messageBox);
@@ -232,21 +244,99 @@ namespace MeridianMotion.UI.EditorTools
             for (int i = 0; i < buttons.Length; i++)
             {
                 (string label, bool ok) = buttons[buttons.Length - 1 - i];
-                GameObject button = TMP_DefaultControls.CreateButton(new TMP_DefaultControls.Resources());
-                button.name = $"{label} Button";
-                button.transform.SetParent(rect, false);
-                var buttonRect = (RectTransform)button.transform;
-                buttonRect.anchorMin = buttonRect.anchorMax = buttonRect.pivot = new Vector2(1f, 0f);
-                buttonRect.sizeDelta = ButtonSize;
-                buttonRect.anchoredPosition = new Vector2(-Padding - i * (ButtonSize.x + Padding * 0.5f), Padding);
-                button.GetComponent<Image>().color = ok ? Orange : SteelGrey;
-                var labelText = button.GetComponentInChildren<TextMeshProUGUI>();
-                labelText.text = label;
-                labelText.fontSize = ButtonFontSize;
-                labelText.color = OffWhite;
-                UnityAction pressed = ok ? box.OnOkButtonClicked : box.OnDeclineButtonClicked;
-                UnityEventTools.AddPersistentListener(button.GetComponent<Button>().onClick, pressed);
+                MakeButton(rect, label, ok ? Orange : SteelGrey, ok ? box.OnOkButtonClicked : box.OnDeclineButtonClicked, ButtonSize,
+                    new Vector2(1f, 0f), new Vector2(-Padding - i * (ButtonSize.x + Padding * 0.5f), Padding));
             }
+            return root;
+        }
+
+        // A button labelled label, of the colour and size, anchored (and pivoted) at anchor and placed at position from it,
+        // calling pressed when clicked (a persistent listener, saved with the prefab).
+        private static GameObject MakeButton(Transform parent, string label, Color color, UnityAction pressed, Vector2 size, Vector2 anchor, Vector2 position)
+        {
+            GameObject button = TMP_DefaultControls.CreateButton(new TMP_DefaultControls.Resources());
+            button.name = $"{label} Button";
+            button.transform.SetParent(parent, false);
+            var rect = (RectTransform)button.transform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = anchor;
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
+            button.GetComponent<Image>().color = color;
+            var text = button.GetComponentInChildren<TextMeshProUGUI>();
+            text.text = label;
+            text.fontSize = ButtonFontSize;
+            text.color = OffWhite;
+            UnityEventTools.AddPersistentListener(button.GetComponent<Button>().onClick, pressed);
+            return button;
+        }
+
+        // A text of the size and alignment, stretched over its parent less the offsets.
+        private static TextMeshProUGUI MakeText(Transform parent, string name, string value, float size, TextAlignmentOptions alignment,
+            Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+        {
+            var obj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            obj.transform.SetParent(parent, false);
+            Stretch((RectTransform)obj.transform, anchorMin, anchorMax, offsetMin, offsetMax);
+            var text = obj.GetComponent<TextMeshProUGUI>();
+            text.text = value;
+            text.fontSize = size;
+            text.color = OffWhite;
+            text.alignment = alignment;
+            return text;
+        }
+
+        // The pause menu: a graphite panel with the orange accent; its main page (a title and Resume, Restart, Controls and
+        // Quit down the middle) and its controls page (a title, the bindings listing, and Back), each button wired.
+        private static GameObject PauseMenuWindow(InputActionAsset actions)
+        {
+            var root = new GameObject("Pause Menu", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)root.transform;
+            rect.sizeDelta = PauseMenuSize;
+            root.GetComponent<Image>().color = Graphite;
+            var menu = root.AddComponent<PauseMenu>();
+            menu.ClickBlockerStyle = ClickBlockStyle.DarkenBackground;
+            menu.BlocksGameInput = true;
+            menu.Actions = actions;
+
+            var accent = new GameObject("Accent", typeof(RectTransform), typeof(Image));
+            accent.transform.SetParent(rect, false);
+            Stretch((RectTransform)accent.transform, new Vector2(0f, 1f), Vector2.one, new Vector2(0f, -AccentHeight), Vector2.zero);
+            accent.GetComponent<Image>().color = Orange;
+
+            Transform Page(string name)
+            {
+                var page = new GameObject(name, typeof(RectTransform));
+                page.transform.SetParent(rect, false);
+                Stretch((RectTransform)page.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0f, -AccentHeight));
+                MakeText(page.transform, "Title", name == "Main Page" ? "PAUSED" : "CONTROLS", TitleFontSize, TextAlignmentOptions.Center,
+                    new Vector2(0f, 1f), Vector2.one, new Vector2(Padding, -Padding - TitleHeight), new Vector2(-Padding, -Padding));
+                return page.transform;
+            }
+
+            Transform main = Page("Main Page");
+            var buttons = new (string label, Color color, UnityAction pressed)[]
+            {
+                ("Resume", Orange, menu.Resume), ("Restart", SteelGrey, menu.Restart),
+                ("Controls", SteelGrey, menu.ShowControls), ("Quit", SteelGrey, menu.QuitFromButton),
+            };
+            float top = -Padding * 2f - TitleHeight;
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                (string label, Color color, UnityAction pressed) = buttons[i];
+                MakeButton(main, label, color, pressed, MenuButtonSize, new Vector2(0.5f, 1f), new Vector2(0f, top - i * (MenuButtonSize.y + MenuButtonGap)));
+            }
+
+            Transform controls = Page("Controls Page");
+            TextMeshProUGUI listing = MakeText(controls, "Bindings", "", ControlsFontSize, TextAlignmentOptions.TopLeft, Vector2.zero, Vector2.one,
+                new Vector2(Padding, Padding * 2f + ButtonSize.y), new Vector2(-Padding, -Padding * 2f - TitleHeight));
+            MakeButton(controls, "Back", SteelGrey, menu.ShowMain, ButtonSize, new Vector2(1f, 0f), new Vector2(-Padding, Padding));
+
+            var fields = new SerializedObject(menu);
+            fields.FindProperty("mainPage").objectReferenceValue = main.gameObject;
+            fields.FindProperty("controlsPage").objectReferenceValue = controls.gameObject;
+            fields.FindProperty("controlsText").objectReferenceValue = listing;
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            controls.gameObject.SetActive(false);
             return root;
         }
 

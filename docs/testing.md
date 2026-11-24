@@ -97,6 +97,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | WindowLifecycleTests | UI | UI | a window's events, close animation and click blocker |
 | BackKeyTests | UI | UI | the Back key, its fallback, and what the game is told |
 | MessageBoxTests | UI | UI | the dialogs and the text prompt |
+| PauseMenuTests | UI | UI | the pause menu |
 | UIContentTests | UI | UI | the UI's own prefabs |
 | SpawnerTests | Spawning | Spawning | the character spawner |
 | EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
@@ -324,7 +325,8 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 - **WindowLifecycleTests**: its events in order, once each; a close animation played (in unscaled time, so with the game paused too) before it's destroyed, its animation event ending it, and a close that never plays through ending all the same; its click blocker behind it on its canvas, stopping clicks and closing with it; hiding and showing again keeping its state, stacking and blocker.
 - **BackKeyTests**: Back closing the windows from the top down (passing over one still closing), then running the fallback; Cancel Action Overrides run instead; windows that don't take Back, and hidden ones, passed over; a text field with the keyboard keeping it; and the game told when the windows need the pointer or stop its input.
 - **MessageBoxTests**: each dialog opening with its text and returning at once, its buttons running their callbacks (a second press counting once) and closing it with its blocker; Enter pressing OK; Back declining a yes/no dialog and dismissing an OK one; the prompt passing on what's typed; and a dialog opened without a manager saying so.
-- **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons.
+- **PauseMenuTests**: Back with no window opening the pause menu and pausing the game, and again resuming it (the time scale put back as it was); the game told it needs the pointer and its input stops while it's open; its controls page listing the bindings read from the input actions (but the hidden ones), Back going from it back to the main page; and Quit asking first, Back on the question keeping the game going.
+- **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; and Back opening the package's pause menu, listing the project's controls.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
 - **EveryCharacterTests**: every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.
@@ -350,6 +352,7 @@ They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests 
 | QueryBufferTests | Movement | Movement | the physics query buffers growing |
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
 | InputSuppressionTests | InputAndDeterminism | Movement | the player's input suppressed while a window is open |
+| UISceneSetupTests | UI | UI, SampleContent | Set Up Scene adding the UI and connecting it |
 | AnimationSetTests | Animations | Animation | animation sets and fallback clip slots |
 | LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
 | MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |
@@ -374,6 +377,7 @@ They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests 
 - **QueryBufferTests**: a ray or overlap that fills its buffer growing it and finding every hit (the nearest too), reporting each time it grew; a buffer at its largest (`QueryBuffer.MaxSize`) not growing, and reporting that once.
 
 ### InputAndDeterminism (the Movement category; see [Input](movement.md#input))
+- **UISceneSetupTests** (UI, sample content): Set Up Scene adding the UI Manager (an instance of its prefab) to the setup, connected to the camera rig's Set Cursor Requested and the player input's Set Suppressed once however often it's set up, the camera's unlock key handed to the UI's Back key, and the scene's own UI Manager and EventSystem kept.
 - **InputSuppressionTests**: the player's input suppressed (nothing held or pressed), a button held through it left out until let go, and one pressed after it counting at once.
 - **InputFrameTests**:
   - the input frame staying unmanaged and its size;

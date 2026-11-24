@@ -38,6 +38,7 @@ namespace MeridianMotion.Tests.UI
         public IEnumerator TearDown()
         {
             if (managerObject != null) { Object.Destroy(managerObject); }
+            Time.timeScale = 1f;
             yield return null;
         }
 
@@ -91,6 +92,20 @@ namespace MeridianMotion.Tests.UI
             yield return null;
             yield return null;
             Assert.That(UIManager.ClickBlockerCount, Is.EqualTo(0), "Every dialog's blocker should have gone with it.");
+        }
+
+        [UnityTest]
+        public IEnumerator Back_OpensThePackagesPauseMenu_ListingTheProjectsControls()
+        {
+            UIManager.instance.HandleBack();
+            PauseMenu menu = Object.FindAnyObjectByType<PauseMenu>();
+            Assert.That(menu, Is.Not.Null, "Back with no window should open the pause menu (the UI Manager's Pause Menu On Back, and the catalog's menu).");
+            Assert.That(Time.timeScale, Is.EqualTo(0f));
+            Assert.That(menu.Actions, Is.Not.Null, "It should read the project's input actions.");
+            StringAssert.Contains("Jump", menu.ControlsListing());
+            menu.Resume();
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            yield return null;
         }
     }
 }

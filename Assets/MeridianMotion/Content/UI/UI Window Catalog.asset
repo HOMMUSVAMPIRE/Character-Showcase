@@ -12,4 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d4e72e411279477b9cc63489a935a4d0, type: 3}
   m_Name: UI Window Catalog
   m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.UIWindowCatalog
-  windows: []
+  windows:
+  - {fileID: 6809448242008866821, guid: 079bb9af2a59246dd8fb6525db8da406, type: 3}

@@ -151,6 +151,31 @@ namespace MeridianMotion.EditorTools
         /// undone and the scene is left for you to save; without, they can't (for scenes set up by a script, which saves
         /// them). Returns false, changing nothing, if something it needs is missing (logged as an error).
         /// </summary>
+        /// <summary>
+        /// What Set Up Scene has made, for what adds to it from outside the package's core (the UI's editor tools add the
+        /// UI Manager and connect it: UISceneSetup), through AfterSettingUp. Notes are added to the setup's log.
+        /// </summary>
+        public sealed class SetupContext
+        {
+            public Scene scene;
+            /// <summary>The Meridian Motion Setup object, where what's added goes.</summary>
+            public Transform setup;
+            public CharacterSpawner spawner;
+            /// <summary>The camera rig the spawned character is followed by (the scene's own, or the Camera Rig prefab's).</summary>
+            public MMotionCameraRig camera;
+            /// <summary>The player's input reader (the scene's own input manager's, or the Input Manager prefab's), or null.</summary>
+            public PlayerInputReader inputReader;
+            public bool withUndo;
+            /// <summary>What was done, for the setup's log.</summary>
+            public readonly List<string> notes = new();
+        }
+
+        /// <summary>
+        /// Raised as Set Up Scene finishes (inside its undo group): for an assembly that adds to every set-up scene without
+        /// the core naming it, as the UI's editor tools add the UI. Registered from [InitializeOnLoad].
+        /// </summary>
+        public static event System.Action<SetupContext> AfterSettingUp;
+
         public static bool SetUp(Scene scene, Settings settings, bool withUndo)
         {
             string problem = Problem(scene);
@@ -229,6 +254,16 @@ namespace MeridianMotion.EditorTools
             }
             // With water in the level, the camera's view goes underwater with it (see UnderwaterView).
             bool underwaterView = AddUnderwaterView(scene, rig, withUndo);
+            var context = new SetupContext
+            {
+                scene = scene,
+                setup = setup,
+                spawner = spawner,
+                camera = rig,
+                inputReader = keepInputManager ? InputManagersOutsideSetup(scene).FirstOrDefault() : setup.GetComponentInChildren<PlayerInputReader>(true),
+                withUndo = withUndo,
+            };
+            AfterSettingUp?.Invoke(context);
             if (withUndo)
             {
                 Undo.RegisterCreatedObjectUndo(setup.gameObject, "Set Up Scene");
@@ -244,7 +279,8 @@ namespace MeridianMotion.EditorTools
                       (keepInputManager ? " The scene's own input manager is kept." : "") +
                       (otherCameras.Count > 0 ? $" Turned off the scene's other cameras: {string.Join(", ", otherCameras.Select(c => c.name))}." : "") +
                       (fixtures.Length > 0 ? $" Set up the level's {fixtures}." : "") +
-                      (underwaterView ? " The camera has an underwater view." : ""));
+                      (underwaterView ? " The camera has an underwater view." : "") +
+                      string.Concat(context.notes.Select(note => " " + note)));
             return true;
         }
 

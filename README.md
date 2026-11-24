@@ -72,7 +72,8 @@ If you intend to get a full understanding of the project, start with Characters/
 | Toggle first / third person | V | Right stick press |
 | Swap shoulder | Q | Right bumper |
 | Aim | Right mouse button | Left trigger |
-| Release cursor | Escape (click to re-lock) | |
+| Pause menu (frees the cursor) | Escape | B (the Cancel button) |
+| Release cursor, in a scene without the UI | Escape (click to re-lock) | |
 
 ## Documentation
 ### Using the package

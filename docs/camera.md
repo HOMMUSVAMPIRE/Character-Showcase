@@ -69,4 +69,5 @@ Prefer working it out from the Transform where that's enough, as the tracker doe
 | Toggle first / third person | V | Right stick press |
 | Swap shoulder | Q | Right bumper |
 | Aim | Right mouse button | Left trigger |
-| Release cursor | Escape (click to re-lock) | |
+| Pause menu (frees the cursor) | Escape | B (the Cancel button) |
+| Release cursor, in a scene without the UI | Escape (click to re-lock) | |
