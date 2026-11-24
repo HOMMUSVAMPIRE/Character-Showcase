@@ -1,0 +1,116 @@
+// Places a GrassField's blades for one camera (see GrassField). One thread per cell of a fine grid over each chunk in
+// view (the dispatch's z is the chunk), where the field's mask has grass: culled by the view, thinned out with distance,
+// and written to the near or the far list, whose draw arguments count them. Then Finish clamps the counts to what the
+// lists hold, keeping what was asked for so the field can grow them.
+
+#pragma kernel Generate
+#pragma kernel Finish
+
+// A blade, as Grass.shader reads it: 8 floats.
+struct Blade
+{
+    float3 position; // its root, in the world
+    float facing;    // which way it bends (radians about the vertical)
+    float length;    // m
+    float width;     // at the root, m
+    float bend;      // 0 straight up, 1 its tip its length forward
+    float hash;      // 0 to 1, for variation
+};
+
+StructuredBuffer<float4> _Chunks;   // each in view: its corner (x, z, in the field's space), layer, floor height
+Texture2DArray<float> _Mask;
+SamplerState sampler_linear_clamp;
+RWStructuredBuffer<Blade> _NearBlades, _FarBlades;
+RWByteAddressBuffer _NearArgs, _FarArgs; // indexed draw arguments: the instance count at byte 4
+RWByteAddressBuffer _Counts;             // what was asked for, near and far
+uint _NearCapacity, _FarCapacity;
+
+float4x4 _LocalToWorld;
+float3 _CameraPosition;
+float4 _FrustumPlanes[6];
+float2 _MaskOrigin, _MaskSize;
+float _Spacing;
+uint _BladesPerSide;
+float4 _Distances; // draw distance, detail distance, thinning starts
+float4 _Thinning;  // x: the fraction left at the draw distance
+float2 _Length, _Width, _Bend;
+
+// A well-mixed hash of three integers (Jarzynski and Olano's pcg3d), each output a different random.
+uint3 Hash(uint3 v)
+{
+    v = v * 1664525u + 1013904223u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    v ^= v >> 16u;
+    v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+    return v;
+}
+
+float3 Random(uint3 v) { return float3(Hash(v)) * (1.0 / 4294967296.0); }
+
+[numthreads(8, 8, 1)]
+void Generate(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _BladesPerSide || id.y >= _BladesPerSide) { return; }
+    float4 chunk = _Chunks[id.z];
+    uint layer = (uint)chunk.z;
+
+    // The cell, counted from the mask's corner, so its hash is the same whichever chunks are in view.
+    int2 cell = int2(round((chunk.xy - _MaskOrigin) / _Spacing)) + int2(id.xy);
+    float3 r0 = Random(uint3(cell.x, cell.y, layer * 2u));
+    float3 r1 = Random(uint3(cell.x, cell.y, layer * 2u + 1u));
+
+    float2 local = _MaskOrigin + (float2(cell) + r0.xy) * _Spacing;
+    float density = _Mask.SampleLevel(sampler_linear_clamp, float3((local - _MaskOrigin) / _MaskSize, layer), 0);
+    if (r0.z >= density) { return; }
+
+    float3 root = mul(_LocalToWorld, float4(local.x, chunk.w, local.y, 1.0)).xyz;
+    float drawDistance = _Distances.x;
+    float distance = length(root - _CameraPosition);
+    if (distance >= drawDistance) { return; }
+
+    // Fewer blades with distance (by the hash, so the same ones go), those left widened to cover as many pixels.
+    float keep = lerp(1.0, _Thinning.x, saturate((distance - _Distances.z) / max(drawDistance - _Distances.z, 0.001)));
+    if (r1.x >= keep) { return; }
+
+    float bladeLength = lerp(_Length.x, _Length.y, r1.y);
+    // Shrinking into the ground over the last tenth of the draw distance, so nothing pops.
+    bladeLength *= saturate((drawDistance - distance) / (0.1 * drawDistance));
+    if (bladeLength <= 0.001) { return; }
+
+    // Culled by the view: a sphere round the blade.
+    float3 middle = root + float3(0.0, 0.5 * bladeLength, 0.0);
+    [unroll] for (int p = 0; p < 6; p++)
+    {
+        if (dot(_FrustumPlanes[p].xyz, middle) + _FrustumPlanes[p].w < -bladeLength) { return; }
+    }
+
+    float3 r2 = Random(uint3(cell.x, cell.y, layer * 2u + 7919u));
+    Blade blade;
+    blade.position = root;
+    blade.facing = r1.z * 6.2831853;
+    blade.length = bladeLength;
+    blade.width = lerp(_Width.x, _Width.y, r2.x) * min(rsqrt(keep), 3.0);
+    blade.bend = lerp(_Bend.x, _Bend.y, r2.y);
+    blade.hash = r2.z;
+
+    uint index;
+    if (distance < _Distances.y)
+    {
+        _NearArgs.InterlockedAdd(4, 1u, index);
+        if (index < _NearCapacity) { _NearBlades[index] = blade; }
+    }
+    else
+    {
+        _FarArgs.InterlockedAdd(4, 1u, index);
+        if (index < _FarCapacity) { _FarBlades[index] = blade; }
+    }
+}
+
+[numthreads(1, 1, 1)]
+void Finish(uint3 id : SV_DispatchThreadID)
+{
+    uint near = _NearArgs.Load(4), far = _FarArgs.Load(4);
+    _Counts.Store2(0, uint2(near, far));
+    _NearArgs.Store(4, min(near, _NearCapacity));
+    _FarArgs.Store(4, min(far, _FarCapacity));
+}

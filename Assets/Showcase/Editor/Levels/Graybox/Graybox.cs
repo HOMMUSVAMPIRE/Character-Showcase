@@ -54,7 +54,7 @@ namespace MeridianMotion.Showcase.Levels
             Foliage,
             /// <summary>Earth and bark: planters' soil, tree trunks.</summary>
             Soil,
-            /// <summary>Lawn: grass over open ground and platform tops, and its tufts.</summary>
+            /// <summary>Lawn: grass over open ground and platform tops (its blades are a GrassField's).</summary>
             Grass,
             /// <summary>Water's surface: see-through, rippling, darker where it's deeper (its own shader: see LevelDefinition).</summary>
             Water,

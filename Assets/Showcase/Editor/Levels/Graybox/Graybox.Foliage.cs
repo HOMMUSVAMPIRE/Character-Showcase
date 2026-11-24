@@ -1,8 +1,11 @@
+using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
+using GrassField = MeridianMotion.Showcase.Grass.GrassField;
 
 namespace MeridianMotion.Showcase.Levels
 {
-    // Foliage, after the concept art and the style sheet's planters: low-poly trees (a tapering trunk under stacked,
+    // Foliage, after the concept art and the style sheet's planters: lawns with grass, low-poly trees (a tapering trunk under stacked,
     // faceted canopy tiers), shrubs, concrete planters with an orange band, and trees scattered over open ground. All
     // seeded (the settings' seed), so every build grows the same ones. Trunks and planters have box colliders; canopies
     // and shrubs, above head height or soft, have none.
@@ -116,10 +119,11 @@ namespace MeridianMotion.Showcase.Levels
         /// tops of platforms at those heights): square cells (the settings' size) laid wherever there's floor at that
         /// height under the cell and a margin round it (so they keep back from platforms' edges) and nothing standing
         /// within the settings' clearance (so paving is left round walls, stairs, rails and columns, and routes up and
-        /// down stay paved). Each lawn has grass tufts over it and, along its edges, the odd shrub. Raised a little, with
-        /// no collider. Placed once the level's built (see Defer), before any trees put off after it; in chunks, so each
-        /// mesh stays small and is culled on its own. spacing scales the cells (bigger for wide, sparse ground) and
-        /// density the tufts.
+        /// down stay paved). Each lawn has, along its edges, the odd shrub, and grass over it: a GrassField ("Grass", in
+        /// the Lawns group) whose blades are made on the GPU from a mask of the lawns, one layer per floor (see LawnMask).
+        /// Raised a little, with no collider. Placed once the level's built (see Defer), before any trees put off after
+        /// it; the lawns in chunks, so each mesh stays small and is culled on its own. spacing scales the cells (bigger
+        /// for wide, sparse ground) and density the grass (1 is its style's full density).
         /// </summary>
         [Piece]
         public static void Lawns(Transform parent, UnityEngine.Rect area, float[] floors, int salt, float spacing = 1f, float density = 1f)
@@ -132,11 +136,13 @@ namespace MeridianMotion.Showcase.Levels
                 float cell = f.lawnCell * spacing, half = cell / 2f, edge = f.lawnMargins.x, clear = f.lawnMargins.y, t = f.lawnThickness;
                 int nx = Mathf.FloorToInt(area.width / cell), nz = Mathf.FloorToInt(area.height / cell);
                 Transform lawns = Group(parent, "Lawns");
+                var masks = new List<(float height, bool[,] grass)>();
                 bool FloorAt(float x, float z, float height) =>
                     FloorUnder(parent, new Vector2(x, z), height, out float under) && Mathf.Abs(under - height) < 0.06f;
                 foreach (float floor in floors)
                 {
                     var grass = new bool[nx, nz];
+                    bool anyGrass = false;
                     for (int i = 0; i < nx; i++)
                     {
                         for (int j = 0; j < nz; j++)
@@ -148,8 +154,10 @@ namespace MeridianMotion.Showcase.Levels
                             Vector3 centre = parent.TransformPoint(new Vector3(x, floor + 0.08f + 1.2f, z));
                             if (Physics.CheckBox(centre, new Vector3(half + clear, 1.2f, half + clear), parent.rotation, ~0, QueryTriggerInteraction.Ignore)) { continue; }
                             grass[i, j] = true;
+                            anyGrass = true;
                         }
                     }
+                    if (anyGrass) { masks.Add((floor + t, grass)); }
                     bool Grass(int i, int j) => i >= 0 && j >= 0 && i < nx && j < nz && grass[i, j];
 
                     const int chunk = 16;
@@ -158,8 +166,7 @@ namespace MeridianMotion.Showcase.Levels
                         for (int cj = 0; cj < nz; cj += chunk)
                         {
                             var mesh = new GrayboxMesh();
-                            var tufts = new GrayboxMesh();
-                            bool any = false, anyTufts = false;
+                            bool any = false;
                             for (int i = ci; i < Mathf.Min(ci + chunk, nx); i++)
                             {
                                 for (int j = cj; j < Mathf.Min(cj + chunk, nz); j++)
@@ -174,13 +181,6 @@ namespace MeridianMotion.Showcase.Levels
                                     if (!Grass(i, j - 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.back, new(x0, floor, z0), new(x1, floor, z0), new(x1, top, z0), new(x0, top, z0)); }
                                     if (!Grass(i, j + 1)) { mesh.Quad(GrayboxMaterial.Grass, Vector3.forward, new(x0, floor, z1), new(x0, top, z1), new(x1, top, z1), new(x1, floor, z1)); }
 
-                                    float perCell = f.tuftDensity * density * cell * cell;
-                                    int count = Mathf.FloorToInt(perCell) + (random.NextDouble() < perCell - Mathf.Floor(perCell) ? 1 : 0);
-                                    for (int k = 0; k < count; k++)
-                                    {
-                                        Tuft(tufts, new Vector3(x0 + (float)random.NextDouble() * cell, top, z0 + (float)random.NextDouble() * cell), random);
-                                        anyTufts = true;
-                                    }
                                     bool border = !Grass(i - 1, j) || !Grass(i + 1, j) || !Grass(i, j - 1) || !Grass(i, j + 1);
                                     if (border && random.NextDouble() < f.borderShrubChance)
                                     {
@@ -193,54 +193,91 @@ namespace MeridianMotion.Showcase.Levels
                             lawn.transform.SetParent(lawns, false);
                             mesh.AddTo(lawn, lawn.name);
                             MakeStatic(lawn, occluder: false);
-                            if (anyTufts) { GrassTufts(lawn.transform, tufts); }
                         }
                     }
                 }
+                if (masks.Count > 0) { AddGrass(lawns, area.min, cell, nx, nz, masks, density); }
             });
         }
 
+        /// <summary>The mask's texel size (m): fine enough for its edges to follow the lawns' cells.</summary>
+        public const float GrassTexel = 0.25f;
+
+        /// <summary>How far in from a lawn's edge (m) its grass thins to nothing, so it doesn't stop in a hard line.</summary>
+        public const float GrassEdgeFade = 0.5f;
+
+        /// <summary>Where the grass's shaders are.</summary>
+        private const string GrassFolder = "Assets/Showcase/Grass/";
+
         /// <summary>
-        /// A lawn chunk's grass tufts, as an object of their own under it: casting no shadow (unless the settings say),
-        /// and, through a LOD group, not drawn beyond about the settings' tuft draw distance (with a 60° field of view, at
-        /// the LOD bias of the quality level the level's built with). The lawn itself is still drawn.
+        /// A GrassField ("Grass") in lawns, over the lawns' cells (cell wide, nx by nz from corner, in lawns' space), with a
+        /// layer for each floor that has any (its lawns' top, and which cells are lawn): see LawnMask.
         /// </summary>
-        private static void GrassTufts(Transform lawn, GrayboxMesh tufts)
+        private static void AddGrass(Transform lawns, Vector2 corner, float cell, int nx, int nz, List<(float height, bool[,] grass)> masks, float density)
         {
-            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
-            var grass = new GameObject("Grass Tufts");
-            grass.transform.SetParent(lawn, false);
-            tufts.AddTo(grass, grass.name, uv2: false);
-            var renderer = grass.GetComponent<MeshRenderer>();
-            renderer.shadowCastingMode = f.tuftsCastShadows ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
-            var lod = grass.AddComponent<LODGroup>();
-            lod.SetLODs(new[] { new LOD(0.5f, new Renderer[] { renderer }) });
-            lod.RecalculateBounds();
-            // A LOD's drawn while the group's size over the height of the view at its distance (times the quality
-            // settings' LOD bias, 2 on PC here) is above its threshold: so the threshold is that ratio at the draw distance.
-            float viewHeight = 2f * f.tuftDrawDistance * Mathf.Tan(30f * Mathf.Deg2Rad);
-            lod.SetLODs(new[] { new LOD(Mathf.Clamp(lod.size / viewHeight * QualitySettings.lodBias, 0.001f, 1f), new Renderer[] { renderer }) });
-            MakeStatic(grass, occluder: false);
+            var size = new Vector2Int(Mathf.CeilToInt(nx * cell / GrassTexel), Mathf.CeilToInt(nz * cell / GrassTexel));
+            var layers = new List<GrassField.Layer>();
+            foreach ((float height, bool[,] grass) in masks)
+            {
+                layers.Add(new GrassField.Layer { height = height, density = LawnMask(grass, cell, size, density) });
+            }
+            var obj = new GameObject("Grass");
+            obj.transform.SetParent(lawns, false);
+            var field = obj.AddComponent<GrassField>();
+            field.SetMask(corner, GrassTexel, size, layers);
+            field.SetShaders(AssetDatabase.LoadAssetAtPath<ComputeShader>(GrassFolder + "GrassBlades.compute"),
+                AssetDatabase.LoadAssetAtPath<Shader>(GrassFolder + "Grass.shader"));
         }
 
-        /// <summary>A grass tuft in mesh, on a lawn at "at": the settings' number of thin blades, each leaning its own way and seen from both sides.</summary>
-        private static void Tuft(GrayboxMesh mesh, Vector3 at, System.Random random)
+        /// <summary>
+        /// A floor's grass mask: size texels (GrassTexel square), each 0 to 255 by how much grass it has. A texel's in the
+        /// lawn if its cell (cell wide, grass saying which are lawn) is; the mask is that, blurred and kept inside the lawn,
+        /// so the grass thins out over GrassEdgeFade in from the lawn's edge; times density (at most 1).
+        /// </summary>
+        public static byte[] LawnMask(bool[,] grass, float cell, Vector2Int size, float density)
         {
-            LevelBuilderSettings.FoliageSettings f = Settings.foliage;
-            for (int b = 0; b < f.tuftBlades; b++)
+            int nx = grass.GetLength(0), nz = grass.GetLength(1);
+            var coverage = new float[size.x * size.y];
+            for (int z = 0; z < size.y; z++)
             {
-                float angle = (float)random.NextDouble() * Mathf.PI * 2f, height = Mathf.Lerp(f.tuftHeight.x, f.tuftHeight.y, (float)random.NextDouble());
-                var across = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 0.03f;
-                var lean = new Vector3(-across.z, 0f, across.x).normalized * ((float)random.NextDouble() * 0.12f);
-                Vector3 root = at + new Vector3(((float)random.NextDouble() - 0.5f) * 0.12f, 0f, ((float)random.NextDouble() - 0.5f) * 0.12f);
-                Vector3 p = root - across, q = root + across, tip = root + lean + Vector3.up * height;
-                Vector3 normal = Vector3.Cross(q - p, tip - p).normalized;
-                foreach (Vector3 side in new[] { normal, -normal })
+                for (int x = 0; x < size.x; x++)
                 {
-                    int i = mesh.Face(side, new[] { p, q, tip });
-                    mesh.Triangle(GrayboxMaterial.Grass, i, i + 1, i + 2, side);
+                    int i = Mathf.Min(nx - 1, Mathf.FloorToInt((x + 0.5f) * GrassTexel / cell)), j = Mathf.Min(nz - 1, Mathf.FloorToInt((z + 0.5f) * GrassTexel / cell));
+                    coverage[z * size.x + x] = grass[i, j] ? 1f : 0f;
                 }
             }
+            // A box blur across GrassEdgeFade, in x then z: inside the lawn it's 1, at its edge a half, outside less.
+            int r = Mathf.Max(1, Mathf.RoundToInt(GrassEdgeFade / GrassTexel / 2f));
+            float[] blurred = Blur(Blur(coverage, size, r, 1, 0), size, r, 0, 1);
+            var mask = new byte[size.x * size.y];
+            float most = Mathf.Clamp01(density);
+            for (int k = 0; k < mask.Length; k++)
+            {
+                float inside = coverage[k] > 0f ? Mathf.Clamp01((blurred[k] - 0.5f) * 2f) : 0f;
+                mask[k] = (byte)Mathf.RoundToInt(255f * inside * most);
+            }
+            return mask;
+        }
+
+        private static float[] Blur(float[] values, Vector2Int size, int r, int dx, int dz)
+        {
+            var result = new float[values.Length];
+            for (int z = 0; z < size.y; z++)
+            {
+                for (int x = 0; x < size.x; x++)
+                {
+                    float sum = 0f;
+                    for (int k = -r; k <= r; k++)
+                    {
+                        int sx = Mathf.Clamp(x + k * dx, 0, size.x - 1), sz = Mathf.Clamp(z + k * dz, 0, size.y - 1);
+                        // Beyond the mask's edge is no lawn.
+                        bool outside = x + k * dx < 0 || x + k * dx >= size.x || z + k * dz < 0 || z + k * dz >= size.y;
+                        sum += outside ? 0f : values[sz * size.x + sx];
+                    }
+                    result[z * size.x + x] = sum / (2 * r + 1);
+                }
+            }
+            return result;
         }
     }
 }

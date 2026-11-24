@@ -322,7 +322,7 @@ namespace MeridianMotion.Showcase.Levels
             {
                 foreach (GameObject o in list)
                 {
-                    if (o == null || o.name == "Grass Tufts" || !o.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) { continue; }
+                    if (o == null || !o.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) { continue; }
                     if (!o.TryGetComponent(out MeshRenderer renderer) || !renderer.enabled) { continue; }
                     // Lettering is drawn by its sign or floor.
                     if (o.GetComponents<Component>().Any(c => c.GetType().Name.StartsWith("TextMeshPro"))) { continue; }

@@ -6,7 +6,8 @@
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.TextMeshPro",
         "MeridianMotion.Levels",
-        "MeridianMotion.Levels.EditorTools"
+        "MeridianMotion.Levels.EditorTools",
+        "MeridianMotion.Showcase.Grass"
     ],
     "includePlatforms": [
         "Editor"

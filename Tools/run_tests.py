@@ -85,6 +85,8 @@ CHANGE_RULES = (
     ("Assets/MeridianMotion/Runtime/Characters/Effects/", ("Traversal",), "the water effects, played from the movement's events"),
     ("Assets/MeridianMotion/Runtime/LevelElements/", LEVELS, "the level elements"),
     ("Assets/Showcase/Editor/Levels/", LEVELS, "the level builders"),
+    ("Assets/Showcase/Grass/", ("Levels",), "the levels' grass"),
+    ("Assets/Showcase/Editor/Grass/", ("Levels",), "the grass's editor tools (the benchmark)"),
     ("Assets/Showcase/Editor/LevelChecks/", ("Levels", "Movement"), "the level checks (the movement envelope)"),
     ("Assets/MeridianMotion/Editor/Scene/", ("Spawning",), "Set Up Scene"),
     ("Assets/MeridianMotion/Editor/Movement/", ("Movement",), "the movement's editor tools (tuning presets)"),

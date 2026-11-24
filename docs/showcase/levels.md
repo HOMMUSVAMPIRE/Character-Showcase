@@ -71,7 +71,7 @@ Polish after the concept art and the icons and decals sheet (MeridianComplexConc
 - orange banners with the Meridian mark ("///") on the Concourse's gate towers, the Ascension Spire's summit tower, the Suspension Yard's tall columns and beside the Fabrication Hall's entrance; orange bands up the summit tower;
 - the Concourse plaza's tree on the dais, orange and white guide rings round it, orange lanes out to the broad stairs, and planters with trees;
 - orange copings on the Kinetic Gardens' platforms;
-- lawns with grass tufts and the odd shrub along their edges over the gardens' open ground and every platform top there, and over the Suspension Yard's ground (each lawn keeps back from platform edges and leaves paving round anything standing on the floor, so stairs, columns and routes stay paved: the foliage's Lawn Margins);
+- lawns with grass and the odd shrub along their edges over the gardens' open ground and every platform top there, and over the Suspension Yard's ground (each lawn keeps back from platform edges and leaves paving round anything standing on the floor, so stairs, columns and routes stay paved: the foliage's Lawn Margins);
 - low-poly trees scattered over the gardens' and the Suspension Yard's open ground, only where nothing's within the foliage's Scatter Clearance, so they never crowd a route;
 - an orange overhead crane over the Fabrication Hall's workshop, and a measuring ruler beside the Calibration Annex's jump lanes;
 - a bracketed pad with cyan chevrons under each spawn point;
@@ -82,7 +82,14 @@ Pads, marks, lawns and trees find the floor under them once the whole level's bu
 ### Culling
 Cameras skip what's out of view (each railing run, stair, lawn chunk and so on is its own object) and, with each level's baked occlusion culling data, what's hidden behind walls, terraces and the ground. Building a level bakes it after the lighting (a few seconds; Assets/Showcase/Scenes/[Level]/[Level]/OcclusionCullingData.asset), with only the solid pieces (blocks, solids, stairs, columns) as occluders.
 
-Grass tufts cast no shadows and aren't drawn beyond the foliage's Tuft Draw Distance (the lawn under them still is). The game camera needs Occlusion Culling ticked, as the demo's Main Camera has. To see the culling at work, open Window > Rendering > Occlusion Culling, select a camera, and use the Visualization tab.
+The grass is drawn by its own culling, not by these: see Grass, below. The game camera needs Occlusion Culling ticked, as the demo's Main Camera has. To see the culling at work, open Window > Rendering > Occlusion Culling, select a camera, and use the Visualization tab.
+
+### Grass
+The lawns' grass isn't stored in the scene: each Lawns piece adds a Grass Field (a "Grass" object in its Lawns group, `Assets/Showcase/Grass`) holding a mask of where its lawns are, one layer per floor, that thins out a little way in from the lawns' edges. Before each camera renders, a compute shader places a blade on every cell of a fine grid over the mask's chunks in view, where the mask has grass, each nudged and sized by a hash of its cell (so it stays put as the camera moves), and the field draws them in two indirect draws: curved blades near the camera, a triangle each beyond. Toward the draw distance the blades thin out, those left widened to cover, and shrink into the ground, so nothing pops; the lawn under them is drawn beyond. They cast no shadow and have no collider.
+
+How the grass looks and how much there is is its Grass Style (Create > Meridian Motion > Showcase > Grass Style, set on the field; without one, the field uses the style's defaults): the blades' Length, Width, Bend and Spacing, their Root Colour and Tip Colour, and the Draw Distance, Detail Distance and thinning. A field reads its style every frame, so a change shows at once, in the editor and in play mode. A Lawns piece's density scales the grass's (1 is the style's full density).
+
+Platforms without compute shaders draw no blades, only the lawn. Tools > Meridian Motion > Showcase > Measure Grass (also `-executeMethod MeridianMotion.Showcase.Grass.EditorTools.GrassBenchmark.MeasureFromCommandLine`, with `-scene [path]` for one level) times each level's grass at fixed spots over its lawns, with and without it, and saves a picture of each, in Logs/GrassBenchmark.
 
 ### Generation settings
 The numbers the shared pieces are made with are in one asset, Assets/Showcase/Levels/LevelBuilderSettings.asset (Tools > Meridian Motion > Showcase > Levels > Generation Settings selects it). Each section of its inspector covers a family of pieces:
@@ -97,7 +104,7 @@ The numbers the shared pieces are made with are in one asset, Assets/Showcase/Le
 - pipes, utility stations and vents;
 - markings (hazard stripes, corner brackets, floor labels) and signs (gantries, area signs, lettering);
 - dressing (banners, guide lines, spawn pads, future-mechanic marks, rulers, tower bands);
-- foliage (tree and shrub sizes, planters, how far apart and how much room the scattered trees need, lawn cells and margins, grass tufts' density, height, draw distance and shadows, and the seed);
+- foliage (tree and shrub sizes, planters, how far apart and how much room the scattered trees need, lawn cells and margins, and the seed; the grass on the lawns has a style of its own: see Grass);
 - mechanics (edge bands, timing gates, low beams, ladders, ropes, ziplines, bounce pads, and the cells water's surface is drawn in);
 - culling (whether to bake occlusion, and its smallest occluder, smallest hole and backface threshold);
 - and the sun and haze.
@@ -194,7 +201,7 @@ Each mechanic is a piece of the levels' builders (Graybox.Mechanics.cs), whose g
 ### Climbable paint on the levels' materials
 The levels' concrete shader (NoiseConcrete) shows painted climbable areas (see [Painting climbable areas](../traversal.md#painting-climbable-areas)): it has the Climbable Mask texture and a second set of its look's settings for climbable areas (Climbable Tint, Climbable Grain, Climbable Panels and the rest of them; by default an ochre, rougher concrete in finer panels), blended in where the mask is white. The level materials made with it are given ClimbableMask_None as their own mask when they're made, so unpainted objects show none.
 
-The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale; the grass tufts, which nothing's painted on, are left out), and the levels' boxes use Graybox Cube (Assets/Showcase/Models/Level), Unity's cube with a UV2.
+The builders give their meshes the UV2 the paint needs (each face a chart of its own, packed into the square at one scale), and the levels' boxes use Graybox Cube (Assets/Showcase/Models/Level), Unity's cube with a UV2.
 
 ### The water's look
 The levels' water is drawn with its own shader, Assets/MeridianMotion/Content/Materials/Water.shader (the Level_Water material, made the first time a level's built), whose whole look is built from noise in world space with no textures, as the other surfaces' is:

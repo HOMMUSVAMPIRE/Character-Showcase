@@ -311,8 +311,8 @@ namespace MeridianMotion.Showcase.Levels
         }
 
         /// <summary>
-        /// Sizes and scatters the foliage: trees, shrubs, planters, lawns and their grass tufts, and how far the tufts
-        /// are drawn.
+        /// Sizes and scatters the foliage: trees, shrubs, planters and lawns. The grass on the lawns is its GrassField's
+        /// (its Grass Style), not these.
         /// </summary>
         [Serializable]
         public sealed class FoliageSettings
@@ -337,18 +337,8 @@ namespace MeridianMotion.Showcase.Levels
             public Vector2 lawnMargins = new(0.6f, 0.5f);
             [Tooltip("How far lawns stand proud of the floor (m). They have no collider.")]
             public float lawnThickness = 0.015f;
-            [Tooltip("Grass tufts on lawns: about this many to a square metre.")]
-            public float tuftDensity = 0.6f;
-            [Tooltip("Grass tufts' height range (m).")]
-            public Vector2 tuftHeight = new(0.18f, 0.42f);
-            [Tooltip("How many blades each grass tuft has.")]
-            [Range(2, 9)] public int tuftBlades = 5;
             [Tooltip("The chance a lawn cell at the lawn's edge gets a shrub, for a planted border.")]
             [Range(0f, 1f)] public float borderShrubChance = 0.12f;
-            [Tooltip("Grass tufts aren't drawn beyond about this far from the camera (m: about, since it's set as a size on screen, which depends on the camera's field of view); the lawns under them still are. They're most of the level's triangles, and a few pixels each beyond this.")]
-            public float tuftDrawDistance = 70f;
-            [Tooltip("Whether grass tufts cast shadows. Off: thousands of thin blades in the shadow maps (which reach the full shadow distance, in view or not) for shadows too fine to see.")]
-            public bool tuftsCastShadows;
         }
 
         /// <summary>
@@ -460,7 +450,7 @@ namespace MeridianMotion.Showcase.Levels
         [Header("Signs and Wayfinding")] public SignSettings signs = new();
         [Tooltip("The dressing: banners, guide lines, spawn pads, marks for mechanics to come, floor rulers and towers' bands.")]
         [Header("Dressing")] public DressingSettings dressing = new();
-        [Tooltip("The foliage: trees, shrubs, planters, lawns and their grass tufts, and how far the tufts are drawn.")]
+        [Tooltip("The foliage: trees, shrubs, planters and lawns (the grass on them is its Grass Field's style).")]
         [Header("Foliage")] public FoliageSettings foliage = new();
         [Tooltip("Whether a level's occlusion culling is baked, and the bake's sizes.")]
         [Header("Culling")] public CullingSettings culling = new();
