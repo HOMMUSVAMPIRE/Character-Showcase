@@ -46,11 +46,16 @@ namespace MeridianMotion.Tests.UI
                     Assert.That(vertices.Count, Is.GreaterThan(0), $"'{name}' should draw something.");
                     // Fitted to the rect's smaller side, centred: a pixel of feather beyond it, at most.
                     float half = Mathf.Min(size.x, size.y) / 2f + 1f;
+                    // The furthest vertex found in a plain loop, then one assert: an assert (and its message) a vertex, for
+                    // every vertex of every icon, made this test take many seconds.
+                    Vector3 furthest = Vector3.zero;
+                    float reach = 0f;
                     foreach (UIVertex vertex in vertices)
                     {
-                        Assert.That(Mathf.Abs(vertex.position.x), Is.LessThanOrEqualTo(half), $"'{name}' at {size} reaches {vertex.position} (x).");
-                        Assert.That(Mathf.Abs(vertex.position.y), Is.LessThanOrEqualTo(half), $"'{name}' at {size} reaches {vertex.position} (y).");
+                        float extent = Mathf.Max(Mathf.Abs(vertex.position.x), Mathf.Abs(vertex.position.y));
+                        if (extent > reach) { reach = extent; furthest = vertex.position; }
                     }
+                    if (reach > half) { Assert.Fail($"'{name}' at {size} reaches {furthest}, beyond {half} from its centre."); }
                     Object.DestroyImmediate(icon.gameObject);
                 }
             }
