@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace MeridianMotion.UI
 {
@@ -25,14 +26,37 @@ namespace MeridianMotion.UI
         /// </summary>
         public void RegisterFallbackHandler(Action handler) => fallbackBackHandler = handler;
 
+        // How many are capturing the input (CaptureInput), and the frame the last let it go.
+        private static int inputCaptures;
+        private static int inputReleasedFrame = -1;
+
+        /// <summary>
+        /// Takes the Back and Submit keys from the windows until ReleaseInput: for something listening for a key of its
+        /// own (a control being rebound, where Escape or Enter may be the key chosen, or cancel the listening).
+        /// </summary>
+        public static void CaptureInput() => inputCaptures++;
+
+        /// <summary>
+        /// Gives the Back and Submit keys back (CaptureInput), from the next frame: the key that ended the capture is
+        /// pressed this frame, and isn't the windows'.
+        /// </summary>
+        public static void ReleaseInput()
+        {
+            inputCaptures = Mathf.Max(0, inputCaptures - 1);
+            inputReleasedFrame = Time.frameCount;
+        }
+
+        /// <summary>Whether something's capturing the input (CaptureInput), so Back and Submit do nothing.</summary>
+        public static bool IsInputCaptured => inputCaptures > 0 || Time.frameCount == inputReleasedFrame;
+
         /// <summary>
         /// The Back key, pressed: the top window that takes it gets it (OnCancelButton: its CancelActionOverrides, or it
-        /// closes); with none, the fallback handler runs. Nothing while a text field has the keyboard. Update calls it
+        /// closes); with none, the fallback handler runs. Nothing while a text field has the keyboard, or the input's captured (CaptureInput). Update calls it
         /// for the Cancel action; a test, or another input layer, can call it itself.
         /// </summary>
         public void HandleBack()
         {
-            if (IsFocusedOnText()) { return; }
+            if (IsFocusedOnText() || IsInputCaptured) { return; }
             RootUIPrefab top = TopWindow;
             if (top != null) { top.OnCancelButton(); }
             else { fallbackBackHandler?.Invoke(); }
@@ -44,7 +68,7 @@ namespace MeridianMotion.UI
         /// </summary>
         public void HandleSubmit()
         {
-            if (IsFocusedOnText()) { return; }
+            if (IsFocusedOnText() || IsInputCaptured) { return; }
             TopWindow?.OnSubmitButton();
         }
 

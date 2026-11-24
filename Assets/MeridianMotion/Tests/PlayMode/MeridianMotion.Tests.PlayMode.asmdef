@@ -10,6 +10,7 @@
         "MeridianMotion.PhysicsQueries",
         "MeridianMotion.Levels",
         "MeridianMotion.UI",
+        "MeridianMotion.CharacterUI",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
         "Unity.InputSystem"

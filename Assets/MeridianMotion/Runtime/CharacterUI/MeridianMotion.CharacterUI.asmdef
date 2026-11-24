@@ -1,0 +1,17 @@
+{
+    "name": "MeridianMotion.CharacterUI",
+    "rootNamespace": "MeridianMotion.CharacterUI",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

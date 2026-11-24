@@ -4,6 +4,7 @@ using MeridianMotion.Characters;
 using MeridianMotion.EditorTools;
 using UnityEditor;
 using UnityEditor.Events;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -98,6 +99,57 @@ namespace MeridianMotion.UI.EditorTools
                 managers.gameObject.SetActive(false);
             }
             context.notes.Add($"The scene's own EventSystem ('{own.name}') is kept.");
+        }
+
+        // ---- Replays ----
+
+        /// <summary>
+        /// Adds the Replay Recorder prefab (a scene's replays, and the pause menu's Replays tab) to the scene, under parent
+        /// (the scene's root, if none), unless the scene has a ReplayRecorder. Returns the one it has, or null if there's no
+        /// prefab (Create UI Assets makes it).
+        /// </summary>
+        public static ReplayRecorder AddReplayRecorder(Scene scene, Transform parent, bool withUndo)
+        {
+            ReplayRecorder own = scene.GetRootGameObjects().SelectMany(root => root.GetComponentsInChildren<ReplayRecorder>(true)).FirstOrDefault();
+            if (own != null) { return own; }
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(UIAssets.ReplayRecorderPath);
+            if (prefab == null) { return null; }
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
+            if (parent != null) { instance.transform.SetParent(parent, false); }
+            if (withUndo) { Undo.RegisterCreatedObjectUndo(instance, "Add Replay Recorder"); }
+            EditorSceneManager.MarkSceneDirty(scene);
+            return instance.GetComponent<ReplayRecorder>();
+        }
+
+        [MenuItem("Tools/Meridian Motion/Add Replay Recorder", priority = 22)]
+        public static void AddReplayRecorderFromMenu()
+        {
+            Scene scene = SceneManager.GetActiveScene();
+            ReplayRecorder recorder = AddReplayRecorder(scene, null, withUndo: true);
+            if (recorder == null) { Debug.LogError($"[UISceneSetup] There's no Replay Recorder prefab at '{UIAssets.ReplayRecorderPath}': Tools > Meridian Motion > Utilities > Create UI Assets makes it."); }
+            else
+            {
+                Selection.activeGameObject = recorder.gameObject;
+                Debug.Log($"[UISceneSetup] '{scene.name}' has a Replay Recorder: it records each play session, and the pause menu has a Replays tab.", recorder);
+            }
+        }
+
+        /// <summary>For -executeMethod: adds the Replay Recorder to each scene given by -scene [path] (several allowed), saves them, and exits (code 1 on failure).</summary>
+        public static void AddReplayRecorderFromCommandLine()
+        {
+            string[] args = System.Environment.GetCommandLineArgs();
+            bool ok = true, any = false;
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] != "-scene") { continue; }
+                any = true;
+                Scene scene = EditorSceneManager.OpenScene(args[i + 1], OpenSceneMode.Single);
+                ReplayRecorder recorder = AddReplayRecorder(scene, null, withUndo: false);
+                ok &= recorder != null && EditorSceneManager.SaveScene(scene);
+                Debug.Log($"[UISceneSetup] {(recorder != null ? "Added a Replay Recorder to" : "Couldn't add a Replay Recorder to")} '{args[i + 1]}'.");
+            }
+            if (!any) { Debug.LogError("[UISceneSetup] Give the scenes with -scene [path]."); }
+            if (Application.isBatchMode) { EditorApplication.Exit(ok && any ? 0 : 1); }
         }
     }
 }

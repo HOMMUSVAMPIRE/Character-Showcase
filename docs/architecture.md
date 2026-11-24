@@ -70,7 +70,8 @@ flowchart LR
     end
     Camera["MeridianMotion.Cameras<br/>(the camera rig; shipping undecided)"]
     UI["MeridianMotion.UI<br/>(windows, dialogs; shipping undecided)"]
-    UIEditor["MeridianMotion.UI.EditorTools<br/>(Create UI Assets)"]
+    UIEditor["MeridianMotion.UI.EditorTools<br/>(Create UI Assets, the gallery)"]
+    Bridge["MeridianMotion.CharacterUI<br/>(the character and the UI: replays in the pause menu)"]
     subgraph Showcase_only["The showcase's own (doesn't ship)"]
         LevelEditor["MeridianMotion.Showcase.Levels<br/>(level builders, specs, Level Editor)"]
         Pipeline["MeridianMotion.Showcase.Pipeline<br/>(mannequin and fox generators, Blender)"]
@@ -97,6 +98,10 @@ flowchart LR
     PlayTests --> Camera
     PlayTests --> UI
     UIEditor --> UI
+    UIEditor --> Bridge
+    Bridge --> Showcase
+    Bridge --> UI
+    PlayTests --> Bridge
     UIEditor --> Editor
     PlayTests --> Shared
     PlayTests --> Queries

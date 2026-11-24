@@ -18,6 +18,11 @@ namespace MeridianMotion.Characters
             private readonly BinaryReader reader;
             private readonly Transform own;
             private readonly List<object> read = new();
+            // The live objects already filled in this read, each as one of the written objects. A live object can stand
+            // for only one: two fields can share an object now that were two then (a character's last step is one of the
+            // two step records it alternates between, and which one changes every step), and filling it again would make
+            // the two written objects one.
+            private readonly HashSet<object> filled = new(ReferenceComparer.Instance);
 
             public GraphReader(BinaryReader reader, Transform ownRoot)
             {
@@ -28,6 +33,7 @@ namespace MeridianMotion.Characters
             public void ReadRoot(object root, Type stopAt)
             {
                 read.Add(root);
+                filled.Add(root);
                 ReadFields(root, root.GetType(), stopAt);
             }
 
@@ -91,8 +97,9 @@ namespace MeridianMotion.Characters
                     {
                         Type element = TypeNamed(reader.ReadString());
                         int length = reader.ReadInt32();
-                        Array array = live is Array existing && existing.GetType().GetElementType() == element && existing.Length == length
+                        Array array = live is Array existing && existing.GetType().GetElementType() == element && existing.Length == length && filled.Add(existing)
                             ? existing : Array.CreateInstance(element, length);
+                        filled.Add(array);
                         read.Add(array);
                         for (int i = 0; i < length; i++) { array.SetValue(ReadValue(element, array.GetValue(i)), i); }
                         return array;
@@ -100,7 +107,8 @@ namespace MeridianMotion.Characters
                     case Tag.Object:
                     {
                         Type type = TypeNamed(reader.ReadString());
-                        object obj = live != null && live.GetType() == type && !(live is Object) ? live : RuntimeHelpers.GetUninitializedObject(type);
+                        object obj = live != null && live.GetType() == type && !(live is Object) && filled.Add(live) ? live : Fresh(type);
+                        filled.Add(obj);
                         read.Add(obj);
                         ReadFields(obj, type, null);
                         return obj;
@@ -131,6 +139,14 @@ namespace MeridianMotion.Characters
                     }
                     default: throw new InvalidDataException($"Unknown value in a state ({tag}).");
                 }
+            }
+
+            // A new object of the type, for one written that no live object can stand for: made by its constructor, if it has
+            // one with no parameters (so what isn't written, as its scratch buffers, is there), else uninitialised.
+            private static object Fresh(Type type)
+            {
+                try { return Activator.CreateInstance(type, nonPublic: true); }
+                catch (MissingMethodException) { return RuntimeHelpers.GetUninitializedObject(type); }
             }
 
             public static Vector3 ReadVector3(BinaryReader reader) => new(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());

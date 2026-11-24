@@ -20,12 +20,10 @@ namespace MeridianMotion.UI.EditorTools
 
             page.Row("Pause menu");
             Instance(page, "Pause Menu", UIAssets.PauseMenuPrefabPath, 0.62f);
-            GameObject controls = Instance(page, "Pause Menu: Controls", UIAssets.PauseMenuPrefabPath, 0.62f);
-            Show(controls, "Main Page", false);
-            Show(controls, "Controls Page", true);
-            Show(controls, "Menu Tab/Selected", false);
-            Show(controls, "Controls Tab/Selected", true);
-            Text(controls, "Controls Page/Bindings", "Move            WASD, Left Stick\nJump            Space, South Button\nCrouch          C, East Button\nSprint          Left Shift, Left Stick Press\nInteract        E, West Button");
+            GameObject controls = Instance(page, "Pause Menu: Controls (keyboard and mouse)", UIAssets.PauseMenuPrefabPath, 0.62f);
+            ShowControls(controls, "Keyboard&Mouse");
+            GameObject gamepad = Instance(page, "Pause Menu: Controls (gamepad)", UIAssets.PauseMenuPrefabPath, 0.62f);
+            ShowControls(gamepad, "Gamepad");
         }
 
         // The widgets (H5): the buttons in each kind and state, list rows, a scrollbar, toggles, the context menu's entries
@@ -123,6 +121,29 @@ namespace MeridianMotion.UI.EditorTools
             foreach (string background in new[] { "Solo", "First", "Middle", "Last" }) { Show(entry, $"{background} Background", background == place); }
             Text(entry, "Label", label);
             Show(entry, "Icon", false);
+        }
+
+        // A pause menu on its controls page, its list filled for the scheme (rows made as its list would).
+        private static void ShowControls(GameObject menu, string scheme)
+        {
+            Show(menu, "Main Page", false);
+            Show(menu, "Controls Page", true);
+            Show(menu, "Menu Tab/Selected", false);
+            Show(menu, "Controls Tab/Selected", true);
+            var pause = menu.GetComponent<PauseMenu>();
+            ControlsList list = pause.ControlsList;
+            if (list == null) { return; }
+            list.Configure(pause.Actions, "Player", new[] { "Attack", "Previous", "Next" });
+            Transform content = list.GetComponent<UnityEngine.UI.ScrollRect>().content;
+            GameObject row = AssetDatabase.LoadAssetAtPath<GameObject>(UIAssets.ControlRowPrefabPath);
+            foreach (ControlBinding binding in list.Bindings(scheme).Values)
+            {
+                var display = ((GameObject)PrefabUtility.InstantiatePrefab(row, content)).GetComponent<ControlBindingDisplay>();
+                SetLayer(display.transform, menu.layer);
+                display.Initialize(binding, null);
+                // One row as it waits for a new button, to show how that looks.
+                if (scheme == "Keyboard&Mouse" && binding.DisplayName == "Jump") { display.SetListening(true); }
+            }
         }
 
         private static void Body(GameObject dialog, string text) => Text(dialog, "Body", text);

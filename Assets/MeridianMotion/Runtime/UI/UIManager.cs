@@ -68,6 +68,8 @@ namespace MeridianMotion.UI
         [SerializeField] private GameObject yesNoDialogPrefab;
         [Tooltip("The dialog asking for a line of text (UIMessageBox_PromptForString.Open)")]
         [SerializeField] private GameObject promptForStringPrefab;
+        [Tooltip("The dialog of several choices (UIChoiceDialog.Open)")]
+        [SerializeField] private GameObject choiceDialogPrefab;
         [Tooltip("The context menu (UIRightClickMenu.Open)")]
         [SerializeField] private GameObject rightClickMenuPrefab;
 
@@ -103,6 +105,8 @@ namespace MeridianMotion.UI
         public GameObject YesNoDialogPrefab { get => yesNoDialogPrefab; set => yesNoDialogPrefab = value; }
         /// <summary>The text prompt's prefab.</summary>
         public GameObject PromptForStringPrefab { get => promptForStringPrefab; set => promptForStringPrefab = value; }
+        /// <summary>The choice dialog's prefab.</summary>
+        public GameObject ChoiceDialogPrefab { get => choiceDialogPrefab; set => choiceDialogPrefab = value; }
         /// <summary>The theme its shapes are drawn in (null: the built-in one). Setting it redraws them.</summary>
         public UITheme Theme
         {

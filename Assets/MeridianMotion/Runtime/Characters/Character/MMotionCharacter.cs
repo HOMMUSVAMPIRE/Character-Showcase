@@ -84,6 +84,19 @@ namespace MeridianMotion.Characters
         /// <summary>Raised whenever the character's scale changes, with the new scale.</summary>
         public event Action<Vector3> ScaleChanged;
 
+        /// <summary>What's told of each step before it's taken: the character and the input frame it's about to step with.</summary>
+        public delegate void StepHandler(MMotionCharacter character, in CharacterInputFrame frame);
+
+        /// <summary>
+        /// Raised each step just before the movement steps, with the frame it's given (tagged with its tick): between
+        /// steps, so a listener may save the character's state (StateSerializer) or put a saved one back (a replay's
+        /// keyframe). What records a play session listens here (ReplayRecorder).
+        /// </summary>
+        public event StepHandler BeforeStep;
+
+        /// <summary>The character's movement.</summary>
+        public MMotionMotor Motor => motor;
+
         // Records the frames the character is given, if it has one (see CharacterInputRecorder).
         private CharacterInputRecorder recorder;
 
@@ -248,6 +261,7 @@ namespace MeridianMotion.Characters
             // Tagged with the step it's for, whatever its source tagged it.
             frame.tick = tick;
             if (recorder != null && recorder.isActiveAndEnabled) { recorder.Record(frame); }
+            BeforeStep?.Invoke(this, frame);
             motor.Step(frame, deltaTime);
             motor.FinishStep();
         }

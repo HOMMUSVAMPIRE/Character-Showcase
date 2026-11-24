@@ -48,6 +48,11 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
                 EditorUtility.SetDirty(spawner);
             }
             context.notes.Add("Added the showcase's HUD (lap times, NPC name tags, a controls hint).");
+            // Playtests are run in the showcase's levels: each records its sessions (the pause menu's Replays tab).
+            if (MeridianMotion.UI.EditorTools.UISceneSetup.AddReplayRecorder(context.scene, context.setup, context.withUndo) != null)
+            {
+                context.notes.Add("The scene has a Replay Recorder (each play session recorded; the pause menu's Replays tab).");
+            }
         }
 
         private static void Connect(UnityEvent<Transform> spawned, Object target, UnityAction<Transform> method)

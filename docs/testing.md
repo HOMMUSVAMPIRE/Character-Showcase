@@ -51,6 +51,8 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | InputSourceTests | InputAndDeterminism | Movement | input sources: none, scripted, a waypoint AI |
 | DeterminismTests | InputAndDeterminism | Movement | moving the same, bit for bit |
 | InputRecordingTests | InputAndDeterminism | Movement | a recorded run replayed exactly |
+| ReplayTests | InputAndDeterminism | Movement | replays: recorded, saved, played back exactly, kept on course by keyframes |
+| ReplayGameLoopTests | InputAndDeterminism | Movement | a replay in the game's own loop, exact with keyframes or without |
 | CrouchTests | Abilities | Abilities | crouching |
 | SlideTests | Abilities | Abilities | sliding (and the ability kit's checks) |
 | RollTests | Abilities | Abilities | rolling (and the ability kit's checks) |
@@ -106,6 +108,12 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | RulesTests | UI | UI | rule-gated controls |
 | WorldLabelTests | UI | UI | labels anchored to the world |
 | UIContentTests | UI | UI | the UI's own prefabs |
+| ShapeTests | UI | UI | the shapes and the theme |
+| IconTests | UI | UI | the icons drawn in code, and a theme's sprites for them |
+| ThemedWidgetTests | UI | UI | themed buttons and text |
+| ControlsListTests | UI | UI | the controls list: bindings by scheme, rebinding, saving |
+| HUDWidgetTests | UI | UI | the HUD widgets |
+| ReplayMenuTests | UI | UI | the pause menu's replays, and a replay's end |
 | SpawnerTests | Spawning | Spawning | the character spawner |
 | EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
 
@@ -190,6 +198,8 @@ Then look at what changed in the recorded paths (git diff) before committing the
   - the same state written to bytes and read into a new character in the level built again, stepping on exactly as the first;
   - and a run on a moving platform the same at another frame rate.
 - **InputRecordingTests**: a run's input frames, recorded as it's stepped, saved to a file and read back, replayed on a new character in the same world, moving it exactly as the first, step for step, bit for bit.
+- **ReplayGameLoopTests**: a run that sprints, slides and jumps, in the game's own loop (the character stepping itself in FixedUpdate, with its model and Unity's physics), replayed on the same build exactly, step for step (its pose, state, and each step's previous state and events), with a keyframe every half second or none.
+- **ReplayTests**: a run recorded from its first step (frames, and a keyframe every Keyframe Seconds), written and read back to the same bytes; played back, the character put back where the run began and moving exactly as it did, then saying it's finished; a run knocked off course put back at the next keyframe; stopping a replay giving the character back and recording from there; the newest replay of a scene found; the level's clock held at a replay's tick until its step, then offset, and put back (see [Replays](replays.md)).
 
 ### Abilities (the Abilities category; see [Movement Abilities](abilities.md))
 - **CrouchTests**: lowering the body to the crouch height (in proportion at a larger size too) and moving at the crouch speed; standing again on a second press; staying crouched under a low ceiling and standing by itself once out from under it; hold to crouch; one crouch per held press; jumping from a crouch (and not under a low ceiling); its events.
@@ -344,7 +354,10 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 - **IconTests**: every icon of the library drawing inside its rect at any size; the names unique; a theme's sprite standing in for an icon, fitted and tinted, until it's cleared; an unknown name still drawing.
 - **ThemedWidgetTests**: a themed button's kind setting its shape's and label's roles, its state tints the theme's, hatched only while it can't be used; themed text taking the theme's font and colour, and following a change.
 - **RebuildInPlaceTests** (EditMode): remaking a prefab in place keeping its GUID, its root's file ID and those of its root's components of types it keeps, taking the new contents (a shape replacing an Image), and pointing what named the made root at the prefab's.
-- **UIContentTests**: the package's UI Manager prefab having its canvases, its theme (with its fonts), an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; Back opening the package's pause menu, listing the project's controls, its Controls a tab; and the package's context menu and notifications working from their prefabs.
+- **ControlsListTests**: a row per action (but the hidden ones) with its binding in the scheme, a composite showing each part's first key, a button's rebindable and a composite's not; using a gamepad listing the gamepad's bindings, and the keyboard's again after; a button rebound by pressing a key (on a virtual keyboard), Back held off meanwhile, the rebinding saved; a rebinding cancelled, set from code and reset; the saved rebinding put back; the tracker naming the scheme for the device used.
+- **HUDWidgetTests**: a radial progress's hold filling on the UI's clock and completing once; an ability tile's states setting its look, and the bar reusing its tiles; the interact prompt's label, hold and binding, following the device in use; a world marker's edge point, and a marker behind the camera held at the edge with its arrow pointing the way; the minimap placing a world point and holding a far one at its rim; the compass following a heading; the reticle's lock-on; the dialogue panel writing out its lines, Submit going through them and closing it, Back skipping the rest.
+- **ReplayMenuTests**: the pause menu's replays on the package's UI Manager and the rig's character: registering as the replay controls, saving once there's a run; Load Replay playing the newest saved from its start, and at its end the choices (continuing, recording afresh; replaying again); the run saved before quitting when nothing's been saved, once, and in builds only by default.
+- **UIContentTests**: the package's UI Manager prefab having its canvases, its theme (with its fonts), its choice dialog offering its options and running the one pressed, its pause menu's Replays tab showing only with replay controls and driving them, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; Back opening the package's pause menu, listing the project's controls (Jump rebindable on its controls list), its Controls a tab; and the package's context menu and notifications working from their prefabs.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
 - **EveryCharacterTests**: every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.
@@ -371,6 +384,7 @@ They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests 
 | InputFrameTests | InputAndDeterminism | Movement | input frames and their recordings |
 | InputSuppressionTests | InputAndDeterminism | Movement | the player's input suppressed while a window is open |
 | UISceneSetupTests | UI | UI, SampleContent | Set Up Scene adding the UI and connecting it |
+| RebuildInPlaceTests | UI | UI | remaking a prefab in place, its GUID and root kept |
 | AnimationSetTests | Animations | Animation | animation sets and fallback clip slots |
 | LocomotionBlendTests | Animations | Animation, SampleContent | the shared controller's Locomotion blend tree |
 | MotionCaptureClipTests | Animations | Animation, SampleContent | the motion-capture clips |

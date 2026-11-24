@@ -14,3 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.UIWindowCatalog
   windows:
   - {fileID: 8773028011908343118, guid: 079bb9af2a59246dd8fb6525db8da406, type: 3}
+  - {fileID: 2528473074455974986, guid: 6fbaf3d67845645c4ba8b3cfde36af8b, type: 3}
+  - {fileID: 4849910987270471863, guid: 2b9a5c3a8dfe0428291f74f6bf75862a, type: 3}
+  - {fileID: 4907807303032941007, guid: e1be41e804a174a2ba657cca0f82f5ee, type: 3}

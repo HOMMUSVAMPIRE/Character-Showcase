@@ -198,3 +198,18 @@ The UI framework (ReferenceAssets/UI_Framework_Blueprint.md's window manager, wi
 
 **Against:** UI Toolkit, which the blueprint isn't written for (it's uGUI throughout), and putting the UI in the showcase, which would leave a package user without a menu or a dialog.
 
+## The UI's shapes and icons are meshes drawn in code, not sprites (November 2026)
+The UI's look (ReferenceAssets/MeridianMotion UI Reference.png) is drawn by graphics that build their own meshes: the shapes (`UIShapeGraphic`: chamfered panels, slanted bars, diamonds, rings, stripes, brackets) and the icons (`UIIcon`, from `UIIconLibrary`, on a grid of their own), their edges smoothed by a feathered band of vertex alpha. Every colour is a role of one theme asset (`UITheme`).
+
+**Why:** the reference sheet couldn't be cut up (its transparency is broken), and sprites would have had to be drawn again for each size, colour and state. Meshes are sharp at any size and canvas scale, recolour from the theme at once (so retheming is editing one asset), need no package (Vector Graphics, sprite atlases) and no art pipeline, and can be tested: a mesh can be checked against its rect, a ring against its fraction.
+
+**Against:** sprites from an artist, which look richer and can't be matched by strokes and polygons. So a theme can put a sprite in any icon's place by name (its Icon Overrides): an artist's set can replace the drawn icons one at a time, with no code changed. The display font is a real font (Chakra Petch, SIL OFL), not drawn: text needs kerning and shaping a mesh of strokes wouldn't have.
+
+## Replays are input frames with keyframes, and the pause menu reaches them through a bridge (November 2026)
+A replay (`Replay`, recorded by `ReplayRecorder`) is the player's character's input frames, one a step, and a keyframe every couple of seconds: the character's whole movement state and the level's moving parts' (`StateSerializer`), and the level's clock. Playback puts the character back at the first keyframe, drives it with the frames, and snaps it to each keyframe as it comes.
+
+**Why:** the frames alone replay exactly on the build that recorded them (the movement is deterministic on one build), and they're small. But a playtest's replay is watched on another build, the developer's editor, where floating point can differ and a run would drift. Keyframes bound the drift to a couple of seconds and put it right, at the cost of a few MB for a long session. Both halves already existed (`InputRecording`, `StateSerializer`, made for networking).
+
+**How it meets the UI:** the UI knows nothing of the character and the character nothing of the UI, so the UI has a generic hook (`IReplayControls`, registered with `ReplayControls`), and `ReplayMenu`, in a bridge assembly referencing both (`MeridianMotion.CharacterUI`, category I's first step, done early), implements it. The pause menu shows its Replays tab only while something's registered.
+
+**Against:** recording the character's pose each step (a "ghost"), which can't be continued from (Continue playing needs the real state, which a keyframe is), and video, which can't be inspected or resumed.

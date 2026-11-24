@@ -291,6 +291,39 @@ namespace MeridianMotion.Tests.InputAndDeterminism
             Assert.That(differs, Is.Null, $"Read into a new character, the state should step on exactly as it did: {differs}.");
         }
 
+        /// <summary>
+        /// A character's state written to bytes partway through an ability, then read back into the same character a step
+        /// later or two (so the step record it last stepped into is, or isn't, the one it was then: it alternates between
+        /// two), steps on exactly as it did. Read in place, a record shared by two fields (its last step, and its slot of
+        /// the two) was once filled with the other's state, both slots became one record, and every step after reset the
+        /// step it started from: a replay's keyframes threw it off course (ReplayRecorder).
+        /// </summary>
+        [UnityTest]
+        public IEnumerator ReadBackIntoTheSameCharacter_WhicheverStepRecordIsCurrent_StepsOnExactly(
+            [Values(Ability.Jumping, Ability.WallClimbing, Ability.RopeSwinging)] Ability ability, [Values(1, 2)] int stepsLater)
+        {
+            const int at = 24;
+            yield return SetUp(ability);
+            yield return Record(at, step => AbilityScript(ability, step), new List<Pose>());
+            byte[] character = StateSerializer.WriteCharacter(rig.Movement);
+            byte[] world = StateSerializer.WriteWorld();
+            long levelTick = rig.LevelTick;
+            var first = new List<Pose>();
+            yield return Record(40, step => AbilityScript(ability, at + step), first, Doing(ability));
+            yield return Record(stepsLater, step => AbilityScript(ability, at + 40 + step), new List<Pose>());
+
+            StateSerializer.ReadCharacter(rig.Movement, character);
+            StateSerializer.ReadWorld(world);
+            rig.LevelTick = levelTick;
+            var records = (MovementStep[])typeof(MMotionMotor).GetField("stepData", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(rig.Movement);
+            Assert.That(records[0], Is.Not.SameAs(records[1]), "Read back, its two step records should still be two.");
+            Assert.That(rig.Movement.lastStep, Is.SameAs(records[0]).Or.SameAs(records[1]), "...its last step one of them.");
+            var again = new List<Pose>();
+            yield return Record(40, step => AbilityScript(ability, at + step), again);
+            string differs = FirstDifference(first, again);
+            Assert.That(differs, Is.Null, $"Read back {stepsLater} step(s) later, it should step on exactly as it did: {differs}.");
+        }
+
         /// <summary>A state of the kind an ability made in a project keeps (MMotionMotor.StateOf), for the test below.</summary>
         private sealed class ProjectAbilityState
         {

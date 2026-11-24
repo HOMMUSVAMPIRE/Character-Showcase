@@ -107,9 +107,78 @@ namespace MeridianMotion.Tests.UI
             Assert.That(Time.timeScale, Is.EqualTo(0f));
             Assert.That(menu.Actions, Is.Not.Null, "It should read the project's input actions.");
             StringAssert.Contains("Jump", menu.ControlsListing());
+            Assert.That(menu.ControlsList, Is.Not.Null, "Its controls page should be a list of the controls.");
+            menu.ShowControls();
+            yield return Waits.WaitUntil(() => !menu.ControlsList.IsUpdating && menu.ControlsList.ShownItems.Any(row => row.Data.DisplayName == "Jump"));
+            ControlBindingDisplay jump = menu.ControlsList.ShownItems.First(row => row.Data.DisplayName == "Jump");
+            Assert.That(jump.Data.Rebindable, Is.True, "Jump's binding should be rebindable from its row.");
+            Assert.That(jump.ShownBinding, Is.Not.Empty.And.Not.EqualTo("-"));
             menu.Resume();
             Assert.That(Time.timeScale, Is.EqualTo(1f));
             yield return null;
+        }
+
+        // Replay controls as a game registers them, counting what's pressed.
+        private sealed class FakeReplays : IReplayControls
+        {
+            public int saved, loaded, quit;
+            public bool CanSave => true;
+            public bool CanLoad => true;
+            public string Status => "Recording: 0:42";
+            public void SaveReplay() => saved++;
+            public void LoadReplay() => loaded++;
+            public void BeforeQuit() => quit++;
+        }
+
+        [UnityTest]
+        public IEnumerator ThePauseMenusReplaysTab_ShowsOnlyWithReplayControls_AndDrivesThem()
+        {
+            UIManager.instance.HandleBack();
+            PauseMenu menu = Object.FindAnyObjectByType<PauseMenu>();
+            Assert.That(menu.transform.Find("Replays Tab").gameObject.activeSelf, Is.False, "Without replay controls, there's no Replays tab.");
+            menu.Resume();
+            yield return null;
+
+            var replays = new FakeReplays();
+            ReplayControls.Register(replays);
+            try
+            {
+                UIManager.instance.HandleBack();
+                menu = Object.FindAnyObjectByType<PauseMenu>();
+                Assert.That(menu.transform.Find("Replays Tab").gameObject.activeSelf, Is.True, "With them, the tab shows.");
+                menu.ShowReplays();
+                Assert.That(menu.ShowingReplays, Is.True);
+                menu.RefreshReplays();
+                StringAssert.Contains("0:42", menu.transform.Find("Replays Page/Status").GetComponent<TMPro.TMP_Text>().text, "Its page shows their status.");
+                menu.transform.Find("Replays Page/Save Replay Button").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                Assert.That(replays.saved, Is.EqualTo(1), "Save Replay saves.");
+                UIManager.instance.HandleBack();
+                Assert.That(menu.ShowingReplays, Is.False, "Back from the replays page goes to the main page.");
+                menu.ShowReplays();
+                menu.transform.Find("Replays Page/Load Replay Button").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                Assert.That((replays.loaded, menu.IsClosing || menu == null, Time.timeScale), Is.EqualTo((1, true, 1f)), "Load Replay closes the menu, then plays.");
+            }
+            finally { ReplayControls.Unregister(replays); }
+            yield return null;
+        }
+
+        [Test]
+        public void ThePackagesChoiceDialog_OffersItsOptions_AndRunsTheOneChosen()
+        {
+            int chosen = -1;
+            UIChoiceDialog dialog = UIChoiceDialog.Open("Which?", -1,
+                new UIChoiceDialog.Option("One", () => chosen = 1, ThemedButton.Kind.Primary),
+                new UIChoiceDialog.Option("Two", () => chosen = 2),
+                new UIChoiceDialog.Option("Three", () => chosen = 3));
+            Assert.That(dialog, Is.Not.Null, "The UI Manager should have its Choice Dialog.");
+            Assert.That(dialog.Buttons.Select(b => b.GetComponentInChildren<TMPro.TMP_Text>().text), Is.EqualTo(new[] { "ONE", "TWO", "THREE" }));
+            Assert.That(dialog.Buttons[0].ButtonKind, Is.EqualTo(ThemedButton.Kind.Primary));
+            UIManager.instance.HandleBack();
+            Assert.That((chosen, dialog.IsClosing), Is.EqualTo((-1, false)), "With no option for Back, Back leaves it open.");
+            dialog.Buttons[1].onClick.Invoke();
+            dialog.Buttons[2].onClick.Invoke();
+            Assert.That(chosen, Is.EqualTo(2), "The one pressed runs, once: the dialog's closing.");
+            Assert.That(dialog.IsClosing || dialog == null, Is.True);
         }
 
         [UnityTest]

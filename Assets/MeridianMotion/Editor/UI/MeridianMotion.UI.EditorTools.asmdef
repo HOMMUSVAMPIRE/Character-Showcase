@@ -3,6 +3,7 @@
     "rootNamespace": "MeridianMotion.UI.EditorTools",
     "references": [
         "MeridianMotion.UI",
+        "MeridianMotion.CharacterUI",
         "MeridianMotion.EditorTools",
         "Unity.InputSystem",
         "Unity.TextMeshPro",

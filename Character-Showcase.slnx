@@ -12,6 +12,7 @@
   <Project Path="MeridianMotion.Showcase.HUD.csproj" />
   <Project Path="MeridianMotion.UI.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.Levels.csproj" />
+  <Project Path="MeridianMotion.CharacterUI.csproj" />
   <Project Path="MeridianMotion.Tests.Shared.csproj" />
   <Project Path="MeridianMotion.Levels.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.HUD.csproj" />

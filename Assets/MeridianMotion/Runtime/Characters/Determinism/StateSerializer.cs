@@ -64,6 +64,10 @@ namespace MeridianMotion.Characters
             Vector3 position = GraphReader.ReadVector3(reader);
             Quaternion rotation = GraphReader.ReadQuaternion(reader);
             Rigidbody body = character.GetComponent<Rigidbody>();
+            // Moved only if it's somewhere else: moving an interpolated Rigidbody's transform is a teleport, which drops
+            // its interpolation for a frame (the model and the camera jump to the physics pose), so putting back the pose
+            // it already has (a replay's keyframe on the build that recorded it) would make it stutter for nothing.
+            if (body != null && body.position == position && body.rotation == rotation) { return; }
             if (body != null)
             {
                 body.position = position;
@@ -133,6 +137,10 @@ namespace MeridianMotion.Characters
                 Vector3 position = GraphReader.ReadVector3(reader);
                 Quaternion rotation = GraphReader.ReadQuaternion(reader);
                 Rigidbody body = part.GetComponent<Rigidbody>();
+                // As a character's: moved only if it's somewhere else, so putting back where it is doesn't stutter it.
+                bool there = body != null ? body.position == position && body.rotation == rotation
+                    : part.transform.position == position && part.transform.rotation == rotation;
+                if (there) { continue; }
                 if (body != null)
                 {
                     body.position = position;

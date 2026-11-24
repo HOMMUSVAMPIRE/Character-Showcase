@@ -114,8 +114,11 @@ ALLOWED_REFERENCES = {
     "MeridianMotion.Characters": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels"},
     "MeridianMotion.Cameras": {"Unity.InputSystem", "MeridianMotion.PhysicsQueries"},
     "MeridianMotion.UI": {"Unity.InputSystem", "Unity.TextMeshPro", "UnityEngine.UI"},
+    # The bridge between the character and the UI (replays in the pause menu; the HUD connected, later): ships with the UI.
+    "MeridianMotion.CharacterUI": {"MeridianMotion.Characters", "MeridianMotion.UI"},
     "MeridianMotion.UI.EditorTools": {"MeridianMotion.UI", "MeridianMotion.EditorTools", "MeridianMotion.Characters",
-                                      "MeridianMotion.Cameras", "Unity.InputSystem", "Unity.TextMeshPro", "UnityEngine.UI"},
+                                      "MeridianMotion.CharacterUI", "MeridianMotion.Cameras", "Unity.InputSystem",
+                                      "Unity.TextMeshPro", "UnityEngine.UI"},
     "MeridianMotion.EditorTools": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Levels",
                                    "MeridianMotion.Levels.EditorTools"},
     "MeridianMotion.Showcase.Pipeline": {"MeridianMotion.Characters", "MeridianMotion.EditorTools"},
@@ -139,7 +142,8 @@ ALLOWED_REFERENCES = {
                                              "MeridianMotion.Levels.EditorTools"} | TEST_RUNNER,
     "MeridianMotion.Tests.PlayMode": {"MeridianMotion.Characters", "MeridianMotion.Cameras", "MeridianMotion.Tests.Shared",
                                       "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels", "MeridianMotion.UI",
-                                      "UnityEngine.UI", "Unity.TextMeshPro", "Unity.InputSystem"} | TEST_RUNNER,
+                                      "MeridianMotion.CharacterUI", "UnityEngine.UI", "Unity.TextMeshPro",
+                                      "Unity.InputSystem"} | TEST_RUNNER,
     "MeridianMotion.Tests.Shared": {"MeridianMotion.Characters"} | TEST_RUNNER,
 }
 

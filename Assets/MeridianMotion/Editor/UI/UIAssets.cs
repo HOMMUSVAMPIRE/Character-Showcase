@@ -76,9 +76,30 @@ namespace MeridianMotion.UI.EditorTools
         internal static string YesNoDialogPrefabPath => YesNoDialogPath;
         internal static string PromptForStringPrefabPath => PromptForStringPath;
         internal static string PauseMenuPrefabPath => PauseMenuPath;
+        internal static string ControlRowPrefabPath => ControlRowPath;
+        internal static string ChoiceDialogPrefabPath => ChoiceDialogPath;
         internal static string MenuEntryPrefabPath => MenuEntryPath;
         internal static string FeaturedMenuEntryPrefabPath => FeaturedMenuEntryPath;
         internal static string NotificationPrefabPath(Notifications.Type type) => NotificationPath(type);
+        /// <summary>A HUD widget's prefab, by name (Interact Prompt, World Marker, Dialogue Panel, Ability Tile, Ability Bar, Reticle, Minimap, Compass).</summary>
+        public static string HUDPath(string name) =>
+            Existing(HUDGuids.TryGetValue(name, out string guid) ? MeridianMotionAssets.PathOf(guid, $"Assets/MeridianMotion/Content/UI/HUD/{name}.prefab") : null, $"HUD/{name}.prefab");
+
+        private static readonly Dictionary<string, string> HUDGuids = new()
+        {
+            ["Ability Bar"] = "5bdeba5b77e9743ac9669e127175db4b",
+            ["Ability Tile"] = "d8eec314cf8224175be91fcf720c58f0",
+            ["Compass"] = "7b96ac7476f6a4cd08e331a28bddc256",
+            ["Dialogue Panel"] = "e1be41e804a174a2ba657cca0f82f5ee",
+            ["Interact Prompt"] = "6fbaf3d67845645c4ba8b3cfde36af8b",
+            ["Minimap"] = "8e8a4fea50b894a4bbf699ea6d95dddc",
+            ["Reticle"] = "d2594928856424f8aad3a0990ed7edfa",
+            ["World Marker"] = "2b9a5c3a8dfe0428291f74f6bf75862a",
+        };
+        private static string ChoiceDialogPath => Existing(MeridianMotionAssets.PathOf("5d7b86d0946124a8786b227af8529c5f", "Assets/MeridianMotion/Content/UI/Dialogs/Choice Dialog.prefab"), "Dialogs/Choice Dialog.prefab");
+        /// <summary>The Replay Recorder prefab (a scene's replays: ReplayRecorder and its pause-menu tab, ReplayMenu).</summary>
+        public static string ReplayRecorderPath => Existing(MeridianMotionAssets.PathOf("21c3e3bfcf3594dd481976dcae4772cb", "Assets/MeridianMotion/Content/UI/Replay Recorder.prefab"), "Replay Recorder.prefab");
+        private static string ControlRowPath => Existing(MeridianMotionAssets.PathOf("6984114ec11964c909d3122b33205f4d", "Assets/MeridianMotion/Content/UI/Windows/Control Row.prefab"), "Windows/Control Row.prefab");
         private static string PauseMenuPath => Existing(MeridianMotionAssets.PathOf("079bb9af2a59246dd8fb6525db8da406", "Assets/MeridianMotion/Content/UI/Windows/Pause Menu.prefab"), "Windows/Pause Menu.prefab");
         private static string PromptForStringPath => Existing(MeridianMotionAssets.PathOf("f8a5a548bed7048da94af523f7c99945", "Assets/MeridianMotion/Content/UI/Dialogs/Prompt For String.prefab"), "Dialogs/Prompt For String.prefab");
 
@@ -91,6 +112,7 @@ namespace MeridianMotion.UI.EditorTools
 
         // How big the dialogs and their parts are, in reference pixels (the canvases scale with a 1920x1080 screen).
         private static readonly Vector2 ReferenceResolution = new(1920f, 1080f);
+        private static readonly Vector2 ChoiceDialogSize = new(720f, 240f), ChoiceButtonSize = new(210f, 48f);
         private static readonly Vector2 DialogSize = new(560f, 260f), PromptSize = new(560f, 320f), ButtonSize = new(160f, 48f);
         private static readonly Vector2 PauseMenuSize = new(760f, 640f), MenuButtonSize = new(320f, 56f);
         private const float Padding = 28f, AccentHeight = 6f, BodyFontSize = 28f, ButtonFontSize = 24f, FieldHeight = 52f;
@@ -99,7 +121,7 @@ namespace MeridianMotion.UI.EditorTools
         private const float HeaderTabHeight = 10f, BracketGap = 8f, BracketLength = 22f, BracketThickness = 3f, SmallChamfer = 7f;
         // The click blockers' opacities (of the theme's backdrop).
         private const float DimOpacity = 0.5f, DarkenOpacity = 0.75f;
-        private const float TitleFontSize = 44f, TitleHeight = 64f, ControlsFontSize = 22f, MenuButtonGap = 16f;
+        private const float TitleFontSize = 44f, TitleHeight = 64f, ControlsFontSize = 22f, MenuButtonGap = 16f, SchemeHeight = 30f;
 
         [MenuItem("Tools/Meridian Motion/Utilities/Create UI Assets", priority = 61)]
         public static void CreateFromMenu() => Create();
@@ -167,10 +189,12 @@ namespace MeridianMotion.UI.EditorTools
             GameObject messageBox = PrefabAt(MessageBoxPath, () => Dialog<UIMessageBox>("Message Box", DialogSize, ("OK", true)));
             GameObject errorBox = PrefabAt(ErrorMessageBoxPath, () => Dialog<UIMessageBox>("Error Message Box", DialogSize, ("OK", true)));
             GameObject yesNo = PrefabAt(YesNoDialogPath, () => Dialog<UIMessageBox>("Yes No Dialog", DialogSize, ("No", false), ("Yes", true)));
+            GameObject choice = PrefabAt(ChoiceDialogPath, ChoiceDialog);
             GameObject prompt = PrefabAt(PromptForStringPath,
                 () => Dialog<UIMessageBox_PromptForString>("Prompt For String", PromptSize, ("Cancel", false), ("OK", true)));
 
-            GameObject pauseMenu = PrefabAt(PauseMenuPath, () => PauseMenuWindow(actions));
+            GameObject controlRow = PrefabAt(ControlRowPath, ControlRow);
+            GameObject pauseMenu = PrefabAt(PauseMenuPath, () => PauseMenuWindow(actions, controlRow));
             if (!catalog.Windows.Contains(pauseMenu))
             {
                 catalog.Windows.Add(pauseMenu);
@@ -187,6 +211,8 @@ namespace MeridianMotion.UI.EditorTools
                 notificationPrefabs[type] = PrefabAt(NotificationPath(type), () => NotificationPrefab(type));
             }
             MakeWidgets();
+            MakeHUD(actions, catalog);
+            PrefabAt(ReplayRecorderPath, ReplayRecorderObject);
 
             // Never rebuilt: scenes hold it with their own connections (Set Up Scene's), on objects inside it.
             GameObject manager = PrefabAt(ManagerPath, () => Manager(actions), rebuildable: false);
@@ -195,6 +221,11 @@ namespace MeridianMotion.UI.EditorTools
             {
                 // The Back key opens the pause menu when no window takes it.
                 if (editing.prefabContentsRoot.GetComponent<PauseMenuOnBack>() == null) { editing.prefabContentsRoot.AddComponent<PauseMenuOnBack>(); }
+                // The player's rebinding (the pause menu's controls list), kept between runs.
+                if (!editing.prefabContentsRoot.TryGetComponent(out SavedBindings saved)) { saved = editing.prefabContentsRoot.AddComponent<SavedBindings>(); }
+                var savedFields = new SerializedObject(saved);
+                SetIfEmpty(savedFields, "actions", actions);
+                savedFields.ApplyModifiedPropertiesWithoutUndo();
                 var fields = new SerializedObject(editing.prefabContentsRoot.GetComponent<UIManager>());
                 SetIfEmpty(fields, "theme", theme);
                 SetIfEmpty(fields, "windowCatalog", catalog);
@@ -202,6 +233,7 @@ namespace MeridianMotion.UI.EditorTools
                 SetIfEmpty(fields, "errorMessageBoxPrefab", errorBox);
                 SetIfEmpty(fields, "yesNoDialogPrefab", yesNo);
                 SetIfEmpty(fields, "promptForStringPrefab", prompt);
+                SetIfEmpty(fields, "choiceDialogPrefab", choice);
                 SetIfEmpty(fields, "rightClickMenuPrefab", rightClickMenu);
                 SetIfEmpty(fields, "dimBlockerPrefab", dim);
                 SetIfEmpty(fields, "invisibleBlockerPrefab", invisible);
@@ -424,6 +456,11 @@ namespace MeridianMotion.UI.EditorTools
             TextMeshProUGUI text = MakeText(button.transform, "Label", label.ToUpperInvariant(), size.y < ButtonSize.y ? ButtonFontSize * 0.75f : ButtonFontSize,
                 TextAlignmentOptions.Center, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, display: true);
             text.raycastTarget = false;
+            // On one line, shrinking to fit a long label rather than wrapping it.
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.enableAutoSizing = true;
+            text.fontSizeMax = text.fontSize;
+            text.fontSizeMin = text.fontSize * 0.6f;
 
             var themed = button.AddComponent<ThemedButton>();
             themed.Shape = shape;
@@ -482,7 +519,7 @@ namespace MeridianMotion.UI.EditorTools
         // The pause menu: a panel with the tab bar along its top (Menu and Controls, trapezoids), its main page (a title and
         // Resume, Restart, Controls and Quit down the middle) and its controls page (a title, the bindings listing, and Back),
         // each button wired.
-        private static GameObject PauseMenuWindow(InputActionAsset actions)
+        private static GameObject PauseMenuWindow(InputActionAsset actions, GameObject controlRow)
         {
             var root = new GameObject("Pause Menu", typeof(RectTransform));
             var rect = (RectTransform)root.transform;
@@ -498,7 +535,7 @@ namespace MeridianMotion.UI.EditorTools
                 var page = new GameObject(name, typeof(RectTransform));
                 page.transform.SetParent(rect, false);
                 Stretch((RectTransform)page.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0f, -TabRowHeight));
-                MakeText(page.transform, "Title", name == "Main Page" ? "PAUSED" : "CONTROLS", TitleFontSize, TextAlignmentOptions.Center,
+                MakeText(page.transform, "Title", name == "Main Page" ? "PAUSED" : name == "Replays Page" ? "REPLAYS" : "CONTROLS", TitleFontSize, TextAlignmentOptions.Center,
                     new Vector2(0f, 1f), Vector2.one, new Vector2(Padding, -Padding - TitleHeight), new Vector2(-Padding, -Padding), display: true);
                 return page.transform;
             }
@@ -518,17 +555,34 @@ namespace MeridianMotion.UI.EditorTools
             }
 
             Transform controls = Page("Controls Page");
-            TextMeshProUGUI listing = MakeText(controls, "Bindings", "", ControlsFontSize, TextAlignmentOptions.TopLeft, Vector2.zero, Vector2.one,
-                new Vector2(Padding, Padding * 2f + ButtonSize.y), new Vector2(-Padding, -Padding * 2f - TitleHeight));
+            TextMeshProUGUI scheme = MakeText(controls, "Scheme", "", ControlsFontSize, TextAlignmentOptions.Center, new Vector2(0f, 1f), Vector2.one,
+                new Vector2(Padding, -Padding - TitleHeight - SchemeHeight), new Vector2(-Padding, -Padding - TitleHeight), display: true, UIColorRole.Highlight);
+            ControlsList list = ControlsScrollView(controls, controlRow, actions, scheme,
+                new Vector2(Padding, Padding * 2f + ButtonSize.y), new Vector2(-Padding, -Padding * 1.5f - TitleHeight - SchemeHeight));
             MakeButton(controls, "Back", ThemedButton.Kind.Outline, menu.ShowMain, ButtonSize, new Vector2(1f, 0f), new Vector2(-Padding, Padding));
+            MakeButton(controls, "Reset", ThemedButton.Kind.Outline, menu.ResetControls, ButtonSize, new Vector2(1f, 0f),
+                new Vector2(-Padding - ButtonSize.x - Padding * 0.5f, Padding));
 
-            // Its pages as the contents of two tabs along its top.
+            // The replays page: Save Replay and Load Replay down the middle, and their status (its tab shown only while
+            // the game's registered replay controls).
+            Transform replays = Page("Replays Page");
+            GameObject saveReplay = MakeButton(replays, "Save Replay", ThemedButton.Kind.Primary, menu.SaveReplay, MenuButtonSize, new Vector2(0.5f, 1f), new Vector2(0f, top));
+            GameObject loadReplay = MakeButton(replays, "Load Replay", ThemedButton.Kind.Outline, menu.LoadReplay, MenuButtonSize, new Vector2(0.5f, 1f),
+                new Vector2(0f, top - MenuButtonSize.y - MenuButtonGap));
+            saveReplay.GetComponent<ThemedButton>().Gloss = true;
+            loadReplay.GetComponent<ThemedButton>().Gloss = true;
+            TextMeshProUGUI replayStatus = MakeText(replays, "Status", "", ControlsFontSize, TextAlignmentOptions.Top, Vector2.zero, Vector2.one,
+                new Vector2(Padding, Padding), new Vector2(-Padding, top - (MenuButtonSize.y + MenuButtonGap) * 2f - Padding), display: false, UIColorRole.TextMuted);
+
+            // Its pages as the contents of tabs along its top.
             var tabs = root.AddComponent<TabGroup>();
             Tab mainTab = TabButton(rect, tabs, "Menu", 0, main.gameObject);
             Tab controlsTab = TabButton(rect, tabs, "Controls", 1, controls.gameObject);
+            Tab replaysTab = TabButton(rect, tabs, "Replays", 2, replays.gameObject);
             tabs.InitialTabEnabled = mainTab;
             // Shown as it opens: the first tab selected (the group does it again when it starts).
             controlsTab.SelectedState.SetActive(false);
+            replaysTab.SelectedState.SetActive(false);
 
             var fields = new SerializedObject(menu);
             fields.FindProperty("pageTabs").objectReferenceValue = tabs;
@@ -536,9 +590,56 @@ namespace MeridianMotion.UI.EditorTools
             fields.FindProperty("controlsTab").objectReferenceValue = controlsTab;
             fields.FindProperty("mainPage").objectReferenceValue = main.gameObject;
             fields.FindProperty("controlsPage").objectReferenceValue = controls.gameObject;
-            fields.FindProperty("controlsText").objectReferenceValue = listing;
+            fields.FindProperty("controlsList").objectReferenceValue = list;
+            fields.FindProperty("replaysTab").objectReferenceValue = replaysTab;
+            fields.FindProperty("replaysPage").objectReferenceValue = replays.gameObject;
+            fields.FindProperty("saveReplayButton").objectReferenceValue = saveReplay.GetComponent<Selectable>();
+            fields.FindProperty("loadReplayButton").objectReferenceValue = loadReplay.GetComponent<Selectable>();
+            fields.FindProperty("replayStatusText").objectReferenceValue = replayStatus;
             fields.ApplyModifiedPropertiesWithoutUndo();
             controls.gameObject.SetActive(false);
+            replays.gameObject.SetActive(false);
+            return root;
+        }
+
+        // The choice dialog: a panel with the accent's tab, its message, and its options' buttons along the bottom, right
+        // aligned, made from a hidden template.
+        private static GameObject ChoiceDialog()
+        {
+            var root = new GameObject("Choice Dialog", typeof(RectTransform));
+            var rect = (RectTransform)root.transform;
+            rect.sizeDelta = ChoiceDialogSize;
+            Panel(root, headerTab: true);
+            var box = root.AddComponent<UIChoiceDialog>();
+            box.ClickBlockerStyle = ClickBlockStyle.DimBackground;
+            box.BlocksGameInput = true;
+            TextMeshProUGUI text = MakeText(rect, "Body", "", BodyFontSize, TextAlignmentOptions.TopLeft, Vector2.zero, Vector2.one,
+                new Vector2(Padding, Padding * 2f + ButtonSize.y), new Vector2(-Padding, -Padding - HeaderTabHeight), display: false);
+            var row = new GameObject("Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            row.transform.SetParent(rect, false);
+            Stretch((RectTransform)row.transform, Vector2.zero, new Vector2(1f, 0f), new Vector2(Padding, Padding), new Vector2(-Padding, Padding + ButtonSize.y));
+            var layout = row.GetComponent<HorizontalLayoutGroup>();
+            layout.spacing = Padding * 0.5f;
+            layout.childAlignment = TextAnchor.MiddleRight;
+            layout.childControlWidth = layout.childControlHeight = false;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+            GameObject template = ThemedButtonObject("Choice", ThemedButton.Kind.Outline, ChoiceButtonSize);
+            template.transform.SetParent(row.transform, false);
+            template.SetActive(false);
+            var fields = new SerializedObject(box);
+            fields.FindProperty("bodyText").objectReferenceValue = text;
+            fields.FindProperty("buttonTemplate").objectReferenceValue = template.GetComponent<ThemedButton>();
+            fields.FindProperty("buttonsParent").objectReferenceValue = row.transform;
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            return root;
+        }
+
+        // A scene's replays: what records and plays them, and their pause-menu tab.
+        private static GameObject ReplayRecorderObject()
+        {
+            var root = new GameObject("Replay Recorder");
+            root.AddComponent<MeridianMotion.Characters.ReplayRecorder>();
+            root.AddComponent<MeridianMotion.CharacterUI.ReplayMenu>();
             return root;
         }
 

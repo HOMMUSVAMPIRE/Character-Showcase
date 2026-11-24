@@ -946,6 +946,7 @@ GameObject:
   - component: {fileID: 6133253475021078359}
   - component: {fileID: 1187479843275441341}
   - component: {fileID: 3336586081535247924}
+  - component: {fileID: 73799816437725842}
   m_Layer: 0
   m_Name: UI Manager
   m_TagString: Untagged
@@ -993,6 +994,7 @@ MonoBehaviour:
   errorMessageBoxPrefab: {fileID: 6055032658580727991, guid: 69dcadec54e00483594fe209a3d6a4a7, type: 3}
   yesNoDialogPrefab: {fileID: 8025638479811081834, guid: 72e7f93d7f32c45fcafed8af60bd2966, type: 3}
   promptForStringPrefab: {fileID: 3626672574818247517, guid: f8a5a548bed7048da94af523f7c99945, type: 3}
+  choiceDialogPrefab: {fileID: 8931429989913588470, guid: 5d7b86d0946124a8786b227af8529c5f, type: 3}
   rightClickMenuPrefab: {fileID: 8033587210864806931, guid: 07523b1ba69934069afa6625ecefa05b, type: 3}
   dimBlockerPrefab: {fileID: 5574388144192976179, guid: 3ac7922116bca4b57a56a5ef1e439f24, type: 3}
   invisibleBlockerPrefab: {fileID: 4324723266774186625, guid: 469189874af4d47348075150c5470f7b, type: 3}
@@ -1018,6 +1020,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 090c4d51b7e545dcb483e22d2917ef6e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.PauseMenuOnBack
+--- !u!114 &73799816437725842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8972442780996372682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3e7848fcac264f48858ea8bbb651ab84, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.SavedBindings
+  actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  key: MeridianMotion.BindingOverrides
 --- !u!1 &9202495325361639465
 GameObject:
   m_ObjectHideFlags: 0

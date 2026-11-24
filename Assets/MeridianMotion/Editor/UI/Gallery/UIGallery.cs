@@ -28,6 +28,8 @@ namespace MeridianMotion.UI.EditorTools
             ("Icons", IconsPage),
             ("Windows", WindowsPage),
             ("Widgets", WidgetsPage),
+            ("HUD", HUDPage),
+            ("Replays", ReplaysPage),
         };
 
         // The pictures' size: the canvases' reference resolution, so a page is drawn at the size the UI is designed for.

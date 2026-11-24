@@ -141,8 +141,8 @@ namespace MeridianMotion.UI
         {
         }
 
-        // Refresh, from a method that can't wait for it (a search box's change): its exceptions are logged.
-        private async void RefreshAndForget()
+        /// <summary>Refresh, from a method that can't wait for it (a search box's change): its exceptions are logged.</summary>
+        protected async void RefreshAndForget()
         {
             try { await Refresh(); }
             catch (Exception exception) { Debug.LogException(exception, this); }

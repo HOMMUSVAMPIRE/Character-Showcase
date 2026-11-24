@@ -3,6 +3,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.Events;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace MeridianMotion.UI.EditorTools
@@ -256,6 +257,117 @@ namespace MeridianMotion.UI.EditorTools
             group.RegisterTab(tab);
             UnityEventTools.AddPersistentListener(clickable.onClick, tab.OnClicked);
             return tab;
+        }
+
+        // ---- The controls page ----
+
+        private static readonly Vector2 ControlRowSize = new(620f, 44f), BindingButtonSize = new(240f, 34f);
+        private const float ControlRowGap = 6f, OverriddenMarkSize = 10f;
+
+        // A controls list's row: the action's name, and its binding on a button that rebinds it (or as text, for one that
+        // can't be rebound), with a diamond while it's been rebound.
+        private static GameObject ControlRow()
+        {
+            var root = new GameObject("Control Row", typeof(RectTransform), typeof(LayoutElement));
+            ((RectTransform)root.transform).sizeDelta = ControlRowSize;
+            root.GetComponent<LayoutElement>().preferredHeight = ControlRowSize.y;
+            var background = root.AddComponent<ChamferedBox>();
+            background.FillRole = UIColorRole.PanelRaised;
+            background.Outline = false;
+            background.Chamfer = SmallChamfer;
+            background.Corners = UIShapeMesh.Corners.TopLeft | UIShapeMesh.Corners.BottomRight;
+            background.raycastTarget = false;
+            var display = root.AddComponent<ControlBindingDisplay>();
+
+            TextMeshProUGUI name = MakeText(root.transform, "Name", "Action", ControlsFontSize, TextAlignmentOptions.MidlineLeft, Vector2.zero, Vector2.one,
+                new Vector2(Padding * 0.5f, 0f), new Vector2(-BindingButtonSize.x - Padding, 0f), display: true);
+            name.raycastTarget = false;
+
+            GameObject button = MakeButton(root.transform, "Binding", ThemedButton.Kind.Outline, display.OnBindingClicked, BindingButtonSize,
+                new Vector2(1f, 0.5f), new Vector2(-Padding * 0.25f, 0f));
+            TMP_Text buttonText = button.transform.Find("Label").GetComponent<TMP_Text>();
+            buttonText.text = "-";
+            TextMeshProUGUI plain = MakeText(root.transform, "Binding Text", "-", ControlsFontSize * 0.9f, TextAlignmentOptions.Center,
+                new Vector2(1f, 0f), Vector2.one, new Vector2(-BindingButtonSize.x - Padding * 0.25f, 0f), new Vector2(-Padding * 0.25f, 0f),
+                display: false, UIColorRole.TextMuted);
+            plain.raycastTarget = false;
+
+            var mark = new GameObject("Overridden", typeof(RectTransform));
+            mark.transform.SetParent(root.transform, false);
+            var markRect = (RectTransform)mark.transform;
+            markRect.anchorMin = markRect.anchorMax = markRect.pivot = new Vector2(1f, 0.5f);
+            markRect.sizeDelta = new Vector2(OverriddenMarkSize, OverriddenMarkSize);
+            markRect.anchoredPosition = new Vector2(-BindingButtonSize.x - Padding * 0.6f, 0f);
+            var diamond = mark.AddComponent<DiamondShape>();
+            diamond.FillRole = UIColorRole.Accent;
+            diamond.Outline = false;
+            diamond.raycastTarget = false;
+            mark.SetActive(false);
+
+            var fields = new SerializedObject(display);
+            fields.FindProperty("nameText").objectReferenceValue = name;
+            fields.FindProperty("bindingButton").objectReferenceValue = button.GetComponent<ThemedButton>();
+            fields.FindProperty("bindingButtonText").objectReferenceValue = buttonText;
+            fields.FindProperty("bindingText").objectReferenceValue = plain;
+            fields.FindProperty("overriddenMark").objectReferenceValue = mark;
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            return root;
+        }
+
+        // The controls page's list: a scroll view (its rows stacked in its content, a themed scrollbar at its right) with
+        // a ControlsList of the actions, its rows from controlRow, showing its scheme in schemeText.
+        private static ControlsList ControlsScrollView(Transform parent, GameObject controlRow, InputActionAsset actions, TMP_Text schemeText,
+            Vector2 offsetMin, Vector2 offsetMax)
+        {
+            var root = new GameObject("Controls", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            Stretch((RectTransform)root.transform, Vector2.zero, Vector2.one, offsetMin, offsetMax);
+
+            GameObject scrollbar = ScrollbarWidget();
+            scrollbar.transform.SetParent(root.transform, false);
+            var scrollbarRect = (RectTransform)scrollbar.transform;
+            Stretch(scrollbarRect, new Vector2(1f, 0f), Vector2.one, new Vector2(-ScrollbarSize.x, 0f), Vector2.zero);
+
+            var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+            viewport.transform.SetParent(root.transform, false);
+            Stretch((RectTransform)viewport.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-ScrollbarSize.x - Padding * 0.5f, 0f));
+            var catcher = viewport.AddComponent<ChamferedBox>(); // Catches the scroll wheel and drags between rows.
+            catcher.color = new Color(1f, 1f, 1f, 0f);
+            catcher.Outline = false;
+
+            var content = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            content.transform.SetParent(viewport.transform, false);
+            var contentRect = (RectTransform)content.transform;
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = Vector2.one;
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.offsetMin = contentRect.offsetMax = Vector2.zero;
+            var layout = content.GetComponent<VerticalLayoutGroup>();
+            layout.spacing = ControlRowGap;
+            layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = root.AddComponent<ScrollRect>();
+            scroll.content = contentRect;
+            scroll.viewport = (RectTransform)viewport.transform;
+            scroll.horizontal = false;
+            scroll.verticalScrollbar = scrollbar.GetComponent<Scrollbar>();
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = ControlRowSize.y * 0.5f;
+
+            var list = root.AddComponent<ControlsList>();
+            list.Actions = actions;
+            var fields = new SerializedObject(list);
+            fields.FindProperty("itemPrefabs").arraySize = 1;
+            fields.FindProperty("itemPrefabs").GetArrayElementAtIndex(0).objectReferenceValue = controlRow;
+            fields.FindProperty("itemsParent").objectReferenceValue = contentRect;
+            fields.FindProperty("schemeText").objectReferenceValue = schemeText;
+            fields.FindProperty("scrollRect").objectReferenceValue = scroll;
+            fields.ApplyModifiedPropertiesWithoutUndo();
+            return list;
         }
 
         // ---- The widgets a project uses in its own windows ----
