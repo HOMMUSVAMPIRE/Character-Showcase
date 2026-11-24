@@ -11,6 +11,8 @@
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
 *.log
+# But the test runner's tests' canned Unity log (Tools/Tests): CI runs them from a clean checkout.
+!/Tools/Tests/data/*.log
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1

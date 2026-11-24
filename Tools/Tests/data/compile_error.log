@@ -1,0 +1,6 @@
+[Licensing::Module] Successfully connected to LicensingClient
+Assets/Scripts/Character/MovementController.cs(42,13): error CS0103: The name 'velocty' does not exist in the current context
+Assets/Scripts/Character/MovementController.cs(42,13): error CS0103: The name 'velocty' does not exist in the current context
+Assets/Scripts/MovementModes/Components/Dashing.cs(10,5): error CS1002: ; expected
+Scripts have compiler errors.
+Exiting without the bug reporter. Application will terminate with return code 1
