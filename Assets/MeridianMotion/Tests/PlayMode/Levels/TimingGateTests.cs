@@ -8,7 +8,7 @@ namespace MeridianMotion.Tests.Levels
 {
     /// <summary>
     /// Tests of timed courses with the character (CourseTimer and TimingGate): sprinting from a start gate to a finish
-    /// gate is timed at the course's length over its run speed. The run speed is read from the movement mode, so
+    /// gate is timed at the course's length over its run speed, and a split gate between them records its split. The run speed is read from the movement mode, so
     /// retuning it doesn't break the tests. (The timer's own rules, without a character, are CourseTimerTests'.)
     /// </summary>
     [Category(TestArea.Levels)]
@@ -69,6 +69,26 @@ namespace MeridianMotion.Tests.Levels
                 $"A {length} m run at {rig.RunSpeed:0.0} m/s should take about {expected:0.00} s.");
             Assert.AreEqual(timer.LastTime, timer.BestTime);
             StringAssert.Contains("m/s", shown, "The display should show the run's speed once the course has a distance.");
+        }
+
+        [UnityTest]
+        public IEnumerator ASplitGate_RecordsItsSplit_WithTheRun()
+        {
+            const float length = 20f, split = 8f;
+            rig.Floor(0f, 200f);
+            Gate(0f, TimingGateRole.Start);
+            Gate(split, TimingGateRole.Split).SplitIndex = 0;
+            Gate(length, TimingGateRole.Finish);
+            yield return rig.SpawnSettled(new Vector3(0f, 0.05f, -12f));
+            timer.SetRacer(rig.Character.transform);
+
+            yield return rig.Run(length / rig.RunSpeed + 2f, step => CharacterTestRig.Sprint(Vector3.forward));
+
+            Assert.AreEqual(1, timer.LapCount);
+            Assert.That(timer.LastSplits.Count, Is.EqualTo(1), "The run should have recorded its one split.");
+            float expected = split / rig.RunSpeed;
+            Assert.That(timer.LastSplits[0], Is.EqualTo(expected).Within(2f * Time.fixedDeltaTime + 0.02f * expected),
+                $"The split {split} m in should come at about {expected:0.00} s.");
         }
     }
 }

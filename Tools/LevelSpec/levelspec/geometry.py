@@ -265,8 +265,29 @@ def _shapes(piece, f, state):
     if name == "ClimbablePanel":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("y0"), g("y1"), {"label": "Climbable Panel"})]
     if name == "TimingGate":
+        role = g("role") + (f" {g('index', 0)}" if g("role") == "split" else "")
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("floor"), g("floor") + 4.2,
-                 {"label": f"Timing Gate: {g('course')} ({g('role')})" + (f", {_n(g('distance'))} m" if g("distance") else "")})]
+                 {"label": f"Timing Gate: {g('course')} ({role})" + (f", {_n(g('distance'))} m" if g("distance") else "")})]
+    if name == "Checkpoint":
+        feet, size, yaw = g("feet"), g("size"), g("yaw", 0)
+        facing = math.radians(yaw)
+        tip = (feet[0] + 2 * math.sin(facing), feet[2] + 2 * math.cos(facing))
+        return [("mechanics", "line", _oriented((feet[0], feet[2]), (size[0], size[2]), yaw), feet[1], feet[1] + size[1],
+                 {"closed": True, "label": f"Checkpoint {g('id')}" + (" (start)" if g("start", False) else ""), "arrow": ((feet[0], feet[2]), tip)})]
+    if name in ("HazardVolume", "LessonZone", "ShortcutTrigger"):
+        c, size = g("centre"), g("size")
+        label = {"HazardVolume": f"Hazard ({g('name')})", "LessonZone": f"Lesson {g('lesson')}", "ShortcutTrigger": f"Opens {g('gate')}"}[name]
+        return [("mechanics", "line", _oriented((c[0], c[2]), (size[0], size[2]), g("yaw", 0)), c[1] - size[1] / 2, c[1] + size[1] / 2,
+                 {"closed": True, "label": label})]
+    if name == "ShortcutGate":
+        c, size, travel, yaw = g("centre"), g("size"), g("travel"), g("yaw", 0)
+        out = [("mechanics", "poly", _oriented((c[0], c[2]), (size[0], size[2]), yaw), c[1] - size[1] / 2, c[1] + size[1] / 2,
+                {"label": f"Shortcut Gate {g('id')}: opens by {_n(round(math.sqrt(sum(t * t for t in travel)), 2))} m in {_n(g('time'))} s"})]
+        a = math.radians(yaw)
+        tx, tz = travel[0] * math.cos(a) + travel[2] * math.sin(a), -travel[0] * math.sin(a) + travel[2] * math.cos(a)
+        if abs(tx) > 1e-3 or abs(tz) > 1e-3:
+            out[0][5]["arrow"] = ((c[0], c[2]), (c[0] + tx, c[2] + tz))
+        return out
     if name == "LowBeam":
         return [("mechanics", "line", [tuple(g("a")), tuple(g("b"))], g("floor") + g("clear"), g("floor") + g("clear") + 0.5,
                  {"label": f"{label}: {_n(g('clear'))} m clear"})]

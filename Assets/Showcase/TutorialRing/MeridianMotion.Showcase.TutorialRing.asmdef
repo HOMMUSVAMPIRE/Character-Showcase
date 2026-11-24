@@ -1,0 +1,20 @@
+{
+    "name": "MeridianMotion.Showcase.TutorialRing",
+    "rootNamespace": "MeridianMotion.Showcase.TutorialRing",
+    "references": [
+        "MeridianMotion.Characters",
+        "MeridianMotion.Levels",
+        "MeridianMotion.UI",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

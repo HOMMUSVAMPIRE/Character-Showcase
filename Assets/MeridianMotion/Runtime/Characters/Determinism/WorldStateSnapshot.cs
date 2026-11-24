@@ -6,7 +6,8 @@ namespace MeridianMotion.Characters
 {
     /// <summary>
     /// The level's moving parts' own state, saved (Save) to be put back later (Restore), in this process: each rope's (how
-    /// it swings, who holds it) and each pushable object's (where it is, its fall, who holds it), with their poses. With a
+    /// it swings, who holds it), each pushable object's (where it is, its fall, who holds it) and each shortcut gate's
+    /// (whether and when it opened), with their poses. With a
     /// character's MovementStateSnapshot and the level's clock (LevelClock, which places the platforms), everything a
     /// character's next steps depend on, for rolling the world back to a step and stepping it forward again. What crosses
     /// a network is StateSerializer.WriteWorld.
@@ -15,17 +16,18 @@ namespace MeridianMotion.Characters
     {
         private readonly List<(MonoBehaviour part, ObjectGraphSnapshot state, Vector3 position, Quaternion rotation)> parts = new();
 
-        /// <summary>The level's ropes and pushable objects, in their StableId order (so every machine lists them alike).</summary>
+        /// <summary>The level's ropes, pushable objects and shortcut gates, in their StableId order (so every machine lists them alike).</summary>
         public static List<MonoBehaviour> MovingParts()
         {
             var found = new List<MonoBehaviour>();
             foreach (SwingRope rope in SwingRope.All) { if (rope != null) { found.Add(rope); } }
             foreach (PushableBlock pushable in Object.FindObjectsByType<PushableBlock>()) { if (pushable.isActiveAndEnabled) { found.Add(pushable); } }
+            foreach (ShortcutGate gate in ShortcutGate.All) { if (gate != null) { found.Add(gate); } }
             found.Sort((a, b) => StableId.Of(a.transform).CompareTo(StableId.Of(b.transform)));
             return found;
         }
 
-        /// <summary>Saves every rope's and pushable object's state now (between steps).</summary>
+        /// <summary>Saves every rope's, pushable object's and shortcut gate's state now (between steps).</summary>
         public static WorldStateSnapshot Save()
         {
             var snapshot = new WorldStateSnapshot();
@@ -38,7 +40,7 @@ namespace MeridianMotion.Characters
             return snapshot;
         }
 
-        /// <summary>Puts each rope and pushable object back as it was when saved (one destroyed since is skipped).</summary>
+        /// <summary>Puts each rope, pushable object and shortcut gate back as it was when saved (one destroyed since is skipped).</summary>
         public void Restore()
         {
             foreach ((MonoBehaviour part, ObjectGraphSnapshot state, Vector3 position, Quaternion rotation) in parts)

@@ -48,12 +48,14 @@ namespace MeridianMotion.Showcase.Levels
         /// A moving platform: a steel deck (top centre at top, size across, deep and along) with an orange band round its
         /// edge, which the game setup moves back and forth along travel (in its own axes) over period seconds, pausing
         /// pause seconds at each end, spinning spin degrees a second, phase into its cycle. A box collider; not static.
+        /// hazard: it carries a hazard volume a little bigger than itself, so whoever it sweeps through is respawned (a
+        /// moving blocker: it moves through a character rather than pushing it).
         /// </summary>
         [Piece]
         public static GameObject MovingPlatform(Transform parent, string label, Vector3 top, Vector3 size, Vector3 travel, float period,
-            float pause = 0.75f, Vector3 spin = default, float phase = 0f, bool smooth = true)
+            float pause = 0.75f, Vector3 spin = default, float phase = 0f, bool smooth = true, bool hazard = false)
         {
-            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(MovingPlatform), parent, label, top, size, travel, period, pause, spin, phase, smooth);
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(MovingPlatform), parent, label, top, size, travel, period, pause, spin, phase, smooth, hazard);
             var platform = new GameObject($"{MovingPlatformPrefix} ({label}) | travel={F(travel)} | period={F(period)} | pause={F(pause)}" +
                                           $" | spin={F(spin)} | phase={F(phase)} | smooth={(smooth ? 1 : 0)}");
             platform.transform.SetParent(parent, false);
@@ -66,18 +68,27 @@ namespace MeridianMotion.Showcase.Levels
             mesh.Box(GrayboxMaterial.Steel, new Vector3(-h.x, h.y - 0.001f, -h.z), h, sides: false, ends: false, bottom: false);
             mesh.AddTo(platform, platform.name);
             platform.AddComponent<BoxCollider>().size = size;
+            if (hazard)
+            {
+                // A hazard moving with it, a little bigger: whoever it sweeps through (it moves through a character, which
+                // it doesn't push) is respawned.
+                var volume = new GameObject($"{HazardPrefix} ({label}) | size={F(size + new Vector3(0.2f, 0.2f, 0.4f))}");
+                volume.transform.SetParent(platform.transform, false);
+            }
             return platform;
         }
 
         /// <summary>
         /// A crate the character can push (and, if canPull, pull), size each way, standing on a floor at floor at "at":
-        /// steel with orange corner bands. A box collider; not static. speed scales how fast it moves.
+        /// steel with orange corner bands. A box collider; not static. speed scales how fast it moves. reset: the
+        /// checkpoints (ids, comma-separated) a respawn at which puts it back where it started (it's put back when it falls
+        /// into a hazard too); empty, none.
         /// </summary>
         [Piece]
-        public static GameObject PushableCrate(Transform parent, Vector2 at, float floor, float size, bool canPull = true, float speed = 1f)
+        public static GameObject PushableCrate(Transform parent, Vector2 at, float floor, float size, bool canPull = true, float speed = 1f, string reset = "")
         {
-            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(PushableCrate), parent, at, floor, size, canPull, speed);
-            var crate = new GameObject($"{PushablePrefix} | pull={(canPull ? 1 : 0)} | speed={F(speed)}");
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(PushableCrate), parent, at, floor, size, canPull, speed, reset);
+            var crate = new GameObject($"{PushablePrefix} | pull={(canPull ? 1 : 0)} | speed={F(speed)}{(string.IsNullOrEmpty(reset) ? "" : $" | reset={reset}")}");
             crate.transform.SetParent(parent, false);
             crate.transform.localPosition = new Vector3(at.x, floor + size / 2f, at.y);
             float h = size / 2f, b = Settings.mechanics.edgeBand;
@@ -311,15 +322,15 @@ namespace MeridianMotion.Showcase.Levels
 
         /// <summary>
         /// A timing gate across a course from a to b (on a floor at floor): graphite posts with cyan strips under an orange
-        /// beam, a trigger between them that the game setup makes time course (role: "start-finish", "start" or
-        /// "finish"; distance, for a course timed start to finish, its length), and, if display, a sign on the beam showing
+        /// beam, a trigger between them that the game setup makes time course (role: "start-finish", "start", "finish", or
+        /// "split", its course's split index, counted from 0; distance, for a course timed start to finish, its length), and, if display, a sign on the beam showing
         /// the course's times to those coming through it along approach. The posts and beam have colliders.
         /// </summary>
         [Piece]
         public static void TimingGate(Transform parent, string course, string role, Vector2 a, Vector2 b, float floor, Vector2 approach,
-            float distance = 0f, bool display = false)
+            float distance = 0f, bool display = false, int index = 0)
         {
-            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(TimingGate), parent, course, role, a, b, floor, approach, distance, display);
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(TimingGate), parent, course, role, a, b, floor, approach, distance, display, index);
             LevelBuilderSettings.MechanicsSettings m = Settings.mechanics;
             float width = Vector2.Distance(a, b), half = width / 2f, p = m.gatePost / 2f, top = m.gateHeight;
             Vector2 middle = (a + b) / 2f, across = (b - a) / width;
@@ -347,7 +358,8 @@ namespace MeridianMotion.Showcase.Levels
             AddBox(gate, new Vector3(0f, top + (display ? (0.4f + panel.y) / 2f : 0.2f), 0f), new Vector3(width + 4f * p, display ? 0.4f + panel.y : 0.4f, 2f * p));
             MakeStatic(gate, occluder: false);
 
-            var trigger = new GameObject($"{TimingGatePrefix} | course={course} | role={role}{(distance > 0f ? $" | distance={F(distance)}" : "")}");
+            var trigger = new GameObject($"{TimingGatePrefix} | course={course} | role={role}{(role == "split" ? $" | index={index}" : "")}" +
+                                         $"{(distance > 0f ? $" | distance={F(distance)}" : "")}");
             trigger.transform.SetParent(gate.transform, false);
             var volume = trigger.AddComponent<BoxCollider>();
             volume.isTrigger = true;
@@ -361,7 +373,8 @@ namespace MeridianMotion.Showcase.Levels
                     new Vector3(0f, top + 0.4f + panel.y / 2f, -0.075f), Quaternion.identity, m.gateTextHeight, panel.x - 0.3f, Settings.signs.textColour);
                 text.enableAutoSizing = true;
                 text.rectTransform.sizeDelta = new Vector2(panel.x - 0.3f, panel.y - 0.15f);
-                text.textWrappingMode = TextWrappingModes.Normal;
+                // One line per line of the readout, shrunk to fit rather than wrapped (a wrapped course name left a lone "-").
+                text.textWrappingMode = TextWrappingModes.NoWrap;
             }
         }
 

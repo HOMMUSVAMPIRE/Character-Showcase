@@ -9,7 +9,9 @@ namespace MeridianMotion.Tests.Levels
     /// <summary>
     /// Tests of a CourseTimer's own rules, with no character (TimingGateTests times one): a lap gate starts a lap on the
     /// first pass and ends it on the next (ignoring passes too soon after the start), and only the racer counts once
-    /// there is one. Passes are made directly, as a gate makes them.
+    /// there is one; splits are recorded in order (out of order, or with no run under way, ignored) and kept with the
+    /// last run and the best run. Passes are made directly, as a gate makes them. The split tests set the level's clock
+    /// themselves (LevelClock.TickSource), so their times are exact.
     /// </summary>
     [Category(TestArea.Levels)]
     [TestTiming]
@@ -32,6 +34,7 @@ namespace MeridianMotion.Tests.Levels
         [UnityTearDown]
         public IEnumerator TearDown()
         {
+            LevelClock.TickSource = null;
             Object.Destroy(timerObject);
             Object.Destroy(fasterThanRealTime.gameObject); // Which puts the time scale back.
             yield return null;
@@ -82,6 +85,93 @@ namespace MeridianMotion.Tests.Levels
                 Object.Destroy(racer.gameObject);
                 Object.Destroy(other.gameObject);
             }
+        }
+
+        private long tick;
+
+        /// <summary>Runs the level's clock from the test (tick), starting at 1000.</summary>
+        private void OwnTheClock()
+        {
+            tick = 1000;
+            LevelClock.TickSource = () => tick;
+        }
+
+        private void After(float seconds) => tick += Mathf.RoundToInt(seconds / LevelClock.StepLength);
+
+        private float Seconds(float seconds) => Mathf.RoundToInt(seconds / LevelClock.StepLength) * LevelClock.StepLength;
+
+        [Test]
+        public void PassingSplits_InOrder_RecordsEach()
+        {
+            OwnTheClock();
+            timer.RegisterGatePass(TimingGateRole.Start, null);
+            After(2f);
+            timer.RegisterSplit(0, null);
+            After(3f);
+            timer.RegisterSplit(1, null);
+            Assert.That(timer.CurrentSplits, Is.EqualTo(new[] { Seconds(2f), Seconds(5f) }).Within(1e-4f));
+        }
+
+        [Test]
+        public void PassingASplit_OutOfOrder_OrAgain_IsIgnored()
+        {
+            OwnTheClock();
+            timer.RegisterGatePass(TimingGateRole.Start, null);
+            After(1f);
+            timer.RegisterSplit(1, null);
+            Assert.That(timer.CurrentSplits, Is.Empty, "Split 1 before split 0 should be ignored.");
+            timer.RegisterSplit(0, null);
+            After(1f);
+            timer.RegisterSplit(0, null);
+            Assert.That(timer.CurrentSplits.Count, Is.EqualTo(1), "Passing split 0 again should be ignored.");
+        }
+
+        [Test]
+        public void PassingASplit_WithNoRunUnderWay_IsIgnored()
+        {
+            OwnTheClock();
+            timer.RegisterSplit(0, null);
+            Assert.That(timer.CurrentSplits, Is.Empty);
+        }
+
+        [Test]
+        public void FinishingARun_RaisesRunFinished_WithItsSplits()
+        {
+            OwnTheClock();
+            var runs = new System.Collections.Generic.List<CourseRun>();
+            timer.RunFinished += runs.Add;
+            timer.RegisterGatePass(TimingGateRole.Start, null);
+            After(2f);
+            timer.RegisterSplit(0, null);
+            After(2f);
+            timer.RegisterGatePass(TimingGateRole.Finish, null);
+
+            Assert.That(runs.Count, Is.EqualTo(1));
+            Assert.That(runs[0].Time, Is.EqualTo(Seconds(4f)).Within(1e-4f));
+            Assert.That(runs[0].Splits, Is.EqualTo(new[] { Seconds(2f) }).Within(1e-4f));
+            Assert.That(timer.LastSplits, Is.EqualTo(runs[0].Splits));
+            Assert.That(timer.CurrentSplits, Is.Empty, "A finished run's splits shouldn't stay as the run under way's.");
+            StringAssert.Contains("SPLITS", timer.Readout());
+        }
+
+        [Test]
+        public void BestSplits_AreTheBestRunsSplits()
+        {
+            OwnTheClock();
+            void Run(float toSplit, float toFinish)
+            {
+                timer.RegisterGatePass(TimingGateRole.Start, null);
+                After(toSplit);
+                timer.RegisterSplit(0, null);
+                After(toFinish);
+                timer.RegisterGatePass(TimingGateRole.Finish, null);
+            }
+            Run(1f, 5f); // 6 s, the quicker split.
+            Run(3f, 2f); // 5 s, the best run.
+            Run(1f, 9f); // 10 s.
+            Assert.That(timer.BestTime, Is.EqualTo(Seconds(5f)).Within(1e-4f));
+            Assert.That(timer.BestSplits, Is.EqualTo(new[] { Seconds(3f) }).Within(1e-4f), "The best splits should be the best run's, not each split's best.");
+            Assert.That(timer.LastSplits, Is.EqualTo(new[] { Seconds(1f) }).Within(1e-4f));
         }
 
         /// <summary>Each finished lap is passed on with its time and whether it's the best yet (the HUD's lap notifications).</summary>

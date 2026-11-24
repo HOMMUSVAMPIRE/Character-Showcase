@@ -18,6 +18,8 @@ namespace MeridianMotion.Tests
     ///   fixture says;
     /// - turned off while it's under way, it lets go, raising its end event (another ability may take the character then,
     ///   as a wall slide does a ledge's as it falls);
+    /// - respawned while it's under way (MMotionMotor.Respawn), it lets go, raising its end event once, and the character
+    ///   stands still where it was put;
     /// - its states' start and end events come in pairs;
     /// - saved partway through (just after it starts, and well into it) and put back, the character steps on exactly as it
     ///   did (with the level's moving parts);
@@ -142,6 +144,29 @@ namespace MeridianMotion.Tests
             Assert.That(rig.EventsRaised, Does.Contain(AbilityEvents.ended), "Letting go should raise its end event.");
             // Another ability may take the character as it lets go (a ledge's wall slid down, as the character falls against
             // it), as it would in play: what matters is that this one let go.
+        }
+
+        [UnityTest]
+        public IEnumerator Kit_RespawnedWhileUnderWay_ItLetsGo_AndTheCharacterStandsStill()
+        {
+            yield return SetUp();
+            yield return RunUntilUnderWay();
+            Assume.That(UnderWay, Is.True, "Test setup: the ability should be under way.");
+            // Somewhere well away from the fixture's world, on a pad of its own, as a checkpoint would be.
+            Vector3 point = new Vector3(300f, 0f, 300f);
+            rig.Box("Respawn Pad", point + Vector3.down * 0.5f, new Vector3(8f, 1f, 8f));
+            int endedBefore = rig.Count(AbilityEvents.ended);
+            Quaternion facing = Quaternion.Euler(0f, 90f, 0f);
+            rig.Movement.Respawn(point, facing);
+            yield return rig.Run(2, _ => CharacterTestRig.Idle());
+            Assert.That(Component.IsActive(rig.Movement), Is.False, $"Respawned, {typeof(T).Name} should have let go of the character.");
+            Assert.That(UnderWay, Is.False, $"Respawned, the character shouldn't be {AbilityState} any more.");
+            Assert.That(rig.Count(AbilityEvents.ended) - endedBefore, Is.EqualTo(1), "Letting go should raise its end event, once.");
+            Vector3 off = rig.Position - point;
+            Assert.That(new Vector2(off.x, off.z).magnitude, Is.LessThan(0.01f * Scale), $"The character should be where it was respawned (it's at {rig.Position}).");
+            Assert.That(Mathf.Abs(off.y), Is.LessThan(0.05f * Scale), $"The character should stand on the pad (it's at {rig.Position}).");
+            Vector3 velocity = rig.Velocity;
+            Assert.That(new Vector2(velocity.x, velocity.z).magnitude, Is.LessThan(0.01f), $"Respawned, the character should keep no momentum (it's moving at {velocity}).");
         }
 
         [UnityTest]

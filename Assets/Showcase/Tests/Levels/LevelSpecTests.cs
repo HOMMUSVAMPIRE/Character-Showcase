@@ -10,7 +10,8 @@ namespace MeridianMotion.Showcase.Tests.Levels
 {
     /// <summary>
     /// Checks of level specs (LevelSpec, LevelSpecTools): every level recorded from its builder, written as JSON, read
-    /// back and built again builds the same level, object for object; a hand-written spec builds what it lists (State
+    /// back and built again builds the same level, object for object; the Tutorial Ring's spec (written by its script) builds,
+    /// with its lessons and shortcuts; a hand-written spec builds what it lists (State
     /// entries included); mistakes in a spec are reported with where they are; numbers round-trip exactly; and the
     /// schema covers every piece. Each builds in a new scene, replacing what's open.
     /// </summary>
@@ -31,6 +32,20 @@ namespace MeridianMotion.Showcase.Tests.Levels
         {
             List<string> differences = LevelSpecTools.CheckRoundTrip(level);
             Assert.IsEmpty(differences, $"'{level}' built from its spec differs from its builder's:\n{string.Join("\n", differences)}");
+        }
+
+        [Test]
+        public void TheTutorialRingSpec_Builds_WithItsLessonsAndShortcuts()
+        {
+            string json = System.IO.File.ReadAllText("Assets/Showcase/Levels/TutorialRing.level.json");
+            Transform root = LevelSpecTools.BuildForTest(json);
+            var names = new List<string>();
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true)) { names.Add(t.name); }
+            Assert.That(names.FindAll(n => n.StartsWith("Lesson Zone |")).Count, Is.EqualTo(18), "Each of the eighteen lessons should have its zone.");
+            Assert.That(names.FindAll(n => n.StartsWith("Checkpoint |") && n.Contains("start=1")).Count, Is.EqualTo(1), "One start checkpoint.");
+            Assert.That(names.FindAll(n => n.StartsWith("Shortcut Gate |")).Count, Is.EqualTo(2));
+            Assert.That(names.FindAll(n => n.StartsWith("Shortcut Trigger |")).Count, Is.EqualTo(2));
+            Assert.That(names.Exists(n => n.StartsWith("Hazard Volume")), Is.True);
         }
 
         [Test]

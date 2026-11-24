@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 namespace MeridianMotion.Characters
 {
     /// <summary>
-    /// Writes a character's movement state, or the level's moving parts' (its ropes and pushables), to bytes, and reads
+    /// Writes a character's movement state, or the level's moving parts' (its ropes, pushables and shortcut gates), to bytes, and reads
     /// them back into a character or level built the same way, on another machine even: what a server sends so a client
     /// can put its character exactly where the server has it (and step on from there identically), or a player joining
     /// can start a character mid-ability. The state is what MovementStateSnapshot saves in this process (the controller and
@@ -91,8 +91,8 @@ namespace MeridianMotion.Characters
         }
 
         /// <summary>
-        /// Writes the level's moving parts' own state: each rope (how it swings, who holds it) and each pushable object
-        /// (where it is, how fast it's falling, who holds it), by StableId. Platforms need none: they go by the level's
+        /// Writes the level's moving parts' own state: each rope (how it swings, who holds it), each pushable object
+        /// (where it is, how fast it's falling, who holds it) and each shortcut gate (when it opened), by StableId. Platforms need none: they go by the level's
         /// clock (LevelClock), which the reader sets itself.
         /// </summary>
         public static byte[] WriteWorld()
@@ -108,7 +108,7 @@ namespace MeridianMotion.Characters
                 foreach (MonoBehaviour part in parts)
                 {
                     writer.Write(StableId.Of(part.transform));
-                    writer.Write(part is SwingRope);
+                    writer.Write((byte)KindOf(part));
                     graph.WriteRoot(part, typeof(MonoBehaviour));
                     Rigidbody body = part.GetComponent<Rigidbody>();
                     GraphWriter.Write(writer, body != null ? body.position : part.transform.position);
@@ -118,7 +118,7 @@ namespace MeridianMotion.Characters
             return stream.ToArray();
         }
 
-        /// <summary>Reads what WriteWorld wrote into the level's ropes and pushables (found by StableId; one not found is skipped).</summary>
+        /// <summary>Reads what WriteWorld wrote into the level's ropes, pushables and shortcut gates (found by StableId).</summary>
         public static void ReadWorld(byte[] state)
         {
             using var stream = new MemoryStream(state);
@@ -129,10 +129,15 @@ namespace MeridianMotion.Characters
             for (int i = 0; i < count; i++)
             {
                 ulong id = reader.ReadUInt64();
-                bool rope = reader.ReadBoolean();
+                var kind = (PartKind)reader.ReadByte();
                 Transform found = StableId.Resolve(id);
-                MonoBehaviour part = found == null ? null : rope ? found.GetComponent<SwingRope>() : found.GetComponent<PushableBlock>();
-                if (part == null) { throw new InvalidDataException($"The level has no {(rope ? "rope" : "pushable object")} with ID {id:X16}: it isn't built the same way."); }
+                MonoBehaviour part = found == null ? null : kind switch
+                {
+                    PartKind.Rope => found.GetComponent<SwingRope>(),
+                    PartKind.Gate => found.GetComponent<ShortcutGate>(),
+                    _ => found.GetComponent<PushableBlock>(),
+                };
+                if (part == null) { throw new InvalidDataException($"The level has no {KindName(kind)} with ID {id:X16}: it isn't built the same way."); }
                 graph.ReadRoot(part, typeof(MonoBehaviour));
                 Vector3 position = GraphReader.ReadVector3(reader);
                 Quaternion rotation = GraphReader.ReadQuaternion(reader);
@@ -150,6 +155,24 @@ namespace MeridianMotion.Characters
             }
             Physics.SyncTransforms();
         }
+
+        // What each of the level's moving parts is, written before its state (as a byte: a level written before gates were
+        // one of them wrote a bool, rope or not, which reads as Pushable or Rope).
+        private enum PartKind : byte { Pushable = 0, Rope = 1, Gate = 2 }
+
+        private static PartKind KindOf(MonoBehaviour part) => part switch
+        {
+            SwingRope => PartKind.Rope,
+            ShortcutGate => PartKind.Gate,
+            _ => PartKind.Pushable,
+        };
+
+        private static string KindName(PartKind kind) => kind switch
+        {
+            PartKind.Rope => "rope",
+            PartKind.Gate => "shortcut gate",
+            _ => "pushable object",
+        };
 
         private static void Expect(BinaryReader reader, byte[] magic, string what)
         {

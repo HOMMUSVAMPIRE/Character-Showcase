@@ -246,7 +246,8 @@ namespace MeridianMotion.Characters
 
         /// <summary>
         /// One physics step of the character, as its FixedUpdate takes it: any change of size, then its movement, given its
-        /// input source's frame for the step (ActiveInputSource; an idle frame without one). A remote character with no
+        /// input source's frame for the step (ActiveInputSource; an idle frame without one), then the level's volumes it came into or
+        /// left (LevelPresence.AfterStep: checkpoints, hazards). A remote character with no
         /// source isn't moved: something else places it. Called by FixedUpdate; call it yourself to step a character that
         /// isn't (the tests' rig does, with the controller turned off).
         /// </summary>
@@ -264,6 +265,8 @@ namespace MeridianMotion.Characters
             BeforeStep?.Invoke(this, frame);
             motor.Step(frame, deltaTime);
             motor.FinishStep();
+            // The level's volumes it's come into or left (a checkpoint reached, a hazard that respawns it), between steps.
+            MeridianMotion.Levels.LevelPresence.AfterStep(motor, motor.levelPresence);
         }
     }
 }

@@ -180,9 +180,9 @@ namespace MeridianMotion.Tests.Spawning
         /// Spawns the real character prefab, with its controller off as the test rig has it (it would read the absent
         /// input manager). The rig is only there for its camera, which the character's movement expects.
         /// </summary>
-        private GameObject SpawnCharacter(CharacterSpawner spawner)
+        private GameObject SpawnCharacter(CharacterSpawner spawner, int point = -1)
         {
-            GameObject character = Track(spawner.Spawn());
+            GameObject character = Track(point < 0 ? spawner.Spawn() : spawner.SpawnAt(point));
             character.GetComponent<MMotionCharacter>().enabled = false;
             return character;
         }
@@ -301,6 +301,80 @@ namespace MeridianMotion.Tests.Spawning
 
             Assert.AreSame(prefab.GetComponent<MMotionMotor>().movementMode, character.GetComponent<MMotionMotor>().movementMode);
             Assert.AreSame(prefab.GetComponent<CharacterModelSlot>().ModelSource, character.GetComponent<CharacterModelSlot>().ModelSource);
+        }
+
+        /// <summary>A preset that sets only Jumping's Max Jumps, to one.</summary>
+        private MovementTuningPreset OneJumpPreset()
+        {
+            var preset = Track(ScriptableObject.CreateInstance<MovementTuningPreset>());
+            preset.name = "One Jump";
+            preset.Include(typeof(Jumping), "maxJumps", true);
+            ((Jumping)preset.PartFor(typeof(Jumping)).values).MaxJumps = 1;
+            return preset;
+        }
+
+        private static AbilityMovementMode ModeOf(GameObject character) => (AbilityMovementMode)character.GetComponent<MMotionMotor>().movementMode;
+
+        [Test]
+        public void Spawn_WithATuningPreset_GivesTheCharacterItsOwnTunedCopy()
+        {
+            using var rig = new CharacterTestRig();
+            GameObject prefab = CharacterTestRig.CharacterPrefab();
+            var shared = (AbilityMovementMode)prefab.GetComponent<MMotionMotor>().movementMode;
+            int sharedJumps = shared.Get<Jumping>().MaxJumps;
+            Assume.That(sharedJumps, Is.Not.EqualTo(1), "Test setup: the shared mode should have another number of jumps than the preset sets.");
+            CharacterSpawner spawner = Spawner(prefab, new SpawnPoint(Vector3.zero, Quaternion.identity));
+            spawner.TuningPreset = OneJumpPreset();
+
+            GameObject character = SpawnCharacter(spawner);
+
+            AbilityMovementMode own = ModeOf(character);
+            Assert.AreNotSame(shared, own, "The character should move with its own copy of the mode.");
+            Assert.AreEqual(1, own.Get<Jumping>().MaxJumps, "Its copy should have the preset's tuning.");
+            Assert.AreEqual(sharedJumps, shared.Get<Jumping>().MaxJumps, "The shared mode should be left as it was.");
+        }
+
+        [Test]
+        public void Spawn_Twice_WithAPreset_GivesEachCharacterItsOwnCopy()
+        {
+            using var rig = new CharacterTestRig();
+            CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity),
+                new SpawnPoint(new Vector3(4f, 0f, 0f), Quaternion.identity));
+            spawner.TuningPreset = OneJumpPreset();
+
+            GameObject first = SpawnCharacter(spawner, 0);
+            GameObject second = SpawnCharacter(spawner, 1);
+
+            Assert.AreNotSame(ModeOf(first), ModeOf(second));
+        }
+
+        [Test]
+        public void Spawn_WithoutAPreset_UsesTheModeItself()
+        {
+            using var rig = new CharacterTestRig();
+            var mode = Track(ScriptableObject.CreateInstance<StandardMovementMode>());
+            CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity));
+            spawner.MovementMode = mode;
+
+            GameObject character = SpawnCharacter(spawner);
+
+            Assert.AreSame(mode, character.GetComponent<MMotionMotor>().movementMode);
+        }
+
+        [UnityTest]
+        public IEnumerator DestroyingTheCharacter_DestroysItsCopy()
+        {
+            using var rig = new CharacterTestRig();
+            CharacterSpawner spawner = Spawner(CharacterTestRig.CharacterPrefab(), new SpawnPoint(Vector3.zero, Quaternion.identity));
+            spawner.TuningPreset = OneJumpPreset();
+            GameObject character = SpawnCharacter(spawner);
+            AbilityMovementMode own = ModeOf(character);
+
+            Object.Destroy(character);
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(own == null, "The character's own copy of its mode should be destroyed with it.");
         }
 
         [Test]

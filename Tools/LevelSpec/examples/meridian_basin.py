@@ -41,8 +41,8 @@ PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 sys.path.insert(0, os.path.dirname(HERE))
 
 import levelspec  # noqa: E402
+from levelspec.rings import T, corner, half, octagon, r, ccw as _ccw  # noqa: E402,F401
 
-T = math.tan(math.radians(22.5))
 FACES = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]  # Face k faces 45k degrees clockwise from north.
 STEP_RISE, STEP_RUN = 0.3, 0.4
 
@@ -92,37 +92,6 @@ SHAFT = {"x0": -3.0, "x1": 3.0, "z0": EDGE[3] + 0.5, "z1": EDGE[3] + 6.5, "floor
 
 def flight_length(y0, y1):
     return math.ceil(abs(y1 - y0) / STEP_RISE - 1e-4) * STEP_RUN
-
-
-def octagon(apothem, cx=0.0, cz=0.0):
-    r = apothem / math.cos(math.radians(22.5))
-    return [[round(cx + r * math.cos(math.radians(22.5 + 45 * i)), 4), round(cz + r * math.sin(math.radians(22.5 + 45 * i)), 4)] for i in range(8)]
-
-
-def r(v):
-    return round(v, 4)
-
-
-def half(apothem):
-    """Half the width of an octagon's face at that apothem."""
-    return apothem * T
-
-
-def corner(a, b):
-    """
-    The piece of a ring (apothems a to b) between a face's rectangle and the next face's clockwise, in the first face's
-    frame: bounded by the face's rectangle (x = aT), its outer flat (z = b), the next face's outer flat (at 45°) and the
-    next face's rectangle (at 45°), so every edge is at a multiple of 45°.
-    """
-    d = b - a
-    s = d / math.sqrt(2)
-    return _ccw([[r(half(a)), r(a)], [r(half(a)), r(b)], [r(half(b)), r(b)], [r(half(a) + s), r(a + s)]])
-
-
-def _ccw(points):
-    """Points in counterclockwise order (x right, z up), as the pieces' outlines are."""
-    area = sum(points[i][0] * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * points[i][1] for i in range(len(points)))
-    return points if area > 0 else list(reversed(points))
 
 
 def subtract(box, voids):

@@ -3,8 +3,9 @@ using UnityEngine;
 
 namespace MeridianMotion.Characters
 {
-    // The ground: being carried by moving ground, and whether the character is grounded (a step's edge counts).
-    public partial class MMotionMotor
+    // The ground: being carried by moving ground, and whether the character is grounded (a step's edge counts); moving the
+    // character at once (Teleport, Respawn).
+    public partial class MMotionMotor : MeridianMotion.Levels.IRespawnable
     {
         // Max Slope Angle's cosine, worked out again only when the setting changes (walkableAngle is what it was for).
         [System.NonSerialized] private float walkableAngle = -1f, walkableCos;
@@ -89,6 +90,51 @@ namespace MeridianMotion.Characters
             }
             transform.SetPositionAndRotation(feet, turn);
         }
+
+        /// <summary>
+        /// Puts the character back at feet, facing rotation, between steps, as if it had just arrived there standing still
+        /// (IRespawnable: a checkpoint's respawn). Unlike Teleport, which keeps them, it ends every ability under way
+        /// (each lets go of what it held: a rope, a crate, a zipline, a ledge) and drops the character's momentum, any
+        /// force or velocity change waiting for the next step, and the ground it stood on; crouched, it stands up as soon
+        /// as there's room. Its jumps and air dashes come back as they do on landing, on its first step on the ground there. The last step's state is kept, so the next
+        /// step raises the ends of the states it was in (WallRunEnded, say), as an ability ending any other way does.
+        /// </summary>
+        public void Respawn(Vector3 feet, Quaternion rotation)
+        {
+            if (movementMode is AbilityMovementMode mode)
+            {
+                // Abilities let go between steps as they do when another takes over; they're given the last step's data
+                // (a fresh record before the first step, so none has to cope with null).
+                mode.InterruptOthers(lastStep ?? new MovementStep(), this, except: null);
+            }
+            if (lastStep != null)
+            {
+                // The next step starts from the last one's final momentum and velocity: none.
+                lastStep.velocityOverride = Vector3.zero;
+                lastStep.directMovementVector = Vector3.zero;
+            }
+            // Crouched, it stands up as soon as there's room (as a press of Crouch would ask it to).
+            if (crouch.IsCrouched) { crouch.wantsToStand = true; }
+            pendingVelocityChange = Vector3.zero;
+            pendingForce = Vector3.zero;
+            velocityOverride = null;
+            GroundVelocity = Vector3.zero;
+            if (rb != null && !rb.isKinematic) { rb.linearVelocity = Vector3.zero; }
+            Teleport(feet, rotation);
+            // Called after a step (a hazard's respawn), the step's own move is still to be carried out at the physics step
+            // (CompleteMovement's Rigidbody.Move), which would take the character back where it was: move it here instead.
+            if (rb != null) { rb.Move(feet, rotation); }
+        }
+
+        /// <summary>Where the character's feet are: its Rigidbody's position (the physics pose, not the interpolated transform).</summary>
+        public Vector3 Feet => rb != null ? rb.position : transform.position;
+
+        /// <summary>
+        /// Where the character is in the level's volumes (checkpoints, hazards, shortcut triggers, lesson zones): those its
+        /// feet are in and the checkpoint it last reached. Part of its state, so it's saved, restored and replayed with it.
+        /// Updated after each step (MMotionCharacter.StepMovement, LevelPresence.AfterStep).
+        /// </summary>
+        public MeridianMotion.Levels.LevelPresence levelPresence { get; } = new();
 
         /// <summary>Records the character's pose relative to their ground at the end of the step, for the next carry.</summary>
         private void RememberGround(MovementStep data)

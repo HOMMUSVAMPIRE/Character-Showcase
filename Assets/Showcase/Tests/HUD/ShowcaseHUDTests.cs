@@ -15,7 +15,8 @@ namespace MeridianMotion.Showcase.Tests.HUD
     /// <summary>
     /// Tests of the showcase's HUD (ShowcaseHUD, NpcLabel: ReferenceAssets/OpenTasks.md, G12), on a UI manager and
     /// notifications made in code: a course timer's finished lap shown as a notification (a new best as a banner across
-    /// the middle, with its text); the controls hint shown once however often the character spawns; and an NPC's name tag
+    /// the middle, with its text), and a split with how far ahead of or behind the best run it is; the controls hint
+    /// shown once however often the character spawns; and an NPC's name tag
     /// opened over it on the in-world canvas, showing its name, and closed when it goes.
     /// </summary>
     [Category(TestArea.UI)]
@@ -90,6 +91,26 @@ namespace MeridianMotion.Showcase.Tests.HUD
             obj.SetActive(false);
             obj.transform.SetParent(root.transform, false);
             return obj.AddComponent<T>();
+        }
+
+        [UnityTest]
+        public IEnumerator ASplit_IsShown_WithHowFarFromTheBestRunItIs()
+        {
+            var timerObject = new GameObject("Course Timer");
+            timerObject.transform.SetParent(root.transform, false);
+            var timer = timerObject.AddComponent<CourseTimer>();
+            timer.CourseName = "Agility";
+            hud.Listen(timer);
+            yield return null;
+
+            hud.SplitPassed(timer, 0, 12.5f, 0f);
+            NotificationEntry first = notifications.Shown.Last();
+            StringAssert.StartsWith("Agility", first.Title);
+            StringAssert.Contains("1", first.Title, "Split 0 is shown as the first.");
+            Assert.That(first.Message, Is.EqualTo("0:12.50"), "With no best run, a split shows its time alone.");
+
+            hud.SplitPassed(timer, 1, 20f, 21.25f);
+            StringAssert.Contains("-1.25", notifications.Shown.Last().Message, "Ahead of the best run, the split shows by how much.");
         }
 
         [UnityTest]

@@ -77,6 +77,9 @@ flowchart LR
         Pipeline["MeridianMotion.Showcase.Pipeline<br/>(mannequin and fox generators, Blender)"]
         LevelChecks["MeridianMotion.Showcase.LevelChecks<br/>(the movement envelope)"]
         LevelTests["MeridianMotion.Showcase.Tests.Levels"]
+        Tutorial["MeridianMotion.Showcase.TutorialRing<br/>(the Tutorial Ring's lessons, prompts, session log)"]
+        TutorialEditor["MeridianMotion.Showcase.TutorialRing.EditorTools<br/>(its assets, its Set Up Scene step)"]
+        TutorialTests["MeridianMotion.Showcase.Tests.TutorialRing"]
     end
     Showcase --> Queries
     Showcase --> Elements
@@ -119,6 +122,20 @@ flowchart LR
     LevelTests --> LevelChecks
     LevelTests --> Elements
     LevelTests --> ElementsEditor
+    Tutorial --> Showcase
+    Tutorial --> Elements
+    Tutorial --> UI
+    TutorialEditor --> Tutorial
+    TutorialEditor --> Showcase
+    TutorialEditor --> Editor
+    TutorialEditor --> UI
+    TutorialEditor --> UIEditor
+    TutorialTests --> Tutorial
+    TutorialTests --> Showcase
+    TutorialTests --> Elements
+    TutorialTests --> UI
+    TutorialTests --> Shared
+    TutorialTests --> PlayTests
 ```
 
 The character's code, the camera's and the UI's don't reference each other at all (both use `MeridianMotion.PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `MeridianMotion.PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)

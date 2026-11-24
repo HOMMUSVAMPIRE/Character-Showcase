@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1e624d70ba54e109d6f44f02308d1ed, type: 3}
+  m_Name: Tutorial Lessons
+  m_EditorClassIdentifier: MeridianMotion.Showcase.TutorialRing::MeridianMotion.Showcase.TutorialRing.TutorialLessonCatalog
+  lessons:
+  - id: L01-move
+    title: Move and look
+    prompt: Move with {Move} and look around with {Look}.
+    followUp: 
+    clearsOn: 
+    clearsOnlyWhile: 
+  - id: L02-jump
+    title: Jump
+    prompt: Press {Jump} to jump up the step.
+    followUp: 
+    clearsOn: Jumped
+    clearsOnlyWhile: 
+  - id: L03-sprint
+    title: Sprint and sprint jump
+    prompt: Hold {Sprint} to run, then press {Jump} to leap the gap.
+    followUp: 
+    clearsOn: Jumped
+    clearsOnlyWhile: 
+  - id: L04-crouch
+    title: Crouch
+    prompt: Press {Crouch} to crouch through the tunnel, and again to stand.
+    followUp: 
+    clearsOn: CrouchStarted
+    clearsOnlyWhile: 
+  - id: L05-slide
+    title: Slide
+    prompt: Sprint with {Sprint}, then press {Crouch} to slide under the bar.
+    followUp: 'A slide keeps your speed: carry it across the gap.'
+    clearsOn: SlideStarted
+    clearsOnlyWhile: 
+  - id: L06-roll
+    title: Roll
+    prompt: Press {Roll} to roll through before the blockers close.
+    followUp: 
+    clearsOn: RollStarted
+    clearsOnlyWhile: 
+  - id: L07-vault
+    title: Vault
+    prompt: 'Run at the low wall: you vault it by yourself.'
+    followUp: 
+    clearsOn: VaultStarted
+    clearsOnlyWhile: 
+  - id: L08-ledge
+    title: Ledge grab and climb
+    prompt: Jump at the wall to grab its ledge, then press {Jump} to climb up.
+    followUp: 
+    clearsOn: LedgeClimbStarted
+    clearsOnlyWhile: 
+  - id: L09-wallrun
+    title: Wall run
+    prompt: Sprint, jump and steer along the wall to run across it.
+    followUp: 
+    clearsOn: WallRunStarted
+    clearsOnlyWhile: 
+  - id: L10-walljump
+    title: Wall slide and wall jump
+    prompt: Jump at a wall to slide down it, then press {Jump} to leap to the other.
+    followUp: 'Keep going: wall to wall, up the shaft.'
+    clearsOn: WallJumped
+    clearsOnlyWhile: 
+  - id: L11-climb
+    title: Climbable panel
+    prompt: Move into the marked panel to climb it. {Jump} leaps off.
+    followUp: 
+    clearsOn: WallClimbStarted
+    clearsOnlyWhile: 
+  - id: L12-ladder
+    title: Ladder
+    prompt: Walk into the ladder to climb it.
+    followUp: 
+    clearsOn: WallClimbStarted
+    clearsOnlyWhile: 
+  - id: L13-crate
+    title: Push and pull
+    prompt: Hold {Interact} at the crate, then steer to push or pull it.
+    followUp: Push it against the ledge and climb up.
+    clearsOn: GrabStarted
+    clearsOnlyWhile: 
+  - id: L14-bounce
+    title: Bounce pad
+    prompt: Step onto the bounce pad to be launched up.
+    followUp: 
+    clearsOn: Bounced
+    clearsOnlyWhile: 
+  - id: L15-rope
+    title: Rope swing
+    prompt: Jump to catch the rope, swing with {Move}, and press {Jump} to let go.
+    followUp: 
+    clearsOn: RopeGrabbed
+    clearsOnlyWhile: 
+  - id: L16-zipline
+    title: Zipline
+    prompt: Jump up to the cable to ride the zipline down.
+    followUp: 
+    clearsOn: ZiplineStarted
+    clearsOnlyWhile: 
+  - id: L17-swim
+    title: Swim and dive
+    prompt: Swim out, then press {Crouch} to dive under the arch.
+    followUp: 
+    clearsOn: DiveStarted
+    clearsOnlyWhile: 
+  - id: L18-dash
+    title: Dash and air dash
+    prompt: Press {Dash} to dash.
+    followUp: 'In the air, {Dash} carries a sprint jump further: cross the gap.'
+    clearsOn: DashStarted
+    clearsOnlyWhile: 

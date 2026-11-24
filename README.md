@@ -30,7 +30,7 @@ New to Unity? [Unity Basics](docs/unity-basics.md) explains the Unity words the 
 7. Open the project
 8. Open Assets/Showcase/Scenes/LevelPlayground/LevelPlayground.unity (the graybox level with every mechanic) and click "Play"
 
-The test levels are in Assets/Showcase/Scenes: the Meridian Complex and the Level Playground (see [docs/showcase/levels.md](docs/showcase/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Showcase/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/showcase/level-specs.md](docs/showcase/level-specs.md)).
+The test levels are in Assets/Showcase/Scenes: the Meridian Complex and the Level Playground (see [docs/showcase/levels.md](docs/showcase/levels.md)), and the Meridian Basin, a variant of the Meridian Complex built from its level spec (Assets/Showcase/Levels/MeridianBasin.level.json, written by Tools/LevelSpec/examples/meridian_basin.py; see [docs/showcase/level-specs.md](docs/showcase/level-specs.md)). The Tutorial Ring teaches every move, one lesson each, then runs an agility course mixing them, sized from what the character can do ([docs/showcase/levels.md](docs/showcase/levels.md#the-tutorial-ring)).
 
 ## How to see the code in this project
 The project is two folders. **Assets/MeridianMotion** is the package, what would ship: its code (Runtime/, Editor/), the assets it comes with (Content/: the prefabs, the mannequin and its animation, the water shaders) and its tests (Tests/). **Assets/Showcase** is everything else: the levels and their builders, the Blender pipeline, the fox and the sample models.
@@ -110,7 +110,7 @@ Every tunable value is a setting in the inspector: the movement assets in Assets
 
 ## Future Changes:
 ### Medium Priority Changes
-- Movement tuning at runtime: each character with its own copy of its movement, and tuning zones that change it in part of a level (undone on leaving)
+- Movement tuning at runtime: tuning zones that change it in part of a level (undone on leaving); a spawner can already give each character its own tuned copy (its Tuning Preset)
 - Import and export the movement tuning as CSV spreadsheets
 - Tune performance
 - Refactor for improved readability in some areas
@@ -118,6 +118,5 @@ Every tunable value is a setting in the inspector: the movement assets in Assets
 ### Low Priority Changes (these would be really cool but realistically I won't get to them for a while)
 - Add Juice and polish
 - Coordinate system re-centering to avoid floating point precision related bugs
-- Respawning: putting a character back at a spawn point with its movement reset (its momentum, and any ability it's in the middle of), rather than destroying it and spawning another
 - Gravity in any direction: the movement assumes it's straight down (gravity, the grounded check and the ground's carry all do)
 - Pathfinding for the NPCs, which use the same character scripts (they walk routes of waypoints now)

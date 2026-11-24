@@ -103,7 +103,7 @@
       "required": ["x0", "z0", "x1", "z1", "floor", "ceiling"],
       "additionalProperties": false
     },
-    "surface": {
+    "grayboxmaterial": {
       "enum": ["Concrete", "Panel", "Ground", "Graphite", "Steel", "Accent", "Light", "Cyan", "White", "Foliage", "Soil", "Grass", "Water"]
     },
     "piece.State": {
@@ -246,7 +246,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         }
       },
@@ -358,7 +358,7 @@
           "default": 0
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         }
       },
@@ -394,7 +394,7 @@
           "default": 0
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         }
       },
@@ -555,6 +555,35 @@
       "required": ["piece", "parent", "cells", "portals", "openTop"],
       "additionalProperties": false
     },
+    "piece.Checkpoint": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "Checkpoint"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "id": {
+          "type": ["string", "null"]
+        },
+        "feet": {
+          "$ref": "#/$defs/point3"
+        },
+        "yaw": {
+          "type": "number"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "start": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["piece", "parent", "id", "feet", "yaw", "size"],
+      "additionalProperties": false
+    },
     "piece.ClimbablePanel": {
       "type": "object",
       "properties": {
@@ -616,7 +645,7 @@
           "default": 0
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Steel"
         },
         "accent": {
@@ -656,7 +685,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Graphite"
         }
       },
@@ -768,6 +797,10 @@
         },
         "facing": {
           "$ref": "#/$defs/point2"
+        },
+        "size": {
+          "type": "number",
+          "default": 0
         }
       },
       "required": ["piece", "parent", "text", "at", "height", "facing"],
@@ -833,7 +866,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface"
+          "$ref": "#/$defs/grayboxmaterial"
         },
         "closed": {
           "type": "boolean",
@@ -866,6 +899,28 @@
         }
       },
       "required": ["piece", "parent", "a", "b", "inward", "height"],
+      "additionalProperties": false
+    },
+    "piece.HazardVolume": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "HazardVolume"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "name": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        }
+      },
+      "required": ["piece", "parent", "name", "centre", "size"],
       "additionalProperties": false
     },
     "piece.IBeamColumn": {
@@ -962,6 +1017,32 @@
       "required": ["piece", "parent", "area", "floors", "salt"],
       "additionalProperties": false
     },
+    "piece.LessonZone": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "LessonZone"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "lesson": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "lesson", "centre", "size"],
+      "additionalProperties": false
+    },
     "piece.LowBeam": {
       "type": "object",
       "properties": {
@@ -1051,6 +1132,10 @@
         "smooth": {
           "type": "boolean",
           "default": true
+        },
+        "hazard": {
+          "type": "boolean",
+          "default": false
         }
       },
       "required": ["piece", "parent", "label", "top", "size", "travel", "period"],
@@ -1172,11 +1257,11 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         },
         "coping": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Graphite"
         }
       },
@@ -1208,7 +1293,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         }
       },
@@ -1240,6 +1325,10 @@
         "speed": {
           "type": "number",
           "default": 1
+        },
+        "reset": {
+          "type": ["string", "null"],
+          "default": ""
         }
       },
       "required": ["piece", "parent", "at", "floor", "size"],
@@ -1470,6 +1559,64 @@
       "required": ["piece", "parent", "name", "x0", "z0", "x1", "z1", "y0", "y1"],
       "additionalProperties": false
     },
+    "piece.ShortcutGate": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "ShortcutGate"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "id": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "travel": {
+          "$ref": "#/$defs/point3"
+        },
+        "time": {
+          "type": "number"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "id", "centre", "size", "travel", "time"],
+      "additionalProperties": false
+    },
+    "piece.ShortcutTrigger": {
+      "type": "object",
+      "properties": {
+        "piece": {
+          "const": "ShortcutTrigger"
+        },
+        "parent": {
+          "$ref": "#/$defs/path"
+        },
+        "gate": {
+          "type": ["string", "null"]
+        },
+        "centre": {
+          "$ref": "#/$defs/point3"
+        },
+        "size": {
+          "$ref": "#/$defs/point3"
+        },
+        "yaw": {
+          "type": "number",
+          "default": 0
+        }
+      },
+      "required": ["piece", "parent", "gate", "centre", "size"],
+      "additionalProperties": false
+    },
     "piece.SlabWithHoles": {
       "type": "object",
       "properties": {
@@ -1498,7 +1645,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface",
+          "$ref": "#/$defs/grayboxmaterial",
           "default": "Concrete"
         }
       },
@@ -1564,6 +1711,10 @@
         "display": {
           "type": "boolean",
           "default": false
+        },
+        "index": {
+          "type": "integer",
+          "default": 0
         }
       },
       "required": ["piece", "parent", "course", "role", "a", "b", "floor", "approach"],
@@ -1656,7 +1807,7 @@
           "type": "number"
         },
         "surface": {
-          "$ref": "#/$defs/surface"
+          "$ref": "#/$defs/grayboxmaterial"
         }
       },
       "required": ["piece", "parent", "name", "centre", "size", "y0", "y1", "yaw", "surface"],
@@ -1931,6 +2082,9 @@
           "$ref": "#/$defs/piece.Cells"
         },
         {
+          "$ref": "#/$defs/piece.Checkpoint"
+        },
+        {
           "$ref": "#/$defs/piece.ClimbablePanel"
         },
         {
@@ -1964,6 +2118,9 @@
           "$ref": "#/$defs/piece.HazardStripes"
         },
         {
+          "$ref": "#/$defs/piece.HazardVolume"
+        },
+        {
           "$ref": "#/$defs/piece.IBeamColumn"
         },
         {
@@ -1971,6 +2128,9 @@
         },
         {
           "$ref": "#/$defs/piece.Lawns"
+        },
+        {
+          "$ref": "#/$defs/piece.LessonZone"
         },
         {
           "$ref": "#/$defs/piece.LowBeam"
@@ -2019,6 +2179,12 @@
         },
         {
           "$ref": "#/$defs/piece.ShaftWalls"
+        },
+        {
+          "$ref": "#/$defs/piece.ShortcutGate"
+        },
+        {
+          "$ref": "#/$defs/piece.ShortcutTrigger"
         },
         {
           "$ref": "#/$defs/piece.SlabWithHoles"

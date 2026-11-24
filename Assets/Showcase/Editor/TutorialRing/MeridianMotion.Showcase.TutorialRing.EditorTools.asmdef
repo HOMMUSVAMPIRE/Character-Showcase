@@ -1,0 +1,27 @@
+{
+    "name": "MeridianMotion.Showcase.TutorialRing.EditorTools",
+    "rootNamespace": "MeridianMotion.Showcase.TutorialRing.EditorTools",
+    "references": [
+        "MeridianMotion.Showcase.TutorialRing",
+        "MeridianMotion.Characters",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.UI",
+        "MeridianMotion.UI.EditorTools",
+        "Unity.InputSystem",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

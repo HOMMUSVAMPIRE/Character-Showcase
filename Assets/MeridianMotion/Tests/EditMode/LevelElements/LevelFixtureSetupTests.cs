@@ -13,7 +13,8 @@ namespace MeridianMotion.Tests.EditMode.LevelElements
     /// Checks of LevelFixtureSetup (the level elements' editor code that the level builders and Set Up Scene both run), on
     /// a new, unsaved scene: a fixture's settings read from its name, moving platforms and pushable crates given what
     /// they need from them, and timing gates given a course timer each (one per course, in the scene's Course Timers
-    /// group, found again rather than made twice) with their displays wired to it.
+    /// group, found again rather than made twice) with their displays wired to it; checkpoints, hazards, lesson zones and
+    /// shortcut gates and triggers from their names, a timing gate's split, and a crate that resets.
     /// </summary>
     [Category(TestArea.Levels)]
     [TestTiming]
@@ -217,6 +218,85 @@ namespace MeridianMotion.Tests.EditMode.LevelElements
             Assert.IsNull(marker.GetComponent<SwimmableWater>(), "A future water marker isn't water.");
             StringAssert.Contains("1 body of water", summary);
             Object.DestroyImmediate(levelSurface);
+        }
+    
+        [Test]
+        public void SetUp_MakesCheckpointsHazardsAndLessonZones_FromTheirNames()
+        {
+            GameObject checkpoint = Add("Checkpoint | id=L02-jump | start=1 | size=6,3,2");
+            GameObject hazard = Add("Hazard Volume (Pit) | size=10,2,8");
+            GameObject zone = Add("Lesson Zone | lesson=L02-jump | size=8,4,12");
+            GameObject marker = Add("Checkpoints");
+
+            string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
+
+            var point = checkpoint.GetComponent<Checkpoint>();
+            Assert.IsNotNull(point);
+            Assert.AreEqual("L02-jump", point.Id);
+            Assert.IsTrue(point.IsStart);
+            Assert.AreEqual(new Vector3(6f, 3f, 2f), point.Size);
+            Assert.AreEqual(new Vector3(0f, 1.5f, 0f), point.Center, "A checkpoint's box should stand on its respawn point.");
+            var pit = hazard.GetComponent<HazardVolume>();
+            Assert.IsNotNull(pit, "A hazard named with a label should still be one.");
+            Assert.AreEqual(Vector3.zero, pit.Center);
+            Assert.AreEqual(new Vector3(10f, 2f, 8f), pit.Size);
+            var lesson = zone.GetComponent<LessonZone>();
+            Assert.IsNotNull(lesson);
+            Assert.AreEqual("L02-jump", lesson.LessonId);
+            Assert.IsNull(marker.GetComponent<LevelVolume>(), "A group named for checkpoints isn't one.");
+            StringAssert.Contains("1 checkpoint", summary);
+            StringAssert.Contains("1 hazard volume", summary);
+            StringAssert.Contains("1 lesson zone", summary);
+        }
+
+        [Test]
+        public void SetUp_MakesShortcutGatesAndTheirTriggers_FromTheirNames()
+        {
+            GameObject gate = Add("Shortcut Gate | id=lessons | travel=0,-4,0 | time=2");
+            gate.AddComponent<BoxCollider>();
+            GameObject trigger = Add("Shortcut Trigger | gate=lessons | size=6,3,2");
+
+            string summary = LevelFixtureSetup.SetUp(scene, withUndo: false);
+
+            var shortcut = gate.GetComponent<ShortcutGate>();
+            Assert.IsNotNull(shortcut);
+            Assert.IsNotNull(gate.GetComponent<Rigidbody>(), "A gate moves, so it needs a Rigidbody.");
+            Assert.AreEqual("lessons", shortcut.Id);
+            Assert.AreEqual(new Vector3(0f, -4f, 0f), shortcut.Travel);
+            Assert.AreEqual(2f, shortcut.OpenTime);
+            var opener = trigger.GetComponent<ShortcutTrigger>();
+            Assert.IsNotNull(opener);
+            Assert.AreSame(shortcut, opener.Gate);
+            Assert.AreEqual(new Vector3(6f, 3f, 2f), opener.Size);
+            StringAssert.Contains("1 shortcut gate with 1 trigger", summary);
+        }
+
+        [Test]
+        public void AShortcutTrigger_NamingNoGate_IsReported_NotThrown()
+        {
+            GameObject trigger = Add("Shortcut Trigger | gate=nowhere | size=6,3,2");
+            UnityEngine.TestTools.LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("names no shortcut gate"));
+
+            Assert.DoesNotThrow(() => LevelFixtureSetup.SetUp(scene, withUndo: false));
+            Assert.IsNull(trigger.GetComponent<ShortcutTrigger>());
+        }
+
+        [Test]
+        public void SetUp_MakesSplitGates_AndCratesThatReset()
+        {
+            GameObject split = Add("Timing Gate | course=Agility | role=split | index=2");
+            split.AddComponent<BoxCollider>();
+            GameObject crate = Add("Pushable Crate | pull=1 | speed=1 | reset=L13-crate,L13-crate-b");
+            crate.AddComponent<BoxCollider>();
+
+            LevelFixtureSetup.SetUp(scene, withUndo: false);
+
+            var gate = split.GetComponent<TimingGate>();
+            Assert.AreEqual(TimingGateRole.Split, gate.Role);
+            Assert.AreEqual(2, gate.SplitIndex);
+            var reset = crate.GetComponent<ResetOnRespawn>();
+            Assert.IsNotNull(reset, "A crate with reset= should reset on a respawn.");
+            CollectionAssert.AreEqual(new[] { "L13-crate", "L13-crate-b" }, reset.CheckpointIds);
         }
     }
 }

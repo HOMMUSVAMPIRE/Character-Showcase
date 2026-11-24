@@ -8,7 +8,8 @@ namespace MeridianMotion.Showcase.HUD
 {
     /// <summary>
     /// The showcase levels' HUD, built on the UI framework (its notifications and world labels): each lap or run a course
-    /// timer finishes shown as a notification (a new best as a banner across the middle); a hint on the first spawn that
+    /// timer finishes shown as a notification (a new best as a banner across the middle), and each split it records
+    /// (with how far ahead of or behind the best run it is); a hint on the first spawn that
     /// the pause menu lists the controls; and a name tag over each NPC (NpcLabel). It knows the level elements (the course
     /// timers, found in the scene as it starts) but nothing of the character: Set Up Scene connects the spawner's On
     /// Character Spawned to ShowControlsHint and its On Npc Spawned to AddNpcLabel, in the showcase's own scenes only.
@@ -19,6 +20,10 @@ namespace MeridianMotion.Showcase.HUD
         [Header("Laps")]
         [Tooltip("Added to a lap's time when it's the best yet (shown as a banner across the middle)")]
         [SerializeField] private string newBestText = "New best!";
+        [Tooltip("A split's notification title, after the course's name ({0} is the split's number, from 1)")]
+        [SerializeField] private string splitTitle = "Split {0}";
+        [Tooltip("How long (s) a split's notification shows")]
+        [Min(0f)] [SerializeField] private float splitSeconds = 2.5f;
 
         [Header("NPCs")]
         [Tooltip("The name tag put over each NPC (with an NpcLabel on its root)")]
@@ -32,7 +37,7 @@ namespace MeridianMotion.Showcase.HUD
         [Tooltip("How long (s) the hint shows")]
         [Min(0f)] [SerializeField] private float controlsHintSeconds = 8f;
 
-        private readonly List<(CourseTimer timer, UnityAction<float, bool> listener)> listening = new();
+        private readonly List<(CourseTimer timer, UnityAction<float, bool> listener, System.Action<int, float, float> splits)> listening = new();
         private bool hintShown;
 
         /// <summary>The name tag prefab.</summary>
@@ -49,20 +54,34 @@ namespace MeridianMotion.Showcase.HUD
 
         private void OnDestroy()
         {
-            foreach ((CourseTimer timer, UnityAction<float, bool> listener) in listening)
+            foreach ((CourseTimer timer, UnityAction<float, bool> listener, System.Action<int, float, float> splits) in listening)
             {
-                if (timer != null) { timer.OnLapFinished.RemoveListener(listener); }
+                if (timer == null) { continue; }
+                timer.OnLapFinished.RemoveListener(listener);
+                timer.SplitPassed -= splits;
             }
             listening.Clear();
         }
 
-        /// <summary>Shows the timer's finished laps (Start does it for every timer in the scene; this, for one added later).</summary>
+        /// <summary>Shows the timer's finished laps and splits (Start does it for every timer in the scene; this, for one added later).</summary>
         public void Listen(CourseTimer timer)
         {
             if (timer == null || listening.Exists(entry => entry.timer == timer)) { return; }
             UnityAction<float, bool> listener = (time, best) => LapFinished(timer, time, best);
+            System.Action<int, float, float> splits = (index, time, best) => SplitPassed(timer, index, time, best);
             timer.OnLapFinished.AddListener(listener);
-            listening.Add((timer, listener));
+            timer.SplitPassed += splits;
+            listening.Add((timer, listener, splits));
+        }
+
+        /// <summary>Shows a split: its course and number, its time, and how far ahead of (-) or behind (+) the best run it is, if there's one.</summary>
+        public void SplitPassed(CourseTimer timer, int index, float time, float bestRunsTime)
+        {
+            if (UIManager.instance == null) { return; }
+            string course = timer != null ? timer.CourseName : "";
+            string message = Clock(time);
+            if (bestRunsTime > 0f) { message += $"  ({(time - bestRunsTime >= 0f ? "+" : "-")}{Mathf.Abs(time - bestRunsTime):0.00})"; }
+            UIManager.instance.ShowNotification($"{course} {string.Format(splitTitle, index + 1)}", message, splitSeconds);
         }
 
         /// <summary>Shows a finished lap: its course and time, a new best as a banner across the middle.</summary>

@@ -11,7 +11,8 @@ using Object = UnityEngine.Object;
 
 namespace MeridianMotion.Tests
 {
-    // The rig's world: boxes, a floor, ladders, ropes, ziplines, water, bounce pads, pushable boxes and moving platforms.
+    // The rig's world: boxes, a floor, ladders, ropes, ziplines, water, bounce pads, pushable boxes, moving platforms,
+    // checkpoints, hazards and shortcut gates.
     public sealed partial class CharacterTestRig
     {
         public GameObject Box(string name, Vector3 center, Vector3 size, Quaternion? rotation = null)
@@ -136,6 +137,58 @@ namespace MeridianMotion.Tests
             pushable.SpeedMultiplier = speedMultiplier;
             pushable.CanBePulled = canBePulled;
             return pushable;
+        }
+
+        /// <summary>A checkpoint whose respawn point (its position) is feet, facing yaw degrees, its box size big standing on it.</summary>
+        public Checkpoint Checkpoint(string id, Vector3 feet, Vector3 size, float yaw = 0f, bool isStart = false)
+        {
+            var holder = new GameObject($"Checkpoint {id}");
+            holder.transform.SetPositionAndRotation(feet, Quaternion.Euler(0f, yaw, 0f));
+            created.Add(holder);
+            var checkpoint = holder.AddComponent<Checkpoint>();
+            checkpoint.Id = id;
+            checkpoint.IsStart = isStart;
+            checkpoint.Center = new Vector3(0f, size.y / 2f, 0f);
+            checkpoint.Size = size;
+            return checkpoint;
+        }
+
+        /// <summary>A hazard volume (see HazardVolume) of the given size around center.</summary>
+        public HazardVolume Hazard(Vector3 center, Vector3 size)
+        {
+            var holder = new GameObject("Hazard Volume");
+            holder.transform.position = center;
+            created.Add(holder);
+            var hazard = holder.AddComponent<HazardVolume>();
+            hazard.Center = Vector3.zero;
+            hazard.Size = size;
+            return hazard;
+        }
+
+        /// <summary>A shortcut gate: a box (a kinematic Rigidbody) of the given size around center, opening by travel over openTime seconds.</summary>
+        public ShortcutGate Gate(string id, Vector3 center, Vector3 size, Vector3 travel, float openTime = 0.5f)
+        {
+            needsUnityPhysicsSteps = true;
+            GameObject box = Box($"Shortcut Gate {id}", center, size);
+            box.AddComponent<Rigidbody>();
+            var gate = box.AddComponent<ShortcutGate>();
+            gate.Id = id;
+            gate.Travel = travel;
+            gate.OpenTime = openTime;
+            return gate;
+        }
+
+        /// <summary>A shortcut trigger (a volume of the given size around center) that opens the gate.</summary>
+        public ShortcutTrigger GateTrigger(ShortcutGate gate, Vector3 center, Vector3 size)
+        {
+            var holder = new GameObject("Shortcut Trigger");
+            holder.transform.position = center;
+            created.Add(holder);
+            var trigger = holder.AddComponent<ShortcutTrigger>();
+            trigger.Gate = gate;
+            trigger.Center = Vector3.zero;
+            trigger.Size = size;
+            return trigger;
         }
 
         public TickedPlatform Platform(Vector3 topCenter, Vector3 size, Vector3 travel, float period, Vector3 spin)

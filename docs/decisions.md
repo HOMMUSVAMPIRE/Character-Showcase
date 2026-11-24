@@ -50,7 +50,7 @@ Choices about how the project is built, why they were made, and what was decided
 **Why:** with tuning able to change per level (and soon per segment), a level built for one tuning would need rebuilding with every change. The Level Playground and the Meridian Complex remain.
 
 ## Planned: per-character tuning at runtime, reset on leaving (November 2026)
-**Decided, not yet built:** each character will run its own copy of its movement mode, with tuning presets applied on top of it. Tuning zones apply a preset while the character is inside and undo it when it leaves (zones inside zones stack, and respawning clears them), and a level can set one for all of itself.
+**Decided, partly built:** each character will run its own copy of its movement mode, with tuning presets applied on top of it. The first part is built: a spawner's Tuning Preset gives each character it spawns its own copy with the preset applied (the Tutorial Ring's one jump); tuning zones aren't yet. Tuning zones apply a preset while the character is inside and undo it when it leaves (zones inside zones stack, and respawning clears them), and a level can set one for all of itself.
 
 **Why:** single levels, or parts of them, can then be played with different movement than the character usually has, without changing the asset.
 
@@ -205,6 +205,13 @@ The UI's look (ReferenceAssets/MeridianMotion UI Reference.png) is drawn by grap
 
 **Against:** sprites from an artist, which look richer and can't be matched by strokes and polygons. So a theme can put a sprite in any icon's place by name (its Icon Overrides): an artist's set can replace the drawn icons one at a time, with no code changed. The display font is a real font (Chakra Petch, SIL OFL), not drawn: text needs kerning and shaping a mesh of strokes wouldn't have.
 
+## The Tutorial Ring's height shading is a full-screen pass (November 2026)
+The Tutorial Ring darkens things by their height (lower, darker; the walls' tops untouched), so its long white walls and decks read by depth. It's one full-screen pass after post-processing (a URP Full Screen Pass renderer feature with the Height Shade shader) that works out each pixel's world height from the depth and scales its colour, turned on by a `HeightShade` component in the scene through a global shader value.
+
+**Why:** the levels share their materials (Level_[Surface].mat, NoiseConcrete), so shading them by height in their shaders would have changed every level, or meant a copy of every material for the ring. A pass changes no material, reaches everything (decks, walls, trim, fixtures) the same, and is off wherever no scene turns it on. After post-processing, it scales the colour as it's shown, not HDR values the tonemapping would squeeze back towards white.
+
+**Against:** a vertex-colour or lightmap gradient baked into the ring's meshes, which would cost nothing at runtime but miss what isn't graybox (the fixtures, the character), and need the builders to know about it.
+
 ## Replays are input frames with keyframes, and the pause menu reaches them through a bridge (November 2026)
 A replay (`Replay`, recorded by `ReplayRecorder`) is the player's character's input frames, one a step, and a keyframe every couple of seconds: the character's whole movement state and the level's moving parts' (`StateSerializer`), and the level's clock. Playback puts the character back at the first keyframe, drives it with the frames, and snaps it to each keyframe as it comes.
 
@@ -213,3 +220,10 @@ A replay (`Replay`, recorded by `ReplayRecorder`) is the player's character's in
 **How it meets the UI:** the UI knows nothing of the character and the character nothing of the UI, so the UI has a generic hook (`IReplayControls`, registered with `ReplayControls`), and `ReplayMenu`, in a bridge assembly referencing both (`MeridianMotion.CharacterUI`, category I's first step, done early), implements it. The pause menu shows its Replays tab only while something's registered.
 
 **Against:** recording the character's pose each step (a "ghost"), which can't be continued from (Continue playing needs the real state, which a keyframe is), and video, which can't be inspected or resumed.
+
+## The level's volumes are checked from the character's step, not by triggers (November 2026)
+Checkpoints, hazards, shortcut triggers and lesson zones (`LevelVolume`) are boxes with no collider. After each of a character's steps, its `LevelPresence` asks which hold its feet, from its physics pose, and the volumes act then: a hazard respawns it at once, between steps.
+
+**Why:** the character has no collider of its own (what meets it is its model's hitboxes, and a character without its model, as a server would run it, has none), and a trigger's callbacks come at the physics step, after the characters have stepped, in an order of Unity's. Checked from the step, a respawn happens at a known step, the same in a replay and with or without a model. Where the character is in them (`LevelPresence`, with the checkpoint it last reached) is part of its state, so keyframes and saves carry it; a shortcut gate's opening is one of the level's moving parts, as a pushed crate is.
+
+**Against:** triggers, as the timing gates use (a timing gate only times, so when its callback comes doesn't move anyone).

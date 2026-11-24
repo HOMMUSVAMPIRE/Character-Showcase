@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6dce1beaf41c457da732ac11701def8e, type: 3}
+  m_Name: Tutorial No Air Jumps
+  m_EditorClassIdentifier: MeridianMotion.Characters::MeridianMotion.Characters.MovementTuningPreset
+  notes: 'The Tutorial Ring''s character: one jump, no air jumps (its lessons and course are sized for it). Applied by its spawner''s Tuning Preset to the character''s own copy of its movement.'
+  parts:
+  - values:
+      rid: 5929479848242184192
+    settings:
+    - maxJumps
+  references:
+    version: 2
+    RefIds:
+    - rid: 5929479848242184192
+      type: {class: Jumping, ns: MeridianMotion.Characters, asm: MeridianMotion.Characters}
+      data:
+        enabled: 1
+        minJumpHeight: 0.63
+        maxJumpHeight: 1.81
+        maxJumps: 1
+        jumpInputBuffer: 0.1
+        coyoteTime: 0

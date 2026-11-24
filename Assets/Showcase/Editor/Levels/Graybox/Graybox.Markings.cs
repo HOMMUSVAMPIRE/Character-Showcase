@@ -71,16 +71,18 @@ namespace MeridianMotion.Showcase.Levels
 
         /// <summary>
         /// Lettering painted on the floor at height (centred at "at"), reading the right way up for someone standing on
-        /// the side away from "facing" and looking along it (yaw: facing north reads from the south).
+        /// the side away from "facing" and looking along it (yaw: facing north reads from the south), its capitals size
+        /// tall (0: the settings' Label Height).
         /// </summary>
         [Piece]
-        public static TextMeshPro FloorLabel(Transform parent, string text, Vector2 at, float height, Vector2 facing)
+        public static TextMeshPro FloorLabel(Transform parent, string text, Vector2 at, float height, Vector2 facing, float size = 0f)
         {
-            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(FloorLabel), parent, text, at, height, facing);
+            using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(FloorLabel), parent, text, at, height, facing, size);
             float yaw = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg;
             float lift = Settings.markings.thickness;
+            float letters = size > 0f ? size : Settings.markings.labelHeight;
             return Text(parent, $"Label ({text})", text, new Vector3(at.x, height + lift, at.y), Quaternion.Euler(90f, yaw, 0f),
-                Settings.markings.labelHeight, Settings.markings.labelHeight * text.Length, Settings.markings.labelColour);
+                letters, letters * text.Length, Settings.markings.labelColour);
         }
 
         /// <summary>

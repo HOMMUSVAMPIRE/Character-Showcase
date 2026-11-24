@@ -10,12 +10,15 @@
   <Project Path="MeridianMotion.Showcase.HUD.EditorTools.csproj" />
   <Project Path="MeridianMotion.Cameras.csproj" />
   <Project Path="MeridianMotion.Showcase.HUD.csproj" />
+  <Project Path="MeridianMotion.Showcase.TutorialRing.csproj" />
   <Project Path="MeridianMotion.UI.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.Levels.csproj" />
   <Project Path="MeridianMotion.CharacterUI.csproj" />
   <Project Path="MeridianMotion.Tests.Shared.csproj" />
   <Project Path="MeridianMotion.Levels.EditorTools.csproj" />
+  <Project Path="MeridianMotion.Showcase.Tests.TutorialRing.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.HUD.csproj" />
   <Project Path="MeridianMotion.Showcase.LevelChecks.csproj" />
   <Project Path="MeridianMotion.PhysicsQueries.csproj" />
+  <Project Path="MeridianMotion.Showcase.TutorialRing.EditorTools.csproj" />
 </Solution>

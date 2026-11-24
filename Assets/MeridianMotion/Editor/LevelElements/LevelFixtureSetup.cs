@@ -20,7 +20,7 @@ namespace MeridianMotion.Levels.EditorTools
     /// <item>"Moving Platform (…) | travel=x,y,z | period=s | pause=s | spin=x,y,z | phase=f | smooth=0/1" gets a
     /// kinematic Rigidbody and a TickedPlatform.</item>
     /// <item>"Pushable Crate | pull=0/1 | speed=f" gets a Rigidbody and a PushableBlock.</item>
-    /// <item>"Timing Gate | course=name | role=start-finish/start/finish | distance=m" (a trigger) gets a TimingGate, timed
+    /// <item>"Timing Gate | course=name | role=start-finish/start/finish/split | index=n | distance=m" (a trigger) gets a TimingGate, timed
     /// by a CourseTimer for its course, found or made in the scene's "Course Timers" group (CoursesName). Who's racing is
     /// the game's to say (Set Up Scene connects the spawner).</item>
     /// <item>"Timing Display | course=name" (a TextMeshPro) shows that course's times.</item>
@@ -34,6 +34,15 @@ namespace MeridianMotion.Levels.EditorTools
     /// <item>"Climbable Panel | speed=f" gets a ClimbableSurface (all of it climbable) with that speed multiplier.</item>
     /// <item>"Water | size=x,y,z | label=name" (at its surface's centre) gets a Water of that width, depth and length that
     /// keeps the level's surface. Only names starting "Water |".</item>
+    /// <item>"Checkpoint | id=name | start=0/1 | size=x,y,z" (at its respawn point, facing the way a character respawned
+    /// there faces) gets a Checkpoint whose box stands on that point.</item>
+    /// <item>"Hazard Volume (label) | size=x,y,z" (at its middle; the label optional) gets a HazardVolume.</item>
+    /// <item>"Lesson Zone | lesson=id | size=x,y,z" (at its middle) gets a LessonZone.</item>
+    /// <item>"Shortcut Gate | id=name | travel=x,y,z | time=s" (the gate's geometry) gets a kinematic Rigidbody and a
+    /// ShortcutGate; "Shortcut Trigger | gate=name | size=x,y,z" (at its middle) gets a ShortcutTrigger that opens the gate
+    /// of that id.</item>
+    /// <item>A timing gate's "role=split | index=n" makes it its course's split n; a pushable crate's "reset=id,id" adds a
+    /// ResetOnRespawn putting it back on a respawn at those checkpoints.</item>
     /// </list>
     /// The names' starts are the constants here, which the level builders name their fixtures by. Spawn markers
     /// (SpawnMarkerPrefix) aren't level elements: Set Up Scene turns them into the spawner's spawn points.
@@ -68,6 +77,16 @@ namespace MeridianMotion.Levels.EditorTools
         public const string CoursesName = "Course Timers";
         /// <summary>How a spawn marker's name starts: where a character can spawn (Set Up Scene makes them spawn points).</summary>
         public const string SpawnMarkerPrefix = "Spawn Point";
+        /// <summary>How a checkpoint's name starts (Graybox.CheckpointPrefix): "Checkpoint | id=… | start=0/1 | size=x,y,z", at its respawn point.</summary>
+        public const string CheckpointPrefix = "Checkpoint";
+        /// <summary>How a hazard volume's name starts (Graybox.HazardPrefix): "Hazard Volume | size=x,y,z", at its middle.</summary>
+        public const string HazardPrefix = "Hazard Volume";
+        /// <summary>How a lesson zone's name starts (Graybox.LessonZonePrefix): "Lesson Zone | lesson=… | size=x,y,z", at its middle.</summary>
+        public const string LessonZonePrefix = "Lesson Zone";
+        /// <summary>How a shortcut gate's name starts (Graybox.ShortcutGatePrefix): "Shortcut Gate | id=… | travel=x,y,z | time=s".</summary>
+        public const string ShortcutGatePrefix = "Shortcut Gate";
+        /// <summary>How a shortcut trigger's name starts (Graybox.ShortcutTriggerPrefix): "Shortcut Trigger | gate=… | size=x,y,z", at its middle.</summary>
+        public const string ShortcutTriggerPrefix = "Shortcut Trigger";
 
         /// <summary>Whether name is a fixture's: the prefix alone, or followed by a space ("Moving Platform (Lift) | …").</summary>
         public static bool IsNamed(string name, string prefix) =>
@@ -131,6 +150,13 @@ namespace MeridianMotion.Levels.EditorTools
             if (withUndo) { Undo.RecordObject(pushable, "Set Up Scene"); }
             pushable.CanBePulled = Bool(p, "pull", true);
             pushable.SpeedMultiplier = Float(p, "speed", 1f);
+            if (p.TryGetValue("reset", out string reset) && reset.Length > 0)
+            {
+                ResetOnRespawn resets = Need<ResetOnRespawn>(obj, withUndo);
+                if (withUndo) { Undo.RecordObject(resets, "Set Up Scene"); }
+                resets.CheckpointIds.Clear();
+                resets.CheckpointIds.AddRange(reset.Split(',').Select(id => id.Trim()).Where(id => id.Length > 0));
+            }
             return pushable;
         }
 
@@ -151,6 +177,13 @@ namespace MeridianMotion.Levels.EditorTools
             ladder.RungSize = Float(p, "rung", 0.035f);
             return ladder;
         }
+
+        /// <summary>
+        /// Whether name is a fixture's with settings that may have a label: "Prefix | …" or "Prefix (label) | …" (a hazard's,
+        /// "Hazard Volume (Pit) | size=…").
+        /// </summary>
+        public static bool IsLabelledFixture(string name, string prefix) =>
+            IsFixture(name, prefix) || (name.StartsWith(prefix + " (", StringComparison.Ordinal) && name.Contains(") |"));
 
         /// <summary>Whether name is a fixture's with settings: the prefix followed by " |" (not a placeholder or marker named for it).</summary>
         public static bool IsFixture(string name, string prefix) => name.StartsWith(prefix + " |", StringComparison.Ordinal);
@@ -224,8 +257,80 @@ namespace MeridianMotion.Levels.EditorTools
 
         /// <summary>The role a timing gate's settings give it.</summary>
         public static TimingGateRole Role(Dictionary<string, string> p) =>
-            p.TryGetValue("role", out string role) ? role switch { "start" => TimingGateRole.Start, "finish" => TimingGateRole.Finish, _ => TimingGateRole.StartAndFinish }
+            p.TryGetValue("role", out string role) ? role switch
+                {
+                    "start" => TimingGateRole.Start, "finish" => TimingGateRole.Finish, "split" => TimingGateRole.Split,
+                    _ => TimingGateRole.StartAndFinish,
+                }
                 : TimingGateRole.StartAndFinish;
+
+        /// <summary>Sets a level volume's box from its name's size (its box around the object's position, or standing on it).</summary>
+        private static T SetUpVolume<T>(GameObject obj, bool withUndo, bool standing) where T : LevelVolume
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            T volume = Need<T>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(volume, "Set Up Scene"); }
+            Vector3 size = Vector(p, "size", new Vector3(4f, 3f, 4f));
+            volume.Size = size;
+            volume.Center = standing ? new Vector3(0f, size.y / 2f, 0f) : Vector3.zero;
+            return volume;
+        }
+
+        /// <summary>Makes a checkpoint from its name's settings: its box standing on the object's position, its respawn point.</summary>
+        public static Checkpoint SetUpCheckpoint(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            Checkpoint checkpoint = SetUpVolume<Checkpoint>(obj, withUndo, standing: true);
+            checkpoint.Id = p.TryGetValue("id", out string id) ? id : obj.name;
+            checkpoint.IsStart = Bool(p, "start", false);
+            return checkpoint;
+        }
+
+        /// <summary>Makes a hazard volume from its name's size (around the object's position).</summary>
+        public static HazardVolume SetUpHazard(GameObject obj, bool withUndo) => SetUpVolume<HazardVolume>(obj, withUndo, standing: false);
+
+        /// <summary>Makes a lesson zone from its name's settings (around the object's position).</summary>
+        public static LessonZone SetUpLessonZone(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            LessonZone zone = SetUpVolume<LessonZone>(obj, withUndo, standing: false);
+            zone.LessonId = p.TryGetValue("lesson", out string lesson) ? lesson : "";
+            return zone;
+        }
+
+        /// <summary>Makes a shortcut gate from its name's settings (adding what it needs): its geometry is the gate.</summary>
+        public static ShortcutGate SetUpShortcutGate(GameObject obj, bool withUndo)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            GameObjectUtility.SetStaticEditorFlags(obj, 0);
+            foreach (Transform child in obj.GetComponentsInChildren<Transform>(true)) { GameObjectUtility.SetStaticEditorFlags(child.gameObject, 0); }
+            Need<Rigidbody>(obj, withUndo);
+            ShortcutGate gate = Need<ShortcutGate>(obj, withUndo);
+            if (withUndo) { Undo.RecordObject(gate, "Set Up Scene"); }
+            gate.Id = p.TryGetValue("id", out string id) ? id : obj.name;
+            gate.Travel = Vector(p, "travel", new Vector3(0f, -4f, 0f));
+            gate.OpenTime = Float(p, "time", 1.5f);
+            return gate;
+        }
+
+        /// <summary>
+        /// Makes a shortcut trigger from its name's settings, opening the gate of its gate= id among gates (null, with a
+        /// warning, if there's none of that id).
+        /// </summary>
+        public static ShortcutTrigger SetUpShortcutTrigger(GameObject obj, bool withUndo, IEnumerable<ShortcutGate> gates)
+        {
+            Dictionary<string, string> p = Parameters(obj.name);
+            string gateId = p.TryGetValue("gate", out string g) ? g : "";
+            ShortcutGate gate = gates.FirstOrDefault(candidate => candidate != null && candidate.Id == gateId);
+            if (gate == null)
+            {
+                Debug.LogWarning($"[{nameof(LevelFixtureSetup)}] '{obj.name}' names no shortcut gate in the scene (gate={gateId}): skipped.");
+                return null;
+            }
+            ShortcutTrigger trigger = SetUpVolume<ShortcutTrigger>(obj, withUndo, standing: false);
+            trigger.Gate = gate;
+            return trigger;
+        }
 
         /// <summary>
         /// Sets up the scene's fixtures (what's set up already is left as it is: its components kept, a course's timer
@@ -248,6 +353,16 @@ namespace MeridianMotion.Levels.EditorTools
             foreach (Transform t in all.Where(t => IsFixture(t.name, ZiplinePrefix))) { SetUpZipline(t.gameObject, withUndo); ziplines++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, BouncePadPrefix))) { SetUpBouncePad(t.gameObject, withUndo); pads++; }
             foreach (Transform t in all.Where(t => IsFixture(t.name, WaterPrefix))) { SetUpWater(t.gameObject, withUndo); waters++; }
+            int checkpoints = 0, hazards = 0, zones = 0, shortcuts = 0;
+            foreach (Transform t in all.Where(t => IsFixture(t.name, CheckpointPrefix))) { SetUpCheckpoint(t.gameObject, withUndo); checkpoints++; }
+            foreach (Transform t in all.Where(t => IsLabelledFixture(t.name, HazardPrefix))) { SetUpHazard(t.gameObject, withUndo); hazards++; }
+            foreach (Transform t in all.Where(t => IsFixture(t.name, LessonZonePrefix))) { SetUpLessonZone(t.gameObject, withUndo); zones++; }
+            var shortcutGates = new List<ShortcutGate>();
+            foreach (Transform t in all.Where(t => IsFixture(t.name, ShortcutGatePrefix))) { shortcutGates.Add(SetUpShortcutGate(t.gameObject, withUndo)); }
+            foreach (Transform t in all.Where(t => IsFixture(t.name, ShortcutTriggerPrefix)))
+            {
+                if (SetUpShortcutTrigger(t.gameObject, withUndo, shortcutGates) != null) { shortcuts++; }
+            }
 
             // A timer for each course its gates name: the scene's own, if it has one for the course already, or one made in
             // its Course Timers group.
@@ -284,6 +399,7 @@ namespace MeridianMotion.Levels.EditorTools
                 if (withUndo) { Undo.RecordObject(gate, "Set Up Scene"); }
                 gate.Timer = timer;
                 gate.Role = Role(p);
+                gate.SplitIndex = Mathf.RoundToInt(Float(p, "index", 0f));
                 t.GetComponent<Collider>().isTrigger = true;
                 gates++;
             }
@@ -317,6 +433,10 @@ namespace MeridianMotion.Levels.EditorTools
             if (pads > 0) { parts.Add($"{pads} bounce pad{(pads == 1 ? "" : "s")}"); }
             if (climbables > 0) { parts.Add($"{climbables} climbable panel{(climbables == 1 ? "" : "s")}"); }
             if (waters > 0) { parts.Add($"{waters} bod{(waters == 1 ? "y" : "ies")} of water"); }
+            if (checkpoints > 0) { parts.Add($"{checkpoints} checkpoint{(checkpoints == 1 ? "" : "s")}"); }
+            if (hazards > 0) { parts.Add($"{hazards} hazard volume{(hazards == 1 ? "" : "s")}"); }
+            if (zones > 0) { parts.Add($"{zones} lesson zone{(zones == 1 ? "" : "s")}"); }
+            if (shortcutGates.Count > 0) { parts.Add($"{shortcutGates.Count} shortcut gate{(shortcutGates.Count == 1 ? "" : "s")} with {shortcuts} trigger{(shortcuts == 1 ? "" : "s")}"); }
             if (gates > 0) { parts.Add($"{gates} timing gate{(gates == 1 ? "" : "s")} on {timers.Count} course{(timers.Count == 1 ? "" : "s")} with {displays} display{(displays == 1 ? "" : "s")}"); }
             return string.Join(", ", parts);
         }

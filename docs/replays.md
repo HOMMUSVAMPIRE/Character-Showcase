@@ -15,7 +15,7 @@ The prefab is two components: `ReplayRecorder` (the character's side: it records
 ## Recording
 From the player's character's first step, the recorder keeps two things:
 - **Each step's input frame:** what the movement was given.
-- **A keyframe every Keyframe Seconds:** the character's whole movement state and the level's moving parts' (ropes, pushables), and the level's clock. The first keyframe is the run's start.
+- **A keyframe every Keyframe Seconds:** the character's whole movement state (with the checkpoint it last reached) and the level's moving parts' (ropes, pushables, shortcut gates), and the level's clock. The first keyframe is the run's start.
 
 Nothing goes to a file until it's saved. A recording that reaches the recorder's Max Minutes stops, keeping its start, until it's saved.
 
@@ -23,6 +23,8 @@ Nothing goes to a file until it's saved. A recording that reaches the recorder's
 - **Windows:** `%USERPROFILE%\AppData\LocalLow\<company>\<product>\Replays`
 - **macOS:** `~/Library/Application Support/<company>/<product>/Replays`
 - **Linux:** `~/.config/unity3d/<company>/<product>/Replays`
+
+**Results beside it.** In the Tutorial Ring, each saved replay gets a results file beside it, `[replay].results.json`: the time to each lesson and the respawns in it, and the time, splits and respawns of every course run (its `PlaytestSessionLog`: see [The Tutorial Ring](showcase/levels.md#the-tutorial-ring)).
 
 **Playtests save themselves.** In a build, quitting from the pause menu saves the run first if nothing's been saved this session, and so does Load Replay. (`ReplayMenu`'s Save On Quit: In Builds by default, or Always, or Never.) A tester who plays and quits leaves a replay; ask them to send the Replays folder. Closing the window some other way (Alt+F4, the dock) doesn't save.
 
@@ -39,7 +41,7 @@ At the end, a dialog offers three choices:
 
 **On another build.** The movement is deterministic on one build: the same state and frames give the same steps there (see [Decisions](decisions.md)). On another build, or a tester's build played in the editor, it may drift a little between keyframes, so each keyframe puts the character back exactly where it was. A replay recorded with different movement tuning plays (and logs a warning), its keyframes keeping it on its path.
 
-**What a replay doesn't put back:** the NPCs (they walk their routes as they will), the course timers (which time the replayed run afresh as it crosses their gates), and the camera.
+**What a replay doesn't put back:** the NPCs (they walk their routes as they will), the course timers (which time the replayed run afresh as it crosses their gates), and the camera. Respawns (at a level's checkpoints) happen again as they happened, at the same step.
 
 ## From code
 - `ReplayRecorder`:

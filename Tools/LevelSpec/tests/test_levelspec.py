@@ -240,5 +240,26 @@ class Schematics(unittest.TestCase):
             xml.dom.minidom.parse(os.path.join(d, "s.svg"))  # A well-formed SVG.
 
 
+class TutorialPieces(unittest.TestCase):
+    def test_new_tutorial_pieces_have_outlines(self):
+        spec = spec_with(
+            {"piece": "Checkpoint", "parent": "", "id": "L01", "feet": [0, 0, 0], "yaw": 90, "size": [4, 3, 2], "start": True},
+            {"piece": "HazardVolume", "parent": "", "name": "Pit", "centre": [10, -5, 0], "size": [8, 2, 8]},
+            {"piece": "LessonZone", "parent": "", "lesson": "L01", "centre": [0, 1, 5], "size": [6, 4, 6]},
+            {"piece": "ShortcutGate", "parent": "", "id": "lessons", "centre": [0, 1.5, 20], "size": [6, 3, 0.5], "travel": [0, -4, 0], "time": 1.5},
+            {"piece": "ShortcutTrigger", "parent": "", "gate": "lessons", "centre": [0, 1, 24], "size": [6, 3, 2]},
+        )
+        shapes = geometry.layout(spec)
+        kinds = {s.piece["piece"]: s for s in shapes}
+        for piece in ("Checkpoint", "HazardVolume", "LessonZone", "ShortcutGate", "ShortcutTrigger"):
+            self.assertIn(piece, kinds, f"{piece} should be outlined")
+            self.assertEqual(kinds[piece].layer, "mechanics")
+        self.assertIn("(start)", kinds["Checkpoint"].label)
+        self.assertIsNotNone(kinds["Checkpoint"].arrow, "A checkpoint shows the way it faces.")
+        x0, z0, x1, z1 = kinds["HazardVolume"].bounds
+        self.assertAlmostEqual(x1 - x0, 8)
+        self.assertIn("lessons", kinds["ShortcutGate"].label)
+
+
 if __name__ == "__main__":
     unittest.main()

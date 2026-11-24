@@ -80,6 +80,10 @@ namespace MeridianMotion.Characters
         [Tooltip("Optional: the movement mode asset the spawned character moves with, instead of the prefab's own. " +
                  "Leave empty to keep the prefab's.")]
         [SerializeField] private MovementMode movementMode;
+        [Tooltip("A tuning applied to each spawned character's own copy of its movement mode (this spawner's Movement Mode, " +
+                 "else its prefab's), so one level can play with a tuning of its own (one jump, say) without changing the " +
+                 "movement asset. Empty: characters share the mode as it is")]
+        [SerializeField] private MovementTuningPreset tuningPreset;
 
         [Header("Spawn Points")]
         [Tooltip("The places the character can spawn, in world space. One is chosen at random each time it spawns. " +
@@ -136,6 +140,12 @@ namespace MeridianMotion.Characters
 
         /// <summary>The movement mode spawned characters use instead of the prefab's own, or null to keep the prefab's.</summary>
         public MovementMode MovementMode { get => movementMode; set => movementMode = value; }
+
+        /// <summary>
+        /// The tuning each spawned character's own copy of its movement mode gets (see tuningPreset), or null for none:
+        /// then characters share the mode itself.
+        /// </summary>
+        public MovementTuningPreset TuningPreset { get => tuningPreset; set => tuningPreset = value; }
 
         /// <summary>The spawn points. Change the list to add, move or remove them.</summary>
         public List<SpawnPoint> SpawnPoints => spawnPoints;
@@ -200,7 +210,11 @@ namespace MeridianMotion.Characters
             character.name = characterPrefab.name;
             // Overrides go on before the character's Start, which is when it loads its model (Awake has already run,
             // during Instantiate, but doesn't load or move anything).
-            if (movementMode != null && character.TryGetComponent(out MMotionMotor movement)) { movement.movementMode = movementMode; }
+            if (character.TryGetComponent(out MMotionMotor movement))
+            {
+                if (movementMode != null) { movement.movementMode = movementMode; }
+                if (tuningPreset != null) { GiveOwnTunedMode(character, movement); }
+            }
             if (character.TryGetComponent(out MMotionCharacter controller)) { controller.ControlledBy = owner; }
             character.TryGetComponent(out CharacterModelSlot host);
             if (modelSource != null && host != null) { host.SetModelSourceBeforeStart(modelSource); }
@@ -218,6 +232,28 @@ namespace MeridianMotion.Characters
             Transform sizeReference = host != null && host.ModelParent != character.transform ? host.ModelParent : null;
             onCameraTargetSpawned?.Invoke(character.transform, eyePoint, sizeReference);
             return character;
+        }
+
+        /// <summary>
+        /// Gives the character its own copy of its movement mode with the tuning preset applied (a mode that isn't made
+        /// of components can't take a preset, so it's left shared, with a warning). The copy is destroyed with the
+        /// character (OwnedMovementMode).
+        /// </summary>
+        private void GiveOwnTunedMode(GameObject character, MMotionMotor movement)
+        {
+            if (movement.movementMode is not AbilityMovementMode shared)
+            {
+                Debug.LogWarning($"[{nameof(CharacterSpawner)}] '{name}': {character.name}'s movement mode isn't made of " +
+                                 $"components, so its tuning preset ('{tuningPreset.name}') wasn't applied.", this);
+                return;
+            }
+            AbilityMovementMode copy = Instantiate(shared);
+            copy.name = $"{shared.name} ({tuningPreset.name})";
+            var problems = new List<string>();
+            tuningPreset.ApplyTo(copy, problems);
+            foreach (string problem in problems) { Debug.LogWarning($"[{nameof(CharacterSpawner)}] '{name}': {problem}", this); }
+            movement.movementMode = copy;
+            character.AddComponent<OwnedMovementMode>().Mode = copy;
         }
 
         /// <summary>

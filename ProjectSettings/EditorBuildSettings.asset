@@ -11,5 +11,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Showcase/Scenes/MeridianBasin/MeridianBasin.unity
     guid: 054f6085fc11641a9967847915d5bdab
+  - enabled: 1
+    path: Assets/Showcase/Scenes/TutorialRing/TutorialRing.unity
+    guid: 69289125eb9f64674bba5fb0149785c6
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
