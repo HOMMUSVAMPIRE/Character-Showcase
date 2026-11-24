@@ -13,4 +13,4 @@ MonoBehaviour:
   m_Name: UI Window Catalog
   m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.UIWindowCatalog
   windows:
-  - {fileID: 6809448242008866821, guid: 079bb9af2a59246dd8fb6525db8da406, type: 3}
+  - {fileID: 8773028011908343118, guid: 079bb9af2a59246dd8fb6525db8da406, type: 3}

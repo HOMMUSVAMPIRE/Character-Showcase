@@ -107,5 +107,45 @@ namespace MeridianMotion.Tests.UI
             Assert.That(Time.timeScale, Is.EqualTo(1f));
             yield return null;
         }
+
+        [UnityTest]
+        public IEnumerator TheContextMenuAndTheNotifications_WorkFromThePackagesPrefabs()
+        {
+            int opened = 0;
+            UIRightClickMenu menu = UIRightClickMenu.Open(new System.Collections.Generic.List<MenuItemData>
+            {
+                new("Open", () => opened++, featured: true), new("Rename", () => { }), MenuItemData.Spacer, new("Delete", () => { }),
+            }, new Vector2(20f, Screen.height - 20f));
+            Assert.That(menu, Is.Not.Null, "The UI Manager should have a context menu.");
+            Assert.That(menu.Entries.Count, Is.EqualTo(3));
+            menu.Entries[0].GetComponent<Button>().onClick.Invoke();
+            Assert.That(opened, Is.EqualTo(1), "An entry's own button should run its item.");
+
+            NotificationEntry toast = UIManager.instance.ShowNotification("Saved", "Progress saved.");
+            Assert.That(toast, Is.Not.Null, "The UI Manager should have notifications.");
+            Assert.That(toast.transform.parent.name, Is.EqualTo("Top Middle"));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator ThePauseMenusControls_AreATab()
+        {
+            UIManager.instance.HandleBack();
+            PauseMenu menu = Object.FindAnyObjectByType<PauseMenu>();
+            yield return null; // Its tabs start.
+            Assert.That(menu.ShowingControls, Is.False);
+
+            // Its own tab button (not the Controls button) must fill the page too: on a menu just opened, never filled.
+            Tab controlsTab = menu.GetComponent<TabGroup>().Tabs.First(tab => tab.ID == "Controls");
+            controlsTab.GetComponent<Button>().onClick.Invoke();
+            Assert.That(menu.ShowingControls, Is.True, "Controls should be a tab of its own.");
+            StringAssert.Contains("Jump", menu.ShownControls, "Opened by its tab, the controls page should list the controls.");
+
+            UIManager.instance.HandleBack();
+            Assert.That(menu.ShowingControls, Is.False, "Back should go back to the menu's tab.");
+            menu.ShowControls();
+            Assert.That(menu.GetComponent<TabGroup>().SelectedTab.ID, Is.EqualTo("Controls"), "The Controls button should select its tab.");
+            menu.Resume();
+        }
     }
 }

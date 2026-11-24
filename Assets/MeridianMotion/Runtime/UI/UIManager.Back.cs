@@ -86,5 +86,20 @@ namespace MeridianMotion.UI
         public bool CursorNeeded => cursorNeeded;
         /// <summary>Whether a shown window stops the game's input (as OnGameInputBlockedChanged last said).</summary>
         public bool GameInputBlocked => gameInputBlocked;
+
+        /// <summary>
+        /// Shows a notification (Notifications.ShowNotification: its default duration, at the top middle, a passive toast).
+        /// Null, with a warning, without the scene's notifications.
+        /// </summary>
+        public NotificationEntry ShowNotification(string title, string msg, float duration = 0f,
+            Notifications.Location location = Notifications.Location.Top_Middle, Notifications.Type type = Notifications.Type.Passive)
+        {
+            if (Notifications.Instance == null)
+            {
+                UnityEngine.Debug.LogWarning("[UIManager] There are no notifications in the scene (the UI Manager prefab has them) to show it with.", this);
+                return null;
+            }
+            return Notifications.Instance.ShowNotification(title, msg, duration, location, type);
+        }
     }
 }

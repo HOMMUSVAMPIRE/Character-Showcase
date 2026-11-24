@@ -64,6 +64,8 @@ namespace MeridianMotion.UI
         [SerializeField] private GameObject yesNoDialogPrefab;
         [Tooltip("The dialog asking for a line of text (UIMessageBox_PromptForString.Open)")]
         [SerializeField] private GameObject promptForStringPrefab;
+        [Tooltip("The context menu (UIRightClickMenu.Open)")]
+        [SerializeField] private GameObject rightClickMenuPrefab;
 
         [Header("Click blockers")]
         [Tooltip("Behind a window whose Click Blocker Style is Dim Background")]
@@ -97,6 +99,8 @@ namespace MeridianMotion.UI
         public GameObject YesNoDialogPrefab { get => yesNoDialogPrefab; set => yesNoDialogPrefab = value; }
         /// <summary>The text prompt's prefab.</summary>
         public GameObject PromptForStringPrefab { get => promptForStringPrefab; set => promptForStringPrefab = value; }
+        /// <summary>The context menu's prefab.</summary>
+        public GameObject RightClickMenuPrefab { get => rightClickMenuPrefab; set => rightClickMenuPrefab = value; }
         /// <summary>Raised when whether a window needs the pointer changes.</summary>
         public UnityEvent<bool> OnCursorNeededChanged => onCursorNeededChanged;
         /// <summary>Raised when whether a window stops the game's input changes.</summary>

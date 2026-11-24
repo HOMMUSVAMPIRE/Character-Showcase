@@ -21,7 +21,7 @@ namespace MeridianMotion.UI.EditorTools
     /// project of its own), they're made in the output folder's UI folder (Project Settings > Meridian Motion). Made
     /// once, they're hand-edited: nothing remakes one that's there. Their look is the showcase levels' palette.
     /// </summary>
-    public static class UIAssets
+    public static partial class UIAssets
     {
         // The package's own, found by GUID (with the path it has in this repository: MeridianMotionAssets.PathOf), else
         // where it'd be made in the output folder.
@@ -35,6 +35,12 @@ namespace MeridianMotion.UI.EditorTools
         private static string MessageBoxPath => Existing(MeridianMotionAssets.PathOf("a8e30522f4c89487697736d36ddbc8c6", "Assets/MeridianMotion/Content/UI/Dialogs/Message Box.prefab"), "Dialogs/Message Box.prefab");
         private static string ErrorMessageBoxPath => Existing(MeridianMotionAssets.PathOf("69dcadec54e00483594fe209a3d6a4a7", "Assets/MeridianMotion/Content/UI/Dialogs/Error Message Box.prefab"), "Dialogs/Error Message Box.prefab");
         private static string YesNoDialogPath => Existing(MeridianMotionAssets.PathOf("72e7f93d7f32c45fcafed8af60bd2966", "Assets/MeridianMotion/Content/UI/Dialogs/Yes No Dialog.prefab"), "Dialogs/Yes No Dialog.prefab");
+        private static string RightClickMenuPath => Existing(MeridianMotionAssets.PathOf("07523b1ba69934069afa6625ecefa05b", "Assets/MeridianMotion/Content/UI/Menus/Right Click Menu.prefab"), "Menus/Right Click Menu.prefab");
+        private static string MenuEntryPath => Existing(MeridianMotionAssets.PathOf("f94881717f89f457f9a84bca174fe386", "Assets/MeridianMotion/Content/UI/Menus/Menu Entry.prefab"), "Menus/Menu Entry.prefab");
+        private static string FeaturedMenuEntryPath => Existing(MeridianMotionAssets.PathOf("e7fbfbdcc634645cf8c1ef3821ec66dc", "Assets/MeridianMotion/Content/UI/Menus/Featured Menu Entry.prefab"), "Menus/Featured Menu Entry.prefab");
+        private static string MenuSpacerPath => Existing(MeridianMotionAssets.PathOf("6096276928547439b9047c0a05337aae", "Assets/MeridianMotion/Content/UI/Menus/Menu Spacer.prefab"), "Menus/Menu Spacer.prefab");
+        private static string PassiveNotificationPath => Existing(MeridianMotionAssets.PathOf("450fb0205c0cb4649af17feee75fa87b", "Assets/MeridianMotion/Content/UI/Notifications/Notification (Passive).prefab"), "Notifications/Notification (Passive).prefab");
+        private static string CenterNotificationPath => Existing(MeridianMotionAssets.PathOf("d4c22fb8459334e53a701efa71acb260", "Assets/MeridianMotion/Content/UI/Notifications/Notification (Center).prefab"), "Notifications/Notification (Center).prefab");
         private static string PauseMenuPath => Existing(MeridianMotionAssets.PathOf("079bb9af2a59246dd8fb6525db8da406", "Assets/MeridianMotion/Content/UI/Windows/Pause Menu.prefab"), "Windows/Pause Menu.prefab");
         private static string PromptForStringPath => Existing(MeridianMotionAssets.PathOf("f8a5a548bed7048da94af523f7c99945", "Assets/MeridianMotion/Content/UI/Dialogs/Prompt For String.prefab"), "Dialogs/Prompt For String.prefab");
 
@@ -44,7 +50,7 @@ namespace MeridianMotion.UI.EditorTools
 
         // The showcase levels' palette (ReferenceAssets/MeridianComplexStyleReference.png): graphite panels, off-white
         // text, the orange accent, steel grey for the lesser button.
-        private static readonly Color Graphite = Hex(0x2D3138), OffWhite = Hex(0xF2F4F6), Orange = Hex(0xE07A2F), SteelGrey = Hex(0x7E8793);
+        private static readonly Color Graphite = Hex(0x2D3138), OffWhite = Hex(0xF2F4F6), Orange = Hex(0xE07A2F), SteelGrey = Hex(0x7E8793), Cyan = Hex(0x54C6D6);
 
         // How big the dialogs and their parts are, in reference pixels (the canvases scale with a 1920x1080 screen).
         private static readonly Vector2 ReferenceResolution = new(1920f, 1080f);
@@ -104,6 +110,13 @@ namespace MeridianMotion.UI.EditorTools
                 EditorUtility.SetDirty(catalog);
             }
 
+            GameObject entry = PrefabAt(MenuEntryPath, () => MenuEntry("Menu Entry", featured: false));
+            GameObject featuredEntry = PrefabAt(FeaturedMenuEntryPath, () => MenuEntry("Featured Menu Entry", featured: true));
+            GameObject spacer = PrefabAt(MenuSpacerPath, MenuSpacer);
+            GameObject rightClickMenu = PrefabAt(RightClickMenuPath, () => RightClickMenu(entry, featuredEntry, spacer));
+            GameObject passive = PrefabAt(PassiveNotificationPath, () => NotificationPrefab("Notification (Passive)", center: false));
+            GameObject center = PrefabAt(CenterNotificationPath, () => NotificationPrefab("Notification (Center)", center: true));
+
             GameObject manager = PrefabAt(ManagerPath, () => Manager(actions));
             // Every field, so the manager made before a dialog or blocker was (or one whose fields were cleared) has them.
             using (var editing = new PrefabUtility.EditPrefabContentsScope(AssetDatabase.GetAssetPath(manager)))
@@ -116,6 +129,7 @@ namespace MeridianMotion.UI.EditorTools
                 SetIfEmpty(fields, "errorMessageBoxPrefab", errorBox);
                 SetIfEmpty(fields, "yesNoDialogPrefab", yesNo);
                 SetIfEmpty(fields, "promptForStringPrefab", prompt);
+                SetIfEmpty(fields, "rightClickMenuPrefab", rightClickMenu);
                 SetIfEmpty(fields, "dimBlockerPrefab", dim);
                 SetIfEmpty(fields, "invisibleBlockerPrefab", invisible);
                 SetIfEmpty(fields, "darkenBlockerPrefab", darken);
@@ -123,6 +137,7 @@ namespace MeridianMotion.UI.EditorTools
                 SetIfEmpty(fields, "cancelAction", ActionReference(actions, "UI", "Cancel"));
                 SetIfEmpty(fields, "submitAction", ActionReference(actions, "UI", "Submit"));
                 fields.ApplyModifiedPropertiesWithoutUndo();
+                AddNotifications(editing.prefabContentsRoot.GetComponent<UIManager>(), passive, center);
                 // The EventSystem's module, through its serialized fields: its property setters don't keep the
                 // references in the editor (the module isn't running there).
                 var module = editing.prefabContentsRoot.GetComponentInChildren<InputSystemUIInputModule>(true);
@@ -307,7 +322,7 @@ namespace MeridianMotion.UI.EditorTools
             {
                 var page = new GameObject(name, typeof(RectTransform));
                 page.transform.SetParent(rect, false);
-                Stretch((RectTransform)page.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0f, -AccentHeight));
+                Stretch((RectTransform)page.transform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0f, -AccentHeight - TabRowHeight));
                 MakeText(page.transform, "Title", name == "Main Page" ? "PAUSED" : "CONTROLS", TitleFontSize, TextAlignmentOptions.Center,
                     new Vector2(0f, 1f), Vector2.one, new Vector2(Padding, -Padding - TitleHeight), new Vector2(-Padding, -Padding));
                 return page.transform;
@@ -331,7 +346,16 @@ namespace MeridianMotion.UI.EditorTools
                 new Vector2(Padding, Padding * 2f + ButtonSize.y), new Vector2(-Padding, -Padding * 2f - TitleHeight));
             MakeButton(controls, "Back", SteelGrey, menu.ShowMain, ButtonSize, new Vector2(1f, 0f), new Vector2(-Padding, Padding));
 
+            // Its pages as the contents of two tabs along its top.
+            var tabs = root.AddComponent<TabGroup>();
+            Tab mainTab = TabButton(rect, tabs, "Menu", 0, main.gameObject);
+            Tab controlsTab = TabButton(rect, tabs, "Controls", 1, controls.gameObject);
+            tabs.InitialTabEnabled = mainTab;
+
             var fields = new SerializedObject(menu);
+            fields.FindProperty("pageTabs").objectReferenceValue = tabs;
+            fields.FindProperty("mainTab").objectReferenceValue = mainTab;
+            fields.FindProperty("controlsTab").objectReferenceValue = controlsTab;
             fields.FindProperty("mainPage").objectReferenceValue = main.gameObject;
             fields.FindProperty("controlsPage").objectReferenceValue = controls.gameObject;
             fields.FindProperty("controlsText").objectReferenceValue = listing;

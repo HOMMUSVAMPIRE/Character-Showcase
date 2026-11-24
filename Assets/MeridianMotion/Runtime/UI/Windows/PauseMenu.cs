@@ -13,8 +13,9 @@ namespace MeridianMotion.UI
     /// was when it closes or is hidden); it asks for the cursor and stops the game's input through the UIManager's events
     /// (its Needs Cursor and Blocks Game Input), so it knows nothing of the camera or the character.
     ///
-    /// Controls is a page of its own listing the input actions' bindings, read from the actions (not written into the
-    /// menu); Back on it goes back to the main page. Quit asks first (a yes/no dialog), then quits (or, in the editor,
+    /// Controls is a tab of its own (its Page Tabs, a TabGroup, with the main page's tab) listing the input actions'
+    /// bindings, read from the actions (not written into the menu); Back on it goes back to the main page. Without tabs,
+    /// the pages are shown and hidden themselves. Quit asks first (a yes/no dialog), then quits (or, in the editor,
     /// leaves Play mode). Its buttons call Resume, Restart, ShowControls, ShowMain and Quit. Open it with Open (the
     /// UIManager's window catalog lists it).
     /// </summary>
@@ -28,6 +29,12 @@ namespace MeridianMotion.UI
         [SerializeField] private GameObject controlsPage;
         [Tooltip("Where the controls page lists the bindings")]
         [SerializeField] private TextMeshProUGUI controlsText;
+        [Tooltip("The tabs the pages are the contents of (a tab each), or none: the pages shown and hidden themselves")]
+        [SerializeField] private TabGroup pageTabs;
+        [Tooltip("The main page's tab")]
+        [SerializeField] private Tab mainTab;
+        [Tooltip("The controls page's tab")]
+        [SerializeField] private Tab controlsTab;
 
         [Header("Controls")]
         [Tooltip("The input actions whose bindings the controls page lists")]
@@ -47,7 +54,7 @@ namespace MeridianMotion.UI
         private bool paused;
 
         /// <summary>Whether the controls page is showing.</summary>
-        public bool ShowingControls => controlsPage != null && controlsPage.activeSelf;
+        public bool ShowingControls => controlsTab != null ? controlsTab.Selected : controlsPage != null && controlsPage.activeSelf;
 
         /// <summary>The input actions the controls page lists (set by the prefab; for a menu made in code).</summary>
         public InputActionAsset Actions { get => actions; set => actions = value; }
@@ -65,11 +72,14 @@ namespace MeridianMotion.UI
                 Time.timeScale = 0f;
                 paused = true;
             }
+            // However the controls page comes to be shown (its tab clicked, the Controls button), it's filled.
+            if (pageTabs != null) { pageTabs.SelectionChanged.AddListener(FillControlsIfShown); }
             ShowMain();
         }
 
         protected override void OnDisable()
         {
+            if (pageTabs != null) { pageTabs.SelectionChanged.RemoveListener(FillControlsIfShown); }
             Unpause();
             base.OnDisable();
         }
@@ -138,14 +148,38 @@ namespace MeridianMotion.UI
         /// <summary>Shows the controls page, listing the bindings.</summary>
         public void ShowControls()
         {
-            if (controlsText != null) { controlsText.text = ControlsListing(); }
+            FillControls();
+            if (pageTabs != null && controlsTab != null)
+            {
+                pageTabs.OnTabClicked(controlsTab);
+                return;
+            }
             UIUtility.SetActive(mainPage, false);
             UIUtility.SetActive(controlsPage, true);
+        }
+
+        /// <summary>The bindings listed on the controls page (as last filled).</summary>
+        public string ShownControls => controlsText != null ? controlsText.text : "";
+
+        // The controls page's listing, read from the actions now (so a rebinding shows).
+        private void FillControls()
+        {
+            if (controlsText != null) { controlsText.text = ControlsListing(); }
+        }
+
+        private void FillControlsIfShown()
+        {
+            if (ShowingControls) { FillControls(); }
         }
 
         /// <summary>Shows the main page.</summary>
         public void ShowMain()
         {
+            if (pageTabs != null && mainTab != null)
+            {
+                pageTabs.OnTabClicked(mainTab);
+                return;
+            }
             UIUtility.SetActive(controlsPage, false);
             UIUtility.SetActive(mainPage, true);
         }

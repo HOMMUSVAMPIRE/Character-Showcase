@@ -98,6 +98,12 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | BackKeyTests | UI | UI | the Back key, its fallback, and what the game is told |
 | MessageBoxTests | UI | UI | the dialogs and the text prompt |
 | PauseMenuTests | UI | UI | the pause menu |
+| DataListTests | UI | UI | data lists: rows, search, selection, categories |
+| TabTests | UI | UI | tabs, and the windows they track |
+| ContextMenuTests | UI | UI | the context menu |
+| NotificationTests | UI | UI | notifications |
+| RulesTests | UI | UI | rule-gated controls |
+| WorldLabelTests | UI | UI | labels anchored to the world |
 | UIContentTests | UI | UI | the UI's own prefabs |
 | SpawnerTests | Spawning | Spawning | the character spawner |
 | EveryCharacterTests | Spawning | Spawning | every character prefab spawns, stands and walks |
@@ -326,7 +332,13 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 - **BackKeyTests**: Back closing the windows from the top down (passing over one still closing), then running the fallback; Cancel Action Overrides run instead; windows that don't take Back, and hidden ones, passed over; a text field with the keyboard keeping it; and the game told when the windows need the pointer or stop its input.
 - **MessageBoxTests**: each dialog opening with its text and returning at once, its buttons running their callbacks (a second press counting once) and closing it with its blocker; Enter pressing OK; Back declining a yes/no dialog and dismissing an OK one; the prompt passing on what's typed; and a dialog opened without a manager saying so.
 - **PauseMenuTests**: Back with no window opening the pause menu and pausing the game, and again resuming it (the time scale put back as it was); the game told it needs the pointer and its input stops while it's open; its controls page listing the bindings read from the input actions (but the hidden ones), Back going from it back to the main page; and Quit asking first, Back on the question keeping the game going.
-- **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; and Back opening the package's pause menu, listing the project's controls.
+- **DataListTests**: on the blueprint's own example (an item list from a fake source): a row per record in order, from the item prefabs in turn; search by every word; rows reused, never destroyed; the selection kept across refreshes (else the first row's) and passed to the panel; the empty state; only the IDs or records given; a refresh while one's under way ignored; a header before each category.
+- **TabTests**: the initial tab selected; a click selecting a tab and deselecting the rest; deselecting only with Allow Deselection; a tab tracking a window opening it, another's selection closing it, and its closing deselecting the tab (or, clicked again, opening it again).
+- **ContextMenuTests**: an entry per item shown (hidden ones left out), placed first, middle, last or solo in its group, featured ones on their own prefab; an entry running its item and closing the menu; the pointer leaving, or never coming, closing it; opening flipped at the screen's edges.
+- **NotificationTests**: one shown at its place in its style (through the UIManager too), gone when its time's up on the UI's clock (with the game paused too); the cap of a style closing the oldest; the passive ones cleared and the rest left; Read More showing all the message and keeping it.
+- **RulesTests**: a gated control right at once and following the rules as they change, with no window opened again, listeners told; the feature and the permission both needed; Reset; an interactability gate greying out (not hiding) its control.
+- **WorldLabelTests**: a label following its object across the canvas, hidden behind the camera, closed with its object; the safe-area variant kept on the screen.
+- **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; Back opening the package's pause menu, listing the project's controls, its Controls a tab; and the package's context menu and notifications working from their prefabs.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
 - **EveryCharacterTests**: every character prefab in the project (one with an MMotionCharacter: the Character prefab, the fox, and any made with New Character) spawns, stands on the floor and walks at least half its walk speed, so a character is tested from the moment it's in the project.
