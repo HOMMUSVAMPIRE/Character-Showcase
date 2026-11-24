@@ -12,7 +12,52 @@ A window framework for any game, on Unity's uGUI: a window manager with its canv
 ## Setting it up
 **Tools > Meridian Motion > Set Up Scene…** adds the UI to the scene it sets up (see [Spawning the Character](spawning.md#setting-up-a-scene)): an instance of the UI Manager prefab (Assets/MeridianMotion/Content/UI), or the scene's own UI Manager if it has one, connected to the camera and the player's input. The prefab holds the three canvases, an EventSystem whose input module reads the input actions' UI map (Navigate, Submit, Cancel, Point, Click and the rest), the notifications, and every field set: the framework's own dialogs, the context menu, the click blockers, the Back and Submit keys, and the window catalog. A scene with an EventSystem of its own keeps it, and the UI Manager's is turned off.
 
-The UI's prefabs (the UI Manager, the dialogs, the pause menu, the context menu and its entries, the notifications' styles, the click blockers, the window catalog) are made by **Tools > Meridian Motion > Utilities > Create UI Assets** where they're missing, in the levels' palette, then edited by hand: nothing remakes one that's there.
+The UI's prefabs (the UI Manager, the dialogs, the pause menu, the context menu and its entries, the notifications' styles, the click blockers, the widgets, the window catalog, the theme) are made by **Tools > Meridian Motion > Utilities > Create UI Assets** where they're missing, drawn in the theme (see [The look](#the-look)), then edited by hand: Create UI Assets remakes none that's there. **Rebuild UI Assets** (or `UIAssets.CreateFromCommandLine` with `-rebuild`) remakes every one but the UI Manager in place, from `UIAssets`: their hand edits are lost, but their GUIDs and their roots stay, so what names them (the UI Manager, the window catalog, a scene) still does. The UI Manager is never rebuilt, since scenes hold it with their own connections; Create UI Assets only fills its empty fields (a new notification style's prefab, say).
+
+## The look
+The UI's look is one asset, its theme (`UITheme`: UI Theme, in Assets/MeridianMotion/Content/UI, named by the UI Manager's Theme). It holds a colour for each role (`UIColorRole`: Backdrop, Panel, Panel Raised, Outline, Text, Accent, Highlight, Disabled, Positive, Warning, Danger and the rest), how far a panel's corners are cut (Chamfer Size), an outline's width, a glow's size and strength, the fonts, and the tints of a control's states (hovered, pressed, selected, disabled; `StateTints` gives them as a Selectable's colours). What's drawn asks for a role, never a colour, so retuning the theme restyles all of it, at once: a change to it redraws every shape, in the editor too. Without a theme, the built-in one (`UITheme.BuiltIn`) is used.
+
+The shapes (Add Component > Meridian Motion > UI > Shapes) draw themselves as meshes, with no sprites: sharp at any size, their edges smoothed by a feathered band a pixel wide. Each has a Fill Role and an Outline Role (and its own Theme, to draw in another), and its Color tints both:
+- **Chamfered Box:** a panel or button, each corner cut or square (Corners, Chamfer: the theme's unless set), with an optional Header Tab and "//" Gloss.
+- **Skewed Bar:** a slanted bar, continuous or in Segments, filled to its Fraction (progress, pips).
+- **Diamond Shape:** a marker or toggle, with an optional Glow.
+- **Ring Shape:** radial progress: its track, and its Fraction filled from Start Angle.
+- **Stripe Fill:** hazard stripes or hatching (Stripe Width, Gap, Angle), clipped to its rect with a chamfered box's corners.
+- **Corner Brackets** and **Divider** (with its accent segment).
+
+### Fonts
+When there's no UI Manager with a theme (a prefab being edited, the gallery), shapes and text are drawn in `UITheme.Fallback`, which the editor sets to the package's theme (`UIThemeFallback`); without it, in the built-in one.
+
+The theme's Display Font (headers, numerals, buttons) is Chakra Petch Bold, and its Body Font Chakra Petch Regular: TextMeshPro font assets in Assets/MeridianMotion/Content/UI/Fonts, made from the font files beside them by **Tools > Meridian Motion > Utilities > Rebuild UI Fonts** (`UIFonts.RebuildFromCommandLine`), with the characters `UIFonts.Characters` lists baked into a static atlas. Rebuild them after adding a character there. Chakra Petch is under the SIL Open Font License 1.1 (its text, Chakra Petch OFL.txt, is beside it), which lets it be bundled with software, sold or not, as long as the licence goes with it and the font isn't sold on its own; it names no Reserved Font Name. To use other fonts, set the theme's.
+
+- **Trapezoid Shape:** a tab of a tab bar, its sides slanted in by Slant (Upside Down: the wide edge at the top).
+
+### Themed text and buttons
+**Themed Text** (beside a TextMeshPro text) sets its font to the theme's Display or Body font and its colour to its Role's, and keeps them so as the theme changes: set them there, not on the text. **Themed Button** is a Button drawn in the theme: its Shape (a chamfered box, its target graphic) is coloured by its Kind (Primary: the accent, for the main choice; Secondary: light; Highlight; Outline: a panel outlined in the accent, for the lesser choices), its Label coloured to suit, its states tinted by the theme's state tints, and its Hatch (stripes) shown while it can't be used. Gloss gives it the "//" at its left, for long buttons only.
+
+The widgets (Assets/MeridianMotion/Content/UI/Widgets) are prefabs for a project's own windows: **Button** (a themed button), **List Row** (a toggle on a panel row, the accent's with a filled diamond while selected: add your `DataDisplay` to it and put it in a list's Item Prefabs), **Scrollbar**, **Radio Toggle** (a diamond) and **Checkbox**. The dialogs are panels with the accent's tab along their top and corner brackets outside them, the pause menu's pages tabs of a trapezoid tab bar, and the click blockers the theme's backdrop.
+
+A shape of your own derives `UIShapeGraphic` and builds its mesh in `Build` with `UIShapeMesh` (filled and outlined convex polygons, glows, arcs, clipping).
+
+### Icons
+`UIIcon` (Add Component > Meridian Motion > UI > Icon) draws an icon of the library's (`UIIconLibrary`) by its Icon Name, as a mesh in its Fill Role, fitted to its rect and centred: sharp at any size, recoloured by role. An unknown name draws a crossed box. The names are `UIIconLibrary`'s constants (`UIIconLibrary.Names` lists them all, and the gallery's Icons page shows them):
+- **The system set:** markers, alerts and tools (pin, waypoint, alert, help, info, plus, gear, wrench, clipboard, database, download), places and locks (lock, unlock, elevator, stairs, door), marks (check, cross, warning), crate, chevrons, the four arrows, and the Meridian emblem.
+- **The ability set:** simple figures for what the character does (grab, push, ladder, run, sprint, zipline, rope, wall-run, dash, crouch, slide, roll).
+
+A name never changes once an icon's in use: every UIIcon showing it saves it, and a theme's override names it. A new icon is a new name.
+
+**Drawing one.** An icon is a method of `UIIconLibrary` (`UIIconLibrary.System.cs`, `.Abilities.cs`), listed in its Icons with its name, drawing with a `UIIconPainter` on a 24-unit grid: (0, 0) its bottom left, y up, its content within about 2 units of the edge. The painter has strokes with round ends and corners (`Line`, `Loop`, `Frame`), filled convex polygons (`Poly`, `Box`), `Dot`, `Circle` and `Arc`, and `Turned` and `Ellipse` for points. Its strokes come in the library's weights (its constants: Stroke for most, Bold for glyphs and arrows, Fine for cables and ropes, Limb for a figure's body and legs), and a figure's head is a dot of HeadRadius. Everything's drawn in one colour and added together, so an icon has no holes: draw a hole's surround as strokes. Look at a new icon on the gallery's Icons page, at its large size as well as on a tile.
+
+**An artist's icons.** A theme's Icon Overrides put a sprite in an icon's place, by name: every UIIcon of that name draws the sprite (fitted, its aspect kept, tinted by its role, so draw it white) until the override's taken out. So a set can be replaced one icon at a time.
+
+### The gallery
+**Tools > Meridian Motion > Utilities > Open UI Gallery** builds every shape and widget, in each of its states, in a new scene, on the theme's backdrop. To get pictures of it (to look at beside a reference, or after retuning the theme), run `UIGallery.CaptureFromCommandLine` with the editor closed:
+
+```
+<Unity> -batchmode -projectPath . -executeMethod MeridianMotion.UI.EditorTools.UIGallery.CaptureFromCommandLine
+```
+
+It writes a PNG of each page to Logs/UIGallery. A page is a method of a part of `UIGallery` (`UIGallery.<Page>.cs`), listed in its Pages.
 
 ## Windows
 Every window has a `RootUIPrefab` on its root (or a class deriving it). In its inspector:
@@ -79,7 +124,7 @@ A `TabGroup` holds its `Tab`s, one selected at a time: clicking a tab (its butto
 `UIRightClickMenu.Open(items)` opens the UI Manager's context menu at the pointer, flipped to stay on the screen, with an entry for each `MenuItemData` (its text, icon and callback; Featured for the main choice; ShowIf to leave it out). `MenuItemData.Spacer` splits the items into groups, each entry drawn for its place in its group (rounded at a group's ends). It closes when an entry's clicked, when the pointer leaves it, or if the pointer never comes onto it (its Never Entered Close Seconds).
 
 ## Notifications
-`UIManager.instance.ShowNotification(title, message)` shows a toast (`Notifications.ShowNotification` takes a duration, a place on the screen and a style too). Each style (`Notifications.Type`: Passive, Center) has its prefab, and each place (`Notifications.Location`) its parent, on the UI Manager's Notifications. At most Max Notif Count of a style show at once (the oldest closes for a new one), each for its duration (or Default Duration), on the UI's clock, so they run while the game's paused. A message of several lines shows its first until Read More's clicked. `ClearAllPassiveNotifications` closes the toasts. Add values to both enums for a game's own styles and places.
+`UIManager.instance.ShowNotification(title, message)` shows a toast (`Notifications.ShowNotification` takes a duration, a place on the screen and a style too). Each style (`Notifications.Type`: Passive, a toast; Center, a banner across the middle; and Success, Warning, Info, Item and Locked, toasts with their own icon and colour role) has its prefab, and each place (`Notifications.Location`) its parent, on the UI Manager's Notifications. At most Max Notif Count of a style show at once (the oldest closes for a new one), each for its duration (or Default Duration), on the UI's clock, so they run while the game's paused. A message of several lines shows its first until Read More's clicked. `ClearAllPassiveNotifications` closes the toasts. Add values to both enums for a game's own styles and places (on the end: a style's saved by its number); Create UI Assets makes a new style's prefab in the output folder, a toast to restyle.
 
 ## Rule-gated controls
 To hide a control, or grey it out, unless the player's allowed to use it, add **Permission Visibility** (shows its Target, its own object unless set) or **Permission Interactability** (its Selectable) and pick its Feature and Permission: rules, `UIRule` assets (Create > Meridian Motion > UI > Rule), each permitted or not by default. The game sets them (`RulesService.Set(rule, permitted)`), and every gated control is evaluated again at once, with no window opened again; code drawing its own controls listens to `RulesService.OnSelfPermissionsUpdated`. A gated control registers as it wakes, so put it on an object that starts active (pointing its Target at what starts hidden).

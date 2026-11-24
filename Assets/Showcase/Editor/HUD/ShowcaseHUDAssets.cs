@@ -1,6 +1,7 @@
 using System;
 using MeridianMotion.EditorTools;
 using MeridianMotion.UI;
+using MeridianMotion.UI.EditorTools;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -10,8 +11,9 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
 {
     /// <summary>
     /// Makes the showcase HUD's prefabs where they're missing (Tools > Meridian Motion > Showcase > Create Showcase HUD, or
-    /// CreateFromCommandLine): the Showcase HUD (a ShowcaseHUD, naming the name tag) and the NPC Label (a graphite tag with
-    /// the NPC's name, in the levels' palette, over the NPC's head). Made once, they're hand-edited.
+    /// CreateFromCommandLine): the Showcase HUD (a ShowcaseHUD, naming the name tag) and the NPC Label (a small chamfered
+    /// panel with the NPC's name, in the UI's theme, over the NPC's head). Made once, they're hand-edited; given -rebuild,
+    /// the NPC Label is remade in place (UIAssets.ReplaceContents), as Rebuild UI Assets remakes the UI's.
     /// </summary>
     public static class ShowcaseHUDAssets
     {
@@ -20,7 +22,8 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
         /// <summary>The NPCs' name tag.</summary>
         public const string NpcLabelPath = "Assets/Showcase/HUD/NPC Label.prefab";
 
-        private static readonly Color Graphite = new(0x2D / 255f, 0x31 / 255f, 0x38 / 255f, 0.85f), OffWhite = new(0xF2 / 255f, 0xF4 / 255f, 0xF6 / 255f);
+        // The tag's panel: how opaque, and how far its corners are cut.
+        private const float LabelOpacity = 0.85f, LabelChamfer = 7f;
         private static readonly Vector2 LabelSize = new(220f, 40f);
         // Over a standing person's head (m above the NPC's feet).
         private static readonly Vector3 LabelAboveFeet = new(0f, 2.2f, 0f);
@@ -33,7 +36,7 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
         public static void CreateFromCommandLine()
         {
             bool made = true;
-            try { Create(); }
+            try { Create(Array.IndexOf(Environment.GetCommandLineArgs(), "-rebuild") >= 0); }
             catch (Exception exception)
             {
                 Debug.LogException(exception);
@@ -42,11 +45,23 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
             if (Application.isBatchMode) { EditorApplication.Exit(made ? 0 : 1); }
         }
 
-        /// <summary>Makes whichever of the HUD's prefabs are missing.</summary>
-        public static void Create()
+        /// <summary>Makes whichever of the HUD's prefabs are missing (rebuilding, remakes the NPC Label in place).</summary>
+        public static void Create(bool rebuild = false)
         {
             AssetFolders.Ensure("Assets/Showcase/HUD");
-            GameObject label = AssetDatabase.LoadAssetAtPath<GameObject>(NpcLabelPath) ?? Save(NpcLabel(), NpcLabelPath);
+            UIThemeFallback.Set();
+            var label = AssetDatabase.LoadAssetAtPath<GameObject>(NpcLabelPath);
+            if (label == null) { label = Save(NpcLabel(), NpcLabelPath); }
+            else if (rebuild)
+            {
+                GameObject made = NpcLabel();
+                try
+                {
+                    using var editing = new PrefabUtility.EditPrefabContentsScope(NpcLabelPath);
+                    UIAssets.ReplaceContents(editing.prefabContentsRoot, made);
+                }
+                finally { UnityEngine.Object.DestroyImmediate(made); }
+            }
             if (AssetDatabase.LoadAssetAtPath<GameObject>(HUDPath) == null)
             {
                 var hud = new GameObject("Showcase HUD").AddComponent<ShowcaseHUD>();
@@ -65,10 +80,14 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
 
         private static GameObject NpcLabel()
         {
-            var root = new GameObject("NPC Label", typeof(RectTransform), typeof(Image));
+            var root = new GameObject("NPC Label", typeof(RectTransform));
             ((RectTransform)root.transform).sizeDelta = LabelSize;
-            root.GetComponent<Image>().color = Graphite;
-            root.GetComponent<Image>().raycastTarget = false;
+            var panel = root.AddComponent<ChamferedBox>();
+            panel.Chamfer = LabelChamfer;
+            panel.Corners = UIShapeMesh.Corners.TopLeft | UIShapeMesh.Corners.BottomRight;
+            panel.OutlineRole = UIColorRole.Highlight;
+            panel.color = new Color(1f, 1f, 1f, LabelOpacity);
+            panel.raycastTarget = false;
             var label = root.AddComponent<NpcLabel>();
             label.ParentCanvas = UICanvas.InWorld;
             label.AllowMultiple = true;
@@ -82,7 +101,8 @@ namespace MeridianMotion.Showcase.HUD.EditorTools
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             var text = textObject.GetComponent<TextMeshProUGUI>();
             text.fontSize = LabelFontSize;
-            text.color = OffWhite;
+            var themed = textObject.AddComponent<ThemedText>();
+            themed.Display = true;
             text.alignment = TextAlignmentOptions.Center;
             text.raycastTarget = false;
             var fields = new SerializedObject(label);

@@ -4,6 +4,7 @@
     "references": [
         "MeridianMotion.Showcase.HUD",
         "MeridianMotion.UI",
+        "MeridianMotion.UI.EditorTools",
         "MeridianMotion.EditorTools",
         "MeridianMotion.Characters",
         "Unity.TextMeshPro",

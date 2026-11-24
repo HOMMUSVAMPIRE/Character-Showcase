@@ -53,6 +53,10 @@ namespace MeridianMotion.UI
         [Tooltip("The canvas for what goes over every window: notifications, a context menu")]
         public Transform overlayCanvas;
 
+        [Header("Look")]
+        [Tooltip("The colours, corners, outlines and fonts its shapes and text are drawn in (UITheme.Current); the built-in theme if empty")]
+        [SerializeField] private UITheme theme;
+
         [Header("Windows")]
         [Tooltip("The project's own windows, which Open<T> finds by the component on their root")]
         [SerializeField] private UIWindowCatalog windowCatalog;
@@ -99,6 +103,16 @@ namespace MeridianMotion.UI
         public GameObject YesNoDialogPrefab { get => yesNoDialogPrefab; set => yesNoDialogPrefab = value; }
         /// <summary>The text prompt's prefab.</summary>
         public GameObject PromptForStringPrefab { get => promptForStringPrefab; set => promptForStringPrefab = value; }
+        /// <summary>The theme its shapes are drawn in (null: the built-in one). Setting it redraws them.</summary>
+        public UITheme Theme
+        {
+            get => theme;
+            set
+            {
+                theme = value;
+                (theme != null ? theme : UITheme.BuiltIn).RaiseChanged();
+            }
+        }
         /// <summary>The context menu's prefab.</summary>
         public GameObject RightClickMenuPrefab { get => rightClickMenuPrefab; set => rightClickMenuPrefab = value; }
         /// <summary>Raised when whether a window needs the pointer changes.</summary>

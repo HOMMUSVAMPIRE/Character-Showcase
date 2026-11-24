@@ -52,6 +52,10 @@ namespace MeridianMotion.Tests.UI
             Assert.That(new[] { ClickBlockStyle.DimBackground, ClickBlockStyle.Invisible, ClickBlockStyle.DarkenBackground, ClickBlockStyle.BlackoutBackground }
                 .All(style => manager.ClickBlockerPrefab(style) != null), Is.True);
             Assert.That(manager.WindowCatalog, Is.Not.Null);
+            Assert.That(manager.Theme, Is.Not.Null, "The UI Manager should have the package's theme.");
+            Assert.That(manager.Theme.DisplayFont, Is.Not.Null, "The theme should have its display font (UIFonts).");
+            Assert.That(manager.Theme.BodyFont, Is.Not.Null, "The theme should have its body font (UIFonts).");
+            Assert.That(manager.Theme.DisplayFont.HasCharacters("0123456789:.-/ ABCZabcz", out _), Is.True, "The display font should have its numerals and letters.");
             var module = managerObject.GetComponentInChildren<InputSystemUIInputModule>();
             Assert.That(module, Is.Not.Null);
             Assert.That(module.cancel?.action?.name, Is.EqualTo("Cancel"), "The EventSystem should read the UI action map.");

@@ -17,8 +17,12 @@ namespace MeridianMotion.UI
         /// <summary>Where on the screen a notification shows.</summary>
         public enum Location { Center, Top_Left, Top_Middle, Top_Right, Bottom_Left, Bottom_Middle, Bottom_Right }
 
-        /// <summary>A notification's style: Passive, a toast that goes by itself; Center, a banner across the middle.</summary>
-        public enum Type { Passive, Center }
+        /// <summary>
+        /// A notification's style: Passive, a toast that goes by itself; Center, a banner across the middle; and the toasts
+        /// of each kind, each its icon and colour (Success, Warning, Info, Item: something gained, Locked: something not yet
+        /// open). New values go on the end: a style's saved by its number.
+        /// </summary>
+        public enum Type { Passive, Center, Success, Warning, Info, Item, Locked }
 
         /// <summary>A style's prefab.</summary>
         [Serializable]
@@ -72,6 +76,9 @@ namespace MeridianMotion.UI
         {
             if (Instance == this) { Instance = null; }
         }
+
+        /// <summary>A style's prefab, or null if it has none.</summary>
+        public NotificationEntry PrefabOf(Type type) => prefabs.Find(entry => entry.type == type).prefab;
 
         /// <summary>Sets a style's prefab (for notifications set up in code: the tests').</summary>
         public void SetPrefab(Type type, NotificationEntry prefab)

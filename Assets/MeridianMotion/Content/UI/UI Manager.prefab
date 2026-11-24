@@ -397,6 +397,16 @@ MonoBehaviour:
     prefab: {fileID: 6448531841655436444, guid: 450fb0205c0cb4649af17feee75fa87b, type: 3}
   - type: 1
     prefab: {fileID: 4664364803415547352, guid: d4c22fb8459334e53a701efa71acb260, type: 3}
+  - type: 2
+    prefab: {fileID: 8076282599883912897, guid: 69d29736b6228485f8c56271e55a964c, type: 3}
+  - type: 3
+    prefab: {fileID: 780089265730969990, guid: c9176c9141b3d490b9a1696a6c682b70, type: 3}
+  - type: 4
+    prefab: {fileID: 928473255593329676, guid: ea8c4eb7cc6f441748d44ad1f7fe0d39, type: 3}
+  - type: 5
+    prefab: {fileID: 3976309901850412564, guid: 0003d3fe4a5944e198cd39e1750851e6, type: 3}
+  - type: 6
+    prefab: {fileID: 2012484417539007569, guid: a008a3564ba904d2f8f69bfc3640812f, type: 3}
   parents:
   - location: 0
     parent: {fileID: 5454225091312891459}
@@ -977,6 +987,7 @@ MonoBehaviour:
   inWorldCanvas: {fileID: 8628490974035544053}
   defaultCanvas: {fileID: 3775668988168033856}
   overlayCanvas: {fileID: 1682195698836196315}
+  theme: {fileID: 11400000, guid: 8c75a2db3bbdf4bcfa488da0c15cc9cb, type: 2}
   windowCatalog: {fileID: 11400000, guid: 56c742955394949a1be9fbe4a1abb503, type: 2}
   messageBoxPrefab: {fileID: 488148016611766447, guid: a8e30522f4c89487697736d36ddbc8c6, type: 3}
   errorMessageBoxPrefab: {fileID: 6055032658580727991, guid: 69dcadec54e00483594fe209a3d6a4a7, type: 3}

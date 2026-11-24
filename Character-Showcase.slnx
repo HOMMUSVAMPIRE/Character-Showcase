@@ -2,6 +2,7 @@
   <Project Path="MeridianMotion.Characters.csproj" />
   <Project Path="MeridianMotion.Tests.PlayMode.csproj" />
   <Project Path="MeridianMotion.Showcase.Levels.csproj" />
+  <Project Path="MeridianMotion.UI.csproj" />
   <Project Path="MeridianMotion.Tests.EditMode.csproj" />
   <Project Path="MeridianMotion.Levels.csproj" />
   <Project Path="MeridianMotion.EditorTools.csproj" />
@@ -9,7 +10,6 @@
   <Project Path="MeridianMotion.Showcase.HUD.EditorTools.csproj" />
   <Project Path="MeridianMotion.Cameras.csproj" />
   <Project Path="MeridianMotion.Showcase.HUD.csproj" />
-  <Project Path="MeridianMotion.UI.csproj" />
   <Project Path="MeridianMotion.UI.EditorTools.csproj" />
   <Project Path="MeridianMotion.Showcase.Tests.Levels.csproj" />
   <Project Path="MeridianMotion.Tests.Shared.csproj" />

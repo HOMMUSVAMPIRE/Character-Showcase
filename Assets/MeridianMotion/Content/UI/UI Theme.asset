@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 351e84902a36469e8e13aa35cc18217a, type: 3}
+  m_Name: UI Theme
+  m_EditorClassIdentifier: MeridianMotion.UI::MeridianMotion.UI.UITheme
+  colors:
+  - role: 0
+    color: {r: 0.11764706, g: 0.12941177, b: 0.14901961, a: 1}
+  - role: 1
+    color: {r: 0.1764706, g: 0.19215687, b: 0.21960784, a: 1}
+  - role: 2
+    color: {r: 0.23137255, g: 0.2509804, b: 0.28627452, a: 1}
+  - role: 3
+    color: {r: 0.6627451, g: 0.6862745, b: 0.72156864, a: 1}
+  - role: 4
+    color: {r: 0.9490196, g: 0.95686275, b: 0.9647059, a: 1}
+  - role: 5
+    color: {r: 0.6039216, g: 0.6313726, b: 0.6666667, a: 1}
+  - role: 6
+    color: {r: 0.1764706, g: 0.19215687, b: 0.21960784, a: 1}
+  - role: 7
+    color: {r: 0.8784314, g: 0.47843137, b: 0.18431373, a: 1}
+  - role: 8
+    color: {r: 0.32941177, g: 0.7764706, b: 0.8392157, a: 1}
+  - role: 9
+    color: {r: 0.9490196, g: 0.95686275, b: 0.9647059, a: 1}
+  - role: 10
+    color: {r: 0.3529412, g: 0.3764706, b: 0.4117647, a: 1}
+  - role: 11
+    color: {r: 0.32941177, g: 0.7764706, b: 0.8392157, a: 1}
+  - role: 12
+    color: {r: 0.8784314, g: 0.47843137, b: 0.18431373, a: 1}
+  - role: 13
+    color: {r: 0.8392157, g: 0.8509804, b: 0.8666667, a: 1}
+  - role: 14
+    color: {r: 0.8784314, g: 0.2901961, b: 0.18431373, a: 1}
+  chamferSize: 12
+  outlineWidth: 2
+  glowSize: 14
+  glowStrength: 0.55
+  displayFont: {fileID: 11400000, guid: 2ed61163d33834c2290a6a8f417c01c4, type: 2}
+  bodyFont: {fileID: 11400000, guid: 6090cd42e51a64f96aa2fae0c695637f, type: 2}
+  hoveredTint: {r: 1.15, g: 1.15, b: 1.15, a: 1}
+  selectedTint: {r: 1.1, g: 1.1, b: 1.1, a: 1}
+  pressedTint: {r: 0.8, g: 0.8, b: 0.8, a: 1}
+  disabledTint: {r: 0.6, g: 0.6, b: 0.6, a: 0.6}
