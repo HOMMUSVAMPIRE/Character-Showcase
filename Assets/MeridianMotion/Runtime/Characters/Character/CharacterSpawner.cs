@@ -44,6 +44,8 @@ namespace MeridianMotion.Characters
     [Serializable]
     public class NpcRoute
     {
+        [Tooltip("What the NPC is called: the spawner's On Npc Spawned passes it on (for a name tag over it, say).")]
+        public string name = "NPC";
         [Tooltip("The spawn point (its index in the spawner's Spawn Points) the NPC spawns at.")]
         [Min(0)] public int spawnPoint;
         [Tooltip("The points the NPC walks to, in world space, in order.")]
@@ -96,6 +98,8 @@ namespace MeridianMotion.Characters
                  "in that order. Wire it to MMotionCameraRig.Follow. The eye point or size reference is empty if the character " +
                  "has none. Only for the local player's character, not an AI's or a remote one's.")]
         [SerializeField] private UnityEvent<Transform, Transform, Transform> onCameraTargetSpawned = new();
+        [Tooltip("Called after each NPC is spawned with its root transform and its route's name (for a name tag over it, say).")]
+        [SerializeField] private UnityEvent<Transform, string> onNpcSpawned = new();
 
         [Header("NPCs")]
         [Tooltip("Characters controlled by an AI, spawned after the player's when the scene starts (with Spawn On Start), " +
@@ -144,6 +148,9 @@ namespace MeridianMotion.Characters
 
         /// <summary>The inspector's camera event, called with each spawned character's root, eye point and size reference.</summary>
         public UnityEvent<Transform, Transform, Transform> OnCameraTargetSpawned => onCameraTargetSpawned;
+
+        /// <summary>Called after each NPC is spawned, with its root transform and its route's name.</summary>
+        public UnityEvent<Transform, string> OnNpcSpawned => onNpcSpawned;
 
         private void Start()
         {
@@ -226,6 +233,7 @@ namespace MeridianMotion.Characters
             var walker = character.AddComponent<WaypointInputSource>();
             walker.SetRoute(route.waypoints, route.loop, route.sprint);
             if (character.TryGetComponent(out MMotionCharacter controller)) { controller.InputSource = walker; }
+            onNpcSpawned.Invoke(character.transform, route.name);
             return character;
         }
 

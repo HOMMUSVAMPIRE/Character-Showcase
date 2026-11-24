@@ -37,7 +37,7 @@ The mannequin and its animation stay in the package. The tools read them from th
 
 ## A character in your own scene
 1. Open your scene. The character walks on colliders on the layers its movement queries: MMotionMotor > Movement Layer Mask on the Character prefab (`Assets/MeridianMotion/Content/Prefabs`). Put your level's ground on one of them, or add your layers to the mask on a character of your own (New Character makes one, a variant of Character.prefab, whose settings are its own).
-2. **Tools > Meridian Motion > Set Up Scene…** adds the character's spawner, a spawn point, the camera rig and the input manager to the open scene, wearing the model you choose (see [Spawning the Character](spawning.md)). If the scene has spawn markers, it spawns at them. If not, it spawns below the middle of the Scene view.
+2. **Tools > Meridian Motion > Set Up Scene…** adds the character's spawner, a spawn point, the camera rig, the input manager and the UI (its windows, its pause menu on Escape: see [UI Framework](ui.md)) to the open scene, wearing the model you choose (see [Spawning the Character](spawning.md)). If the scene has spawn markers, it spawns at them. If not, it spawns below the middle of the Scene view.
 3. Press Play. The controls are in the [README](../README.md#controls).
 
 ## Where next

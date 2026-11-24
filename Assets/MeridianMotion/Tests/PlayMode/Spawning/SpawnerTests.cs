@@ -268,7 +268,9 @@ namespace MeridianMotion.Tests.Spawning
                 new SpawnPoint(new Vector3(4f, 0f, 0f), Quaternion.identity));
             var followed = new List<Transform>();
             spawner.OnCameraTargetSpawned.AddListener((target, _, _) => followed.Add(target));
-            var route = new NpcRoute { spawnPoint = 1, waypoints = { new Vector3(4f, 0f, 5f), new Vector3(0f, 0f, 5f) }, loop = true };
+            var npcsSpawned = new List<(Transform npc, string name)>();
+            spawner.OnNpcSpawned.AddListener((spawned, name) => npcsSpawned.Add((spawned, name)));
+            var route = new NpcRoute { name = "Courier", spawnPoint = 1, waypoints = { new Vector3(4f, 0f, 5f), new Vector3(0f, 0f, 5f) }, loop = true };
 
             GameObject player = Track(spawner.SpawnAt(0));
             GameObject npc = Track(spawner.SpawnNpc(route));
@@ -285,6 +287,7 @@ namespace MeridianMotion.Tests.Spawning
             Assert.That(followed, Is.EqualTo(new[] { player.transform }), "Only the player's character should be handed to the camera.");
             Assert.AreSame(player, spawner.PlayerCharacter, "PlayerCharacter should stay the player's.");
             Assert.AreSame(npc, spawner.Character, "Character is the latest spawned.");
+            Assert.That(npcsSpawned, Is.EqualTo(new[] { (npc.transform, "Courier") }), "On Npc Spawned should pass the NPC and its route's name, only for NPCs.");
         }
 
         [Test]

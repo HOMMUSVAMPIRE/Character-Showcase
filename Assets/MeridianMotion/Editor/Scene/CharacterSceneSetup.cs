@@ -112,6 +112,7 @@ namespace MeridianMotion.EditorTools
 
         private static NpcRoute CopyOf(NpcRoute route) => route == null ? null : new NpcRoute
         {
+            name = route.name,
             spawnPoint = route.spawnPoint,
             waypoints = new List<Vector3>(route.waypoints),
             sprint = route.sprint,

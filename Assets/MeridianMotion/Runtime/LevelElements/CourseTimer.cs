@@ -35,6 +35,8 @@ namespace MeridianMotion.Levels
         [SerializeField] private Transform racer;
         [Tooltip("Called with the course's times as a line of text, about ten times a second while a run's under way and when one ends.")]
         [SerializeField] [FormerlySerializedAs("onDisplay")] private UnityEvent<string> onTextChanged = new();
+        [Tooltip("Called as each lap (or run, from a start gate to a finish gate) ends, with its time in seconds and whether it's the best yet.")]
+        [SerializeField] private UnityEvent<float, bool> onLapFinished = new();
 
         private const float DisplayInterval = 0.1f;
         private float startTime;
@@ -50,6 +52,8 @@ namespace MeridianMotion.Levels
         public float MinimumRunTime => minimumRunTime;
         /// <summary>Called with the course's times as a line of text.</summary>
         public UnityEvent<string> OnTextChanged => onTextChanged;
+        /// <summary>Called as each lap (or run) ends, with its time in seconds and whether it's the best yet.</summary>
+        public UnityEvent<float, bool> OnLapFinished => onLapFinished;
         /// <summary>Whether a run's under way.</summary>
         public bool IsRunning { get; private set; }
         /// <summary>How many runs (laps) have been finished.</summary>
@@ -104,8 +108,10 @@ namespace MeridianMotion.Levels
         {
             IsRunning = false;
             LastTime = now - startTime;
+            bool best = LapCount == 0 || LastTime < BestTime;
             BestTime = LapCount == 0 ? LastTime : Mathf.Min(BestTime, LastTime);
             LapCount++;
+            onLapFinished?.Invoke(LastTime, best);
         }
 
         private void Start() => Show();

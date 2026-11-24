@@ -141,6 +141,9 @@ The Level Playground (Assets/Showcase/Scenes/LevelPlayground) is a small test sc
 
 Its dimensions are in `LevelPlaygroundBuilder`. It builds in a couple of seconds (Tools > Meridian Motion > Showcase > Levels > Build Level Playground, or `-executeMethod MeridianMotion.Showcase.Levels.LevelPlaygroundBuilder.BuildFromCommandLine`), so changes to the level's pieces can be tried there before rebuilding the whole complex. Like the complex, rebuilding it removes its game setup: run Set Up Scene again afterwards.
 
+## The HUD
+The showcase's levels have a HUD of their own on the UI framework (see [UI Framework](../ui.md)): each lap or run a course timer finishes shown as a notification, a new best as a banner across the middle (with the HUD's New Best Text); a hint on the first spawn that the pause menu lists the controls (its Controls Hint Title, Message and Seconds); and a name tag over each NPC, showing its route's name (its NPC Label Prefab). It's `ShowcaseHUD` (Assets/Showcase/HUD, an assembly of its own knowing the UI and the level elements, nothing of the character's), which Set Up Scene adds only to the showcase's own scenes (those in Assets/Showcase), connecting the spawner's On Character Spawned and On Npc Spawned to it; a project's scenes get no HUD. Its prefabs (Showcase HUD, NPC Label) are made where missing by **Tools > Meridian Motion > Showcase > Create Showcase HUD**, then edited by hand. Rebuilding a level removes its setup, HUD included: set it up again.
+
 ## Level mechanics
 The level's mechanics (its moving platforms, ropes, ladders, water...) are fixtures: geometry named for what it is, which `LevelFixtureSetup` turns into the level element it stands for as each level's built. Their names and settings, and how to add a new one, are in [Adding Level Content](../traversal.md#level-fixtures).
 

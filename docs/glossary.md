@@ -13,11 +13,15 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Animator layout.** An asset describing a character's Animator Controller as data (clip slots, parameters, blend trees, states, transitions, with measured numbers and notes), which Build Animator Controllers builds it from. See [Animator layouts](animation.md#animator-layouts).
 
+**Back key.** The UI map's Cancel (Escape, the gamepad's Cancel button): it goes to the top window that takes it (the cancel stack), and with none, to the fallback handler, which opens the pause menu. See [The Back key](ui.md#the-back-key).
+
 **Body Definition.** An asset holding a character's body (a `BodyDefinition`: its shape and any extra parts), the MMotionMotor's Body Definition; the Character prefab's is Assets/MeridianMotion/Content/Movement/Character Body.asset, and Prepare Humanoid Models writes one beside each model's source. See [Collision](movement.md#collision).
 
 **Body Fit.** The CharacterModelSlot setting that fits the character's body to its model (by height, or the model's own Body Definition). The body its source was prepared with is fitted in `Start`, before the first step, so the character moves the same body before its model arrives, or without one (`LoadModelOnStart` off). See [Replacing the model](animation.md#replacing-the-model).
 
 **Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](showcase/levels.md).
+
+**Cancel stack.** The windows that take the Back key, the last opened on top (`UIManager`): destroyed, hidden, closing and uncancellable ones are passed over. See [The Back key](ui.md#the-back-key).
 
 **Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MMotionMotor.Capabilities`). See [Capabilities](movement.md#capabilities).
 
@@ -25,11 +29,15 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Character state.** The flags saying what the character is doing in a physics step (grounded, jumping, wall running, ...): `CharacterState`. Changes in them raise movement events.
 
+**Click blocker.** A full-screen panel opened behind a window (its Click Blocker Style: dim, invisible, darken or blackout) so clicks don't reach what's under it. See [Windows](ui.md#windows).
+
 **Component.** See movement component.
 
 **Envelope.** *(showcase levels)* The default character's capabilities written to a file (Tools/LevelSpec/envelope.json) for the levelspec tool, which checks levels against it. Written again whenever the tuning is saved in the editor. See [Tuning the Character](tuning.md#what-changes-when-you-save).
 
 **Extra parts.** More primitives beside a body's shape, together one body (a Body Definition's Extra Parts): the fox's back and head. See [Collision](movement.md#collision).
+
+**Fallback handler.** What the Back key does with no window to take it (`UIManager.RegisterFallbackHandler`): the pause menu, through `PauseMenuOnBack`. See [The Back key](ui.md#the-back-key).
 
 **Fixture.** A level element as a level is built: geometry named "Name | key=value | ..." (a moving platform, a rope, a bounce pad) that `LevelFixtureSetup`, in the level elements' editor assembly, gives its component. The builders' levels have theirs attached as they're built; Set Up Scene runs it too, for a scene built some other way. The names are `LevelFixtureSetup`'s constants, the one source the builders and Set Up Scene use. See [Adding Level Content](showcase/adding-level-content.md).
 
@@ -81,6 +89,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Query buffer.** A reused buffer for a physics query that grows and runs the query again when it fills (`RaycastHitBuffer`, `ColliderBuffer`; `MeridianMotion.PhysicsQueries.QueryBuffer`), since Unity's results come in no order and a full one may leave out the nearest hit. Its own assembly, shared by the character and the camera. See [Automated Tests](testing.md) (`QueryBufferTests`).
 
+**Rule (UI).** A `UIRule` asset a control can be gated on (shown, or usable, only while it's permitted), which the game permits or not (`RulesService.Set`). See [Rule-gated controls](ui.md#rule-gated-controls).
+
 **Set Up Scene.** The editor tool that makes a level playable (`CharacterSceneSetup`): it adds the spawner, with the level's spawn markers as its spawn points, the input manager and the camera, and tells the course timers who's racing. It runs `LevelFixtureSetup` too, for fixtures not set up yet. See [Spawning the Character](spawning.md).
 
 **Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MMotionMotor's Size Scaling. See [Character Size](movement.md#character-size).
@@ -102,3 +112,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 **Tuning preset.** A saved set of movement settings, some or all, to apply to a movement mode again (`MovementTuningPreset`). See [Tuning the Character](tuning.md#tuning-presets).
 
 **Unity terms.** Prefab, prefab variant, ScriptableObject, inspector, Play mode, assembly, `.meta` file and the rest of Unity's own vocabulary, each tied to this project's objects, are in [Unity Basics](unity-basics.md).
+
+
+**Window.** A piece of UI opened, closed and stacked by the UI Manager: a prefab with a `RootUIPrefab` on its root, on one of its canvases. See [Windows](ui.md#windows).
+
+**Window catalog.** The list of a project's own window prefabs (`UIWindowCatalog`, named on the UI Manager), which `UIManager.Open<T>` finds a window in by its component. See [A window of your own](ui.md#a-window-of-your-own).

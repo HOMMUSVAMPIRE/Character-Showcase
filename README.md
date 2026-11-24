@@ -84,6 +84,7 @@ For using Meridian Motion in a project of your own: about what ships (Assets/Mer
 - [Movement abilities](docs/abilities.md): crouching, sliding and rolling, wall running, wall sliding, ledges, vaulting
 - [Climbing and traversal](docs/traversal.md): wall climbing, ladders, pushing and pulling, ropes, ziplines, bounce pads, swimming; the level fixtures that set up a level's mechanics
 - [Camera system](docs/camera.md)
+- [UI framework](docs/ui.md): windows and the Back key, dialogs, the pause menu, data lists, tabs, context menus, notifications, rule-gated controls, labels in the world
 - [Character model and animations](docs/animation.md): the mannequin, replacing the model, the animation libraries, IK
 - [Spawning the character](docs/spawning.md): players, NPCs, input sources
 - [Generic rigs](docs/generic-rigs.md): the fox, a character on four legs, and generating it

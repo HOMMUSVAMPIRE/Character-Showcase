@@ -98,6 +98,7 @@ The settings that turn an ability off at 0 are each tested doing so, in the abil
 | BackKeyTests | UI | UI | the Back key, its fallback, and what the game is told |
 | MessageBoxTests | UI | UI | the dialogs and the text prompt |
 | PauseMenuTests | UI | UI | the pause menu |
+| ShowcaseHUDTests | Assets/Showcase/Tests/HUD | UI | the showcase's HUD: lap times, the controls hint, NPC name tags |
 | DataListTests | UI | UI | data lists: rows, search, selection, categories |
 | TabTests | UI | UI | tabs, and the windows they track |
 | ContextMenuTests | UI | UI | the context menu |
@@ -314,7 +315,7 @@ Then look at what changed in the recorded paths (git diff) before committing the
 
 ### Levels (the Levels category; see [Test Levels](showcase/levels.md))
 - **TimingGateTests**: sprinting from a start gate to a finish gate timed at the course's length over the run speed (with its speed shown).
-- **CourseTimerTests** (no character): a lap gate starting a lap on the first pass and ending it on the next, but not straight away; only the racer counting.
+- **CourseTimerTests** (no character): a lap gate starting a lap on the first pass and ending it on the next, but not straight away; each finished lap passed on with its time and whether it's the best yet; only the racer counting.
 - **UnderwaterViewTests**: a camera going under a water's surface changing the scene's fog to the water's and tinting and dimming the sun, raising CameraSubmerged, and coming back up putting the scene's fog and sun back, raising CameraSurfaced; a camera just above the surface (within the margin) counting as under; outside the water's footprint not; and turning the view off underwater putting the scene's fog back.
 
 ### Cameras (the Camera category; see [Camera System](camera.md))
@@ -338,6 +339,7 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 - **NotificationTests**: one shown at its place in its style (through the UIManager too), gone when its time's up on the UI's clock (with the game paused too); the cap of a style closing the oldest; the passive ones cleared and the rest left; Read More showing all the message and keeping it.
 - **RulesTests**: a gated control right at once and following the rules as they change, with no window opened again, listeners told; the feature and the permission both needed; Reset; an interactability gate greying out (not hiding) its control.
 - **WorldLabelTests**: a label following its object across the canvas, hidden behind the camera, closed with its object; the safe-area variant kept on the screen.
+- **ShowcaseHUDTests** (the showcase's own, in Assets/Showcase/Tests/HUD): a course timer's finished lap shown as a notification and a new best as a banner across the middle (a timer listened to twice showing it once); the controls hint shown once; an NPC's name tag over it on the in-world canvas, closed when it goes.
 - **UIContentTests**: the package's UI Manager prefab having its canvases, an EventSystem reading the UI action map, and every dialog and blocker; each dialog opening with its blocker and running its callbacks from its own buttons; Back opening the package's pause menu, listing the project's controls, its Controls a tab; and the package's context menu and notifications working from their prefabs.
 
 ### Spawning (the Spawning category; see [Spawning the Character](spawning.md))
@@ -345,7 +347,7 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 - **SpawnerTests**: the character spawner:
   - spawning at a spawn point and facing its way, at a chosen point or one chosen at random from all of them, on Start or only when asked; treating an all-zero rotation as none;
   - telling listeners through both events; handing only the local player's character to the camera (an AI's spawned beside it isn't), each told who it's for;
-  - an NPC spawned from a route being an AI's character walking it (a waypoint source as its input), not followed by the camera, the spawner's PlayerCharacter staying the player's;
+  - an NPC spawned from a route being an AI's character walking it (a waypoint source as its input), not followed by the camera, the spawner's PlayerCharacter staying the player's, and passed on with its route's name by On Npc Spawned;
   - giving the spawned character the chosen model and movement mode (and keeping the prefab's without them); giving the camera its eye point and size reference;
   - and refusing with an error when there's no prefab, no spawn points or no such point.
 

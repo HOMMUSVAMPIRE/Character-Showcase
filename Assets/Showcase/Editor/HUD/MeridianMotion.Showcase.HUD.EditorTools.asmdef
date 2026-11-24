@@ -1,0 +1,23 @@
+{
+    "name": "MeridianMotion.Showcase.HUD.EditorTools",
+    "rootNamespace": "MeridianMotion.Showcase.HUD.EditorTools",
+    "references": [
+        "MeridianMotion.Showcase.HUD",
+        "MeridianMotion.UI",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.Characters",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,18 @@
+{
+    "name": "MeridianMotion.Showcase.HUD",
+    "rootNamespace": "MeridianMotion.Showcase.HUD",
+    "references": [
+        "MeridianMotion.UI",
+        "MeridianMotion.Levels",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

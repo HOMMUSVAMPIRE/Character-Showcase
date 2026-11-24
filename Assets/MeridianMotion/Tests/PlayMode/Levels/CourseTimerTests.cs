@@ -83,5 +83,27 @@ namespace MeridianMotion.Tests.Levels
                 Object.Destroy(other.gameObject);
             }
         }
+
+        /// <summary>Each finished lap is passed on with its time and whether it's the best yet (the HUD's lap notifications).</summary>
+        [UnityTest]
+        public IEnumerator AFinishedLap_IsPassedOn_WithItsTimeAndWhetherItsTheBest()
+        {
+            var laps = new System.Collections.Generic.List<(float time, bool best)>();
+            timer.OnLapFinished.AddListener((time, best) => laps.Add((time, best)));
+            timer.RegisterGatePass(TimingGateRole.StartAndFinish, null);
+            yield return new WaitForSeconds(timer.MinimumRunTime + 0.5f);
+            timer.RegisterGatePass(TimingGateRole.StartAndFinish, null);
+            yield return new WaitForSeconds(timer.MinimumRunTime + 0.2f);
+            timer.RegisterGatePass(TimingGateRole.StartAndFinish, null);
+            yield return new WaitForSeconds(timer.MinimumRunTime + 0.8f);
+            timer.RegisterGatePass(TimingGateRole.StartAndFinish, null);
+
+            Assert.That(laps.Count, Is.EqualTo(3));
+            Assert.That(laps[0].best, Is.True, "The first lap is the best yet.");
+            Assert.That(laps[1].best, Is.True, "A faster lap is the new best.");
+            Assert.That(laps[2].best, Is.False, "A slower one isn't.");
+            Assert.That(laps[1].time, Is.EqualTo(timer.BestTime).Within(1e-5f));
+            Assert.That(laps[2].time, Is.EqualTo(timer.LastTime).Within(1e-5f));
+        }
     }
 }
