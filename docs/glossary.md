@@ -45,6 +45,12 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Generic Rig Setup.** What a generic-rig character (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`GenericRigSetup`, beside its model in Assets/Showcase/Models/Generic). Made by Prepare Generic Rig Models with its bones guessed from their names, then checked; Prepare Generic Rig Models makes the generic-rig character from it. See [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own).
 
+**Grass Bender.** *(showcase levels)* What pushes the lawns' grass aside as a character goes through it: its lower legs' and feet's hitboxes (a circle at its feet without any), into a map round the camera that springs back (`GrassBender`, `GrassBending`). Set Up Scene gives the showcase's characters one. See [Grass](showcase/levels.md#grass).
+
+**Grass Field.** *(showcase levels)* The grass over a group of lawns: a mask of where they are, one layer per floor, from which a compute shader places blades on the GPU before each camera renders (`GrassField`). See [Grass](showcase/levels.md#grass).
+
+**Grass Style.** *(showcase levels)* How a Grass Field's grass looks and how much there is: its blades' length, shape and spacing, clumps, colours, sway and distances (`GrassStyle`), read every frame, so a change shows at once. See [Grass](showcase/levels.md#grass).
+
 **Graybox.** *(showcase levels)* The untextured blockout style of the levels, and the library of pieces they're built from (`Graybox`).
 
 **Ground probes.** What keeps a hovering character's feet on the ground: a ray straight down under the feet (or a few round them), and the ground check's sphere for an edge beside them. See [Collision](movement.md#collision).

@@ -125,6 +125,22 @@ Its name has to start with one of `LevelFixtureSetup`'s names, with its settings
 **Exporting a level's spec refuses to replace it.**
 The spec has changed since it was exported (in the Level Editor, say). Check that only your changes differ, then export with `-force` (see [Level Specs](showcase/level-specs.md)).
 
+## The grass
+**A lawn has no grass, only its flat colour.**
+The platform can't run the grass's compute shaders (`GrassField.Supported`), or the field has no shaders: a Grass Field finds GrassBlades.compute and Grass.shader beside its script in the editor, and the level builders give them to it; check its inspector. A field also draws nothing beyond its style's Draw Distance, and only the lawns its mask covers (rebuild the level after changing its lawns).
+
+**Bright flashes on the grass, spreading over the screen for a frame.**
+A pixel that isn't a number, which bloom spreads (the default volume profile, Assets/Settings/DefaultVolumeProfile.asset, has bloom too, so turning off the scene's volume doesn't stop it). Run the PlayMode diagnostic `GrassFlashDiagnostic` (`python3 Tools/run_tests.py --platform PlayMode --filter GrassFlashDiagnostic`): it reports any such pixel and what's under it. A shader change that takes `pow`, `sqrt` or a division of something interpolated is the usual cause (see [the decision](decisions.md#the-grasss-shaders-are-hand-written-not-shader-graph-november-2026)).
+
+**The grass or the lawn is dark, lit only by the sky.**
+A shader multiplying by the main light's `distanceAttenuation`, which reads 0 for renderers given a property block (the lawns are); leave it out for the main light.
+
+**The grass costs too much.**
+Tools > Meridian Motion > Showcase > Measure Grass times it at fixed spots (with `-styleSet` to try settings, `-grassParts` to split it): see [the levels' Grass](showcase/levels.md#grass). Spacing, Thin From and Draw Distance, in that order, cost most. A benchmark that turns the grass off by disabling its fields times their rebuild, not the grass: suspend them (`GrassField.Suspended`).
+
+**The characters don't push the grass.**
+The scene's setup needs a Grass Benders object, which Set Up Scene adds to the showcase's levels with grass, connected to the spawner's On Character Spawned and On Npc Spawned; a character pushes with its hitboxes on the Grass Benders' Hitbox Layer (a model without hitboxes pushes with a circle at its feet: fit them, Tools > Meridian Motion > Prepare > Fit Hitboxes).
+
 ## Movement oddities
 **The character won't wall-run along a wall, or slide down it.**
 Only walls marked for it are run along or slid down: a TraversableWall on the wall's collider or a parent, its Move the move wanted (Wall Run or Wall Slide: a wall is for one, never both), and the component turned on (see [Walls for wall runs and slides](traversal.md#walls-for-wall-runs-and-slides)). In the showcase's levels, name the wall "Wall-Run Wall", "Wall-Slide Wall" or "Wall-Run and Slide Wall", or build it with the Graybox's MarkedWall. To let every wall be run along or slid down, turn on Wall Running's Wall Run On Any Wall or Wall Sliding's Wall Slide On Any Wall. A test's wall needs marking too (the rig's `TraversableBox`, or `WallAhead`/`WallBeside` with `wallRun`/`wallSlide`).

@@ -234,3 +234,25 @@ Checkpoints, hazards, shortcut triggers and lesson zones (`LevelVolume`) are box
 **Why:** the character has no collider of its own (what meets it is its model's hitboxes, and a character without its model, as a server would run it, has none), and a trigger's callbacks come at the physics step, after the characters have stepped, in an order of Unity's. Checked from the step, a respawn happens at a known step, the same in a replay and with or without a model. Where the character is in them (`LevelPresence`, with the checkpoint it last reached) is part of its state, so keyframes and saves carry it; a shortcut gate's opening is one of the level's moving parts, as a pushed crate is.
 
 **Against:** triggers, as the timing gates use (a timing gate only times, so when its callback comes doesn't move anyone).
+
+## The levels' grass is placed on the GPU each frame, not baked (November 2026)
+The lawns' grass isn't stored. Each lawn group has a Grass Field holding a mask of where its lawns are; before each camera renders, a compute shader places a blade on every cell of a fine grid over the mask's chunks in view, by a hash of its cell, culled and thinned with distance, into two lists (near and far) that are drawn with two indirect draws.
+
+**Why:** the grass it replaced was baked: thin tufts of blades stored in the scene, about 3 blades a square metre, 25 MB of meshes in MeridianComplex, cut off by distance in chunks. A lawn that reads as grass needs a hundred times the blades, which baked would be gigabytes, the same everywhere however far. Placed each frame, only what's near and in view exists, thinning out with distance as the square of it (about as many blades to a patch of the screen); the scenes got smaller, not bigger; and the grass can be restyled live (a style asset, read every frame) and moved (wind, characters pushing it) without rebaking anything. Which blades go is set by a rank on each cell, cells of every 2nd, 4th and 8th row and column the last, so a far chunk looks at only the cells it could keep and nothing pops as the camera moves.
+
+**Against:** baked blades as GameObjects or meshes drawn through the GPU Resident Drawer or a BatchRendererGroup, which suit many separate objects, not millions of blades placed per view; and alpha-tested grass cards, as cheap but shimmering and overdrawing far off, and less like the levels' low-poly look. Each camera has its own blade lists, so the Scene view placing its blades can't change what the game camera draws; sharing one set across fields (fewer draws, less memory) was weighed and left for later: fields with different styles can't share a draw.
+
+## The grass's shaders are hand-written, not Shader Graph (November 2026)
+The blades' shader (Grass.shader), the lawns' (Lawn.shader) and what they share with the compute shader (GrassCommon.hlsl: the hash, the clumps) are HLSL.
+
+**Why:** the blades are drawn with `Graphics.RenderPrimitivesIndexedIndirect`, their vertices made in the shader from the blade the compute shader wrote; Shader Graph reaches indirect, procedural draws only through Custom Function workarounds, and the lawns' tint has to match the blades' to the hash, which shared HLSL does. Two lessons are in their comments: the main light's `distanceAttenuation` is left out (it read 0 for the lawns, given a property block, leaving them unlit by the sun), and a blade's position along itself is clamped before `pow` (a hair below 0, it gave NaN pixels that bloom spread into flashes across the screen).
+
+**Against:** Shader Graph, for being editable without code: the grass's look is a style asset's settings instead, which are.
+
+## Characters push the grass with their legs' hitboxes (November 2026)
+A Grass Bender on each character pushes the grass with the hitbox capsules on its model's bones in the lowest part of its height (its lower legs and feet), found by the hitboxes' layer; the pushes go into a map round the camera that springs back, which the blades read.
+
+**Why:** one circle at the feet looked like a shape dragged along the ground. The legs part the grass where they step, as many legs as the character has (the fox's four), let it go when a foot lifts, and lay it the way they went. Going through the hitboxes' layer keeps the grass from knowing the character: Set Up Scene gives each spawned character a bender through the spawner's events, and a character without hitboxes pushes with a circle at its feet.
+
+**Against:** the Animator's foot bones (a humanoid's only), and colliders on the grass (the movement never reads it, and nothing needs to stop at it).
+
