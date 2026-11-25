@@ -119,6 +119,28 @@ namespace MeridianMotion.Showcase.Grass
             return (bytes, capacity, asked);
         }
 
+        /// <summary>
+        /// For tests: how many near and far blades a camera's lists were last asked for (read back a frame or two late),
+        /// and how many they hold; or null if the camera hasn't drawn this field.
+        /// </summary>
+        public (uint near, uint far, int nearCapacity, int farCapacity)? Counts(Camera camera) =>
+            lists.TryGetValue(camera, out Lists l) ? (l.lastNear, l.lastFar, l.nearCapacity, l.farCapacity) : null;
+
+        /// <summary>For tests (slow: it waits on the GPU): the roots of the blades in a camera's near list, as last placed.</summary>
+        public Vector3[] NearRoots(Camera camera)
+        {
+            if (!lists.TryGetValue(camera, out Lists l)) { return System.Array.Empty<Vector3>(); }
+            var args = new uint[5];
+            l.nearArgs.GetData(args);
+            int count = (int)Mathf.Min(args[1], l.nearCapacity);
+            var blades = new float[count * (BladeStride / sizeof(float))];
+            if (count > 0) { l.nearBlades.GetData(blades, 0, 0, blades.Length); }
+            var roots = new Vector3[count];
+            int floats = BladeStride / sizeof(float);
+            for (int i = 0; i < count; i++) { roots[i] = new Vector3(blades[i * floats], blades[i * floats + 1], blades[i * floats + 2]); }
+            return roots;
+        }
+
         private static readonly List<GrassField> live = new();
 
         /// <summary>How many fields are enabled.</summary>
@@ -241,7 +263,7 @@ namespace MeridianMotion.Showcase.Grass
         private sealed class Lists
         {
             public GraphicsBuffer chunks, nearBlades, farBlades, nearArgs, farArgs, counts;
-            public int nearCapacity = 65536, farCapacity = 131072;
+            public int nearCapacity = StartNear, farCapacity = StartFar;
             public bool readingBack;
             public long lastAsked;
             public readonly MaterialPropertyBlock nearProperties = new(), farProperties = new();
@@ -269,20 +291,48 @@ namespace MeridianMotion.Showcase.Grass
                 chunks = nearBlades = farBlades = nearArgs = farArgs = counts = null;
             }
 
-            /// <summary>Grows the blade lists if the frame read back asked for more blades than they hold (they never shrink).</summary>
-            public void GrowIfShort(AsyncGPUReadbackRequest request)
+            /// <summary>
+            /// Fits the blade lists to what the frame read back asked for: grown (to the next power of two) if they were
+            /// short, up to MostBlades; halved once they've held over four times what was asked for, for ShrinkAfter
+            /// seconds together, down to their starting size. So a view over a vast lawn doesn't keep its lists for good.
+            /// </summary>
+            public void Fit(AsyncGPUReadbackRequest request)
             {
                 readingBack = false;
                 if (counts == null || request.hasError) { return; }
                 Unity.Collections.NativeArray<uint> asked = request.GetData<uint>();
+                lastNear = asked[0];
+                lastFar = asked[1];
                 lastAsked = (long)asked[0] + asked[1];
-                bool grow = false;
-                const int most = 1 << 22;
-                if (asked[0] > nearCapacity && nearCapacity < most) { nearCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[0] + 1)); grow = true; }
-                if (asked[1] > farCapacity && farCapacity < most) { farCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo((int)asked[1] + 1)); grow = true; }
-                if (grow) { MakeBlades(); }
+                float now = Time.realtimeSinceStartup;
+                bool remake = false;
+                (nearCapacity, nearRoomySince, remake) = FitOne(nearCapacity, asked[0], StartNear, nearRoomySince, now, remake);
+                (farCapacity, farRoomySince, remake) = FitOne(farCapacity, asked[1], StartFar, farRoomySince, now, remake);
+                if (remake) { MakeBlades(); }
             }
+
+            private static (int capacity, float roomySince, bool remake) FitOne(int capacity, uint asked, int start, float roomySince, float now, bool remake)
+            {
+                if (asked > capacity && capacity < MostBlades)
+                {
+                    return (Mathf.Min(MostBlades, Mathf.NextPowerOfTwo((int)asked + 1)), float.MaxValue, true);
+                }
+                if (capacity > start && asked * 4L < capacity)
+                {
+                    if (roomySince == float.MaxValue) { return (capacity, now, remake); }
+                    if (now - roomySince >= ShrinkAfter) { return (Mathf.Max(start, capacity / 2), float.MaxValue, true); }
+                    return (capacity, roomySince, remake);
+                }
+                return (capacity, float.MaxValue, remake);
+            }
+
+            private float nearRoomySince = float.MaxValue, farRoomySince = float.MaxValue;
+            public uint lastNear, lastFar;
         }
+
+        /// <summary>A camera's blade lists start this big (near, far), never get bigger than MostBlades, and shrink after ShrinkAfter seconds roomy (see Lists.Fit).</summary>
+        private const int StartNear = 65536, StartFar = 131072, MostBlades = 1 << 20;
+        private const float ShrinkAfter = 5f;
 
         private readonly Dictionary<Camera, Lists> lists = new();
         private readonly List<Camera> gone = new();
@@ -510,7 +560,18 @@ namespace MeridianMotion.Showcase.Grass
             }
             int count = 0;
             foreach (List<Vector4> step in byStep) { foreach (Vector4 v in step) { visible[count++] = v; } }
-            if (count == 0) { return; }
+            if (count == 0)
+            {
+                // Nothing in view: nothing's drawn, and the lists say so (not what was in view last time).
+                if (lists.TryGetValue(camera, out Lists idle) && nearIndices != null)
+                {
+                    ResetArgs[0] = (uint)nearIndices.count;
+                    idle.nearArgs.SetData(ResetArgs);
+                    ResetArgs[0] = (uint)farIndices.count;
+                    idle.farArgs.SetData(ResetArgs);
+                }
+                return;
+            }
 
             if (segments != s.segments)
             {
@@ -581,7 +642,7 @@ namespace MeridianMotion.Showcase.Grass
             if (!l.readingBack)
             {
                 l.readingBack = true;
-                AsyncGPUReadback.Request(l.counts, l.GrowIfShort);
+                AsyncGPUReadback.Request(l.counts, l.Fit);
             }
 
             SetLook(material, s, draw, thinFrom);
