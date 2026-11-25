@@ -18,7 +18,7 @@ MonoBehaviour:
   droop: 0.1
   spacing: 0.06
   edgeLength: 1.4
-  sway: 0
+  sway: 1
   clumpSize: 0.6
   clumpLength: 0.25
   clumpLean: 0.5
@@ -31,8 +31,11 @@ MonoBehaviour:
   translucency: 0.15
   castsShadows: 0
   drawDistance: 45
-  detailDistance: 12
-  thinFrom: 0
+  detailDistance: 5
+  thinFrom: 8
   thinTo: 0.02
   segmentLength: 0.06
   segments: 3
+  spacingByQuality:
+  - 1.6
+  - 1

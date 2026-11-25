@@ -82,11 +82,22 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             int styled = Array.IndexOf(arguments, "-style");
             style = styled >= 0 && styled + 1 < arguments.Length ? AssetDatabase.LoadAssetAtPath<GrassStyle>(arguments[styled + 1]) : null;
             if (style != null) { report.AppendLine($"Every level's grass in the style {AssetDatabase.GetAssetPath(style)}."); report.AppendLine(); }
+            int changed = Array.IndexOf(arguments, "-styleSet");
+            if (changed >= 0 && changed + 1 < arguments.Length) { report.AppendLine($"Each style with: {arguments[changed + 1]}."); report.AppendLine(); }
+            // -grassParts near|far|none: "with the grass" draws only the near blades, only the far, or none (the blades
+            // still placed), to see what each part costs.
+            int parts = Array.IndexOf(arguments, "-grassParts");
+            string part = parts >= 0 && parts + 1 < arguments.Length ? arguments[parts + 1] : "all";
+            GrassField.DrawNear = part is "all" or "near";
+            GrassField.DrawFar = part is "all" or "far";
+            if (part != "all") { report.AppendLine($"With the grass: only {(part == "none" ? "placing the blades (none drawn)" : $"the {part} blades drawn")}."); report.AppendLine(); }
             foreach (string scene in scenes)
             {
                 if (!File.Exists(scene)) { report.AppendLine($"## {scene}\n\nMissing.\n"); continue; }
                 MeasureScene(scene, report);
             }
+            GrassField.DrawNear = GrassField.DrawFar = true;
+            GrassField.Suspended = false;
             string path = Path.Combine(runFolder, "Report.md");
             File.WriteAllText(path, report.ToString());
             Debug.Log($"[Grass benchmark] Wrote {path}:\n{report}");
@@ -102,6 +113,25 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             if (style != null)
             {
                 foreach (GrassField field in AllObjects().SelectMany(o => o.GetComponents<GrassField>())) { field.Style = style; }
+            }
+            // -styleSet name=value,...: each field's style copied with those settings changed (its fields by name), to
+            // try settings without changing the styles.
+            string[] arguments = Environment.GetCommandLineArgs();
+            int set = Array.IndexOf(arguments, "-styleSet");
+            if (set >= 0 && set + 1 < arguments.Length)
+            {
+                foreach (GrassField field in AllObjects().SelectMany(o => o.GetComponents<GrassField>()))
+                {
+                    GrassStyle copy = UnityEngine.Object.Instantiate(field.Style);
+                    foreach (string pair in arguments[set + 1].Split(','))
+                    {
+                        string[] parts = pair.Split('=');
+                        System.Reflection.FieldInfo setting = typeof(GrassStyle).GetField(parts[0]);
+                        if (setting == null) { throw new ArgumentException($"A grass style has no setting '{parts[0]}'."); }
+                        setting.SetValue(copy, setting.FieldType == typeof(int) ? int.Parse(parts[1]) : (object)float.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
+                    }
+                    field.Style = copy;
+                }
             }
             report.AppendLine($"## {Path.GetFileNameWithoutExtension(scenePath)}");
             report.AppendLine();
@@ -126,8 +156,8 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             List<(string name, Vector3 position, Quaternion rotation)> spots = Spots();
             if (spots.Count == 0) { report.AppendLine("No lawns found.\n"); return; }
 
-            report.AppendLine("| Spot | Frame, grass (ms) | Frame, none (ms) | Difference (ms) | GPU, grass (ms) | GPU, none (ms) | GPU difference (ms) | Tuft triangles in view |");
-            report.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- |");
+            report.AppendLine("| Spot | Frame, grass (ms) | Frame, none (ms) | Difference (ms) | GPU, grass (ms) | GPU, none (ms) | GPU difference (ms) | Grass CPU (ms) | Tuft triangles in view |");
+            report.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
             var target = new RenderTexture(Width, Height, 24, RenderTextureFormat.DefaultHDR) { name = "Grass Benchmark" };
             var cameraObject = new GameObject("Grass Benchmark Camera") { hideFlags = HideFlags.DontSave };
@@ -152,7 +182,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                     SetGrass(tufts, fields, true);
                     highlights.AppendLine($"| {name} | {nans:N0} | {nansWithout:N0} | {bright:N0} | {brightWithout:N0} | {brightest:0.00} | {brightestWithout:0.00} |");
                     report.AppendLine($"| {name} | {with.ms:0.00} | {without.ms:0.00} | {with.ms - without.ms:0.00} | {Ms(with.gpuMs)} | {Ms(without.gpuMs)} | " +
-                        $"{Ms(with.gpuMs - without.gpuMs)} | {VisibleTuftTriangles(camera, tufts):N0} |");
+                        $"{Ms(with.gpuMs - without.gpuMs)} | {Ms(with.cpuMs)} | {VisibleTuftTriangles(camera, tufts):N0} |");
                 }
             }
             finally
@@ -333,7 +363,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             return (nans, bright, brightest);
         }
 
-        private struct Sample { public double ms, gpuMs; }
+        private struct Sample { public double ms, gpuMs, cpuMs; }
 
         /// <summary>
         /// Renders the camera's view with the grass and without, alternating frame by frame (so drift in the machine's
@@ -343,6 +373,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
         private static (Sample with, Sample without) RenderBoth(Camera camera, RenderTexture target, List<GameObject> tufts, List<Behaviour> fields)
         {
             Recorder gpu = GpuRecorder();
+            var cpu = new List<double>();
             var times = new[] { new List<double>(), new List<double>() };
             var gpuTimes = new[] { new List<double>(), new List<double>() };
             for (int i = 0; i < WarmUpFrames + Frames; i++)
@@ -351,15 +382,17 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                 {
                     SetGrass(tufts, fields, k == 0);
                     var timer = Stopwatch.StartNew();
+                    double placedBefore = GrassField.PlacingSeconds;
                     RenderOnce(camera, target);
                     if (i < WarmUpFrames) { continue; }
                     times[k].Add(timer.Elapsed.TotalMilliseconds);
                     if (gpu != null) { gpuTimes[k].Add(gpu.gpuElapsedNanoseconds / 1e6); }
+                    if (k == 0) { cpu.Add((GrassField.PlacingSeconds - placedBefore) * 1000.0); }
                 }
             }
             SetGrass(tufts, fields, true);
             if (gpu != null) { gpu.enabled = false; }
-            Sample Of(int k) => new() { ms = Median(times[k]), gpuMs = gpuTimes[k].Count > 0 ? Median(gpuTimes[k]) : double.NaN };
+            Sample Of(int k) => new() { ms = Median(times[k]), gpuMs = gpuTimes[k].Count > 0 ? Median(gpuTimes[k]) : double.NaN, cpuMs = k == 0 && cpu.Count > 0 ? Median(cpu) : double.NaN };
             return (Of(0), Of(1));
         }
 
@@ -433,7 +466,8 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
         private static void SetGrass(List<GameObject> tufts, List<Behaviour> fields, bool on)
         {
             foreach (GameObject o in tufts) { o.SetActive(on); }
-            foreach (Behaviour b in fields) { b.enabled = on; }
+            // Suspended, not disabled: a field turned on again remakes everything it's drawn with (see GrassField.Suspended).
+            GrassField.Suspended = !on;
         }
 
         /// <summary>

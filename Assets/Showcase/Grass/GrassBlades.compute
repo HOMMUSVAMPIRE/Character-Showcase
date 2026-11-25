@@ -34,16 +34,33 @@ float4 _Sway;      // x: how much this grass moves in the wind, y: the flutter's
 Texture2D<float4> _BendMap;   // xy: the push (out from what pushed it, 0 to 1), z: the height it was pushed at
 SamplerState sampler_linear_repeat;
 float4 _BendWindow;           // the map's corner (x, z, in the world), its size (m), and whether there's one
+uint _ChunkOffset;            // this dispatch's chunks start here in _Chunks (a dispatch per grid step: see Generate)
+uint _Step;                   // this dispatch's grid step: every _Step-th cell each way (1, 2, 4 or 8)
+float _Tallest;               // the longest a blade can be (m), for the early cull
+
+// How the cells are thinned out with distance, without any popping as the camera moves or a chunk's grid step
+// changes: each cell has a rank, 0 to 1, and is kept while its rank is under the distance's keep fraction. Cells on
+// coarser grids rank lower (a cell's level is how many times both its x and its z halve evenly, up to 3), so the cells
+// of every 2nd, 4th or 8th row and column are the last to go; within a level, by the cell's hash. So a chunk far enough
+// that nothing finer than every Nth cell can be kept only needs to look at every Nth cell (GrassField's grid steps).
+float Rank(int2 cell, float hash)
+{
+    uint bits = (uint)cell.x | (uint)cell.y;
+    uint level = bits == 0u ? 3u : min(firstbitlow(bits), 3u);
+    float coarser = pow(0.25, level + 1u), here = pow(0.25, level);
+    return level == 3u ? hash * here : coarser + hash * (here - coarser);
+}
 
 [numthreads(8, 8, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= _BladesPerSide || id.y >= _BladesPerSide) { return; }
-    float4 chunk = _Chunks[id.z];
+    if (id.x * _Step >= _BladesPerSide || id.y * _Step >= _BladesPerSide) { return; }
+    float4 chunk = _Chunks[_ChunkOffset + id.z];
     uint layer = (uint)chunk.z;
 
-    // The cell, counted from the mask's corner, so its hash is the same whichever chunks are in view.
-    int2 cell = int2(round((chunk.xy - _MaskOrigin) / _Spacing)) + int2(id.xy);
+    // The cell, counted from the mask's corner, so its hash is the same whichever chunks are in view (and whatever
+    // grid step this chunk's looked at with).
+    int2 cell = int2(round((chunk.xy - _MaskOrigin) / _Spacing)) + int2(id.xy * _Step);
     float3 r0 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), layer * 3u));
     float3 r1 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), layer * 3u + 1u));
 
@@ -56,12 +73,23 @@ void Generate(uint3 id : SV_DispatchThreadID)
     float distance = length(root - _CameraPosition);
     if (distance >= drawDistance) { return; }
 
-    // Fewer blades with distance (by the hash, so the same ones go), those left widened to cover as many pixels. A
-    // blade about to go shrinks into the ground first (over the last fifth of its hash's margin), so blades don't pop
-    // in and out as the camera moves: a pop is a flash of a blade where there was ground.
-    float keep = lerp(1.0, _Thinning.x, saturate((distance - _Distances.z) / max(drawDistance - _Distances.z, 0.001)));
-    if (r1.x >= keep) { return; }
-    float leaving = saturate((keep - r1.x) / (0.2 * keep));
+    // Fewer blades with distance, as the square of it from Thin From (so about as many to a patch of the screen), down
+    // to Thin To; those left widened to cover as many pixels. Which go is by their rank (see Rank). A blade about to
+    // go shrinks into the ground first (over the last fifth of its margin), so blades don't pop in and out as the
+    // camera moves: a pop is a flash of a blade where there was ground.
+    float near = _Distances.z / max(distance, 0.01);
+    float keep = clamp(near * near, _Thinning.x, 1.0);
+    float rank = Rank(cell, r1.x);
+    if (rank >= keep) { return; }
+    float leaving = saturate((keep - rank) / (0.2 * keep));
+
+    // Culled by the view early, before the costlier work, round the longest a blade can be (and lean): most of a chunk
+    // at the view's edge is out of it.
+    float3 reach = root + float3(0.0, 0.5 * _Tallest, 0.0);
+    [unroll] for (int q = 0; q < 6; q++)
+    {
+        if (dot(_FrustumPlanes[q].xyz, reach) + _FrustumPlanes[q].w < -1.7 * _Tallest) { return; }
+    }
 
     // Its clump: longer or shorter together, leaning out from the clump's middle.
     float2 clumpCentre;
@@ -121,7 +149,7 @@ void Generate(uint3 id : SV_DispatchThreadID)
     blade.position = root;
     blade.facing = atan2(facing.y, facing.x);
     blade.length = bladeLength;
-    blade.width = lerp(_Width.x, _Width.y, r2.x) * min(rsqrt(keep), 3.0);
+    blade.width = lerp(_Width.x, _Width.y, r2.x) * min(rsqrt(keep), 4.0);
     blade.bend = bend;
     blade.hash = r2.z;
     blade.clump = clump;

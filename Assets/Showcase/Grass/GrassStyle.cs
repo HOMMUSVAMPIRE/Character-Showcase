@@ -60,14 +60,29 @@ namespace MeridianMotion.Showcase.Grass
         [Min(1f)] public float drawDistance = 60f;
         [Tooltip("Blades nearer than this (m) are drawn curved, in segments; those beyond as one triangle each, which can't be told apart at that distance.")]
         [Min(0f)] public float detailDistance = 14f;
-        [Tooltip("Grass starts thinning out this far from the camera (m), the blades left widened to cover.")]
-        [Min(0f)] public float thinFrom = 8f;
-        [Tooltip("What fraction of the blades are left at the draw distance.")]
-        [Range(0.02f, 1f)] public float thinTo = 0.12f;
+        [Tooltip("Grass starts thinning out this far from the camera (m): beyond, there are fewer blades as the square of the distance (so about as many to a patch of the screen), those left widened to cover.")]
+        [Min(0.1f)] public float thinFrom = 8f;
+        [Tooltip("The fewest blades left however far (a fraction of them): far blades are a pixel or two each, in the lawn's colour.")]
+        [Range(0.01f, 1f)] public float thinTo = 0.04f;
         [Tooltip("A near blade has a segment for every this much of its length (m), so long blades curve smoothly and short ones cost little.")]
         [Min(0.01f)] public float segmentLength = 0.06f;
         [Tooltip("The most segments a near blade has, however long.")]
         [Range(1, 10)] public int segments = 4;
+
+        [Header("Quality")]
+        [Tooltip("How much further apart the blades are at each quality level (Project Settings > Quality), in its order: 1 as Spacing says, 2 twice as far apart (a quarter as many). A level not listed is as Spacing says. The levels here are Mobile, then PC.")]
+        public float[] spacingByQuality = { 1.6f, 1f };
+
+        /// <summary>The spacing at the quality level in use (Spacing, times the level's Spacing By Quality).</summary>
+        public float SpacingNow
+        {
+            get
+            {
+                int level = QualitySettings.GetQualityLevel();
+                float scale = spacingByQuality != null && level < spacingByQuality.Length ? Mathf.Max(0.1f, spacingByQuality[level]) : 1f;
+                return spacing * scale;
+            }
+        }
 
         /// <summary>The longest a blade can be (m): its longest length, made longer by its clump and at a lawn's edge.</summary>
         public float Tallest => length.y * (1f + clumpLength) * Mathf.Max(1f, edgeLength);

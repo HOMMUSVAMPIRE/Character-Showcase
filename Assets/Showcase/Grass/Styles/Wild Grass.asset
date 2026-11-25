@@ -32,6 +32,6 @@ MonoBehaviour:
   drawDistance: 60
   detailDistance: 20
   thinFrom: 8
-  thinTo: 0.12
+  thinTo: 0.04
   segmentLength: 0.12
   segments: 7
