@@ -95,7 +95,7 @@ namespace MeridianMotion.Showcase.Levels
                 // Each part, so a spec's parts built without the level's steps (BuildParts) have it too.
                 Graybox.FloraSeed = spec.FloraSeed;
                 LevelSpec.Build(part, root);
-            }))).ToArray()) { FloraSeed = spec.FloraSeed };
+            }))).ToArray()) { FloraSeed = spec.FloraSeed, SkyPath = spec.Sky, KeepPostProcessing = spec.KeepPostProcessing };
 
         /// <summary>
         /// Records a level as a spec, writes it out and reads it back, and builds that: returns the spec, and how what
@@ -425,6 +425,8 @@ namespace MeridianMotion.Showcase.Levels
                     ("name", Obj(("type", "string"), ("minLength", 1))),
                     ("scene", Obj(("type", "string"), ("pattern", "^Assets/.+\\.unity$"))),
                     ("floraSeed", Obj(("type", "integer"), ("description", "The level's flora seed: which variant of its kind each tree and shrub gets, and how it's mirrored and shaped (LevelDefinition.FloraSeed). Left out: 0."))),
+                    ("sky", Obj(("type", "string"), ("pattern", "^Assets/.+\\.mat$"), ("description", "The level's skybox: a material's path, used as it is (LevelDefinition.SkyPath). Left out: the build's procedural sky."))),
+                    ("keepPostProcessing", Obj(("type", "boolean"), ("description", "Whether the build keeps the level's post-processing profile, making one only if there's none, so its tuning lasts across rebuilds (LevelDefinition.KeepPostProcessing). Left out: false, made again."))),
                     ("parts", Obj(("type", "array"), ("items", Ref("part")))))),
                 ("required", L("format", "name", "scene", "parts")),
                 ("additionalProperties", false),

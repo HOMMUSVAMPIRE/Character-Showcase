@@ -36,6 +36,8 @@ from levelspec.locks import Crossing, LockError  # noqa: E402
 from levelspec.rings import ccw, corner, half, octagon, r  # noqa: E402
 
 SCENE = "Assets/Showcase/Scenes/TutorialRing/TutorialRing.unity"
+# The ring's own skybox (a photographed sky), used as it is, in place of the builds' procedural one.
+SKY = "Assets/Showcase/Materials/Sky/Sky_29.mat"
 OUT = os.path.join(PROJECT, "Assets", "Showcase", "Levels", "TutorialRing.level.json")
 
 # ---- The layout ----
@@ -666,6 +668,9 @@ def build():
     WALL_FLORA.clear()
     TOPS.clear()
     s = Spec("Tutorial Ring", SCENE)
+    s.spec["sky"] = SKY
+    # Its post-processing is tuned by hand: a rebuild keeps it, making one only if it's missing.
+    s.spec["keepPostProcessing"] = True
     A = s.add
     inner, outer = RING_APOTHEM - LANE / 2, RING_APOTHEM + LANE / 2
     h = face_half_length()

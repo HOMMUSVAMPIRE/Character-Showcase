@@ -18,6 +18,10 @@ Points are `[x, z]` (or `[x, y, z]`), areas `[xMin, zMin, xMax, zMax]`, surfaces
 
 A spec may also have a `"floraSeed"` (an integer; left out, 0): it picks which variant of each tree and bush a piece places, whether it's mirrored, and how wide it is. Change it to reshuffle the level's plants: each one stays where it was, as tall and as turned.
 
+Two more are optional, for a level's look:
+- `"sky"`: a skybox material's path (`"Assets/….mat"`), used as it is, in place of the procedural sky the build makes. It lights the level's ambient and reflections as the procedural one does. The Tutorial Ring's is `Assets/Showcase/Materials/Sky/Sky_29.mat`.
+- `"keepPostProcessing": true`: the build makes the level's post-processing profile (`Environment/[scene]_PostProcessing.asset`, beside the scene) only if there's none, and otherwise leaves it as it is, so tuning it in its inspector lasts across rebuilds. Left out, every build makes it again with the default grade (`LevelPostProcessing`). To start a kept profile over, delete it and rebuild.
+
 The whole format, every piece and its settings and defaults, is described by a JSON Schema, Tools/LevelSpec/level-spec.schema.json, written by Unity from the pieces themselves (Tools > Meridian Motion > Showcase > Levels > Specs > Write Spec Schema, or `-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.WriteSchemaFromCommandLine`, and every export).
 
 **The specs in Assets/Showcase/Levels:**

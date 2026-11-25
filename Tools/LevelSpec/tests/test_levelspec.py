@@ -107,6 +107,17 @@ class Authoring(unittest.TestCase):
                 levelspec.validate(levelspec.read(os.path.join(EXAMPLES, name)))
 
 
+class TopLevel(unittest.TestCase):
+    def test_sky_and_keep_post_processing_keep_their_place_and_are_valid(self):
+        spec = levelspec.normalize({"parts": [], "keepPostProcessing": True, "sky": "Assets/Sky/Sky.mat",
+                                    "scene": "Assets/A.unity", "name": "A"})
+        self.assertEqual(list(spec), ["format", "version", "name", "scene", "sky", "keepPostProcessing", "parts"])
+        levelspec.validate(spec)
+        text = levelspec.to_json(spec)
+        self.assertLess(text.index('"sky"'), text.index('"parts"'))
+        self.assertEqual(json.loads(text)["keepPostProcessing"], True)
+
+
 class Mistakes(unittest.TestCase):
     def errors(self, *pieces):
         return levelspec.schema().validate(spec_with(*pieces))

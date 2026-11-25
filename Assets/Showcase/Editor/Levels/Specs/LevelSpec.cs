@@ -34,6 +34,8 @@ namespace MeridianMotion.Showcase.Levels
     /// <code>
     /// {"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/…/LevelPlayground.unity",
     ///  "floraSeed": 7 (optional: see LevelDefinition.FloraSeed),
+    ///  "sky": "Assets/…/Sky.mat" (optional: a skybox material to use as it is; left out, the build's procedural sky),
+    ///  "keepPostProcessing": true (optional: the build makes the level's post-processing profile only if it has none),
     ///  "parts": [{"name": "P2 Gap Run", "pieces": [
     ///     {"piece": "Group", "parent": "", "name": "P2 Gap Run"},
     ///     {"piece": "Platform", "parent": "P2 Gap Run", "name": "Platform A (+4)", "x0": 136, "x1": 148, …},
@@ -61,6 +63,16 @@ namespace MeridianMotion.Showcase.Levels
         public string Scene;
         /// <summary>The level's flora seed, "floraSeed" (LevelDefinition.FloraSeed, Graybox.FloraSeed): 0 if it's left out.</summary>
         public int FloraSeed;
+        /// <summary>
+        /// The level's skybox, "sky": a material's path, used as it is (LevelDefinition.SkyPath). Null or empty: the build
+        /// makes its procedural sky.
+        /// </summary>
+        public string Sky;
+        /// <summary>
+        /// "keepPostProcessing": whether the build keeps the level's post-processing profile as it is, making one only if
+        /// there's none (LevelDefinition.KeepPostProcessing), so its tuning lasts across rebuilds. False: it's made again.
+        /// </summary>
+        public bool KeepPostProcessing;
         /// <summary>Its parts, in build order.</summary>
         public readonly List<Part> Parts = new();
 
@@ -106,6 +118,8 @@ namespace MeridianMotion.Showcase.Levels
             sb.Append("  \"name\": ").Append(LevelSpecJson.Write(Name)).Append(",\n");
             sb.Append("  \"scene\": ").Append(LevelSpecJson.Write(Scene)).Append(",\n");
             if (FloraSeed != 0) { sb.Append("  \"floraSeed\": ").Append(FloraSeed).Append(",\n"); }
+            if (!string.IsNullOrEmpty(Sky)) { sb.Append("  \"sky\": ").Append(LevelSpecJson.Write(Sky)).Append(",\n"); }
+            if (KeepPostProcessing) { sb.Append("  \"keepPostProcessing\": true,\n"); }
             sb.Append("  \"parts\": [");
             for (int p = 0; p < Parts.Count; p++)
             {
@@ -139,7 +153,13 @@ namespace MeridianMotion.Showcase.Levels
                 Name = root.TryGetValue("name", out object name) ? name as string : null,
                 Scene = root.TryGetValue("scene", out object scene) ? scene as string : null,
                 FloraSeed = root.TryGetValue("floraSeed", out object floraSeed) ? Convert.ToInt32(floraSeed) : 0,
+                Sky = root.TryGetValue("sky", out object sky) ? sky as string : null,
+                KeepPostProcessing = root.TryGetValue("keepPostProcessing", out object keep) && keep is bool kept && kept,
             };
+            if (!string.IsNullOrEmpty(spec.Sky) && (!spec.Sky.StartsWith("Assets/") || !spec.Sky.EndsWith(".mat")))
+            {
+                throw new FormatException("A level spec's \"sky\" is the path of a skybox material, \"Assets/….mat\".");
+            }
             if (string.IsNullOrEmpty(spec.Name)) { throw new FormatException("A level spec needs a \"name\"."); }
             if (string.IsNullOrEmpty(spec.Scene) || !spec.Scene.StartsWith("Assets/") || !spec.Scene.EndsWith(".unity"))
             {

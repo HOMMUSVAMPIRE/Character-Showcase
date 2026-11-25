@@ -139,5 +139,82 @@ namespace MeridianMotion.Showcase.Tests.Levels
             CollectionAssert.DoesNotContain(required, "coping", "Settings with defaults aren't required.");
             Assert.AreEqual("Graphite", ((JsonObject)((JsonObject)platform["properties"])["coping"])["default"]);
         }
-    }
+    
+        private const string SkySpecHead = "{\"format\": \"character-showcase-level\", \"version\": 1, \"name\": \"Sky Test\", " +
+                                           "\"scene\": \"Assets/Sky Test.unity\", ";
+
+        [Test]
+        public void ASpecsSky_AndKeepingItsPostProcessing_RoundTrip()
+        {
+            var spec = LevelSpec.FromJson(SkySpecHead + "\"sky\": \"Assets/Sky/Sky.mat\", \"keepPostProcessing\": true, \"parts\": []}");
+            Assert.That(spec.Sky, Is.EqualTo("Assets/Sky/Sky.mat"));
+            Assert.That(spec.KeepPostProcessing, Is.True);
+            LevelSpec again = LevelSpec.FromJson(spec.ToJson());
+            Assert.That(again.Sky, Is.EqualTo("Assets/Sky/Sky.mat"));
+            Assert.That(again.KeepPostProcessing, Is.True);
+        }
+
+        [Test]
+        public void ASpecWithoutThem_HasNeither_AndWritesNeither()
+        {
+            var spec = LevelSpec.FromJson(SkySpecHead + "\"parts\": []}");
+            Assert.That(spec.Sky, Is.Null.Or.Empty);
+            Assert.That(spec.KeepPostProcessing, Is.False);
+            Assert.That(spec.ToJson(), Does.Not.Contain("\"sky\"").And.Not.Contain("keepPostProcessing"));
+        }
+
+        [Test]
+        public void ASkyThatIsntAMaterial_IsRefused()
+        {
+            Assert.Throws<FormatException>(() => LevelSpec.FromJson(SkySpecHead + "\"sky\": \"Sky.png\", \"parts\": []}"));
+        }
+
+        private const string ProfileFolder = "Assets/__PostProcessingTest";
+        private const string ProfilePath = ProfileFolder + "/Test_PostProcessing.asset";
+
+        [TearDown]
+        public void RemoveTestProfile() => UnityEditor.AssetDatabase.DeleteAsset(ProfileFolder);
+
+        private static UnityEngine.Rendering.VolumeProfile MadeProfile()
+        {
+            if (!UnityEditor.AssetDatabase.IsValidFolder(ProfileFolder)) { UnityEditor.AssetDatabase.CreateFolder("Assets", "__PostProcessingTest"); }
+            return LevelPostProcessing.Profile(ProfilePath, keepExisting: false);
+        }
+
+        [Test]
+        public void KeptPostProcessing_IsLeftAsTuned()
+        {
+            UnityEngine.Rendering.VolumeProfile made = MadeProfile();
+            Assert.That(made.TryGet(out UnityEngine.Rendering.Universal.Bloom bloom), "it's made with the level's grade");
+            bloom.intensity.Override(3.5f);   // As a person tuning it would.
+            UnityEditor.EditorUtility.SetDirty(made);
+            UnityEditor.AssetDatabase.SaveAssets();
+
+            UnityEngine.Rendering.VolumeProfile kept = LevelPostProcessing.Profile(ProfilePath, keepExisting: true);
+            Assert.That(kept, Is.SameAs(made));
+            Assert.That(kept.TryGet(out UnityEngine.Rendering.Universal.Bloom keptBloom) && keptBloom.intensity.value == 3.5f,
+                        "the tuning is still there");
+        }
+
+        [Test]
+        public void KeptPostProcessing_IsMadeWhereThereIsNone()
+        {
+            if (!UnityEditor.AssetDatabase.IsValidFolder(ProfileFolder)) { UnityEditor.AssetDatabase.CreateFolder("Assets", "__PostProcessingTest"); }
+            UnityEngine.Rendering.VolumeProfile made = LevelPostProcessing.Profile(ProfilePath, keepExisting: true);
+            Assert.That(made, Is.Not.Null);
+            Assert.That(UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Rendering.VolumeProfile>(ProfilePath), Is.SameAs(made));
+            Assert.That(made.TryGet(out UnityEngine.Rendering.Universal.Tonemapping _));
+        }
+
+        [Test]
+        public void PostProcessingNotKept_IsMadeAgain()
+        {
+            UnityEngine.Rendering.VolumeProfile made = MadeProfile();
+            made.TryGet(out UnityEngine.Rendering.Universal.Bloom bloom);
+            bloom.intensity.Override(3.5f);
+            UnityEngine.Rendering.VolumeProfile again = LevelPostProcessing.Profile(ProfilePath, keepExisting: false);
+            Assert.That(again.TryGet(out UnityEngine.Rendering.Universal.Bloom newBloom) && newBloom.intensity.value != 3.5f,
+                        "the builders' levels are graded afresh, as they were");
+        }
+}
 }

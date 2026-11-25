@@ -104,6 +104,16 @@ namespace MeridianMotion.Showcase.Levels
         /// mirrored and shaped. Changing it reshuffles them, leaving every plant where it is. A spec's "floraSeed".
         /// </summary>
         public int FloraSeed;
+        /// <summary>
+        /// The level's skybox material, used as it is (a spec's "sky"), or null: the build makes a procedural sky. It
+        /// lights the scene's ambient and reflections either way.
+        /// </summary>
+        public string SkyPath;
+        /// <summary>
+        /// Whether the build keeps the level's post-processing profile (a spec's "keepPostProcessing"): made only if
+        /// there's none, so its tuning lasts across rebuilds (LevelPostProcessing). False: graded afresh each build.
+        /// </summary>
+        public bool KeepPostProcessing;
         private readonly string skyPath, profilePath, lightingPath, lightingName;
         private readonly (string name, Action<Transform, Material> build)[] parts;
 
@@ -382,6 +392,21 @@ namespace MeridianMotion.Showcase.Levels
 
         // ---- The environment ----
 
+        /// <summary>The procedural sky, made again on every build, for a level without a sky of its own.</summary>
+        private Material ProceduralSky()
+        {
+            Material sky = Replace(skyPath, new Material(Shader.Find("Skybox/Procedural")));
+            sky.SetFloat("_SunDisk", 2f);              // High quality.
+            sky.SetFloat("_SunSize", 0.04f);
+            sky.SetFloat("_SunSizeConvergence", 5f);
+            sky.SetFloat("_AtmosphereThickness", 0.9f); // A little thinner than the default: a clearer, bluer sky.
+            sky.SetColor("_SkyTint", new Color(0.5f, 0.55f, 0.62f));
+            sky.SetColor("_GroundColor", new Color(0.6f, 0.6f, 0.58f)); // Neutral, for beyond the ground placeholder.
+            sky.SetFloat("_Exposure", 1.25f);
+            EditorUtility.SetDirty(sky);
+            return sky;
+        }
+
         private void BuildEnvironment(Transform environment)
         {
             var sunObject = new GameObject("Sun");
@@ -396,15 +421,8 @@ namespace MeridianMotion.Showcase.Levels
             sun.lightmapBakeType = LightmapBakeType.Realtime;
             sunObject.AddComponent<UniversalAdditionalLightData>();
 
-            Material sky = Replace(skyPath, new Material(Shader.Find("Skybox/Procedural")));
-            sky.SetFloat("_SunDisk", 2f);              // High quality.
-            sky.SetFloat("_SunSize", 0.04f);
-            sky.SetFloat("_SunSizeConvergence", 5f);
-            sky.SetFloat("_AtmosphereThickness", 0.9f); // A little thinner than the default: a clearer, bluer sky.
-            sky.SetColor("_SkyTint", new Color(0.5f, 0.55f, 0.62f));
-            sky.SetColor("_GroundColor", new Color(0.6f, 0.6f, 0.58f)); // Neutral, for beyond the ground placeholder.
-            sky.SetFloat("_Exposure", 1.25f);
-            EditorUtility.SetDirty(sky);
+            Material sky = string.IsNullOrEmpty(SkyPath) ? ProceduralSky() : AssetDatabase.LoadAssetAtPath<Material>(SkyPath);
+            if (sky == null) { throw new InvalidOperationException($"The level's sky, '{SkyPath}', isn't a material there."); }
 
             RenderSettings.skybox = sky;
             RenderSettings.sun = sun;
@@ -421,38 +439,7 @@ namespace MeridianMotion.Showcase.Levels
             volumeObject.transform.SetParent(environment, false);
             var volume = volumeObject.AddComponent<Volume>();
             volume.isGlobal = true;
-            volume.sharedProfile = BuildPostProcessingProfile();
-        }
-
-        /// <summary>A light grade for a bright day: ACES tonemapping, a little bloom on the sky and sunlit faces, a touch more contrast.</summary>
-        private VolumeProfile BuildPostProcessingProfile()
-        {
-            VolumeProfile profile = Replace(profilePath, ScriptableObject.CreateInstance<VolumeProfile>());
-
-            var tonemapping = Add<Tonemapping>(profile);
-            tonemapping.mode.Override(TonemappingMode.ACES);
-
-            var bloom = Add<Bloom>(profile);
-            bloom.threshold.Override(1.1f);
-            bloom.intensity.Override(0.25f);
-            bloom.scatter.Override(0.6f);
-
-            var color = Add<ColorAdjustments>(profile);
-            color.postExposure.Override(0.1f);
-            color.contrast.Override(8f);
-            color.saturation.Override(6f);
-
-            EditorUtility.SetDirty(profile);
-            return profile;
-        }
-
-        private static T Add<T>(VolumeProfile profile) where T : VolumeComponent
-        {
-            T component = profile.Add<T>();
-            component.name = typeof(T).Name;
-            component.hideFlags = HideFlags.HideInInspector | HideFlags.HideInHierarchy;
-            AssetDatabase.AddObjectToAsset(component, profile);
-            return component;
+            volume.sharedProfile = LevelPostProcessing.Profile(profilePath, KeepPostProcessing);
         }
 
         /// <summary>

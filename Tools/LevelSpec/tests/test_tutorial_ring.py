@@ -67,6 +67,10 @@ class Ring(unittest.TestCase):
             committed = levelspec.normalize(json.load(f))
         self.assertEqual(levelspec.normalize(meridian_basin.build()), committed)
 
+    def test_it_has_its_own_sky_and_keeps_its_tuned_post_processing(self):
+        self.assertEqual(self.spec["sky"], "Assets/Showcase/Materials/Sky/Sky_29.mat")
+        self.assertIs(self.spec["keepPostProcessing"], True)
+
     def test_ring_spec_is_valid_against_schema(self):
         levelspec.validate(self.spec)
 

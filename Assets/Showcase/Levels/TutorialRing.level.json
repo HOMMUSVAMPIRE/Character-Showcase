@@ -3,6 +3,8 @@
   "version": 1,
   "name": "Tutorial Ring",
   "scene": "Assets/Showcase/Scenes/TutorialRing/TutorialRing.unity",
+  "sky": "Assets/Showcase/Materials/Sky/Sky_29.mat",
+  "keepPostProcessing": true,
   "parts": [
     {
       "name": "Ground and Hub",

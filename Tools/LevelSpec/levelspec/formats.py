@@ -255,6 +255,25 @@ def _parse_xml(text, source):
     return root[0]
 
 
+# The level's own settings besides its name and scene (a spec's top-level keys), carried by the XML's <level>
+# attributes and the CSV's Level row: each with how it's read back from text.
+LEVEL_SETTINGS = (("floraSeed", int), ("sky", str), ("keepPostProcessing", lambda text: text.strip().lower() == "true"))
+
+
+def _level_text(value):
+    return "true" if value is True else "false" if value is False else str(value)
+
+
+def _read_level_settings(values, spec, where, errors):
+    for key, read in LEVEL_SETTINGS:
+        text = values.get(key, "")
+        if isinstance(text, str) and text.strip():
+            try:
+                spec[key] = read(text.strip())
+            except ValueError:
+                errors.append(f"{where}: the level's '{key}' can't be read from {text!r}.")
+
+
 def _read_xml(text, source):
     sc = schema()
     root = _parse_xml(text, source)
@@ -266,9 +285,10 @@ def _read_xml(text, source):
             spec[key] = root.attrs[key]
     if "version" in root.attrs:
         spec["version"] = int(root.attrs["version"])
+    errors = []
+    _read_level_settings(root.attrs, spec, f"{source} <level>", errors)
     spec["parts"] = []
     counter = PathCounter()
-    errors = []
 
     def piece_from(e, context, out):
         where = f"{source} line {e.line} <{e.tag}>"
@@ -344,7 +364,9 @@ def _read_xml(text, source):
 def _write_xml(spec):
     sc = schema()
     out = ['<?xml version="1.0" encoding="utf-8"?>',
-           f'<level name={quoteattr(spec.get("name", ""))} scene={quoteattr(spec.get("scene", ""))} version="{spec.get("version", VERSION)}">']
+           f'<level name={quoteattr(spec.get("name", ""))} scene={quoteattr(spec.get("scene", ""))}'
+           + "".join(f" {key}={quoteattr(_level_text(spec[key]))}" for key, _ in LEVEL_SETTINGS if key in spec)
+           + f' version="{spec.get("version", VERSION)}">']
     for part in spec.get("parts", []):
         out.append(f'  <part name={quoteattr(part["name"])}>')
         for piece in part.get("pieces", []):
@@ -394,6 +416,7 @@ def _read_csv(text, source):
             for key in ("name", "scene"):
                 if cells.get(key, "").strip():
                     spec[key] = cells[key].strip()
+            _read_level_settings(cells, spec, where, errors)
             continue
         if cells.get("part", "").strip():
             part_name = cells["part"].strip()
@@ -409,7 +432,7 @@ def _read_csv(text, source):
         settings = sc.settings(piece_name)
         piece = {"piece": piece_name}
         for key, text in cells.items():
-            if key in ("part", "piece") or (key == "scene" and key not in settings):
+            if key in ("part", "piece") or (key in LEVEL_COLUMNS and key not in settings):
                 continue
             if text.strip() == "" and not (key in settings and sc.kind(settings[key]) == "path" and key in sc.required(piece_name)):
                 continue
@@ -426,6 +449,10 @@ def _read_csv(text, source):
     return spec
 
 
+# The CSV's columns that are the level's own on its Level row (left out of the pieces' rows unless a piece has the setting).
+LEVEL_COLUMNS = ("scene",) + tuple(key for key, _ in LEVEL_SETTINGS)
+
+
 def _write_csv(spec):
     sc = schema()
     columns = ["part", "piece", "parent", "name"]
@@ -434,12 +461,15 @@ def _write_csv(spec):
             for key in piece:
                 if key != "piece" and key not in columns:
                     columns.append(key)
-    if "scene" not in columns:
-        columns.append("scene")
+    for key in ("scene",) + tuple(key for key, _ in LEVEL_SETTINGS if key in spec):
+        if key not in columns:
+            columns.append(key)
     buffer = io.StringIO()
     w = csv.writer(buffer, lineterminator="\n")
     w.writerow(columns)
-    w.writerow(["", "Level"] + [spec.get("name", "") if c == "name" else spec.get("scene", "") if c == "scene" else "" for c in columns[2:]])
+    level = {key: _level_text(spec[key]) for key, _ in LEVEL_SETTINGS if key in spec}
+    level["name"], level["scene"] = spec.get("name", ""), spec.get("scene", "")
+    w.writerow(["", "Level"] + [level.get(c, "") if c in ("name",) + LEVEL_COLUMNS else "" for c in columns[2:]])
     for part in spec.get("parts", []):
         for piece in part.get("pieces", []):
             settings = sc.settings(piece["piece"])
