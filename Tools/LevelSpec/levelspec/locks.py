@@ -21,7 +21,8 @@ A crossing can also name moves it accepts besides its intended ones (also_allowe
 that a dash can always reach too, since nothing in a gap stops a dash's straight line without stopping a jump's.
 
 Kinds of crossing, and the moves measured for each (the envelope's figures, or its keys):
-- "gap": across, at the same height or near it (jump, sprint jump, sprint jump and air dash, wall run);
+- "gap": across, at the same height or near it (jump, sprint jump, sprint jump and air dash, dash jump and air dash
+  (dash off the lip, jump in coyote time, air dash past the peak), wall run);
 - "climb": up (step up, jump up, jump to the ledge);
 - "passage": a low way through, its ceiling given (roll, slide; crouch gets through any length that fits it; standing,
   "walk", through one at least WALK_SHARE of the standing height).
@@ -57,7 +58,9 @@ FIXTURE_MOVES = {
 #: What the envelope measures, by kind: the move, and where its reach is ("jumps"/"climbs" by its move, or a key).
 MEASURED = {
     "gap": {"jump": ("jumps", "jump"), "sprint jump": ("jumps", "sprint jump"),
-            "sprint jump and air dash": ("jumps", "sprint jump and air dash"), "wall run": ("key", "wallRunLength")},
+            "sprint jump and air dash": ("jumps", "sprint jump and air dash"),
+            # Expert tech, not taught in the lessons: dash off a lip, jump in coyote time, air dash past the peak.
+            "dash, jump and air dash": ("jumps", "dash, jump and air dash"), "wall run": ("key", "wallRunLength")},
     "climb": {"step up": ("climbs", "step up"), "jump up": ("climbs", "jump up"),
               "jump to the ledge": ("climbs", "jump to the ledge")},
     "passage": {"roll": ("key", "rollLength"), "slide": ("key", "slideLength")},
@@ -134,7 +137,7 @@ def _ruled_out(move, c, env):
         return "no wall"
     if c.dash_blocked and "dash" in move:
         return "the dash's line is blocked"
-    if not c.run_up and ("sprint" in move or move == "slide"):
+    if not c.run_up and ("sprint" in move or move in ("slide", "dash, jump and air dash")):
         return "no run-up"
     if c.timed and move == "crouch":
         return "too slow for its timing"

@@ -200,5 +200,36 @@ namespace MeridianMotion.Tests.Movement
             simulation.Reset(Vector3.zero);
             Assert.That(simulation.Restore(saved), Is.False, "A snapshot shouldn't go into a character made afresh since.");
         }
-    }
+    
+        // The dash, coyote jump and air dash (StandardMovementMode.Capabilities): dash off a lip, jump inside coyote time,
+        // air dash past the jump's peak. One jump only: the extra jump a dash or walk off a ledge gives back must never
+        // be in it (the measurement turns air jumps off), so it's the same whether the character has one jump or two.
+        [UnityTest]
+        public IEnumerator TheDashJumpAndAirDash_IsMeasured_LongerThanASprintJumpAndAirDash()
+        {
+            yield return OnALongFloor();
+            Assert.That(Reach("dash, jump and air dash"), Is.GreaterThan(Reach("sprint jump and air dash")));
+        }
+
+        // With no coyote time, every jump after leaving the lip is in mid-air: the move must find none to use (the jump a
+        // walk or dash off a ledge gives back today must never be measured as its jump).
+        [UnityTest]
+        public IEnumerator WithoutCoyoteTime_ThereIsNoDashJumpAndAirDash()
+        {
+            yield return OnALongFloor();
+            rig.SetMovementSetting("coyoteTime", 0f);
+            Assert.That(Capabilities.Jumps.Any(m => m.Name == "dash, jump and air dash"), Is.False,
+                "every jump off the lip is an air jump, so the move should be left out");
+        }
+
+        [UnityTest]
+        public IEnumerator TheDashJumpAndAirDash_UsesNoAirJump()
+        {
+            yield return OnALongFloor();
+            Assume.That(rig.MovementSetting<int>("maxJumps"), Is.GreaterThan(1), "the default character has air jumps");
+            float withAirJumps = Reach("dash, jump and air dash");
+            rig.SetMovementSetting("maxJumps", 1);
+            Assert.That(Reach("dash, jump and air dash"), Is.EqualTo(withAirJumps).Within(1e-4f));
+        }
+}
 }

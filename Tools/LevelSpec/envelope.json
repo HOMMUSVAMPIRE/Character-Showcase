@@ -12,6 +12,7 @@
     {"distance": 6.6, "move": "sprint jump"},
     {"distance": 11.97, "move": "sprint jump and air dash"},
     {"distance": 13, "move": "double jump"},
+    {"distance": 15.59, "move": "dash, jump and air dash"},
     {"distance": 18.37, "move": "double jump and air dash"}
   ],
   "climbs": [

@@ -25,6 +25,8 @@ namespace MeridianMotion.Characters
         [Tooltip("How long after being grounded the player can still jump as if grounded")]
         [SerializeField] private float coyoteTime;
 
+        /// <summary>How long (s) after leaving the ground a jump still counts as from the ground (Coyote Time).</summary>
+        public float CoyoteTime => coyoteTime;
         /// <summary>How many jumps the character can make before landing again (1 = from the ground only).</summary>
         public int MaxJumps { get => maxJumps; set => maxJumps = value; }
         /// <summary>How high (m) the shortest jump (a tap) rises, at the character's authored size.</summary>

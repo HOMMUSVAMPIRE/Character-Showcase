@@ -59,6 +59,9 @@ CHIMNEY_WIDTH = 3.5           # How far apart the wall-jump lesson's shaft's wal
 CORRIDOR_WIDTH = 4.0          # How far apart the walls of the course's wall-run corridor are.
 WALL_HEIGHT = 17.0            # How far the walls rise over the decks: out of reach from any climb's top (checked).
 GROUND = 0.0                  # Where every wall and block goes down to.
+HAZARD_BOTTOM = -2.0          # The ground's hazard volume (a fall's respawn), from under the ground
+HAZARD_TOP = 4.0              # up to here: every floor stands at least HAZARD_CLEARANCE over it.
+HAZARD_CLEARANCE = 0.5
 SKIRT = 0.5                   # The walls under the decks' edges, from the ground up to them: how thick.
 GATE_POST = 0.3               # A timing gate's posts' width (LevelBuilderSettings' Gate Post): its posts stand in the walls.
 GATE_TOP = 4.6               # A timing gate's top over its floor: its posts (LevelBuilderSettings' Gate Height) and its beam on them;
@@ -166,6 +169,8 @@ class Stretch:
         self.open = []             # Stretches (z0, z1) with no ring wall either side: something of its own is the wall (the pool).
         self.marked = []           # Walls marked for wall runs or slides: (z0, z1, sides), where the ring's own stop for them.
         self.decks = []            # Its decks (z0, z1, top, x0, x1): the walls' bands follow the deck beside them.
+        self.no_windows = []       # Stretches (z0, z1) the ring walls have no windows or pipes beside (a mastery route's roof).
+        self.room = None           # A course stretch's room on its face: from its start to the face's end (see build).
 
     def gap(self, z0, z1):
         """A gap from z0 to z1 (the ring's walls run on beside it: unmarked, they're no help across it)."""
@@ -538,13 +543,19 @@ def slide_into_jump(st, z, share, taught):
     return z + 20 + g
 
 
-def ledge(st, z, share, taught, name="Ledge"):
+def ledge_block(st, z, share, taught, name="Ledge"):
+    """A ledge to jump to and climb, from z, 5 m long: its height (over the deck)."""
     h = r(max(share * reach("jump to the ledge", "climb"), reach("jump up", "climb") / locks.OTHER_SHARE + 0.05))
     st.block(z, z + 5, GROUND, FLOOR + h - DECK, name=f"{name} (+{h:g})")
     st.deck(z, z + 5, FLOOR + h, name=f"{name} Top")
     st.stripes(z, 1, FLOOR + h)  # The lip to reach for.
-    st.deck(z + 5, z + 10, name="Below")
     cross(Crossing(f"{st.name}: {name.lower()}", "climb", h, {"jump to the ledge"}), taught)
+    return h
+
+
+def ledge(st, z, share, taught, name="Ledge"):
+    ledge_block(st, z, share, taught, name)
+    st.deck(z + 5, z + 10, name="Below")
     return z + 10
 
 
@@ -559,7 +570,7 @@ def stretch_0(st, share, taught):
     cross(Crossing(f"{st.name}: ropes", "gap", g, {"rope"}, fixtures={"rope"}), taught)
     z, drop = zipline_gap(st, z + g + 4, g)
     cross(Crossing(f"{st.name}: zipline", "gap", g, {"zipline"}, fixtures={"zipline"}), taught)
-    return ledge(st, z, share, taught)
+    return mastery_route(st, z, share, taught, "dash")
 
 
 def stretch_1(st, share, taught):
@@ -579,7 +590,7 @@ def stretch_1(st, share, taught):
     st.deck(z + 8 + g, z + 16 + g, name="Landing")
     cross(Crossing(f"{st.name}: bounce into a wall run", "gap", g, {"wall run", "bounce"}, wall_beside=True,
                    fixtures={"bounce pad"}, also_allowed={"sprint jump and air dash"}), taught)
-    return ledge(st, z + 16 + g, share, taught)
+    return mastery_route(st, z + 16 + g, share, taught, "wall run")
 
 
 def stretch_2(st, share, taught):
@@ -602,7 +613,7 @@ def stretch_2(st, share, taught):
     cross(Crossing(f"{st.name}: wall run", "gap", g, {"wall run", "wall jump"}, wall_beside=True, fixtures={"walls"},
                    also_allowed={"sprint jump and air dash"}), taught)
     cross(Crossing(f"{st.name}: wall jumps", "climb", h, {"wall jump"}, fixtures={"walls"}), taught)
-    return ledge(st, top + 12, share, taught)
+    return mastery_route(st, top + 12, share, taught, "chimney")
 
 
 def stretch_3(st, share, taught):
@@ -639,6 +650,245 @@ def stretch_3(st, share, taught):
     return z + 24
 
 
+# ---- The mastery routes (docs/superpowers/specs/2026-11-25-tutorial-ring-mastery-routes-design.md) ----
+# Courses 1 to 3 end in long stretches: each becomes an undercroft, its main route slow (baffles, hurdles, a pit with a
+# ladder or a crate out), its roof a mastery line (catwalks, gaps through to the main route), entered by a ledge grab
+# from the stretch's last ledge. A miss falls onto the main route.
+
+#: Per course stretch with one, its layout (stretch z): the roof's top, the roof's openings, the main route's floor
+#: spans (where a fall lands: deck or pit floor), what stands up into the roof (baffles, the pit's wall, the mouth), its
+#: pits and their ways out, and the two routes' estimated times. For the tests.
+MASTERY = {}
+#: How much faster (s) the mastery line must be than the main route's best case.
+MASTERY_MARGIN = 2.0
+BAFFLE_EVERY = 7.0            # How far apart the main route's baffles are, under the roof's catwalks,
+BAFFLE_DOOR = 4.0             # and how wide the way past each is (on alternate sides).
+HURDLE_EVERY = 4.5            # How far apart its hurdles are, where there are no baffles: under a dash and its cooldown.
+PIT_LENGTH = 8.0              # Its pit's length, its wall in the middle,
+PIT_DOOR = 2.4                # and the way under that wall, from the pit's floor (over standing height).
+PIT_LADDER_DEPTH = 5.5        # A ladder pit's depth: deeper than a ledge grab climbs out of, its floor clear of the hazard.
+MOUTH_DOOR = 4.0              # How wide the main route's way in under the roof's front edge is (the rest is the wall grabbed).
+CATWALK_RUN_UP = 10.0         # The least run-up on a catwalk before a gap,
+CATWALK_LANDING = 6.0         # and the least landing after one.
+BEAM = 0.6                    # A slide beam's thickness along the way.
+CHIMNEY = 6.0                 # The mastery chimney's length (Course 3), its walls CHIMNEY_WIDTH apart (as the lesson's shaft).
+#: The movement tuning (StandardMovementMode.asset): the time estimate's speeds, read by name.
+TUNING = os.path.join(HERE, "..", "..", "..", "Assets", "MeridianMotion", "Content", "Movement", "StandardMovementMode.asset")
+
+
+def tuning(name):
+    """A number setting of the movement's tuning, by its field's name (its first occurrence)."""
+    import re
+    with open(TUNING, encoding="utf-8") as f:
+        m = re.search(rf"^\s*{name}: ([-0-9.eE]+)\s*$", f.read(), re.M)
+    if not m:
+        raise LockError(f"The movement tuning has no '{name}' (the mastery routes' time check reads it).")
+    return float(m.group(1))
+
+
+def mastery_route(st, z, share, taught, line):
+    """
+    The stretch's last ledge at z, then its mastery route to its face's end (st.room): an undercroft whose main route is
+    slow and whose roof is the mastery line (line: "dash" for Course 1, "wall run" for Course 2, "chimney" for Course
+    3). Returns its end (the room).
+    """
+    end = st.room
+    ledge_top = FLOOR + ledge_block(st, z, share, taught)
+    start = z + 5                                    # The undercroft's mouth: the ledge top's far end.
+    inside = LANE / 2 - WALL_THICKNESS               # The ring walls' faces.
+    expert = set(taught) | {"dash, jump and air dash"}
+
+    # The roof: a ledge grab up from the ledge top (over a plain jump up's reach, inside a jump to the ledge's).
+    rise = gap_between(reach("jump up", "climb"), reach("jump to the ledge", "climb"))
+    roof = r(ledge_top + rise)
+    cross(Crossing(f"{st.name}: mastery entry", "climb", rise, {"jump to the ledge"}), taught)
+
+    # The line along the roof: catwalks and gaps (each gap an opening onto the main route).
+    g_jump = between(reach("sprint jump", "gap") / locks.OTHER_SHARE, locks.INTENDED_SHARE * reach("sprint jump and air dash", "gap"), 0.8)
+    g_long = between(reach("sprint jump and air dash", "gap") / locks.OTHER_SHARE,
+                     locks.INTENDED_SHARE * reach("dash, jump and air dash", "gap"), 0.5)
+    g_wall = between(reach("sprint jump", "gap") / locks.OTHER_SHARE, locks.INTENDED_SHARE * reach("wall run", "gap"), 0.7)
+    if line == "dash":
+        middle = [("gap", g_jump, "jump"), ("slab", CATWALK_RUN_UP, None)]
+    elif line == "wall run":
+        middle = [("gap", g_wall, "wall"), ("slab", CATWALK_RUN_UP + BEAM + 4, "beam")]
+    else:
+        middle = [("chimney", CHIMNEY, None), ("slab", CATWALK_RUN_UP + 2 * (BEAM + 3), "beams")]
+    tail = [("gap", g_long, "long"), ("slab", CATWALK_LANDING, None)]
+    fixed = sum(length for _, length, _ in middle + tail)
+    first = end - start - fixed
+    if first < 6:
+        raise LockError(f"{st.name}'s mastery route needs {r(fixed + 6)} m; there's {r(end - start)}.")
+    segments = [("slab", first, "first")] + middle + tail
+
+    MOUTH = 1.0
+    openings, slabs, bases, blocked = [], [], [], [(start, start + MOUTH)]
+    tier = roof  # The line's height so far (Course 3's chimney raises it).
+    zz = start
+    chimney_h = None
+    for kind, length, what in segments:
+        z0, z1 = zz, zz + length
+        if kind == "slab":
+            slabs.append((z0, z1, tier))
+            if tier > roof:
+                # Course 3's upper catwalk stands on a solid base down to the roof's underside, so it's only reached by
+                # its chimney (nothing runs on along the roof under it to its gap).
+                st.block(z0, z1, roof - DECK, tier - DECK, name="Upper Catwalk Base", x0=-inside, x1=inside, surface="Panel")
+                bases.append((z0, z1))
+            if what == "beam" or what == "beams":
+                count = 1 if what == "beam" else 2
+                for i in range(count):
+                    bz = z0 + 3 + i * (BEAM + 3)
+                    st.block(bz, bz + BEAM, tier + CEILING, FLOOR + WALL_HEIGHT, name=f"Slide Beam ({CEILING:g} m clear)",
+                             x0=-inside, x1=inside, surface="Graphite")
+                    st.stripes(bz, -1, tier)
+                    cross(Crossing(f"{st.name}: mastery slide beam {i + 1}", "passage", BEAM, {"crouch", "slide", "roll"},
+                                   ceiling=CEILING), taught)
+        elif kind == "gap":
+            openings.append((z0, z1))
+            for zs, inward in ((z0, -1), (z1, 1)):
+                st.A("HazardStripes", a=[-inside, r(zs)], b=[inside, r(zs)], inward=[0, inward], height=r(tier))
+            if what == "jump":
+                cross(Crossing(f"{st.name}: mastery gap", "gap", length, {"sprint jump and air dash"}), taught)
+            elif what == "wall":
+                # The outer wall marked for wall runs only from the roof up: below, a plain wall, so nothing on the main
+                # route runs up it toward an opening.
+                w0, w1 = z0 - 4, z1 + 4
+                edge = LANE / 2 - WALL_THICKNESS / 2
+                a, b = [edge, r(w0)], [edge, r(w1)]
+                st.A("MarkedWall", name=f"{st.name} Mastery", a=a, b=b, y0=r(roof - DECK), y1=FLOOR + WALL_HEIGHT,
+                     thickness=WALL_THICKNESS, move="WallRun")
+                dress_wall(st.s.add, st.g, a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT, band=False)
+                st.block(w0, w1, GROUND, roof - DECK, name="Ring Wall (under the run)", x0=LANE / 2 - WALL_THICKNESS, x1=LANE / 2)
+                st.marked.append((w0, w1, ("outer",)))
+                cross(Crossing(f"{st.name}: mastery wall run", "gap", length, {"wall run"}, wall_beside=True,
+                               also_allowed={"sprint jump and air dash"}), taught)
+            else:
+                cross(Crossing(f"{st.name}: mastery long gap", "gap", length, {"dash, jump and air dash"}), expert)
+        else:  # The chimney: two marked walls up from the roof, and the upper catwalk's end block to reach.
+            chimney_h = r(max(6.0, reach("jump to the ledge", "climb") / locks.OTHER_SHARE + 0.5))
+            top = roof + chimney_h
+            slabs.append((z0, z1, roof))
+            # Marked for wall slides, as the wall-jump lesson's shaft is (and as wide): kicking between them is the way
+            # up. (A wall run along walls this short barely starts before the catwalk above.)
+            for x0, x1 in ((-inside, -CHIMNEY_WIDTH / 2), (CHIMNEY_WIDTH / 2, inside)):
+                st.marked_block("Mastery Chimney", z0, z1, roof, top, x0, x1, "WallSlide")
+            cross(Crossing(f"{st.name}: mastery chimney", "climb", chimney_h, {"wall jump"}, fixtures={"walls"}), taught)
+            tier = top
+        zz = z1
+
+    # The catwalks: inside the walls' faces, no skirts (the main route is under them).
+    for z0, z1, top in slabs:
+        st.A("Platform", name="Mastery Catwalk" if top == roof else "Mastery Upper Catwalk", x0=r(-inside), x1=r(inside),
+             z0=r(z0), z1=r(z1), y0=r(top - DECK), top=r(top), coping="Accent")
+
+    # The mouth: a wall up to the roof's top across most of the lane, its face the lip grabbed from the ledge top; the
+    # main route's way in beside it.
+    st.block(start, start + MOUTH, GROUND, roof, name="Mastery Mouth", x0=-inside + MOUTH_DOOR, x1=LANE / 2, surface="Panel")
+
+    # The main route, under the roof: the deck, a pit under the longest catwalk (pits, if a line ever needs more than
+    # one), baffles under the catwalks, hurdles under the openings.
+    # What's over the main route: the roof's catwalks, and the upper catwalk's base where it stands in the roof's place.
+    roof_spans = _merge(sorted([(z0, z1) for z0, z1, top in slabs if top == roof] + bases))
+    # Slots a pit fits in (with a metre clear each end), as many as each covered span holds, the longest spans' first.
+    room_for_pit = []
+    for u0, u1 in sorted(roof_spans, key=lambda s_: s_[0] - s_[1]):
+        slots = int((u1 - u0) // (PIT_LENGTH + 2))
+        room_for_pit += [(u0 + k * (u1 - u0) / slots, u0 + (k + 1) * (u1 - u0) / slots) for k in range(slots)]
+    count = 1
+    if len(room_for_pit) < count:
+        raise LockError(f"{st.name}'s mastery route has no catwalk long enough to put its pit under.")
+    crate_out = line == "wall run"
+    ledge_reach = reach("jump to the ledge", "climb")
+    depth = r(gap_between(ledge_reach, ledge_reach + CRATE) if crate_out else PIT_LADDER_DEPTH)
+    pit_floor = FLOOR - depth
+    if pit_floor < HAZARD_TOP + HAZARD_CLEARANCE - 1e-6:
+        raise LockError(f"{st.name}'s pit floor ({r(pit_floor)}) is in the ground's hazard (to {HAZARD_TOP} + {HAZARD_CLEARANCE}).")
+    if not crate_out and depth <= ledge_reach / locks.OTHER_SHARE:
+        raise LockError(f"{st.name}'s ladder pit ({depth} m) can be climbed out of with a ledge grab.")
+    pits = []
+    for u0, u1 in sorted(room_for_pit[:count]):
+        p0 = u0 + (u1 - u0 - PIT_LENGTH) / 2
+        pits.append({"z0": p0, "z1": p0 + PIT_LENGTH, "out": "crate" if crate_out else "ladder", "depth": depth})
+    deck_from = start
+    main_floor = []
+    for i, pit in enumerate(pits):
+        p0, p1 = pit["z0"], pit["z1"]
+        st.deck(deck_from, p0, name="Undercroft Deck")
+        main_floor.append((max(deck_from, start + MOUTH), p0))
+        st.deck(p0, p1, pit_floor, name=f"Pit Floor (-{depth:g})")
+        mid = (p0 + p1) / 2
+        st.block(mid - 0.5, mid + 0.5, pit_floor + PIT_DOOR, roof - DECK, name="Pit Wall", x0=-LANE / 2, x1=LANE / 2, surface="Panel")
+        blocked.append((mid - 0.5, mid + 0.5))
+        main_floor += [(p0, mid - 0.5), (mid + 0.5, p1)]
+        name = f"{st.name}: mastery pit{f' {i + 1}' if count > 1 else ''} (main route)"
+        if crate_out:
+            st.A("PushableCrate", at=[0, r(p1 - 2.5)], floor=r(pit_floor), size=CRATE, reset=st.name.replace("Stretch ", "C") + "-start")
+            cross(Crossing(name, "climb", depth, {"crate"}, fixtures={"crate"}), taught)
+        else:
+            st.A("Ladder", at=[0, r(p1)], floor=r(pit_floor), height=depth, facing=[0, -1])
+            cross(Crossing(name, "climb", depth, {"ladder"}, fixtures={"ladder"}), taught)
+        st.stripes(p0, -1)
+        deck_from = p1
+    st.deck(deck_from, end, name="Undercroft Deck")
+    main_floor.append((deck_from, end))
+
+    baffles, hurdles = 0, 0
+    side = 1
+    for z0, z1 in roof_spans:
+        b = z0 + 3.0
+        while b + 1.0 <= z1 - 2.0:
+            if not any(p["z0"] - 1 <= b <= p["z1"] + 1 for p in pits) and b > start + MOUTH + 2:
+                x0, x1 = (-inside + BAFFLE_DOOR, LANE / 2) if side > 0 else (-LANE / 2, inside - BAFFLE_DOOR)
+                st.block(b, b + 1.0, FLOOR, roof - DECK, name="Baffle", x0=x0, x1=x1, surface="Panel")
+                blocked.append((b, b + 1.0))
+                baffles += 1
+                side = -side
+            b += BAFFLE_EVERY
+    for z0, z1 in openings:
+        hz = z0 + HURDLE_EVERY / 2
+        while hz + 0.4 <= z1:
+            st.block(hz, hz + 0.4, FLOOR, FLOOR + VAULT_WALL, name=f"Hurdle ({VAULT_WALL:g} m)", x0=-inside, x1=inside, surface="Graphite")
+            st.trim("Hurdle Top", -inside, inside, hz, hz + 0.4, FLOOR + VAULT_WALL, FLOOR + VAULT_WALL + 0.02, "Accent")
+            hurdles += 1
+            hz += HURDLE_EVERY
+
+    st.no_windows.append((start, end))
+
+    # The time check: both routes at an expert's best. Every open run goes at a dash chain's speed where it's long
+    # enough for a dash and its cooldown, and sprinting where it isn't; a hurdle doesn't break a chain (a dash cancels
+    # into a jump over it). The main route also goes round each baffle (across the lane, sprinting), through its pit's
+    # door and out by its ladder or crate; the mastery line has its climbs (the entry, the chimney and the ledge climb
+    # at its top) at their durations.
+    run, dash = tuning("runSpeed"), tuning("dashSpeed")
+    dash_time, cooldown = tuning("dashDuration"), tuning("dashCooldown")
+    cycle = dash * dash_time + run * cooldown
+    chain = cycle / (dash_time + cooldown)
+    climb = tuning("ledgeClimbDuration")
+
+    def runs_time(stops):
+        """The time along the runs between successive stops (z), each at a chain's speed if it fits one."""
+        stops = sorted(stops)
+        return sum((b - a) / (chain if b - a >= cycle else run) for a, b in zip(stops, stops[1:]) if b > a)
+
+    across = 2 * inside - BAFFLE_DOOR
+    baffle_zs = [b0 for b0, b1 in blocked if b0 > start + MOUTH and not any(p["z0"] <= b0 <= p["z1"] for p in pits)]
+    main_time = runs_time([start, end] + baffle_zs + [p["z0"] for p in pits] + [p["z1"] for p in pits])
+    main_time += len(baffle_zs) * across / run
+    for p in pits:
+        main_time += 2 * PIT_DOOR / run + (p["depth"] / tuning("wallClimbSpeed") if p["out"] == "ladder"
+                                            else 2 * CRATE / tuning("pushPullSpeed") + climb)
+    mastery_stops = [start, end] + [z for o in openings for z in o]
+    mastery_time = climb + runs_time(mastery_stops)
+    if chimney_h:
+        mastery_time += chimney_h / tuning("wallClimbSpeed") + climb
+    MASTERY[st.name] = {
+        "roof": roof, "openings": openings, "blocked": blocked, "main_time": main_time, "mastery_time": mastery_time,
+        "main_floor": main_floor, "pits": pits,
+    }
+    return end
+
+
 STRETCHES = [stretch_0, stretch_1, stretch_2, stretch_3]
 #: The course's combinations (the design's), and the stretch each is in, for the tests.
 COMBOS = {"slide into a jump": 0, "rope to zipline": 0, "bounce pad into a wall run": 1, "wall run into a wall jump": 2,
@@ -664,6 +914,7 @@ def face_half_length():
 
 def build():
     CROSSINGS.clear()
+    MASTERY.clear()
     WALL_PLAN.clear()
     WALL_FLORA.clear()
     TOPS.clear()
@@ -684,7 +935,8 @@ def build():
     # Darker under and round the ring, where a fall lands: it's the hazard.
     A("Trim", parent=root, name="Hazard Ground", centre=[0, 0], size=[r(2 * (outer + 40)), r(2 * (outer + 40))], y0=GROUND, y1=GROUND + 0.03,
       yaw=0, surface="Asphalt")
-    A("HazardVolume", parent=root, name="Fall", centre=[0, 1, 0], size=[r(2 * (outer + 60)), 6, r(2 * (outer + 60))])
+    A("HazardVolume", parent=root, name="Fall", centre=[0, (HAZARD_BOTTOM + HAZARD_TOP) / 2, 0],
+      size=[r(2 * (outer + 60)), HAZARD_TOP - HAZARD_BOTTOM, r(2 * (outer + 60))])
     hub_centre = world(RING_APOTHEM / math.cos(math.radians(22.5)), HUB_ANGLE)
     A("Prism", parent=root, name="Hub", shape=octagon(HUB_APOTHEM, *hub_centre), y0=FLOOR - DECK, y1=FLOOR, surface="Concrete")
     skirt = octagon(HUB_APOTHEM - SKIRT / 2, *hub_centre)
@@ -722,7 +974,7 @@ def build():
         wall_chain(A, face, corner_line(h, outer - SKIRT / 2), SKIRT, GROUND, FLOOR - DECK, "Corner Skirt")
         inner_joint(A, k, h, inner, SKIRT, GROUND, FLOOR - DECK, "Corner Skirt")
         cursor = h
-        plan = {"face": k, "frame": face, "keep_clear": [], "open": [], "marked": [], "starts": [], "decks": []}
+        plan = {"face": k, "frame": face, "keep_clear": [], "open": [], "marked": [], "starts": [], "decks": [], "no_windows": []}
         WALL_PLAN.append(plan)
 
         def note(st, at):
@@ -731,6 +983,7 @@ def build():
             plan["open"] += [(at + z0, at + z1) for z0, z1 in st.open]
             plan["marked"] += [(at + z0, at + z1, sides) for z0, z1, sides in st.marked]
             plan["decks"] += [(at + z0, at + z1, top, x0, x1) for z0, z1, top, x0, x1 in st.decks]
+            plan["no_windows"] += [(at + z0, at + z1) for z0, z1 in st.no_windows]
 
         if i < 4:
             for lesson, make in LESSONS[i]:
@@ -766,6 +1019,7 @@ def build():
             st.label(str(n + 1), TIMING_GATE_AT - 1.8, size=2.0)
             st.label(title, TIMING_GATE_AT - 3.6, size=0.8)
             plan["starts"].append((h - cursor, str(n + 1)))
+            st.room = cursor + h  # From its start to its face's end: what a mastery route fills.
             length = STRETCHES[n](st, SHARES[n], taught)
             note(st, h - cursor)
             cursor -= length
@@ -1028,7 +1282,9 @@ def build_walls(s, h):
                 dress_wall(A, plan["frame"], a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT, band=False)
                 if side == "inner":
                     wall_flora(A, plan["frame"], h - u0, h - u1, salt=100 * i + len(WALL_FLORA))
-                ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h, pipes=i >= 4 and side == "outer", skip=windows)
+                ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h,
+                                   pipes=i >= 4 and side == "outer" and not any(n0 < u1 and u0 < n1 for n0, n1 in plan["no_windows"]),
+                                   skip=windows)
                 # Where it stops for an opening, an end post with an orange strip down its lane side, so the break reads as meant.
                 for u in (u0, u1):
                     if any(abs(u - k0) < 0.6 or abs(u - k1) < 0.6 for k0, k1 in openings):
@@ -1116,6 +1372,8 @@ def ring_windows(plan, u0, u1):
     """
     plain = _merge([(max(u0, d0), min(u1, d1)) for d0, d1, top, x0, x1 in plan["decks"]
                     if abs(top - FLOOR) < 1e-6 and x0 <= -LANE / 2 + 1e-6 and min(u1, d1) - max(u0, d0) > 0.05])
+    # None beside a mastery route's undercroft: its roof and catwalks would cross the glass.
+    plain = [w for p in plain for w in _subtract([p], plan.get("no_windows", []))]
     out = []
     for p0, p1 in plain:
         if p1 - p0 >= GLASS_MIN:
@@ -1172,7 +1430,8 @@ def ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h, pipes=False,
     first = u0 + (length - (count - 1) * PILASTER_SPACING) / 2
     for i in range(count - 1):
         u = first + (i + 0.5) * PILASTER_SPACING
-        if i % 2 == 0 and not any(w0 - 1 <= u <= w1 + 1 for w0, w1 in skip):  # Not on a window.
+        # Not on a window, nor beside a mastery route's undercroft (its catwalks run at the lamps' height).
+        if i % 2 == 0 and not any(w0 - 1 <= u <= w1 + 1 for w0, w1 in list(skip) + plan.get("no_windows", [])):
             A("Trim", parent=frame, name="Wall Lamp", centre=[r(h - u), r(face + toward_lane * 0.05)], size=[1.6, 0.1],
               y0=FLOOR + LAMP_HEIGHT, y1=FLOOR + LAMP_HEIGHT + 0.25, yaw=0, surface="Light")
     if pipes:

@@ -39,8 +39,14 @@ namespace MeridianMotion.Characters
                 MovementCapabilities.Add(capabilities.jumps, "sprint jump", sprintJump);
                 if (canDash)
                 {
-                    MovementCapabilities.Add(capabilities.jumps, "sprint jump and air dash",
-                        Best(1, air, dash => JumpAcross(simulation, true, dashAt: dash)));
+                    float sprintJumpAndAirDash = Best(1, air, dash => JumpAcross(simulation, true, dashAt: dash));
+                    MovementCapabilities.Add(capabilities.jumps, "sprint jump and air dash", sprintJumpAndAirDash);
+                    // The longest gap one jump crosses: only where it beats the sprint jump and air dash.
+                    float dashJumpAndAirDash = DashJumpAndAirDash(simulation, jumping);
+                    if (!float.IsNaN(dashJumpAndAirDash) && (float.IsNaN(sprintJumpAndAirDash) || dashJumpAndAirDash > sprintJumpAndAirDash))
+                    {
+                        MovementCapabilities.Add(capabilities.jumps, DashJumpAndAirDashMove, dashJumpAndAirDash);
+                    }
                 }
                 if (airJumps)
                 {
@@ -90,6 +96,92 @@ namespace MeridianMotion.Characters
 
             // ---- Each ability's own (the crouch height, how far a slide, a roll and a wall run carry the character) ----
             base.MeasureCapabilities(simulation, capabilities);
+        }
+
+        /// <summary>The name of the longest one-jump gap's move in the capabilities (and the movement envelope).</summary>
+        public const string DashJumpAndAirDashMove = "dash, jump and air dash";
+
+        // The dash, jump and air dash's measurement: the deck it runs off (its top this high over the floor, so nothing is
+        // reached by falling), how far back from its lip the run starts, and the timings tried: how far before the lip
+        // the dash starts (m, every DashLeadStep), and the air dash's delay after the jump (steps, every AirDashStep, then
+        // each step either side of the best).
+        private const float LipHeight = 20f, LipRunUp = 40f, DashLeadMax = 5f, DashLeadStep = 1f;
+        private const int AirDashFirst = 3, AirDashLast = 45, AirDashStep = 3;
+
+        /// <summary>
+        /// How far (m, from the lip) the longest one-jump gap is crossed: sprinting up to a deck's edge, a dash that carries
+        /// off it, Jump pressed within coyote time after leaving it, and one air dash after the jump's peak (which resets
+        /// the fall speed, so the character stays up longer), searching the three timings for the furthest it comes back
+        /// down to the deck's height. On a copy with one jump: a jump in mid-air, which leaving a ledge can give back today,
+        /// is never part of it (and the jump is only tried within coyote time). NaN if it never gets past the lip.
+        /// </summary>
+        private float DashJumpAndAirDash(MovementSimulation simulation, Jumping jumping)
+        {
+            try { return SearchDashJumpAndAirDash(simulation, jumping); }
+            finally { simulation.ClearObstacles(); }  // The lip, gone before the measurements after this one.
+        }
+
+        private float SearchDashJumpAndAirDash(MovementSimulation simulation, Jumping jumping)
+        {
+            StandardMovementMode single = simulation.Copy(this);
+            single.Get<Jumping>(includeDisabled: true).MaxJumps = 1;
+            int coyote = Mathf.Max(0, MovementSimulation.StepsFor(jumping.CoyoteTime));
+            float best = float.NaN;
+            int bestAir = -1;
+            float bestLead = 0f;
+            int bestJump = 0;
+            for (float lead = 0f; lead <= DashLeadMax + 1e-3f; lead += DashLeadStep)
+            {
+                for (int jump = 0; jump <= coyote; jump++)
+                {
+                    for (int air = AirDashFirst; air <= AirDashLast; air += AirDashStep)
+                    {
+                        float reach = OffTheLip(simulation, single, lead, jump, air);
+                        if (!float.IsNaN(reach) && (float.IsNaN(best) || reach > best)) { (best, bestLead, bestJump, bestAir) = (reach, lead, jump, air); }
+                    }
+                }
+            }
+            if (bestAir < 0) { return best; }
+            for (int air = Mathf.Max(1, bestAir - AirDashStep + 1); air <= bestAir + AirDashStep - 1; air++)
+            {
+                float reach = OffTheLip(simulation, single, bestLead, bestJump, air);
+                if (!float.IsNaN(reach) && reach > best) { best = reach; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// One try at the dash, jump and air dash (see DashJumpAndAirDash): the dash pressed lead metres before the lip,
+        /// Jump jumpDelay steps after leaving the deck, the air dash airDelay steps after the jump. How far past the lip
+        /// the feet come back down to the deck's height; NaN if they never get past it.
+        /// </summary>
+        private float OffTheLip(MovementSimulation simulation, StandardMovementMode mode, float lead, int jumpDelay, int airDelay)
+        {
+            simulation.ClearObstacles();
+            // The deck: its top at LipHeight, its lip at z = 0, the run-up behind it.
+            simulation.Box(new Vector3(0f, LipHeight / 2f, -LipRunUp - 10f), new Vector3(20f, LipHeight, 2f * LipRunUp + 20f));
+            simulation.Reset(new Vector3(0f, LipHeight, -LipRunUp), mode);
+            int dashAt = -1, leftAt = -1, jumpAt = -1, airAt = -1;
+            for (int i = 0; i < MovementSimulation.StepsFor(MovementSimulation.MeasureTimeout); i++)
+            {
+                Vector3 at = simulation.Position;
+                if (dashAt < 0 && at.z >= -lead) { dashAt = i; }
+                if (leftAt < 0 && at.z > 0f && !simulation.Grounded) { leftAt = i; }
+                if (leftAt >= 0 && jumpAt < 0 && i >= leftAt + jumpDelay) { jumpAt = i; airAt = i + airDelay; }
+                StepInputs inputs = MovementSimulation.Move(Vector3.forward, sprint: true);
+                inputs.jump = MovementSimulation.Held(jumpAt >= 0 ? i - jumpAt : -1);
+                // The dash held from its press; let go the step before the air dash, then pressed again.
+                inputs.dash = airAt >= 0 && i >= airAt - 1 ? MovementSimulation.Held(i - airAt)
+                    : MovementSimulation.Held(dashAt >= 0 ? i - dashAt : -1);
+                simulation.Step(inputs);
+                // Only a jump from the ground counts (within coyote time, by the motor's own clock): one it raises as an
+                // air jump is the jump leaving a ledge gives back, which is never part of this move.
+                if (simulation.LastEvents.HasAny(MovementEvents.AirJumped)) { return float.NaN; }
+                Vector3 now = simulation.Position;
+                if (leftAt >= 0 && now.y < LipHeight - 0.02f) { return now.z > 0f ? now.z : float.NaN; }
+                if (dashAt < 0 && now.z > LipRunUp) { return float.NaN; }
+            }
+            return float.NaN;
         }
 
         /// <summary>Turns off a copy's component of type T, if it has one.</summary>

@@ -195,9 +195,13 @@ class Course(unittest.TestCase):
                                     f"Stretch {n + 1} should have at least three crossings.")
 
     def test_every_course_crossing_passes_the_lock_check_with_everything_taught(self):
-        everything = set().union(*(t for _, t in tutorial_ring.CROSSINGS))
+        # The dash, jump and air dash is expert tech, not taught (the mastery routes' design): only the mastery routes'
+        # long gaps are checked with it.
+        expert = "dash, jump and air dash"
+        everything = set().union(*(t for _, t in tutorial_ring.CROSSINGS)) - {expert}
         for c, taught in self.crossings:
-            self.assertEqual(taught, everything, f"{c.name}: on the course, everything's taught.")
+            expected = everything | {expert} if expert in c.intended else everything
+            self.assertEqual(taught, expected, f"{c.name}: on the course, everything's taught.")
         self.assertEqual(locks.check_all(self.crossings, tutorial_ring.ENV), [])
 
     def test_course_has_start_finish_and_three_splits(self):
@@ -225,3 +229,80 @@ class Course(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Mastery(unittest.TestCase):
+    """The mastery routes over the agility course's long stretches (docs/superpowers/specs/2026-11-25-tutorial-ring-mastery-routes-design.md):
+    an undercroft each, its main route slow, its roof the mastery line, every fall from it onto the main route."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.spec = levelspec.normalize(tutorial_ring.build())
+        cls.crossings = list(tutorial_ring.CROSSINGS)
+
+    def test_courses_1_to_3_have_one_and_nothing_else_does(self):
+        self.assertEqual(set(tutorial_ring.MASTERY), {"Stretch 1", "Stretch 2", "Stretch 3"})
+
+    def test_each_is_entered_by_a_ledge_grab_and_ends_with_the_longest_one_jump_gap(self):
+        for stretch in tutorial_ring.MASTERY:
+            mine = [c for c, _ in self.crossings if c.name.startswith(f"{stretch}: mastery")]
+            self.assertTrue(any(c.kind == "climb" and c.intended == {"jump to the ledge"} for c in mine), f"{stretch}'s entry")
+            self.assertTrue(any(c.kind == "gap" and c.intended == {"dash, jump and air dash"} for c in mine), f"{stretch}'s last gap")
+
+    def test_every_fall_lands_on_the_main_route(self):
+        for stretch, m in tutorial_ring.MASTERY.items():
+            for z0, z1 in m["openings"]:
+                self.assertTrue(any(f0 <= z0 + 1e-6 and z1 <= f1 + 1e-6 for f0, f1 in m["main_floor"]),
+                                f"{stretch}'s opening {z0}..{z1} isn't over main route floor")
+                for b0, b1 in m["blocked"]:
+                    self.assertFalse(b0 < z1 and z0 < b1, f"{stretch}'s opening {z0}..{z1} is over {b0}..{b1}, which stands up into it")
+
+    def test_the_roof_is_out_of_the_main_routes_reach(self):
+        out_of_reach = tutorial_ring.reach("jump to the ledge", "climb") / locks.OTHER_SHARE
+        for stretch, m in tutorial_ring.MASTERY.items():
+            self.assertGreater(m["roof"] - tutorial_ring.FLOOR, out_of_reach, f"{stretch}: from its deck")
+            self.assertGreater(m["roof"] - tutorial_ring.FLOOR - tutorial_ring.VAULT_WALL, out_of_reach, f"{stretch}: from a hurdle")
+
+    def test_every_pit_has_a_way_out(self):
+        for stretch, m in tutorial_ring.MASTERY.items():
+            self.assertTrue(m["pits"], f"{stretch} has a pit")
+            for pit in m["pits"]:
+                self.assertIn(pit["out"], ("ladder", "crate"))
+
+    def test_the_mastery_line_saves_time(self):
+        for stretch, m in tutorial_ring.MASTERY.items():
+            self.assertGreaterEqual(m["main_time"] - m["mastery_time"], tutorial_ring.MASTERY_MARGIN,
+                                    f"{stretch}: main {m['main_time']:.1f} s, mastery {m['mastery_time']:.1f} s")
+
+    def test_no_wall_lamps_beside_an_undercroft(self):
+        # Lamps along the ring walls would stand at head height over the catwalks, or inside Course 3's upper catwalk.
+        h = tutorial_ring.face_half_length()
+        for plan in tutorial_ring.WALL_PLAN:
+            spans = plan.get("no_windows", [])
+            if not spans:
+                continue
+            for _, piece in pieces(self.spec, "Trim"):
+                if piece.get("name") == "Wall Lamp" and piece.get("parent") == plan["frame"]:
+                    u = h - piece["centre"][0]
+                    self.assertFalse(any(u0 - 1 <= u <= u1 + 1 for u0, u1 in spans), f"a lamp at u {u:.1f} beside {spans}")
+
+    def test_no_floor_stands_in_the_hazard(self):
+        # The ground's hazard volume respawns whoever's feet are in it: every floor must stand clear of its top.
+        hazard = [p for _, p in pieces(self.spec, "HazardVolume") if p.get("name") == "Fall"][0]
+        top = hazard["centre"][1] + hazard["size"][1] / 2
+        for part, p in pieces(self.spec, "Platform"):
+            self.assertGreater(p["top"], top + tutorial_ring.HAZARD_CLEARANCE - 1e-6, f"{part}: {p.get('name')} at {p['top']}")
+
+    def test_the_mastery_chimney_is_for_wall_slides_as_the_lessons_shaft_is(self):
+        walls = [p for _, p in pieces(self.spec, "MarkedWall") if p.get("name") == "Mastery Chimney"]
+        self.assertEqual(len(walls), 2)
+        for w in walls:
+            self.assertEqual(w["move"], "WallSlide")
+        inner_faces = sorted(abs(w["a"][0]) - w["thickness"] / 2 for w in walls)
+        self.assertAlmostEqual(inner_faces[0] * 2, tutorial_ring.CHIMNEY_WIDTH, places=3)
+
+    def test_their_faces_have_no_plain_lane_left(self):
+        lanes = {part for part, p in pieces(self.spec, "Platform") if p.get("name") == "Lane"}
+        for part in ("Course 1 (NW)", "Course 2 (W)", "Course 3 (SW)"):
+            self.assertNotIn(part, lanes)
+        self.assertIn("Course 4 (S)", lanes, "Course 4's 37 m is under the 40 m the mastery routes are for")

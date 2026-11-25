@@ -22,6 +22,7 @@ ENVELOPE = {
         {"distance": 3.3, "move": "jump"},
         {"distance": 6.6, "move": "sprint jump"},
         {"distance": 11.97, "move": "sprint jump and air dash"},
+        {"distance": 16.45, "move": "dash, jump and air dash"},
         {"distance": 13, "move": "double jump"},
         {"distance": 18.37, "move": "double jump and air dash"},
     ],
@@ -44,9 +45,9 @@ class Envelope(unittest.TestCase):
     def test_no_air_jumps_removes_both_double_jumps(self):
         moves = [m["move"] for m in ENV["jumps"] + ENV["climbs"]]
         self.assertFalse(any("double jump" in m for m in moves))
-        self.assertEqual(len(ENV["jumps"]), 3)
+        self.assertEqual(len(ENV["jumps"]), 4)
         self.assertEqual(len(ENV["climbs"]), 3)
-        self.assertEqual(len(ENVELOPE["jumps"]), 5, "The envelope itself is left as it was.")
+        self.assertEqual(len(ENVELOPE["jumps"]), 6, "The envelope itself is left as it was.")
 
     def test_missing_move_raises(self):
         env = dict(ENV, wallRunLength=float("nan"))
@@ -103,6 +104,27 @@ class Lessons(unittest.TestCase):
     def test_another_move_within_90_percent_fails(self):
         c = Crossing("sprint", "gap", 3.5, {"sprint jump"})
         self.assertTrue(any(f.startswith("sprint: jump reaches") for f in check_crossing(c, {"jump", "sprint jump"}, ENV)))
+
+
+class DashJumpAndAirDash(unittest.TestCase):
+    """The longest one-jump gap (dash off a lip, coyote jump, air dash past the peak): expert tech, measured."""
+
+    EXPERT = EVERYTHING | {"dash, jump and air dash"}
+
+    def test_its_reach_is_measured(self):
+        self.assertEqual(reach("dash, jump and air dash", ENV), 16.45)
+
+    def test_a_gap_only_it_crosses_passes(self):
+        c = Crossing("mastery gap", "gap", 14.5, {"dash, jump and air dash"})
+        self.assertEqual(check_crossing(c, self.EXPERT, ENV), [])
+
+    def test_a_gap_a_sprint_jump_and_air_dash_nearly_reaches_fails(self):
+        c = Crossing("mastery gap", "gap", 12.5, {"dash, jump and air dash"})
+        self.assertTrue(check_crossing(c, self.EXPERT, ENV), "A sprint jump and air dash reaches 11.97 m, over 90% of 12.5.")
+
+    def test_it_needs_a_run_up(self):
+        c = Crossing("mastery gap", "gap", 14.5, {"dash, jump and air dash"}, run_up=False)
+        self.assertTrue(check_crossing(c, self.EXPERT, ENV), "With no run-up to the lip, it can't be done.")
 
 
 class Geometry(unittest.TestCase):
