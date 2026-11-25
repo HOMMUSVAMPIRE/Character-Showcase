@@ -155,7 +155,13 @@ The prefab's LOD Group should cross-fade (Generate Flora sets it), and the shade
 Measure Grass's `-measure flora` times it at fixed spots, with its triangles by LOD and its shadow casters: see [the levels' Flora](showcase/levels.md#flora). The LOD heights (`FloraGenerator`) decide how soon the billboards take over, which costs most.
 
 **Ivy on a climbable wall, or missing from a wall.**
-The Ivy and Vines pieces skip a wall that's climbable or marked for a move by its fixture name (a climbable panel, a wall-run or wall-slide wall, a ladder) or its components, and a stretch where there's no wall within half a metre behind the face they're given: check the piece's points are on the wall's face, and its outward is the way the face looks.
+The Ivy and Vines pieces' growth stops at a wall that's climbable or marked for a move by its fixture name (a climbable panel, a wall-run or wall-slide wall, a ladder) or its components, and where there's no wall just behind the face they're given, and grows no leaves on what stands proud of it (a pilaster): check the piece's points are on the wall's face, and its outward is the way the face looks. No ivy at all on a level: its Ivy Field (under the level's root) needs the ivy's shaders (`Assets/Showcase/Ivy`, a warning says if they're missing) and a platform with compute shaders (without them only the far layer and the stems are drawn).
+
+**The ivy looks patchy, or ends in a hard line.**
+How much grows is the foliage settings' Ivy Growth and Vine Growth (Cover, Height, Spread, Branching) times each piece's Cover; how dense the leaves are where it grows is the Ivy Style's Spacing (and Spacing By Quality). A straight line where the ivy stops is a face's edge (the piece's `y0` and `y1`, or its ends), or a climbable or marked wall beside it, which the growth stops at. A far wall whose ivy turns flat and blotchy is the far layer: the leaves stop at the style's Draw Distance. The ivy seen from behind its wall is never drawn: a face's leaves are only placed for cameras in front of it.
+
+**The ivy costs too much.**
+Measure Ivy times it at fixed spots by part (the leaves, the stems, the far layer): see [the levels' Flora](showcase/levels.md#flora). The leaves cost more the finer the style's Spacing and the further Thin From and Detail Distance; the stems the further Stem Distance; Casts Shadows draws the leaves again for every shadow cascade.
 
 ## Movement oddities
 **The character won't wall-run along a wall, or slide down it.**

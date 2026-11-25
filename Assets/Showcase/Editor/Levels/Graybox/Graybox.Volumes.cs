@@ -84,7 +84,7 @@ namespace MeridianMotion.Showcase.Levels
             {
                 mesh.Box(GrayboxMaterial.Accent, new Vector3(-h.x - 0.01f, y - band, -h.z - 0.01f), new Vector3(h.x + 0.01f, y + band, h.z + 0.01f), top: false, bottom: false);
             }
-            mesh.AddTo(gate, gate.name);
+            mesh.AddTo(gate, gate.name, moving: true);
             gate.AddComponent<BoxCollider>().size = size;
             return gate;
         }

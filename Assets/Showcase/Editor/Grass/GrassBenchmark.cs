@@ -591,8 +591,8 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
 
         /// <summary>
         /// Close-ups of the flora where the levels put it (the first of each in the scene), to judge its look by: a
-        /// planter's shrubs, a bush at a lawn's edge, and ivy and vines on a wall (seen from a little way out, as from the
-        /// level's middle).
+        /// planter's shrubs, a bush at a lawn's edge, and the ivy on a wall (seen from a little way out, as from the level's
+        /// middle).
         /// </summary>
         private static List<(string, Vector3, Quaternion)> CloseUps()
         {
@@ -606,18 +606,18 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                 Vector3 at = plant.transform.position + Vector3.up * lookUp;
                 spots.Add((name, at + from, Quaternion.LookRotation(-from)));
             }
-            GameObject planted = plants.FirstOrDefault(o => ParentName(o) != "Tree" && !ParentName(o).StartsWith("Lawn (") && ParentName(o) is not ("Ivy" or "Vines"));
+            GameObject planted = plants.FirstOrDefault(o => ParentName(o) != "Tree" && !ParentName(o).StartsWith("Lawn ("));
             Near("A planter, close up", planted, new Vector3(-2.2f, 1.6f, -2.2f), 0.5f);
             Near("A bush at a lawn's edge, close up", plants.FirstOrDefault(o => ParentName(o).StartsWith("Lawn (")), new Vector3(-2.2f, 1.4f, -2.2f), 0.5f);
-            GameObject ivy = plants.FirstOrDefault(o => ParentName(o) == "Ivy");
-            if (ivy != null)
+            // The ivy's on the GPU (an IvyField's faces, not prefabs): its longest climbing face's middle, from out in
+            // front of it, far enough to see a stretch of it. Measure Ivy (IvyPictures) times it by part.
+            (Ivy.IvyField field, Ivy.IvyField.Face face) = UnityEngine.Object.FindObjectsByType<Ivy.IvyField>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
+                .SelectMany(f => f.Faces.Where(x => !x.hangs).Select(x => (f, x))).OrderByDescending(p => p.x.size.x).FirstOrDefault();
+            if (face != null)
             {
-                // Out from the wall it's on (the way from the wall to it), far enough to see a stretch of it.
-                Bounds b = ivy.GetComponentsInChildren<Renderer>().Select(r => r.bounds).Aggregate((x, y) => { x.Encapsulate(y); return x; });
-                Vector3 across = Vector3.ProjectOnPlane(ivy.transform.forward, Vector3.up).normalized;
-                Vector3 outward = Physics.Raycast(b.center, across, 1f) ? -across : across;
-                Vector3 from = outward * 14f + Vector3.up * 2f;
-                spots.Add(("Ivy on a wall", b.center + from, Quaternion.LookRotation(-from)));
+                Vector3 middle = field.transform.TransformPoint(face.corner + face.along * (face.size.x / 2f) + face.up * Mathf.Min(2.5f, face.size.y / 2f));
+                Vector3 from = field.transform.TransformDirection(face.outward).normalized * 14f + Vector3.up * 2f;
+                spots.Add(("Ivy on a wall", middle + from, Quaternion.LookRotation(-from)));
             }
             return spots;
         }

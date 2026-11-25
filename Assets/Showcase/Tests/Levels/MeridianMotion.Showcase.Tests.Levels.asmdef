@@ -7,6 +7,7 @@
         "MeridianMotion.EditorTools",
         "MeridianMotion.Showcase.Levels",
         "MeridianMotion.Showcase.LevelChecks",
+        "MeridianMotion.Showcase.Ivy",
         "MeridianMotion.Levels",
         "MeridianMotion.Levels.EditorTools",
         "UnityEngine.TestRunner",

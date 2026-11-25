@@ -83,6 +83,7 @@ flowchart LR
         Grass["MeridianMotion.Showcase.Grass<br/>(the lawns' grass: fields, styles, wind, benders)"]
         GrassEditor["MeridianMotion.Showcase.Grass.EditorTools<br/>(its assets, Measure Grass, its Set Up Scene step)"]
         GrassTests["MeridianMotion.Showcase.Tests.Grass"]
+        Ivy["MeridianMotion.Showcase.Ivy<br/>(the walls' ivy and vines: its field, growth, style)"]
     end
     Showcase --> Queries
     Showcase --> Elements
@@ -140,15 +141,18 @@ flowchart LR
     TutorialTests --> Shared
     TutorialTests --> PlayTests
     LevelEditor --> Grass
+    LevelEditor --> Ivy
     GrassEditor --> Grass
+    GrassEditor --> Ivy
     GrassEditor --> Showcase
     GrassEditor --> Editor
     GrassTests --> Grass
+    GrassTests --> Ivy
     GrassTests --> Showcase
     GrassTests --> Shared
 ```
 
-The character's code, the camera's and the UI's don't reference each other at all (both use `MeridianMotion.PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `MeridianMotion.PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. The showcase's grass references nothing of the project's: the level builders add it, and Set Up Scene connects the characters to it (the spawner's events, to give each a Grass Bender), so it never names the character. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)
+The character's code, the camera's and the UI's don't reference each other at all (both use `MeridianMotion.PhysicsQueries`, which references nothing: see [why](decisions.md#physics-query-buffers-are-their-own-assembly-and-grow-november-2026)). The character uses the level elements, which reference only `MeridianMotion.PhysicsQueries`; the level builders reference only the level elements. Only the character's editor tools and the tests reach both the character and the camera. The showcase's grass references nothing of the project's: the level builders add it, and Set Up Scene connects the characters to it (the spawner's events, to give each a Grass Bender), so it never names the character. Nor does its ivy (`MeridianMotion.Showcase.Ivy`), not even the grass: it reads the grass's wind and palette from the shaders' globals, as the flora's shaders do, and the level builders grow it and add it. Nothing that ships references what doesn't. (Of Unity's packages, the character's and the camera's assemblies use the Input System, and only the level builders use URP and TextMeshPro; the test assemblies also use Unity's test runner.)
 
 The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#architectural-rules-do-not-break-these), which are the ones to keep (this is a summary of them, kept in step):
 - **The UI knows nothing about the character, the level or the camera.** It tells the game what its windows need (the pointer, the game's input stopped) through UnityEvents on its `UIManager`, which the scene connects to the camera's `CursorRequested` and `PlayerInputReader.Suppressed`.
@@ -186,6 +190,7 @@ The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#archit
 | The movement envelope's writer | Assets/Showcase/Editor/LevelChecks (its own assembly) |
 | The level builders, pieces and Level Editor | Assets/Showcase/Editor/Levels |
 | The lawns' grass (fields, styles, wind, benders, its shaders) | Assets/Showcase/Grass (its own assembly, knowing nothing of the game), Assets/Showcase/Editor/Grass (Create Grass Assets, Measure Grass, the benders in Set Up Scene), Assets/Showcase/Tests/Grass (see [the levels' Grass](showcase/levels.md#grass)) |
+| The walls' ivy and vines (its field, growth, style, its shaders) | Assets/Showcase/Ivy (its own assembly, knowing nothing of the game or the grass), grown by the Ivy and Vines pieces (Graybox.WallFlora.cs); Measure Ivy in Assets/Showcase/Editor/Grass (`IvyPictures`); its tests in Assets/Showcase/Tests/Levels (`IvyGrowthTests`) and Assets/Showcase/Tests/Grass (`IvyFieldTests`) (see [the levels' Flora](showcase/levels.md#flora)) |
 | Tests | Assets/MeridianMotion/Tests/EditMode, PlayMode; the showcase's, Assets/Showcase/Tests/Levels, HUD, TutorialRing and Grass (see [Automated Tests](testing.md)) |
 | The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, the flora's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Flora, Tools/Blender, Tools/Animation |
 

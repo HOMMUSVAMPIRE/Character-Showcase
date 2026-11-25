@@ -7,7 +7,8 @@
         "Unity.TextMeshPro",
         "MeridianMotion.Levels",
         "MeridianMotion.Levels.EditorTools",
-        "MeridianMotion.Showcase.Grass"
+        "MeridianMotion.Showcase.Grass",
+        "MeridianMotion.Showcase.Ivy"
     ],
     "includePlatforms": [
         "Editor"

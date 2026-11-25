@@ -12,7 +12,9 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
     /// <list type="bullet">
     /// <item>Styles/Lawn.asset: short and dense, a mown lawn (the style's defaults);</item>
     /// <item>Styles/Wild Grass.asset: long, looser, drooping, in clumps that differ more, in drier colours;</item>
-    /// <item>Lawn.mat: the Lawn shader, which the grass's field colours to match its style.</item>
+    /// <item>Lawn.mat: the Lawn shader, which the grass's field colours to match its style;</item>
+    /// <item>Assets/Showcase/Ivy/Styles/Ivy.asset: the walls' ivy's style (its defaults), which the level builders give
+    /// the levels' ivy fields (Graybox.IvyStylePath).</item>
     /// </list>
     /// </summary>
     public static class GrassAssets
@@ -23,6 +25,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
         public const string LawnStylePath = Folder + "/Styles/Lawn.asset";
         public const string WildGrassStylePath = Folder + "/Styles/Wild Grass.asset";
         public const string LawnMaterialPath = Folder + "/Lawn.mat";
+        public const string IvyStylePath = "Assets/Showcase/Ivy/Styles/Ivy.asset";
 
         [MenuItem("Tools/Meridian Motion/Showcase/Create Grass Assets")]
         private static void CreateFromMenu()
@@ -44,6 +47,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
         public static string Create()
         {
             Directory.CreateDirectory(Folder + "/Styles");
+            Directory.CreateDirectory(Path.GetDirectoryName(IvyStylePath));
             AssetDatabase.Refresh();
             var made = new System.Collections.Generic.List<string>();
             if (AssetDatabase.LoadAssetAtPath<GrassStyle>(LawnStylePath) == null)
@@ -61,6 +65,11 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                 var shader = AssetDatabase.LoadAssetAtPath<Shader>(Folder + "/Lawn.shader");
                 AssetDatabase.CreateAsset(new Material(shader) { name = "Lawn" }, LawnMaterialPath);
                 made.Add("the lawn material");
+            }
+            if (AssetDatabase.LoadAssetAtPath<MeridianMotion.Showcase.Ivy.IvyStyle>(IvyStylePath) == null)
+            {
+                AssetDatabase.CreateAsset(ScriptableObject.CreateInstance<MeridianMotion.Showcase.Ivy.IvyStyle>(), IvyStylePath);
+                made.Add("the Ivy style");
             }
             AssetDatabase.SaveAssets();
             return string.Join(", ", made);

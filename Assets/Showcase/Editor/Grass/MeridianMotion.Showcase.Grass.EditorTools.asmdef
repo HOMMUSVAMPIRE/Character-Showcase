@@ -5,7 +5,8 @@
         "MeridianMotion.Showcase.Grass",
         "Unity.RenderPipelines.Universal.Runtime",
         "MeridianMotion.EditorTools",
-        "MeridianMotion.Characters"
+        "MeridianMotion.Characters",
+        "MeridianMotion.Showcase.Ivy"
     ],
     "includePlatforms": [
         "Editor"

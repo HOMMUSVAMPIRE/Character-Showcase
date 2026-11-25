@@ -1,6 +1,7 @@
 """
-The showcase's flora: trees, bushes, ferns, vines and ivy as textured leaf cards with full LOD chains, for Unity.
+The showcase's flora: trees, bushes and ferns as textured leaf cards with full LOD chains, for Unity.
 Generate Flora (FloraGenerator, Assets/Showcase/Editor/Pipeline/Flora) runs it in Blender and makes the prefabs.
+The levels' ivy and vines aren't made here: they're grown over the walls and placed on the GPU (Assets/Showcase/Ivy).
 
 Started from another generator's flora_gen_cards.py (ReferenceAssets/Assets/FloraAssets, 2026-11-24:
 ReferenceAssets/OpenTasks.md, category P) and made ours: it writes where it's told, prints its progress as the
@@ -12,16 +13,16 @@ Run (Generate Flora does this):
 
 Options:
   --seed N         base random seed (default 1): a change makes a fresh batch
-  --only a,b       only build these categories: trees,bushes,vines,ivy
+  --only a,b       only build these categories: trees,bushes
   --tex N          leaf-card texture size (default 1024)
   --render         render the preview pictures (into <output>/../Previews), off by default
   --seeds k=a,b;.. each kind's variants' seeds (see SEEDS): a variant per seed, Name_01 the first seed's
-  --kinds a,b      only build these kinds (oak, pine, birch, dead, bush, flowering, fern, vine, ivywall, ivypillar)
+  --kinds a,b      only build these kinds (oak, pine, birch, dead, bush, flowering, fern)
 
 What it makes, in the output folder:
   Textures/  leaf-card atlases (rendered from real 3D leaf geometry), tiling bark, and one billboard texture per asset:
              BaseColor (with alpha) and Normal.
-  Trees/ Bushes/ Vines/ Ivy/   FBX files, each holding Name_LOD0 .. Name_LODn. Vertex colour R is how much a part sways
+  Trees/ Bushes/   FBX files, each holding Name_LOD0 .. Name_LODn. Vertex colour R is how much a part sways
              in the wind, G how much it flutters, B a phase per card (the flora's shaders read them).
   Materials are named M_Card_<kind> (leaf cards), M_Bark_<kind> (bark), M_Flat_BushCore (a bush's dense middle) and
   M_Imp_<asset> (the last LOD's billboard).
@@ -34,7 +35,7 @@ argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 ap = argparse.ArgumentParser()
 ap.add_argument("out", help="the output folder (BlenderRunner passes it first)")
 ap.add_argument("--seed", type=int, default=1)
-ap.add_argument("--only", default="trees,bushes,vines,ivy")
+ap.add_argument("--only", default="trees,bushes")
 ap.add_argument("--tex", type=int, default=1024)
 ap.add_argument("--render", action="store_true")
 ap.add_argument("--seeds", default="", help='each kind\'s variants\' seeds: "oak=0,1,2;birch=4,9" (see SEEDS)')
@@ -44,9 +45,9 @@ ARGS.no_render = not ARGS.render
 
 # Each kind's variants, by their seeds: a variant per seed, in slots (Tree_Oak_01 is the first seed's), so a slot given a
 # new seed is made again in place (Generate Flora's Flora Seeds asset passes them). These defaults are the first ones made.
-# A flowering bush's seeds go to its colours in order (pink, white, yellow, purple); ivy walls' to their three shapes.
+# A flowering bush's seeds go to its colours in order (pink, white, yellow, purple).
 SEEDS = {"oak": [0, 1, 2], "pine": [0, 1, 2], "birch": [0, 1], "dead": [0, 1], "bush": [0, 1, 2], "flowering": [0, 1, 2, 3],
-         "fern": [0, 1], "vine": [0, 1, 2], "ivywall": [0, 1, 2], "ivypillar": [0]}
+         "fern": [0, 1]}
 for item in filter(None, (i.strip() for i in ARGS.seeds.split(";"))):
     kind, _, values = item.partition("=")
     SEEDS[kind.strip()] = [int(v) for v in values.split(",") if v.strip()]
@@ -219,7 +220,6 @@ SHAPES = {
     "oak": [(0, 0), (0.15, 0.1), (0.3, 0.18), (0.2, 0.3), (0.34, 0.42), (0.22, 0.52), (0.32, 0.65), (0.18, 0.78),
             (0.2, 0.9), (0, 1), (-0.2, 0.9), (-0.18, 0.78), (-0.32, 0.65), (-0.22, 0.52), (-0.34, 0.42), (-0.2, 0.3),
             (-0.3, 0.18), (-0.15, 0.1)],
-    "ivy": [(0, 0), (0.42, 0.08), (0.55, 0.42), (0.28, 0.5), (0, 1), (-0.28, 0.5), (-0.55, 0.42), (-0.42, 0.08)],
     "needle": [(0, 0), (0.05, 0.3), (0.03, 0.8), (0, 1), (-0.03, 0.8), (-0.05, 0.3)],
     "pinna": [(0, 0)] + [(x * 0.6, y) for x, y in [(0.06, 0.05), (0.1, 0.15), (0.06, 0.2), (0.1, 0.3), (0.06, 0.36), (0.09, 0.46),
                                               (0.05, 0.52), (0.08, 0.62), (0.04, 0.68), (0.05, 0.78), (0.025, 0.86)]]
@@ -263,7 +263,6 @@ LIN = {  # linear colours for leaf geometry used when baking card textures
     "Needle": (0.03, 0.14, 0.05), "NeedleLight": (0.07, 0.22, 0.07), "NeedleTip": (0.18, 0.32, 0.08),
     "Grass": (0.18, 0.40, 0.06), "GrassLight": (0.32, 0.52, 0.10), "GrassDry": (0.45, 0.42, 0.14),
     "Fern": (0.10, 0.32, 0.06), "FernLight": (0.18, 0.42, 0.08),
-    "Ivy": (0.04, 0.17, 0.03), "IvyLight": (0.10, 0.30, 0.05), "IvyDark": (0.02, 0.10, 0.02),
     "Stem": (0.12, 0.08, 0.04), "StemGreen": (0.10, 0.14, 0.04),
     "Pink": (0.90, 0.30, 0.45), "White": (0.90, 0.90, 0.85), "Yellow": (0.95, 0.70, 0.10),
     "Purple": (0.45, 0.20, 0.80), "Center": (0.95, 0.55, 0.05),
@@ -725,22 +724,6 @@ def pine_spray(rng):
     return mb
 
 
-def ivy_cluster(rng):
-    mb = MB()
-    sm = src_mat("StemGreen")
-    lms = [src_mat("Ivy"), src_mat("IvyLight"), src_mat("IvyDark"), src_mat("Ivy")]
-    root = Vector((0.5, 0.02, 0))
-    for i in range(rng.randint(14, 18)):
-        ang = math.radians(rng.uniform(-70, 70))
-        d = Vector((math.sin(ang), math.cos(ang), 0))
-        L = rng.uniform(0.2, 0.62)
-        pts = grow_line(rng, root, d, L, 3, 0.15, Vector(), flat=True)
-        tube(mb, [p - Vector((0, 0, 0.02)) for p in pts], [0.008, 0.006, 0.005, 0.004], 4, sm)
-        safe_leaf(mb, pts[-1] + Vector((0, 0, rng.uniform(0, 0.1))), pts[-1] - pts[-2] + rvec(rng, 0.3),
-                  UP + rvec(rng, 0.3), rng.uniform(0.22, 0.32), rng.choice(lms), "ivy", 1, 1, fold=0.15)
-    return mb
-
-
 def fern_frond(rng):
     """2:1 card [0,2]x[0,1]. Rachis from u=0 (base) to u=1 (tip) along v=0.5."""
     mb = MB()
@@ -784,23 +767,6 @@ def grass_strip(rng):
     return mb
 
 
-def vine_strand(rng):
-    """1:4 card [0,0.25]x[0,1], tiles vertically. Stem at u=0.5."""
-    mb = MB()
-    lms = [src_mat("Leaf_Green"), src_mat("Leaf_GreenDark"), src_mat("IvyLight")]
-    pts = [Vector((0.125 + 0.012 * math.sin(TAU * y), y, -0.02)) for y in np.linspace(-0.05, 1.05, 30)]
-    tube(mb, pts, [0.006] * 30, 4, src_mat("StemGreen"), cap=False)
-    n = 14
-    for i in range(n):
-        y = (i + 0.5) / n
-        sgn = 1 if i % 2 else -1
-        base = Vector((0.125 + 0.012 * math.sin(TAU * y), y, 0.01 * i))
-        ax = Vector((sgn * 0.75, -0.6, 0)) + rvec(rng, 0.15)
-        ax.z = 0
-        safe_leaf(mb, base, ax, UP + rvec(rng, 0.3), rng.uniform(0.08, 0.1), rng.choice(lms), "oval", 0.25, 1)
-    return mb
-
-
 def bake_card(key, mb, W, H, res_x, res_y):
     ob = mb.build("TEX_" + key)
     col, nrm = render_passes([ob], Vector((W / 2, H / 2, 20)), (0, 0, 0), max(W, H), res_x, res_y, 0.08 * max(W, H))
@@ -820,8 +786,6 @@ def card_textures():
     bake_card("Card_Pine", pine_spray(R("pine")), 2, 1, T, T // 2)
     bake_card("Card_Fern", fern_frond(R("fern")), 2, 1, T, T // 2)
     bake_card("Card_Grass", grass_strip(R("grass")), 2, 1, T, T // 2)
-    bake_card("Card_Ivy", ivy_cluster(R("ivy")), 1, 1, T // 2, T // 2)
-    bake_card("Card_Vine", vine_strand(R("vine")), 0.25, 1, T // 4, T)
 
 
 # ================================================================ impostors
@@ -835,30 +799,20 @@ def bounds(objs):
     return (min(xs), max(xs)), (min(ys), max(ys)), (min(zs), max(zs))
 
 
-def impostor(name, src, mode="cross", res=512):
+def impostor(name, src, res=512):
+    """The last LOD: two crossed cards, each a picture of the plant from its side."""
     (x0, x1), (y0, y1), (z0, z1) = bounds([src])
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
     key = "Imp_" + name
     mb = MB()
-    if mode == "cross":
-        S = max(x1 - x0, y1 - y0, z1 - z0) * 1.04
-        cz = z0 + S / 2
-        a = render_passes([src], Vector((cx, -100, cz)), (math.pi / 2, 0, 0), S, res, res, S * 0.08)
-        b = render_passes([src], Vector((100, cy, cz)), (math.pi / 2, 0, math.pi / 2), S, res, res, S * 0.08)
-        save_tex(key, np.concatenate([a[0], b[0]], 1), np.concatenate([a[1], b[1]], 1))
-        m = export_mat(key)
-        card(mb, Vector((cx - S / 2, cy, z0)), Vector((1, 0, 0)), UP, S, S, m, (0, 0, 0.5, 1), flutter=0.0)
-        card(mb, Vector((cx, cy - S / 2, z0)), Vector((0, 1, 0)), UP, S, S, m, (0.5, 0, 1, 1), flutter=0.0)
-    else:  # single front-facing quad (ivy walls, hanging vines)
-        W, H = (x1 - x0) * 1.04, (z1 - z0) * 1.04
-        big = 1024
-        rx, ry = (big, max(64, int(big * H / W))) if W >= H else (max(64, int(big * W / H)), big)
-        cz = (z0 + z1) / 2
-        col, nrm = render_passes([src], Vector((cx, -100, cz)), (math.pi / 2, 0, 0), max(W, H), rx, ry, 0.15)
-        save_tex(key, col, nrm)
-        m = export_mat(key)
-        y = y0 - 0.005 if mode == "wall" else cy
-        card(mb, Vector((cx - W / 2, y, cz - H / 2)), Vector((1, 0, 0)), UP, W, H, m, flutter=0.0)
+    S = max(x1 - x0, y1 - y0, z1 - z0) * 1.04
+    cz = z0 + S / 2
+    a = render_passes([src], Vector((cx, -100, cz)), (math.pi / 2, 0, 0), S, res, res, S * 0.08)
+    b = render_passes([src], Vector((100, cy, cz)), (math.pi / 2, 0, math.pi / 2), S, res, res, S * 0.08)
+    save_tex(key, np.concatenate([a[0], b[0]], 1), np.concatenate([a[1], b[1]], 1))
+    m = export_mat(key)
+    card(mb, Vector((cx - S / 2, cy, z0)), Vector((1, 0, 0)), UP, S, S, m, (0, 0, 0.5, 1), flutter=0.0)
+    card(mb, Vector((cx, cy - S / 2, z0)), Vector((0, 1, 0)), UP, S, S, m, (0.5, 0, 1, 1), flutter=0.0)
     return mb
 
 
@@ -1145,141 +1099,6 @@ def grass(seed, name):
     return lods
 
 
-# ===================================================================== vines
-def hanging_vines(seed, name):
-    rng = random.Random(seed)
-    m = export_mat("Card_Vine")
-    stem = export_mat("Bark_Stem")
-    W = rng.uniform(1.0, 2.0)
-    runner = [Vector((lerp(-W / 2, W / 2, i / 10), rng.uniform(-0.03, 0), rng.uniform(-0.02, 0.02))) for i in range(11)]
-    strands = []
-
-    def strand(start, L):
-        N = max(4, int(L / 0.07))
-        ph = rng.uniform(0, TAU)
-        amp = rng.uniform(0.03, 0.08)
-        pts = [start + Vector((math.sin(ph + i / N * 6) * amp * i / N, -0.06 * i / N - 0.12 * (i / N) ** 2, -L * i / N)) for i in range(N + 1)]
-        strands.append(pts)
-        return pts
-
-    ns = rng.randint(4, 7)
-    for s in range(ns):
-        x = lerp(-W / 2, W / 2, (s + rng.uniform(0.2, 0.8)) / ns)
-        L = rng.uniform(0.8, 2.6)
-        pts = strand(Vector((x, -0.01, 0)), L)
-        for _ in range(rng.randint(0, 2)):
-            strand(pts[rng.randint(len(pts) // 4, len(pts) // 2)], L * rng.uniform(0.25, 0.45))
-
-    RW = 0.2  # ribbon width; texture is 1:4 so one tile = 0.8 m of strand
-    def ribbon(mb, pts, side_fn):
-        mb.cur = (1.0, phase_of(pts[0]))
-        s = 0.0
-        for i in range(len(pts) - 1):
-            seg = (pts[i + 1] - pts[i]).length
-            a, b = side_fn(pts, i), side_fn(pts, i + 1)
-            v0, v1 = 1 - s / (RW * 4), 1 - (s + seg) / (RW * 4)
-            mb.face_ds([pts[i] - a * RW / 2, pts[i] + a * RW / 2, pts[i + 1] + b * RW / 2, pts[i + 1] - b * RW / 2], m,
-                       [(0, v0), (1, v0), (1, v1), (0, v1)])
-            s += seg
-
-    def side_x(pts, i):
-        return Vector((1, 0, 0))
-
-    def side_y(pts, i):
-        return Vector((0, 1, 0))
-
-    lods = []
-    for lod in range(2):
-        mb = MB()
-        tube(mb, runner, [0.014] * 11, [5, 3][lod], stem)
-        for pts in strands:
-            p = sub(pts, [2, 4][lod])
-            ribbon(mb, p, side_x)
-            if lod == 0:
-                ribbon(mb, p, side_y)
-        lods.append(mb.build(f"{name}_LOD{lod}"))
-    lods.append(impostor(name, lods[0], mode="front").build(f"{name}_LOD2"))
-    return lods
-
-
-# ======================================================================= ivy
-def grow_ivy(rng, W, H, wrap, roots, max_len, step=0.04, branch_p=0.07):
-    walkers = [dict(u=lerp(0, W, (i + rng.uniform(0.2, 0.8)) / roots), v=-0.02,
-                    a=math.pi / 2 + rng.uniform(-0.4, 0.4), left=max_len * rng.uniform(0.6, 1.0), g=0)
-               for i in range(roots)]
-    paths = []
-    while walkers:
-        w = walkers.pop()
-        path = [(w["u"], w["v"])]
-        u, v, a = w["u"], w["v"], w["a"]
-        while w["left"] > 0:
-            a += rng.gauss(0, 0.35) + (math.pi / 2 - a) * 0.08
-            u += math.cos(a) * step
-            v += math.sin(a) * step
-            if wrap:
-                u %= W
-            elif u < 0.02 or u > W - 0.02:
-                a = math.pi - a
-                u = min(max(u, 0.02), W - 0.02)
-            if v > H or v < -0.05:
-                break
-            path.append((u, v))
-            w["left"] -= step
-            if rng.random() < branch_p and w["g"] < 4:
-                walkers.append(dict(u=u, v=v, a=a + rng.choice([-1, 1]) * rng.uniform(0.6, 1.2),
-                                    left=w["left"] * rng.uniform(0.4, 0.8), g=w["g"] + 1))
-        if len(path) > 2:
-            paths.append((path, w["g"]))
-    return paths
-
-
-def wall_surface(u, v):
-    return Vector((u, 0, v)), Vector((0, -1, 0))
-
-
-def pillar_surface(R):
-    def f(u, v):
-        n = Vector((math.cos(u / R), math.sin(u / R), 0))
-        return n * R + Vector((0, 0, v)), n
-    return f
-
-
-def ivy(seed, name, surf, W, H, wrap, roots, max_len, wall):
-    rng = random.Random(seed)
-    m = export_mat("Card_Ivy")
-    stem = export_mat("Bark_Stem")
-    stems, cards = [], []
-    for path, gen in grow_ivy(rng, W, H, wrap, roots, max_len):
-        r0 = 0.014 * (0.65 ** gen)
-        pts, nrms = [], []
-        for u, v in path:
-            p, n = surf(u - (W / 2 if not wrap else 0), v)
-            pts.append(p + n * (r0 + 0.004))
-            nrms.append(n)
-        stems.append((pts, r0))
-        for i in range(1, len(pts), 2):
-            n = nrms[i]
-            t = (pts[i] - pts[i - 1]).normalized()
-            nn = (n + UP * 0.25 + rvec(rng, 0.3)).normalized()
-            v = orth(t * 0.6 + UP * 0.4 + n * 0.2 + rvec(rng, 0.5), nn)
-            s = rng.uniform(0.17, 0.25) * lerp(1.1, 0.8, i / len(pts))
-            cards.append(dict(base=pts[i] + n * 0.01 - v * s * 0.2, u=v.cross(nn), v=v, s=s, key=rng.random()))
-    lods = []
-    for lod in range(3):
-        if lod == 2 and wall:
-            break
-        mb = MB()
-        if lod == 0:
-            for pts, r0 in stems:
-                sp = sub(pts, 2)
-                tube(mb, sp, [lerp(r0, 0.003, i / max(1, len(sp) - 1)) for i in range(len(sp))], 3, stem)
-        emit_cards(mb, cards, lod, lambda c: m)
-        lods.append(mb.build(f"{name}_LOD{lod}"))
-    if wall:
-        lods.append(impostor(name, lods[0], mode="wall").build(f"{name}_LOD2"))
-    return lods
-
-
 # ====================================================================== export
 def tri_count(ob):
     me = ob.data
@@ -1307,7 +1126,7 @@ REPORT = []
 def wind_weights(category, name, lods):
     """Fill vertex colour R (sway weight) from height. Taller parts sway more; trunk base is fixed."""
     zs = [v.co.z for v in lods[0].data.vertices]
-    top, bottom = max(zs), min(zs)
+    top = max(zs)
     for o in lods:
         me = o.data
         col = me.color_attributes["Col"]
@@ -1315,11 +1134,7 @@ def wind_weights(category, name, lods):
         col.data.foreach_get("color", data)
         for i, v in enumerate(me.vertices):
             z = v.co.z
-            if category == "Vines":                       # hangs from the top: free ends swing most
-                r = 0.8 * min(1.0, max(0.0, -z / max(1e-3, -bottom))) ** 1.2
-            elif category == "Ivy":                       # clings to a wall: barely moves
-                r = 0.08
-            elif category == "Bushes":
+            if category == "Bushes":
                 k = 0.5 if name.startswith("Grass") else 0.35
                 r = k * min(1.0, max(0.0, z / max(1e-3, top))) ** 1.2
             else:                                         # trees
@@ -1370,20 +1185,8 @@ def build_all():
     if want("bushes", "fern"):
         for i, n in enumerate(SEEDS["fern"]):
             register("Bushes", f"Fern_{i+1:02d}", fern(S("fern", n), f"Fern_{i+1:02d}"))
-    # No grass clumps: the levels' grass is the lawns' (GrassField), made on the GPU.
-    if want("vines", "vine"):
-        for i, n in enumerate(SEEDS["vine"]):
-            register("Vines", f"Vines_Hanging_{i+1:02d}", hanging_vines(S("vine", n), f"Vines_Hanging_{i+1:02d}"))
-    if want("ivy", "ivywall"):
-        shapes = [(1.5, 2.0, 4), (3.0, 2.5, 7), (1.0, 3.0, 3)]
-        for i, n in enumerate(SEEDS["ivywall"]):
-            W, H, roots = shapes[i % len(shapes)]
-            name = f"Ivy_Wall_{i+1:02d}"
-            register("Ivy", name, ivy(S("ivywall", n), name, wall_surface, W, H, False, roots, H * 1.6, True))
-    if want("ivy", "ivypillar"):
-        R = 0.3
-        for n in SEEDS["ivypillar"][:1]:
-            register("Ivy", "Ivy_Pillar_R30cm", ivy(S("ivypillar", n), "Ivy_Pillar_R30cm", pillar_surface(R), TAU * R, 2.8, True, 5, 4.0, False))
+    # No grass clumps: the levels' grass is the lawns' (GrassField), made on the GPU. No ivy or vines either: they're
+    # grown over the walls as a level's built, and placed on the GPU (IvyField).
 
 
 # ===================================================================== previews
@@ -1411,31 +1214,22 @@ def render_previews():
     gm = bpy.data.materials.new("GroundPreview")
     gm.use_nodes = True
     gm.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.3, 0.26, 0.18, 1)
-    wm = bpy.data.materials.new("WallPreview")
-    wm.use_nodes = True
-    wm.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.55, 0.5, 0.45, 1)
     lm = bpy.data.materials.new("LabelPreview")
     lm.use_nodes = True
     lm.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.02, 0.02, 0.02, 1)
 
-    def shoot(path, objs, extras_fn=None, wall=False, hang=False):
+    def shoot(path, objs, extras_fn=None):
         for o in sc.objects:
             if o.type == "MESH":
                 o.hide_render = o not in objs
         (x0, x1), _, (z0, z1) = bounds(objs)
         W, H = x1 - x0, z1 - z0
         extras = []
-        bpy.ops.mesh.primitive_plane_add(size=1, location=((x0 + x1) / 2, 0, z0 if hang else 0))
+        bpy.ops.mesh.primitive_plane_add(size=1, location=((x0 + x1) / 2, 0, 0))
         g = bpy.context.active_object
         g.scale = (W * 3 + 10, 60, 1)
         g.data.materials.append(gm)
         extras.append(g)
-        if wall:
-            bpy.ops.mesh.primitive_plane_add(size=1, location=((x0 + x1) / 2, 0.02, 0), rotation=(math.pi / 2, 0, 0))
-            wl = bpy.context.active_object
-            wl.scale = (W * 3 + 10, 10, 1)
-            wl.data.materials.append(wm)
-            extras.append(wl)
         if extras_fn:
             extras += extras_fn()
         fov = 2 * math.atan(18 / cam.data.lens)
@@ -1454,7 +1248,6 @@ def render_previews():
     for cat, items in ASSETS.items():
         x = 0.0
         objs = []
-        pillar = None
         for name, lods in items:
             o = lods[0]
             o.location = (0, 0, 0)
@@ -1463,37 +1256,13 @@ def render_previews():
             o.location = (x, 0, 0)
             x += b + 0.4
             objs.append(o)
-            if "Pillar" in name:
-                pillar = o
-        hang = cat == "Vines"
-        if hang:
-            top = -min(bounds([o])[2][0] for o in objs) + 0.1
-            for o in objs:
-                o.location.z = top
-        extra = None
-        if pillar:
-            pillar.location.y = -1.2
-
-            def extra():
-                bpy.ops.mesh.primitive_cylinder_add(radius=0.29, depth=3.2, location=(pillar.location.x, -1.2, 1.6))
-                c = bpy.context.active_object
-                c.data.materials.append(wm)
-                return [c]
-        if hang:
-            def extra():
-                (x0, x1), _, (z0, z1) = bounds(objs)
-                bpy.ops.mesh.primitive_cube_add(size=1, location=((x0 + x1) / 2, 0.25, z1 + 0.15))
-                c = bpy.context.active_object
-                c.scale = (x1 - x0 + 0.4, 0.6, 0.3)
-                c.data.materials.append(gm)
-                return [c]
-        shoot(os.path.join(pdir, f"{cat}.png"), objs, extra, wall=cat == "Ivy")
+        shoot(os.path.join(pdir, f"{cat}.png"), objs)
         for o in objs:
             o.location = (1000, 0, 0)
 
     # LOD comparison sheets
     for cat, pick in (("Trees", "Tree_Oak_01"), ("Trees", "Tree_Pine_01"), ("Bushes", "Bush_Flowering_Pink"),
-                      ("Bushes", "Fern_01"), ("Ivy", "Ivy_Wall_01")):
+                      ("Bushes", "Fern_01")):
         hit = [l for n, l in ASSETS.get(cat, []) if n == pick]
         if not hit:
             continue
@@ -1519,7 +1288,7 @@ def render_previews():
 
         def lbls():
             return labels
-        shoot(os.path.join(pdir, f"LODs_{pick}.png"), lods, lbls, wall=cat == "Ivy")
+        shoot(os.path.join(pdir, f"LODs_{pick}.png"), lods, lbls)
         for o in lods:
             o.location = (1000, 0, 0)
 

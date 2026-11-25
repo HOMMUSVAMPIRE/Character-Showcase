@@ -71,7 +71,8 @@ namespace MeridianMotion.Showcase.Levels
             mesh.Box(GrayboxMaterial.Steel, -h, new Vector3(h.x, h.y - band, h.z), top: false);
             mesh.Box(GrayboxMaterial.Accent, new Vector3(-h.x, h.y - band, -h.z), new Vector3(h.x, h.y, h.z), bottom: false, top: false);
             mesh.Box(GrayboxMaterial.Steel, new Vector3(-h.x, h.y - 0.001f, -h.z), h, sides: false, ends: false, bottom: false);
-            mesh.AddTo(platform, platform.name);
+            // Its noise moves with it (in its own space), not sliding over it as it goes.
+            mesh.AddTo(platform, platform.name, moving: true);
             platform.AddComponent<BoxCollider>().size = size;
             if (hazard)
             {
@@ -101,7 +102,7 @@ namespace MeridianMotion.Showcase.Levels
             mesh.Box(GrayboxMaterial.Steel, new Vector3(-h, -h, -h), new Vector3(h, h, h), bottom: false);
             // Orange bands round its middle, standing proud.
             mesh.Box(GrayboxMaterial.Accent, new Vector3(-h - 0.01f, -b, -h - 0.01f), new Vector3(h + 0.01f, b, h + 0.01f), top: false, bottom: false);
-            mesh.AddTo(crate, crate.name);
+            mesh.AddTo(crate, crate.name, moving: true);
             crate.AddComponent<BoxCollider>().size = Vector3.one * size;
             return crate;
         }

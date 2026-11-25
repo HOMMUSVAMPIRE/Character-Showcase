@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c6c52be74535b408eac586db3eb61382, type: 3}
+  m_Name: Ivy
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Ivy::MeridianMotion.Showcase.Ivy.IvyStyle
+  spacing: 0.045
+  leafSize: {x: 0.08, y: 0.15}
+  standOff: 0.04
+  tilt: 50
+  spread: 100
+  fold: 0.18
+  darkColour: {r: 0.13, g: 0.25, b: 0.07, a: 1}
+  lightColour: {r: 0.36, g: 0.52, b: 0.17, a: 1}
+  colourVariation: 0.5
+  paletteBlend: 0.4
+  leafLuma: 0.3
+  wrap: 0.3
+  translucency: 0.2
+  shadowFloor: 0.35
+  gloss: 0.25
+  flutter: 0.5
+  drawDistance: 90
+  detailDistance: 20
+  thinFrom: 8
+  thinTo: 0.08
+  stemDistance: 25
+  farFade: 0.35
+  castsShadows: 0
+  spacingByQuality:
+  - 1.5
+  - 1

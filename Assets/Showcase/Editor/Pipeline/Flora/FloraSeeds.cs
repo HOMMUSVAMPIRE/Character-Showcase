@@ -22,7 +22,7 @@ namespace MeridianMotion.Showcase.Pipeline
         [Serializable]
         public sealed class Kind
         {
-            [Tooltip("The kind, as the generator knows it: oak, pine, birch, dead, bush (round bushes), flowering (its seeds go to the colours in order: pink, white, yellow, purple), fern, vine, ivywall (its seeds to the three wall shapes, in turn), ivypillar (one).")]
+            [Tooltip("The kind, as the generator knows it: oak, pine, birch, dead, bush (round bushes), flowering (its seeds go to the colours in order: pink, white, yellow, purple), fern. (The ivy and vines aren't generated: they're grown over the walls, on the GPU.)")]
             public string kind;
             [Tooltip("One seed per variant, in slots: the first is [Name]_01's. A slot's seed changed makes that variant again in place.")]
             public int[] seeds;
@@ -38,9 +38,6 @@ namespace MeridianMotion.Showcase.Pipeline
             new Kind { kind = "bush", seeds = new[] { 0, 1, 2 } },
             new Kind { kind = "flowering", seeds = new[] { 0, 1, 2, 3 } },
             new Kind { kind = "fern", seeds = new[] { 0, 1 } },
-            new Kind { kind = "vine", seeds = new[] { 0, 1, 2 } },
-            new Kind { kind = "ivywall", seeds = new[] { 0, 1, 2 } },
-            new Kind { kind = "ivypillar", seeds = new[] { 0 } },
         };
 
         /// <summary>The seeds as the generator script takes them (--seeds): "oak=0,1,2;birch=0,1".</summary>
@@ -60,9 +57,6 @@ namespace MeridianMotion.Showcase.Pipeline
             "bush" => $"Bushes/Bush_Round_{slot + 1:00}",
             "flowering" => slot < FloweringColours.Length ? $"Bushes/Bush_Flowering_{FloweringColours[slot]}" : null,
             "fern" => $"Bushes/Fern_{slot + 1:00}",
-            "vine" => $"Vines/Vines_Hanging_{slot + 1:00}",
-            "ivywall" => $"Ivy/Ivy_Wall_{slot + 1:00}",
-            "ivypillar" => slot == 0 ? "Ivy/Ivy_Pillar_R30cm" : null,
             _ => null,
         };
 

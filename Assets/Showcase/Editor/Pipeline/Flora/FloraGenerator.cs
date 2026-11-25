@@ -9,12 +9,12 @@ using UnityEngine.Rendering;
 namespace MeridianMotion.Showcase.Pipeline
 {
     /// <summary>
-    /// Generates the showcase's flora: trees, bushes, ferns, vines and ivy as textured leaf cards, each with its LOD chain
+    /// Generates the showcase's flora: trees, bushes and ferns as textured leaf cards, each with its LOD chain
     /// down to a billboard (ReferenceAssets/OpenTasks.md, category P). Tools > Meridian Motion > Showcase > Generate Flora
     /// (or GenerateFromCommandLine):
     /// <list type="number">
     /// <item>runs Tools/Flora/generate_flora.py in Blender, which writes the models and their textures into ModelFolder
-    /// (Trees/, Bushes/, Vines/, Ivy/, Textures/);</item>
+    /// (Trees/, Bushes/, Textures/);</item>
     /// <item>sets up the textures' imports (normal maps; leaf textures' mipmaps keeping their alpha coverage, so far
     /// trees don't go bald; sizes by kind; compressed) and the models' (no cameras, lights or animation; tangents for the
     /// normal maps; each model's materials remapped to the flora's own);</item>
@@ -44,7 +44,7 @@ namespace MeridianMotion.Showcase.Pipeline
         private const string GeneratorScript = "Tools/Flora/generate_flora.py";
         private const string LeafShaderPath = "Assets/Showcase/Flora/FloraLeaf.shader";
         private const string BarkShaderPath = "Assets/Showcase/Flora/FloraBark.shader";
-        private static readonly string[] Categories = { "Trees", "Bushes", "Vines", "Ivy" };
+        private static readonly string[] Categories = { "Trees", "Bushes" };
 
         /// <summary>How many of a plant's LODs, from the nearest, cast shadows (see MakePrefab): all of them.</summary>
         private const int CastingLODs = 4;

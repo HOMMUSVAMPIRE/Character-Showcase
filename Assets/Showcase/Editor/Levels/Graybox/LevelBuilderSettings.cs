@@ -347,10 +347,10 @@ namespace MeridianMotion.Showcase.Levels
             public string[] plantedShrubs = { "Bush_Flowering", "Bush_Flowering", "Bush_Round", "Fern" };
             [Tooltip("A fern's height, as a share of the height a bush of the same radius has: ferns are lower than bushes.")]
             [Range(0.2f, 1f)] public float fernHeight = 0.6f;
-            [Tooltip("The kinds of ivy an Ivy piece covers a wall with (as Trees): panels that climb a wall from its foot.")]
-            public string[] ivy = { "Ivy_Wall" };
-            [Tooltip("The kinds of vine a Vines piece hangs from a wall's top (as Trees).")]
-            public string[] vines = { "Vines_Hanging" };
+            [Tooltip("How an Ivy piece's ivy grows (on the GPU: the level's Ivy Field), as the level's built: its roots, how high and how far it spreads, its branching, and its mask's texel. How it looks is its Ivy Style's.")]
+            public MeridianMotion.Showcase.Ivy.IvyGrowth.Settings ivyGrowth = MeridianMotion.Showcase.Ivy.IvyGrowth.Settings.Defaults;
+            [Tooltip("How a Vines piece's vines hang (on the GPU, as the ivy: the level's Ivy Field), as the level's built: their roots along the wall's top, Height how far down they hang (a share of the piece's drop), how far their leaves spread, their branching and wander, and the mask's texel. How they look is the Ivy Style's (its Vines settings).")]
+            public MeridianMotion.Showcase.Ivy.IvyGrowth.Settings vineGrowth = MeridianMotion.Showcase.Ivy.IvyGrowth.Settings.VineDefaults;
         }
 
         /// <summary>

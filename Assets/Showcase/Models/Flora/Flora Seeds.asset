@@ -27,9 +27,3 @@ MonoBehaviour:
     seeds: 00000000010000000200000003000000i
   - kind: fern
     seeds: 0000000001000000i
-  - kind: vine
-    seeds: 000000000100000002000000i
-  - kind: ivywall
-    seeds: 000000000100000002000000i
-  - kind: ivypillar
-    seeds: 00000000i

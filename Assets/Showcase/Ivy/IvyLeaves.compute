@@ -1,0 +1,127 @@
+// Places an IvyField's leaves for one camera (see IvyField). One thread per cell of a fine grid over each chunk of a wall
+// face in view (the dispatch's z is the chunk), where the face's mask has growth: thinned out with distance (as the
+// grass is, by a rank on each cell, so nothing pops), culled by the view, and written to the near or the far list, whose
+// draw arguments count them. Then Finish clamps the counts to what the lists hold, keeping what was asked for so the
+// field can grow them.
+
+#pragma kernel Generate
+#pragma kernel Finish
+
+#include "../Grass/GrassCommon.hlsl"
+#include "IvyCommon.hlsl"
+
+StructuredBuffer<float4> _Chunks;    // each in view: its face, and its first cell (along, up: a multiple of 8 each way)
+StructuredBuffer<IvyFace> _Faces;
+Texture2DArray<float2> _Mask;        // r: how dense the growth is, g: how near a stem
+SamplerState sampler_linear_clamp;
+RWStructuredBuffer<Leaf> _NearLeaves, _FarLeaves;
+RWByteAddressBuffer _NearArgs, _FarArgs; // indexed draw arguments: the instance count at byte 4
+RWByteAddressBuffer _Counts;             // what was asked for, near and far
+uint _NearCapacity, _FarCapacity;
+
+float3 _CameraPosition;
+float4 _FrustumPlanes[6];
+float _Spacing;
+uint _CellsPerSide;
+uint _ChunkOffset;   // this dispatch's chunks start here in _Chunks (a dispatch per grid step)
+uint _Step;          // this dispatch's grid step: every _Step-th cell each way (1, 2, 4 or 8)
+float4 _Distances;   // draw distance, detail distance, thinning starts, the fraction left at the draw distance
+float4 _Leaf;        // its length's range (x to y, m), how far out from the wall it stands (m), how far its tip tilts out (radians)
+float4 _Spread;      // x: how far a leaf turns from hanging straight down (radians)
+float4 _Vines;       // how much further out a vine's leaves stand, how much more they flutter (at the tip), how much smaller they get toward it
+
+// As the grass's (GrassBlades.compute, Rank): cells on coarser grids rank lower, so a far chunk need only look at every
+// Nth cell, and within a level by the cell's hash.
+float Rank(int2 cell, float hash)
+{
+    uint bits = (uint)cell.x | (uint)cell.y;
+    uint level = bits == 0u ? 3u : min(firstbitlow(bits), 3u);
+    float coarser = pow(0.25, level + 1u), here = pow(0.25, level);
+    return level == 3u ? hash * here : coarser + hash * (here - coarser);
+}
+
+[numthreads(8, 8, 1)]
+void Generate(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x * _Step >= _CellsPerSide || id.y * _Step >= _CellsPerSide) { return; }
+    float4 chunk = _Chunks[_ChunkOffset + id.z];
+    uint f = (uint)chunk.x;
+    IvyFace face = _Faces[f];
+    float2 size = float2(face.corner.w, face.along.w);
+
+    // The cell, counted from the face's corner, so its hash is the same whichever chunks are in view. A chunk starts on
+    // a multiple of 8 cells, so a coarse step's cells are the coarse grid's, which rank lowest (see Rank): started
+    // anywhere else, a far chunk looked only at cells ranked to go, and the ivy fell into squares.
+    int2 cell = int2(chunk.yz) + int2(id.xy * _Step);
+    float3 r0 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), f * 4u + 101u));
+    float2 uv = (float2(cell) + r0.xy) * _Spacing;
+    if (any(uv >= size)) { return; }
+    float2 mask = _Mask.SampleLevel(sampler_linear_clamp, float3(uv / size * face.mask.xy, face.up.w), 0);
+    if (r0.z >= mask.r) { return; }
+
+    float3 r1 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), f * 4u + 102u));
+    float3 r2 = GrassRandom(uint3(asuint(cell.x), asuint(cell.y), f * 4u + 103u));
+    float3 wallPoint = face.corner.xyz + face.along.xyz * uv.x + face.up.xyz * uv.y;
+    float distance = length(wallPoint - _CameraPosition);
+    float drawDistance = _Distances.x;
+    if (distance >= drawDistance) { return; }
+
+    // Fewer leaves with distance, as the square of it from Thin From, down to Thin To; those left larger, to cover.
+    // A leaf about to go shrinks first, so none pops.
+    float near = _Distances.z / max(distance, 0.01);
+    float keep = clamp(near * near, _Distances.w, 1.0);
+    float rank = Rank(cell, r1.x);
+    if (rank >= keep) { return; }
+    float leaving = saturate((keep - rank) / (0.2 * keep));
+
+    // A vine's leaves (its face hangs): sparser toward its tip by its mask, and smaller, dangling further out, fluttering more.
+    float hangs = face.outward.w;
+    float tip = hangs * (1.0 - mask.r);
+    float leafSize = lerp(_Leaf.x, _Leaf.y, r1.y) * lerp(0.75, 1.0, mask.r) * (1.0 - _Vines.z * tip);
+    leafSize *= min(rsqrt(keep), 4.0) * leaving * saturate((drawDistance - distance) / (0.1 * drawDistance));
+    if (leafSize <= 0.002) { return; }
+
+    // Out from the wall: deeper or further out at random, and further out over a stem (the leaves on its stalks).
+    float3 position = wallPoint + face.outward.xyz * (_Leaf.z * lerp(0.3, 1.5, r2.x) * (0.6 + 0.8 * mask.g) * lerp(1.0, _Vines.x, hangs));
+
+    // Culled by the view: a sphere round the leaf.
+    [unroll] for (int p = 0; p < 6; p++)
+    {
+        if (dot(_FrustumPlanes[p].xyz, position) + _FrustumPlanes[p].w < -1.5 * leafSize) { return; }
+    }
+
+    // Hanging down its wall, turned either way by up to the spread.
+    float s, c;
+    sincos((r1.z - 0.5) * 2.0 * _Spread.x * lerp(1.0, 0.6, hangs), s, c);
+    Leaf leaf;
+    leaf.position = position;
+    leaf.normal = face.outward.xyz;
+    leaf.down = -face.up.xyz * c + face.along.xyz * s;
+    leaf.size = leafSize;
+    leaf.tilt = lerp(0.25, 1.0, r2.y) * _Leaf.w;
+    leaf.hash = r2.z;
+    // Darker the deeper it sits in a dense growth (the leaves over it shade it).
+    leaf.shade = lerp(1.0, 0.65, mask.r * (1.0 - r2.x));
+    leaf.sway = 1.0 + hangs * (_Vines.y - 1.0) * (0.4 + 0.6 * saturate(tip * 1.5));
+
+    uint index;
+    if (distance < _Distances.y)
+    {
+        _NearArgs.InterlockedAdd(4, 1u, index);
+        if (index < _NearCapacity) { _NearLeaves[index] = leaf; }
+    }
+    else
+    {
+        _FarArgs.InterlockedAdd(4, 1u, index);
+        if (index < _FarCapacity) { _FarLeaves[index] = leaf; }
+    }
+}
+
+[numthreads(1, 1, 1)]
+void Finish(uint3 id : SV_DispatchThreadID)
+{
+    uint near = _NearArgs.Load(4), far = _FarArgs.Load(4);
+    _Counts.Store2(0, uint2(near, far));
+    _NearArgs.Store(4, min(near, _NearCapacity));
+    _FarArgs.Store(4, min(far, _FarCapacity));
+}

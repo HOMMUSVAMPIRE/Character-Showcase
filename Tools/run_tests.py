@@ -87,6 +87,7 @@ CHANGE_RULES = (
     ("Assets/Showcase/Editor/Levels/", LEVELS, "the level builders"),
     ("Assets/Showcase/Grass/", ("Levels",), "the levels' grass"),
     ("Assets/Showcase/Flora/", ("Levels",), "the flora's shaders"),
+    ("Assets/Showcase/Ivy/", ("Levels",), "the walls' ivy"),
     ("Assets/Showcase/Editor/Grass/", ("Levels",), "the grass's editor tools (the benchmark)"),
     ("Assets/Showcase/Editor/LevelChecks/", ("Levels", "Movement"), "the level checks (the movement envelope)"),
     ("Assets/MeridianMotion/Editor/Scene/", ("Spawning",), "Set Up Scene"),

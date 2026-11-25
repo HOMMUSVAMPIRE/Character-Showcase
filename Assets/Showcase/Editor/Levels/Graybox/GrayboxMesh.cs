@@ -204,8 +204,9 @@ namespace MeridianMotion.Showcase.Levels
         /// <summary>
         /// Gives obj the mesh (named name), and a renderer with the material of each surface it uses. With uv2, the mesh
         /// has a UV2 too (see GrayboxUV2): leave it out for meshes nothing will be painted onto, of many small faces (grass).
+        /// moving: for something that moves, the surfaces' materials whose noise moves with it (Graybox.ForMoving).
         /// </summary>
-        public void AddTo(GameObject obj, string name, bool uv2 = true)
+        public void AddTo(GameObject obj, string name, bool uv2 = true, bool moving = false)
         {
             var mesh = new Mesh { name = name, subMeshCount = surfaces.Count };
             if (vertices.Count > 65535) { mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32; }
@@ -216,7 +217,7 @@ namespace MeridianMotion.Showcase.Levels
             for (int i = 0; i < surfaces.Count; i++)
             {
                 mesh.SetTriangles(triangles[i], i);
-                materials[i] = Graybox.For(surfaces[i]);
+                materials[i] = moving ? Graybox.ForMoving(surfaces[i]) : Graybox.For(surfaces[i]);
             }
             mesh.RecalculateNormals();
             mesh.RecalculateBounds();

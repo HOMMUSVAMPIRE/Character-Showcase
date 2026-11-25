@@ -74,7 +74,51 @@ namespace MeridianMotion.Showcase.Levels
         /// The materials the surfaces are given (indexed by Surface) for the builds to come: LevelDefinition sets it before
         /// building. A surface it has no material for is given Material.
         /// </summary>
-        public static void UsePalette(Material[] materials) => palette = materials;
+        public static void UsePalette(Material[] materials)
+        {
+            palette = materials;
+            moving.Clear();
+        }
+
+        /// <summary>
+        /// The shader property that has the levels' concrete sample its noise in the object's own space rather than the
+        /// world's (NoiseConcrete.shadergraph's Noise In Object Space), so the noise moves with something that moves.
+        /// </summary>
+        public const string NoiseInObjectSpace = "_NoiseInObjectSpace";
+
+        private static readonly Dictionary<GrayboxMaterial, Material> moving = new();
+
+        /// <summary>
+        /// The material for a surface on something that moves (a moving platform, a pushable crate, a shortcut gate): a
+        /// variant of the palette's ("Level_[Surface] (Moving).mat", beside it) with Noise In Object Space on, so its noise
+        /// moves with it rather than sliding over it. A variant, so it follows the hand-tuned material it's of; made the
+        /// first time it's asked for. A surface whose shader has no such setting (water, glass) keeps the palette's.
+        /// </summary>
+        public static Material ForMoving(GrayboxMaterial surface)
+        {
+            Material material = For(surface);
+            if (material == null || !material.HasProperty(NoiseInObjectSpace)) { return material; }
+            if (moving.TryGetValue(surface, out Material known) && known != null) { return known; }
+            string basePath = AssetDatabase.GetAssetPath(material);
+            if (string.IsNullOrEmpty(basePath)) { return material; }
+            string path = $"{System.IO.Path.GetDirectoryName(basePath)}/{material.name} (Moving).mat".Replace('\\', '/');
+            var variant = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (variant == null)
+            {
+                variant = new Material(material) { name = $"{material.name} (Moving)" };
+                variant.parent = material;
+                variant.SetFloat(NoiseInObjectSpace, 1f);
+                AssetDatabase.CreateAsset(variant, path);
+            }
+            else if (variant.parent != material || variant.GetFloat(NoiseInObjectSpace) < 0.5f)
+            {
+                variant.parent = material;
+                variant.SetFloat(NoiseInObjectSpace, 1f);
+                EditorUtility.SetDirty(variant);
+            }
+            moving[surface] = variant;
+            return variant;
+        }
 
         private static readonly List<(object owner, System.Action place)> deferred = new();
 

@@ -24,4 +24,5 @@
   <Project Path="MeridianMotion.Showcase.LevelChecks.csproj" />
   <Project Path="MeridianMotion.PhysicsQueries.csproj" />
   <Project Path="MeridianMotion.Showcase.TutorialRing.EditorTools.csproj" />
+  <Project Path="MeridianMotion.Showcase.Ivy.csproj" />
 </Solution>

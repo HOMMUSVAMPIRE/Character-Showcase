@@ -3,6 +3,7 @@
     "rootNamespace": "MeridianMotion.Showcase.Tests.Grass",
     "references": [
         "MeridianMotion.Showcase.Grass",
+        "MeridianMotion.Showcase.Ivy",
         "MeridianMotion.Characters",
         "MeridianMotion.Tests.Shared",
         "Unity.RenderPipelines.Universal.Runtime",

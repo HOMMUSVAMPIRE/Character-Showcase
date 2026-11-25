@@ -1,133 +1,132 @@
 using MeridianMotion.Levels;
 using MeridianMotion.Levels.EditorTools;
+using MeridianMotion.Showcase.Ivy;
+using UnityEditor;
 using UnityEngine;
 
 namespace MeridianMotion.Showcase.Levels
 {
-    // Flora on walls (ReferenceAssets/OpenTasks.md, P9): ivy climbing a wall from its foot, and vines hanging from its top,
-    // the flora's prefabs (Graybox.Flora.cs) laid along a wall's face in columns. Only on plain walls: a column whose wall
+    // Flora on walls (ReferenceAssets/OpenTasks.md, P9, Q2, Q10): ivy climbing a wall from its foot, and vines hanging
+    // from its top, both grown as the level's built and drawn on the GPU (the level's IvyField). Only on plain walls: a point whose wall
     // is climbable or marked for a move (a climbable panel, a wall-run or wall-slide wall, a ladder: by their fixture
     // names, as the game setup knows them, or the components it gives them) gets none, so the flora never says "climb
     // here" where a character can't, or hides where it can. Placed once the level's built (see Defer), so the walls'
-    // colliders are there to check. No colliders of their own. Without the flora's prefabs, nothing.
+    // colliders are there to check. No colliders of their own. Without the ivy's shaders or the flora's prefabs, nothing.
     public static partial class Graybox
     {
-        /// <summary>How far off a wall's face (m) its ivy and vines stand, so their leaves never cut into it.</summary>
-        private const float WallFloraStandOff = 0.02f;
-
-        /// <summary>How much of a column's panels overlap the one below (m): ivy reads as one growth up the wall.</summary>
-        private const float IvyOverlap = 0.4f;
-
         /// <summary>
-        /// Ivy on a wall's face, along it from a to b (points on the face, in parent's space), the face looking outward:
-        /// in columns of the foliage's ivy panels, each column from y0 up to a height picked at random between halfway and
-        /// y1, covering about cover of the face (the rest bare, in gaps a panel wide). Seeded from the settings' seed and
-        /// salt. Only on plain walls (see the file's top).
+        /// Ivy on a wall's face, along it from a to b (points on the face, in parent's space), the face looking outward, from
+        /// y0 up to (at most) y1: grown on the GPU (ReferenceAssets/OpenTasks.md, Q2), as the grass is. The face's ivy is
+        /// grown as the level's built (IvyGrowth: stems climbing from roots along its foot, cover how close together, to
+        /// heights the foliage's Ivy Growth picks), its mask and stems added to the level's Ivy Field (one per level, under
+        /// its root, made by the first Ivy piece), which places the leaves before each camera renders. Seeded from the
+        /// level's flora seed, the settings' seed and salt. Only on plain walls (see the file's top): the growth stops at a
+        /// climbable or marked wall, or where there's no wall, and goes behind what stands proud of the face (a pilaster)
+        /// with no leaves on it.
         /// </summary>
         [Piece]
         public static void Ivy(Transform parent, Vector2 a, Vector2 b, Vector2 outward, float y0, float y1, int salt, float cover = 0.6f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Ivy), parent, a, b, outward, y0, y1, salt, cover);
-            Defer(() => AlongWall(parent, a, b, outward, Settings.foliage.seed + 300 + salt, cover, Settings.foliage.ivy, "Ivy",
-                (group, pick, bounds, slot, random) =>
-                {
-                    float top = Mathf.Lerp(y0 + 0.5f * (y1 - y0), y1, (float)random.NextDouble());
-                    float bottom = y0;
-                    // Stacked from the foot up, each panel overlapping the one below; the last cut to the column's top by
-                    // its scale (never past y1).
-                    while (bottom < top - 0.3f)
-                    {
-                        FloraPick panel = bottom > y0 ? PickFlora(Settings.foliage.ivy, random) : pick;
-                        if (panel.prefab == null) { return; }
-                        Bounds pb = Flora(panel.prefab.name).bounds;
-                        float scale = Mathf.Min(1f, (top - bottom) / Mathf.Max(pb.size.y, 0.1f));
-                        if (scale < 0.4f) { return; }
-                        if (!OnPlainWall(parent, slot, outward, bottom + 0.5f * scale * pb.size.y)) { return; }
-                        OnWall(group, panel, pb, slot, outward, bottom, scale, alignTop: false);
-                        bottom += scale * pb.size.y - IvyOverlap;
-                    }
-                }));
+            Defer(() =>
+            {
+                IvyGrowth.Settings settings = Settings.foliage.ivyGrowth;
+                settings.cover = Mathf.Clamp01(settings.cover * cover);
+                GrowOnWall(parent, a, b, outward, y0, y1, (int)Mix((uint)FloraSeed, (uint)(Settings.foliage.seed + 300 + salt)), settings, hangs: false);
+            });
+        }
+
+        /// <summary>Where the ivy's shaders and style are (Create Grass Assets makes the style).</summary>
+        public const string IvyFolder = "Assets/Showcase/Ivy/";
+        public const string IvyStylePath = IvyFolder + "Styles/Ivy.asset";
+
+        /// <summary>The material the ivy's stems are drawn with: the flora's stem bark (Generate Flora makes it).</summary>
+        public const string IvyStemMaterialPath = "Assets/Showcase/Models/Flora/Materials/M_Bark_Stem.mat";
+
+        /// <summary>The level's ivy field's name (see IvyFieldFor).</summary>
+        public const string IvyFieldName = "Ivy Field";
+
+        /// <summary>
+        /// How far out from a face (m) its wall test starts, and how much nearer something has to be to stand proud of it
+        /// (a pilaster), or further to be a hole in it (an opening, a recess).
+        /// </summary>
+        private const float IvyProbe = 0.3f, IvyProud = 0.04f, IvyRecess = 0.1f;
+
+        private static bool warnedNoIvy;
+
+        /// <summary>
+        /// Grows a wall's ivy (or, hangs, its vines) over the face from a to b, y0 to y1 (in parent's space), looking
+        /// outward, from seed, as settings say, and adds it to the level's ivy field.
+        /// </summary>
+        private static void GrowOnWall(Transform parent, Vector2 a, Vector2 b, Vector2 outward, float y0, float y1, int seed, IvyGrowth.Settings settings, bool hangs)
+        {
+            float length = Vector2.Distance(a, b);
+            if (length < 0.1f || y1 - y0 < 0.1f || settings.cover <= 0f) { return; }
+            IvyField field = IvyFieldFor(parent);
+            if (field == null) { return; }
+            Vector2 way = (b - a) / length;
+            Vector3 cornerHere = new(a.x, y0, a.y), alongHere = new(way.x, 0f, way.y), outHere = new Vector3(outward.x, 0f, outward.y).normalized;
+            Vector3 cornerWorld = parent.TransformPoint(cornerHere), alongWorld = parent.TransformDirection(alongHere).normalized;
+            Vector3 upWorld = parent.TransformDirection(Vector3.up).normalized, outWorld = parent.TransformDirection(outHere).normalized;
+
+            IvyGrowth.Surface WallAt(Vector2 uv)
+            {
+                Vector3 at = cornerWorld + alongWorld * uv.x + upWorld * uv.y + outWorld * IvyProbe;
+                if (!Physics.Raycast(at, -outWorld, out RaycastHit hit, IvyProbe + IvyRecess, ~0, QueryTriggerInteraction.Ignore)) { return IvyGrowth.Surface.None; }
+                if (IsClimbableOrMarked(hit.collider.transform)) { return IvyGrowth.Surface.None; }
+                return hit.distance < IvyProbe - IvyProud ? IvyGrowth.Surface.Proud : IvyGrowth.Surface.Face;
+            }
+
+            var size = new Vector2(length, y1 - y0);
+            IvyGrowth.Grown grown = hangs ? IvyGrowth.Hang(size, seed, settings, WallAt) : IvyGrowth.Grow(size, seed, settings, WallAt);
+            Transform f = field.transform;
+            field.AddFace(IvyField.Face.From(grown, f.InverseTransformPoint(cornerWorld), f.InverseTransformDirection(alongWorld).normalized,
+                f.InverseTransformDirection(upWorld).normalized, f.InverseTransformDirection(outWorld).normalized, size, hangs));
+            EnsureWind(parent);
+        }
+
+        /// <summary>
+        /// The level's ivy field (an IvyField named IvyFieldName under parent's root), made with the ivy's style, shaders
+        /// and stem material if it hasn't one. Without the ivy's shaders, none (with one warning): no ivy.
+        /// </summary>
+        private static IvyField IvyFieldFor(Transform parent)
+        {
+            Transform root = parent.root;
+            foreach (IvyField existing in root.GetComponentsInChildren<IvyField>(true)) { if (existing.name == IvyFieldName) { return existing; } }
+            var compute = AssetDatabase.LoadAssetAtPath<ComputeShader>(IvyFolder + "IvyLeaves.compute");
+            var leaves = AssetDatabase.LoadAssetAtPath<Shader>(IvyFolder + "Ivy.shader");
+            var far = AssetDatabase.LoadAssetAtPath<Shader>(IvyFolder + "IvyFar.shader");
+            if (compute == null || leaves == null || far == null)
+            {
+                if (!warnedNoIvy) { warnedNoIvy = true; Debug.LogWarning($"[Graybox] No ivy shaders in '{IvyFolder}': the Ivy pieces grow nothing."); }
+                return null;
+            }
+            var obj = new GameObject(IvyFieldName);
+            obj.transform.SetParent(root, false);
+            var field = obj.AddComponent<IvyField>();
+            field.Style = AssetDatabase.LoadAssetAtPath<IvyStyle>(IvyStylePath);
+            field.SetLook(compute, leaves, far, AssetDatabase.LoadAssetAtPath<Material>(IvyStemMaterialPath));
+            return field;
         }
 
         /// <summary>
         /// Vines hanging from a wall's top at top, along it from a to b (points on the face, in parent's space), the face
-        /// looking outward: the foliage's vines, none hanging further than drop (shrunk to it), covering about cover of the
-        /// face. Seeded from the settings' seed and salt. Only on plain walls (see the file's top).
+        /// looking outward, none hanging further than drop: grown on the GPU as the ivy is (ReferenceAssets/OpenTasks.md,
+        /// Q10), from roots along the top (cover how close together, times the foliage's Vine Growth's), each strand
+        /// hanging to a length its Height picks, its leaves thinning and shrinking toward its tip (IvyGrowth.Hang), added
+        /// to the level's Ivy Field as a hanging face. Seeded as the ivy is, with its own salt. Only on plain walls (see the
+        /// file's top).
         /// </summary>
         [Piece]
         public static void Vines(Transform parent, Vector2 a, Vector2 b, Vector2 outward, float top, float drop, int salt, float cover = 0.5f)
         {
             using LevelSpecRecorder.Scope recording = LevelSpecRecorder.Call(nameof(Vines), parent, a, b, outward, top, drop, salt, cover);
-            Defer(() => AlongWall(parent, a, b, outward, Settings.foliage.seed + 400 + salt, cover, Settings.foliage.vines, "Vines",
-                (group, pick, bounds, slot, random) =>
-                {
-                    float scale = Mathf.Min(1f, drop / Mathf.Max(bounds.size.y, 0.1f));
-                    if (!OnPlainWall(parent, slot, outward, top - 0.3f)) { return; }
-                    OnWall(group, pick, bounds, slot, outward, top, scale, alignTop: true);
-                }));
-        }
-
-        /// <summary>Places one column of wall flora: its group, its first pick and that pick's bounds, where along the wall, and the random.</summary>
-        private delegate void WallColumn(Transform group, FloraPick pick, Bounds bounds, Vector2 slot, System.Random random);
-
-        /// <summary>
-        /// Walks a wall's face from a to b in columns a picked plant wide, each placed by column (or skipped, about 1 - cover
-        /// of them), under a group named name.
-        /// </summary>
-        private static void AlongWall(Transform parent, Vector2 a, Vector2 b, Vector2 outward, int seed, float cover, string[] kinds, string name, WallColumn column)
-        {
-            var random = new System.Random(seed);
-            float length = Vector2.Distance(a, b);
-            if (length < 0.1f || kinds == null || kinds.Length == 0) { return; }
-            Vector2 along = (b - a) / length;
-            Transform group = null;
-            float at = 0f;
-            while (at < length)
+            Defer(() =>
             {
-                FloraPick pick = PickFlora(kinds, random);
-                if (pick.prefab == null) { return; }
-                Bounds bounds = Flora(pick.prefab.name).bounds;
-                float width = Mathf.Max(bounds.size.x * pick.width, 0.3f);
-                bool placed = random.NextDouble() < cover;
-                if (placed && at + width <= length + 0.1f)
-                {
-                    group ??= Group(parent, name);
-                    column(group, pick, bounds, a + along * (at + width / 2f), random);
-                }
-                at += placed ? width * 0.85f : width;
-            }
-        }
-
-        /// <summary>
-        /// Places a wall plant (pick, bounds its first LOD's in its own space) on a wall's face at slot (in the group's
-        /// parent's space), its leaves outward, scale times its size: its foot at height (or, alignTop, its top), its back
-        /// WallFloraStandOff off the face, centred on slot along it.
-        /// </summary>
-        private static void OnWall(Transform group, FloraPick pick, Bounds bounds, Vector2 slot, Vector2 outward, float height, float scale, bool alignTop)
-        {
-            // The prefabs' leaves stand off their wall on one side of it (the generator's wall is their z = 0): that side
-            // turned to face outward, and their back (the other side's extent) put against the face.
-            float side = bounds.center.z >= 0f ? 1f : -1f;
-            Vector2 facing = outward.normalized * side;
-            float turn = Mathf.Atan2(facing.x, facing.y) * Mathf.Rad2Deg;
-            float back = side > 0f ? bounds.min.z : bounds.max.z;
-            var anchor = new Vector3(bounds.center.x, alignTop ? bounds.max.y : bounds.min.y, back);
-            GameObject plant = PlaceFlora(pick, group, Vector3.zero, turn, scale * bounds.size.y);
-            Vector3 offset = plant.transform.localRotation * Vector3.Scale(plant.transform.localScale, anchor);
-            Vector3 target = new Vector3(slot.x, height, slot.y) + new Vector3(outward.x, 0f, outward.y).normalized * WallFloraStandOff;
-            plant.transform.localPosition = target - offset;
-        }
-
-        /// <summary>
-        /// Whether there's a plain wall's face at slot (in parent's space) at height, looking outward: something solid
-        /// within half a metre behind the point, neither climbable nor marked for a move (see the file's top).
-        /// </summary>
-        private static bool OnPlainWall(Transform parent, Vector2 slot, Vector2 outward, float height)
-        {
-            Vector3 dir = parent.TransformDirection(new Vector3(-outward.x, 0f, -outward.y).normalized);
-            Vector3 from = parent.TransformPoint(new Vector3(slot.x, height, slot.y)) - dir * 0.3f;
-            if (!Physics.Raycast(from, dir, out RaycastHit hit, 0.8f, ~0, QueryTriggerInteraction.Ignore)) { return false; }
-            return !IsClimbableOrMarked(hit.collider.transform);
+                IvyGrowth.Settings settings = Settings.foliage.vineGrowth;
+                settings.cover = Mathf.Clamp01(settings.cover * cover);
+                GrowOnWall(parent, a, b, outward, top - drop, top, (int)Mix((uint)FloraSeed, (uint)(Settings.foliage.seed + 400 + salt)), settings, hangs: true);
+            });
         }
 
         /// <summary>Whether a wall (a collider's object, or one it's under) is climbable or marked for a move.</summary>

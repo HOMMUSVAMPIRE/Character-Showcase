@@ -22,7 +22,7 @@ namespace MeridianMotion.Showcase.Levels
     ///   columns with accent strips, a floodlight stands on the east tower, and hazard stripes mark the gap's edges;
     /// - south-east, a walled building with a doorway and a window (walls with openings, pilasters and frames), a
     ///   crate, a shelf, a utility station, door lights over the openings, an area sign by the door, and a catwalk on
-    ///   a braced frame and brackets, up a stair;
+    ///   a braced frame and brackets, up a stair; ivy up its east wall's outside, and vines hung from its top;
     /// - east, underground at -6: a stairwell down from the ground, a passage, a lit room and a ventilation shaft
     ///   (Cells, their ceiling panels, strip lights and lights, pipe runs, a utility station, shaft walls and the
     ///   ground's openings);
@@ -226,6 +226,12 @@ namespace MeridianMotion.Showcase.Levels
             Block(objects, "Shelf", 17f, 23f, -34.5f, -33f, 0f, 2.5f, GrayboxMaterial.Graphite);
             AreaSign(building, new Vector2(x0 - h, -30.5f), 1.2f, Vector2.left, "00", "Level Playground"); // Beside the door.
             Banner(building, new Vector2(19.5f, z1 + h), Vector2.up, top - 0.4f, 3.6f, "00"); // On the north wall, beside the window.
+
+            // Ivy up the east wall's outside, round its pilasters, and vines hung from its top (ReferenceAssets/OpenTasks.md,
+            // Q6): the GPU ivy, to look at outside the Tutorial Ring. A plain wall, out of the way of every test.
+            Vector2 eastA = new(x1 + h, z0 - h), eastB = new(x1 + h, z1 + h);
+            Graybox.Ivy(building, eastA, eastB, Vector2.right, 0f, top, 1, cover: 0.6f);
+            Vines(building, eastA, eastB, Vector2.right, top, 2.5f, 1, cover: 0.5f);
         }
 
         // ---- East: the underground ----
