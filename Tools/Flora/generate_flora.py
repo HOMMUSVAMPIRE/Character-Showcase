@@ -15,6 +15,8 @@ Options:
   --only a,b       only build these categories: trees,bushes,vines,ivy
   --tex N          leaf-card texture size (default 1024)
   --render         render the preview pictures (into <output>/../Previews), off by default
+  --seeds k=a,b;.. each kind's variants' seeds (see SEEDS): a variant per seed, Name_01 the first seed's
+  --kinds a,b      only build these kinds (oak, pine, birch, dead, bush, flowering, fern, vine, ivywall, ivypillar)
 
 What it makes, in the output folder:
   Textures/  leaf-card atlases (rendered from real 3D leaf geometry), tiling bark, and one billboard texture per asset:
@@ -35,8 +37,20 @@ ap.add_argument("--seed", type=int, default=1)
 ap.add_argument("--only", default="trees,bushes,vines,ivy")
 ap.add_argument("--tex", type=int, default=1024)
 ap.add_argument("--render", action="store_true")
+ap.add_argument("--seeds", default="", help='each kind\'s variants\' seeds: "oak=0,1,2;birch=4,9" (see SEEDS)')
+ap.add_argument("--kinds", default="", help="only build these kinds: oak,birch (default: every kind)")
 ARGS = ap.parse_args(argv)
 ARGS.no_render = not ARGS.render
+
+# Each kind's variants, by their seeds: a variant per seed, in slots (Tree_Oak_01 is the first seed's), so a slot given a
+# new seed is made again in place (Generate Flora's Flora Seeds asset passes them). These defaults are the first ones made.
+# A flowering bush's seeds go to its colours in order (pink, white, yellow, purple); ivy walls' to their three shapes.
+SEEDS = {"oak": [0, 1, 2], "pine": [0, 1, 2], "birch": [0, 1], "dead": [0, 1], "bush": [0, 1, 2], "flowering": [0, 1, 2, 3],
+         "fern": [0, 1], "vine": [0, 1, 2], "ivywall": [0, 1, 2], "ivypillar": [0]}
+for item in filter(None, (i.strip() for i in ARGS.seeds.split(";"))):
+    kind, _, values = item.partition("=")
+    SEEDS[kind.strip()] = [int(v) for v in values.split(",") if v.strip()]
+KINDS = set(k.strip() for k in ARGS.kinds.split(",") if k.strip()) or set(SEEDS)
 CATS = set(ARGS.only.split(","))
 OUT = os.path.abspath(ARGS.out)
 TEXDIR = os.path.join(OUT, "Textures")
@@ -1331,32 +1345,45 @@ def S(tag, i):
 
 
 def build_all():
-    if "trees" in CATS:
-        for i in range(3):
-            register("Trees", f"Tree_Oak_{i+1:02d}", broadleaf_tree(S("oak", i), f"Tree_Oak_{i+1:02d}", OAK))
-        for i in range(3):
-            register("Trees", f"Tree_Pine_{i+1:02d}", pine_tree(S("pine", i), f"Tree_Pine_{i+1:02d}", 7.5))
-        for i in range(2):
-            register("Trees", f"Tree_Birch_{i+1:02d}", broadleaf_tree(S("birch", i), f"Tree_Birch_{i+1:02d}", BIRCH))
-        for i in range(2):
-            register("Trees", f"Tree_Dead_{i+1:02d}", dead_tree(S("dead", i), f"Tree_Dead_{i+1:02d}"))
-    if "bushes" in CATS:
-        for i in range(3):
-            register("Bushes", f"Bush_Round_{i+1:02d}", bush(S("bush", i), f"Bush_Round_{i+1:02d}"))
-        for i, fk in enumerate(["Pink", "White", "Yellow", "Purple"]):
-            register("Bushes", f"Bush_Flowering_{fk}", bush(S("fbush", i), f"Bush_Flowering_{fk}", fk))
-        for i in range(2):
-            register("Bushes", f"Fern_{i+1:02d}", fern(S("fern", i), f"Fern_{i+1:02d}"))
-        # No grass clumps: the levels' grass is the lawns' (GrassField), made on the GPU.
-    if "vines" in CATS:
-        for i in range(3):
-            register("Vines", f"Vines_Hanging_{i+1:02d}", hanging_vines(S("vine", i), f"Vines_Hanging_{i+1:02d}"))
-    if "ivy" in CATS:
-        for i, (W, H, roots) in enumerate([(1.5, 2.0, 4), (3.0, 2.5, 7), (1.0, 3.0, 3)]):
-            n = f"Ivy_Wall_{i+1:02d}"
-            register("Ivy", n, ivy(S("ivywall", i), n, wall_surface, W, H, False, roots, H * 1.6, True))
+    def want(category, kind):
+        return category in CATS and kind in KINDS
+
+    print("[flora] seeds " + "; ".join(f"{k}={','.join(map(str, v))}" for k, v in SEEDS.items() if k in KINDS), flush=True)
+    if want("trees", "oak"):
+        for i, n in enumerate(SEEDS["oak"]):
+            register("Trees", f"Tree_Oak_{i+1:02d}", broadleaf_tree(S("oak", n), f"Tree_Oak_{i+1:02d}", OAK))
+    if want("trees", "pine"):
+        for i, n in enumerate(SEEDS["pine"]):
+            register("Trees", f"Tree_Pine_{i+1:02d}", pine_tree(S("pine", n), f"Tree_Pine_{i+1:02d}", 7.5))
+    if want("trees", "birch"):
+        for i, n in enumerate(SEEDS["birch"]):
+            register("Trees", f"Tree_Birch_{i+1:02d}", broadleaf_tree(S("birch", n), f"Tree_Birch_{i+1:02d}", BIRCH))
+    if want("trees", "dead"):
+        for i, n in enumerate(SEEDS["dead"]):
+            register("Trees", f"Tree_Dead_{i+1:02d}", dead_tree(S("dead", n), f"Tree_Dead_{i+1:02d}"))
+    if want("bushes", "bush"):
+        for i, n in enumerate(SEEDS["bush"]):
+            register("Bushes", f"Bush_Round_{i+1:02d}", bush(S("bush", n), f"Bush_Round_{i+1:02d}"))
+    if want("bushes", "flowering"):
+        for fk, n in zip(["Pink", "White", "Yellow", "Purple"], SEEDS["flowering"]):
+            register("Bushes", f"Bush_Flowering_{fk}", bush(S("fbush", n), f"Bush_Flowering_{fk}", fk))
+    if want("bushes", "fern"):
+        for i, n in enumerate(SEEDS["fern"]):
+            register("Bushes", f"Fern_{i+1:02d}", fern(S("fern", n), f"Fern_{i+1:02d}"))
+    # No grass clumps: the levels' grass is the lawns' (GrassField), made on the GPU.
+    if want("vines", "vine"):
+        for i, n in enumerate(SEEDS["vine"]):
+            register("Vines", f"Vines_Hanging_{i+1:02d}", hanging_vines(S("vine", n), f"Vines_Hanging_{i+1:02d}"))
+    if want("ivy", "ivywall"):
+        shapes = [(1.5, 2.0, 4), (3.0, 2.5, 7), (1.0, 3.0, 3)]
+        for i, n in enumerate(SEEDS["ivywall"]):
+            W, H, roots = shapes[i % len(shapes)]
+            name = f"Ivy_Wall_{i+1:02d}"
+            register("Ivy", name, ivy(S("ivywall", n), name, wall_surface, W, H, False, roots, H * 1.6, True))
+    if want("ivy", "ivypillar"):
         R = 0.3
-        register("Ivy", "Ivy_Pillar_R30cm", ivy(S("ivypillar", 0), "Ivy_Pillar_R30cm", pillar_surface(R), TAU * R, 2.8, True, 5, 4.0, False))
+        for n in SEEDS["ivypillar"][:1]:
+            register("Ivy", "Ivy_Pillar_R30cm", ivy(S("ivypillar", n), "Ivy_Pillar_R30cm", pillar_surface(R), TAU * R, 2.8, True, 5, 4.0, False))
 
 
 # ===================================================================== previews

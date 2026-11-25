@@ -1,5 +1,5 @@
 // The flora's bark: trunks, branches and stems, tiling bark with its normal map. Swaying in the level's wind with the
-// leaves on it (FloraCommon.hlsl; a trunk's foot doesn't move), dithered between LODs, instanced.
+// leaves on it (FloraCommon.hlsl; a trunk's foot doesn't move), dithered between LODs, instanced (and DOTS-instanced, for the GPU Resident Drawer).
 Shader "Meridian Motion/Showcase/Flora Bark"
 {
     Properties
@@ -100,6 +100,7 @@ Shader "Meridian Motion/Showcase/Flora Bark"
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half4 Fragment(Varyings i) : SV_Target
             {
@@ -123,6 +124,7 @@ Shader "Meridian Motion/Showcase/Flora Bark"
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
             float3 _LightDirection;
@@ -160,6 +162,7 @@ Shader "Meridian Motion/Showcase/Flora Bark"
             #pragma fragment DepthFragment
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half DepthFragment(Varyings i) : SV_Target
             {
@@ -181,6 +184,7 @@ Shader "Meridian Motion/Showcase/Flora Bark"
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half4 NormalsFragment(Varyings i) : SV_Target
             {

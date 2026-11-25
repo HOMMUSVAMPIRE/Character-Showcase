@@ -141,6 +141,22 @@ Tools > Meridian Motion > Showcase > Measure Grass times it at fixed spots (with
 **The characters don't push the grass.**
 The scene's setup needs a Grass Benders object, which Set Up Scene adds to the showcase's levels with grass, connected to the spawner's On Character Spawned and On Npc Spawned; a character pushes with its hitboxes on the Grass Benders' Hitbox Layer (a model without hitboxes pushes with a circle at its feet: fit them, Tools > Meridian Motion > Prepare > Fit Hitboxes).
 
+## The flora
+**The trees and shrubs are faceted shapes, and there's no ivy.**
+The flora's prefabs are missing: Tools > Meridian Motion > Showcase > Generate Flora makes them (it needs Blender: see [Generated assets](#generated-assets)), then rebuild the level. A foliage setting naming a kind with no prefabs (a typo) does the same for those pieces, with a warning.
+
+**Leaves are black, grey or bald.**
+Black or bald: the materials have lost their textures or shader (Generate Flora sets them again; `-skipBlender` does it without Blender). Pale grey-green: the palette was set as a gamma colour (`Shader.SetGlobalColor` doesn't convert to linear: pass `color.linear` as a vector), or a crown shadowing itself all through (the leaf material's Shadow Floor).
+
+**Plants pop between LODs.**
+The prefab's LOD Group should cross-fade (Generate Flora sets it), and the shaders need their `LOD_FADE_CROSSFADE` variant; a renderer's own material that isn't the flora's shaders won't fade.
+
+**The flora costs too much.**
+Measure Grass's `-measure flora` times it at fixed spots, with its triangles by LOD and its shadow casters: see [the levels' Flora](showcase/levels.md#flora). The LOD heights (`FloraGenerator`) decide how soon the billboards take over, which costs most.
+
+**Ivy on a climbable wall, or missing from a wall.**
+The Ivy and Vines pieces skip a wall that's climbable or marked for a move by its fixture name (a climbable panel, a wall-run or wall-slide wall, a ladder) or its components, and a stretch where there's no wall within half a metre behind the face they're given: check the piece's points are on the wall's face, and its outward is the way the face looks.
+
 ## Movement oddities
 **The character won't wall-run along a wall, or slide down it.**
 Only walls marked for it are run along or slid down: a TraversableWall on the wall's collider or a parent, its Move the move wanted (Wall Run or Wall Slide: a wall is for one, never both), and the component turned on (see [Walls for wall runs and slides](traversal.md#walls-for-wall-runs-and-slides)). In the showcase's levels, name the wall "Wall-Run Wall", "Wall-Slide Wall" or "Wall-Run and Slide Wall", or build it with the Graybox's MarkedWall. To let every wall be run along or slid down, turn on Wall Running's Wall Run On Any Wall or Wall Sliding's Wall Slide On Any Wall. A test's wall needs marking too (the rig's `TraversableBox`, or `WallAhead`/`WallBeside` with `wallRun`/`wallSlide`).

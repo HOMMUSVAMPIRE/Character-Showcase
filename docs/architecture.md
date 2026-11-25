@@ -17,7 +17,7 @@ The package is one folder, `Assets/MeridianMotion` (its code in Runtime/ and Edi
 - **The camera** (Assets/MeridianMotion/Runtime/Cameras): `MMotionCameraRig`, which follows any Transform. See [Camera System](camera.md).
 - **The level elements** (Assets/MeridianMotion/Runtime/LevelElements, an assembly of their own): what the character traverses and the levels are equipped with (water and its underwater view, climbable and painted surfaces, ladders, ropes, ziplines, bounce pads, moving platforms, pushables, the course timer and timing gates, the level clock, stable IDs). Their editor assembly (Editor/) holds the climbable paint tool and `LevelFixtureSetup`, which turns a level's named fixtures into level elements. See [Climbing and Traversal](traversal.md) and [Test Levels](showcase/levels.md).
 - **The level builders** (Assets/Showcase/Editor/Levels): editor tools that generate the showcase's graybox levels from pieces, recorded as level specs, and attach the level elements as they build. See [Test Levels](showcase/levels.md) and [Level Specs](showcase/level-specs.md).
-- **The pipeline and the level checks** (Assets/Showcase/Editor/Pipeline, Assets/Showcase/Editor/LevelChecks): the mannequin's and the fox's generators, which run Blender (and only that: the fox is then prepared as any generic-rig character, by the shipped `GenericRigModelImporter`), and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
+- **The pipeline and the level checks** (Assets/Showcase/Editor/Pipeline, Assets/Showcase/Editor/LevelChecks): the mannequin's, the fox's and the flora's generators, which run Blender (and only that: the fox is then prepared as any generic-rig character, by the shipped `GenericRigModelImporter`), and the movement envelope the level specs are checked against. Each is an editor assembly of its own, so the character can ship without them (AGENTS.md, The package line).
 
 ## One physics step
 Movement runs in `FixedUpdate`; what's only seen (smoothing the model's turn, animation) runs in `Update`, from the last finished step.
@@ -74,7 +74,7 @@ flowchart LR
     Bridge["MeridianMotion.CharacterUI<br/>(the character and the UI: replays in the pause menu)"]
     subgraph Showcase_only["The showcase's own (doesn't ship)"]
         LevelEditor["MeridianMotion.Showcase.Levels<br/>(level builders, specs, Level Editor)"]
-        Pipeline["MeridianMotion.Showcase.Pipeline<br/>(mannequin and fox generators, Blender)"]
+        Pipeline["MeridianMotion.Showcase.Pipeline<br/>(mannequin, fox and flora generators, Blender)"]
         LevelChecks["MeridianMotion.Showcase.LevelChecks<br/>(the movement envelope)"]
         LevelTests["MeridianMotion.Showcase.Tests.Levels"]
         Tutorial["MeridianMotion.Showcase.TutorialRing<br/>(the Tutorial Ring's lessons, prompts, session log)"]
@@ -181,11 +181,12 @@ The rules this follows are AGENTS.md's [Architectural rules](../AGENTS.md#archit
 | Importers, Set Up Scene, inspectors, finding the package's assets | Assets/MeridianMotion/Editor (Models/, Animation/, Scene/, Effects/, Movement/, Settings/) |
 | The assets that ship (the prefabs, the mannequin, its animation, the water shaders) | Assets/MeridianMotion/Content |
 | The showcase's content (levels, scenes, the fox, sample models, the CMU clips) | Assets/Showcase |
-| The mannequin's and the fox's generators, and running Blender | Assets/Showcase/Editor/Pipeline (its own assembly: Mannequin/, GenericRigs/, Blender/) |
+| The mannequin's, the fox's and the flora's generators, and running Blender | Assets/Showcase/Editor/Pipeline (its own assembly: Mannequin/, GenericRigs/, Flora/, Blender/) |
+| The flora's shaders (leaves and bark, swaying in the grass's wind) | Assets/Showcase/Flora (no code; the pieces place the flora: Graybox.Flora.cs, Graybox.WallFlora.cs; see [the levels' Flora](showcase/levels.md#flora)) |
 | The movement envelope's writer | Assets/Showcase/Editor/LevelChecks (its own assembly) |
 | The level builders, pieces and Level Editor | Assets/Showcase/Editor/Levels |
 | The lawns' grass (fields, styles, wind, benders, its shaders) | Assets/Showcase/Grass (its own assembly, knowing nothing of the game), Assets/Showcase/Editor/Grass (Create Grass Assets, Measure Grass, the benders in Set Up Scene), Assets/Showcase/Tests/Grass (see [the levels' Grass](showcase/levels.md#grass)) |
 | Tests | Assets/MeridianMotion/Tests/EditMode, PlayMode; the showcase's, Assets/Showcase/Tests/Levels, HUD, TutorialRing and Grass (see [Automated Tests](testing.md)) |
-| The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Blender, Tools/Animation |
+| The hygiene check, the levelspec tool, the Blender scripts (the mannequin's, the fox's, the flora's, what they share, the clip libraries') | Tools/CI, Tools/LevelSpec, Tools/Mannequin, Tools/Fox, Tools/Flora, Tools/Blender, Tools/Animation |
 
 Why it's built this way is in [Design Decisions](decisions.md).

@@ -74,6 +74,8 @@ namespace MeridianMotion.Showcase.Levels
             known.Clear();
             Note(Root);
             Graybox.ClearDeferred();
+            Graybox.ForgetFlora();
+            Graybox.FloraSeed = spec.FloraSeed;
             foreach (LevelSpec.Part part in spec.Parts)
             {
                 Graybox.UsePalette(palette);

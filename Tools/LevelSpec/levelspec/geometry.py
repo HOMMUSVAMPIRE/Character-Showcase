@@ -313,6 +313,9 @@ def _shapes(piece, f, state):
         return [("markers", "text", [tuple(g("at"))], g("bottom"), g("bottom"), {"label": f"{g('number')} {g('name')}"})]
     if name in ("Tree",):
         return [("foliage", "point", [tuple(g("at"))], g("floor"), g("floor") + 6, {"label": "Tree"})]
+    if name in ("Ivy", "Vines"):
+        y0, y1 = (g("y0"), g("y1")) if name == "Ivy" else (g("top") - g("drop"), g("top"))
+        return [("foliage", "line", [tuple(g("a")), tuple(g("b"))], y0, y1, {"label": name})]
     if name == "Planter":
         return [("foliage", "poly", _rect(g("x0"), g("x1"), g("z0"), g("z1")), g("floor"), g("floor") + 0.6, {"label": label})]
     if name in ("Lawns", "ScatterTrees"):

@@ -28,11 +28,11 @@ namespace MeridianMotion.Showcase.Levels
             LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float Range(Vector2 range) => Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
             float trunk = Range(f.trunkHeight), radius = Range(f.canopyRadius), turn = (float)random.NextDouble() * 360f;
-            GameObject flora = PickFlora(f.trees, random);
+            FloraPick flora = PickFlora(f.trees, random);
             var tree = new GameObject("Tree");
             tree.transform.SetParent(parent, false);
             tree.transform.localPosition = new Vector3(at.x, floor, at.y);
-            if (flora != null)
+            if (flora.prefab != null)
             {
                 AddBox(tree, new Vector3(0f, trunk / 2f, 0f), new Vector3(0.44f, trunk, 0.44f));
                 PlaceFlora(flora, tree.transform, Vector3.zero, turn, trunk + 1.9f * radius);
@@ -56,10 +56,12 @@ namespace MeridianMotion.Showcase.Levels
         {
             LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float r = Mathf.Lerp(f.shrubRadius.x, f.shrubRadius.y, (float)random.NextDouble()), turn = (float)random.NextDouble() * 360f;
-            GameObject flora = PickFlora(variants, random);
-            if (flora != null)
+            FloraPick flora = PickFlora(variants, random);
+            if (flora.prefab != null)
             {
-                placed.Add(new ShrubPlacement { prefab = flora, at = centre, turn = turn, height = ShrubHeight * r });
+                // Ferns are lower than bushes (the foliage's Fern Height).
+                float height = ShrubHeight * r * (flora.prefab.name.StartsWith("Fern", System.StringComparison.Ordinal) ? f.fernHeight : 1f);
+                placed.Add(new ShrubPlacement { pick = flora, at = centre, turn = turn, height = height });
                 return;
             }
             mesh.Frustum(GrayboxMaterial.Foliage, centre, 0.6f * r, r, 0f, 0.6f * r, 6, turn, top: false);

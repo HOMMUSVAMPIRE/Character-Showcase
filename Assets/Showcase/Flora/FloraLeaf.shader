@@ -1,7 +1,7 @@
 // The flora's leaves: leaf cards (alpha-clipped, from their atlas), a bush's dense middle (a flat colour), and each
 // plant's last LOD, a billboard. Swaying in the level's wind and recoloured to its palette (FloraCommon.hlsl); lit with
 // a normal map, and a normal rounded toward the canopy's (so a crown of cards shades as a crown, not card by card).
-// Dithered between LODs (LOD Group cross-fade), and instanced. Leaf cards are two-sided geometry already, so faces are
+// Dithered between LODs (LOD Group cross-fade), and instanced (and DOTS-instanced, for the GPU Resident Drawer). Leaf cards are two-sided geometry already, so faces are
 // culled as usual.
 Shader "Meridian Motion/Showcase/Flora Leaf"
 {
@@ -125,6 +125,7 @@ Shader "Meridian Motion/Showcase/Flora Leaf"
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half4 Fragment(Varyings i, bool front : SV_IsFrontFace) : SV_Target
             {
@@ -148,6 +149,7 @@ Shader "Meridian Motion/Showcase/Flora Leaf"
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
             float3 _LightDirection;
@@ -185,6 +187,7 @@ Shader "Meridian Motion/Showcase/Flora Leaf"
             #pragma fragment DepthFragment
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half DepthFragment(Varyings i) : SV_Target
             {
@@ -206,6 +209,7 @@ Shader "Meridian Motion/Showcase/Flora Leaf"
             #pragma multi_compile _ LOD_FADE_CROSSFADE
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
             #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
 
             half4 NormalsFragment(Varyings i, bool front : SV_IsFrontFace) : SV_Target
             {

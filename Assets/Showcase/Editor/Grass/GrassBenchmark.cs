@@ -84,6 +84,10 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             if (style != null) { report.AppendLine($"Every level's grass in the style {AssetDatabase.GetAssetPath(style)}."); report.AppendLine(); }
             int changed = Array.IndexOf(arguments, "-styleSet");
             if (changed >= 0 && changed + 1 < arguments.Length) { report.AppendLine($"Each style with: {arguments[changed + 1]}."); report.AppendLine(); }
+            // -measure flora: Measure Foliage. What's turned off and on is the flora (the trees and shrubs), not the grass.
+            int measuring = Array.IndexOf(arguments, "-measure");
+            measureFlora = measuring >= 0 && measuring + 1 < arguments.Length && arguments[measuring + 1] == "flora";
+            if (measureFlora) { report.AppendLine("**Measure Foliage:** \"with\" and \"without\" are the flora (trees and shrubs) on and off; the grass is on in both."); report.AppendLine(); }
             // -grassParts near|far|none: "with the grass" draws only the near blades, only the far, or none (the blades
             // still placed), to see what each part costs.
             int parts = Array.IndexOf(arguments, "-grassParts");
@@ -98,6 +102,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             }
             GrassField.DrawNear = GrassField.DrawFar = true;
             GrassField.Suspended = false;
+            measureFlora = false;
             string path = Path.Combine(runFolder, "Report.md");
             File.WriteAllText(path, report.ToString());
             Debug.Log($"[Grass benchmark] Wrote {path}:\n{report}");
@@ -138,6 +143,14 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             report.AppendLine($"Scene file: {new FileInfo(scenePath).Length / (1024f * 1024f):0.0} MB.");
 
             List<GameObject> tufts = AllObjects().Where(o => o.name == TuftsName).ToList();
+            flora = measureFlora ? FloraRenderers() : new List<Renderer>();
+            if (measureFlora)
+            {
+                var materials = flora.SelectMany(r => r.sharedMaterials).Where(m => m != null).Distinct().ToList();
+                var textures = materials.SelectMany(m => m.GetTexturePropertyNameIDs().Select(m.GetTexture)).Where(t => t != null).Distinct().ToList();
+                report.AppendLine($"Flora: {flora.Count:N0} renderers, {flora.Select(r => r.GetComponentInParent<LODGroup>()).Where(g => g != null).Distinct().Count():N0} LOD groups, " +
+                    $"{materials.Count} materials, {textures.Count} textures ({textures.Sum(Profiler.GetRuntimeMemorySizeLong) / (1024f * 1024f):0.0} MB).");
+            }
             List<Behaviour> fields = AllObjects().SelectMany(o => o.GetComponents<Behaviour>())
                 .Where(b => b != null && b.GetType().Name == FieldTypeName).ToList();
             long tuftVerts = 0, tuftTris = 0, tuftBytes = 0;
@@ -156,8 +169,9 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
             List<(string name, Vector3 position, Quaternion rotation)> spots = Spots();
             if (spots.Count == 0) { report.AppendLine("No lawns found.\n"); return; }
 
-            report.AppendLine("| Spot | Frame, grass (ms) | Frame, none (ms) | Difference (ms) | GPU, grass (ms) | GPU, none (ms) | GPU difference (ms) | Grass CPU (ms) | Tuft triangles in view |");
-            report.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+            report.AppendLine("| Spot | Frame, with (ms) | Frame, without (ms) | Difference (ms) | GPU, with (ms) | GPU, without (ms) | GPU difference (ms) | Grass CPU (ms) | Tuft triangles in view |" +
+                (measureFlora ? " Flora in view: triangles by LOD, shadow casters |" : ""));
+            report.AppendLine("| --- | --- | --- | --- | --- | --- | --- | --- | --- |" + (measureFlora ? " --- |" : ""));
 
             var target = new RenderTexture(Width, Height, 24, RenderTextureFormat.DefaultHDR) { name = "Grass Benchmark" };
             var cameraObject = new GameObject("Grass Benchmark Camera") { hideFlags = HideFlags.DontSave };
@@ -182,7 +196,7 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                     SetGrass(tufts, fields, true);
                     highlights.AppendLine($"| {name} | {nans:N0} | {nansWithout:N0} | {bright:N0} | {brightWithout:N0} | {brightest:0.00} | {brightestWithout:0.00} |");
                     report.AppendLine($"| {name} | {with.ms:0.00} | {without.ms:0.00} | {with.ms - without.ms:0.00} | {Ms(with.gpuMs)} | {Ms(without.gpuMs)} | " +
-                        $"{Ms(with.gpuMs - without.gpuMs)} | {Ms(with.cpuMs)} | {VisibleTuftTriangles(camera, tufts):N0} |");
+                        $"{Ms(with.gpuMs - without.gpuMs)} | {Ms(with.cpuMs)} | {VisibleTuftTriangles(camera, tufts):N0} |" + (measureFlora ? $" {FloraInView(camera)} |" : ""));
                 }
             }
             finally
@@ -429,6 +443,72 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
 
         private static bool loggedSamplers;
 
+        /// <summary>Whether this run is Measure Foliage (-measure flora), and the flora's renderers it turns off and on.</summary>
+        private static bool measureFlora;
+        private static List<Renderer> flora = new();
+
+        /// <summary>Where the flora's prefabs are (Graybox.FloraFolder): instances of them are flora.</summary>
+        private const string FloraPrefabs = "Assets/Showcase/Prefabs/Flora/";
+
+        /// <summary>
+        /// The flora's renderers: every renderer in a "Tree" (a tree piece: its flora, or its faceted mesh) and in an
+        /// instance of a flora prefab (the shrubs). The faceted shrubs are part of the lawns' and planters' meshes, so they
+        /// can't be told apart: a measure of faceted flora is its trees.
+        /// </summary>
+        private static List<Renderer> FloraRenderers()
+        {
+            var found = new HashSet<Renderer>();
+            foreach (GameObject o in AllObjects())
+            {
+                bool tree = o.name == "Tree" && o.transform.parent != null;
+                bool prefab = PrefabUtility.IsAnyPrefabInstanceRoot(o) &&
+                              PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(o).StartsWith(FloraPrefabs);
+                if (!tree && !prefab) { continue; }
+                foreach (Renderer r in o.GetComponentsInChildren<Renderer>(true)) { found.Add(r); }
+            }
+            return found.ToList();
+        }
+
+        /// <summary>
+        /// The flora the camera draws, roughly: for each LOD group in view, the LOD its size on screen picks (as the group
+        /// does, with the quality's LOD bias), its triangles summed by LOD, and how many of its renderers cast shadows;
+        /// renderers outside any LOD group (faceted trees) count as LOD0.
+        /// </summary>
+        private static string FloraInView(Camera camera)
+        {
+            Plane[] planes = GeometryUtility.CalculateFrustumPlanes(camera);
+            float viewHeightPerMetre = 2f * Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            var triangles = new long[5];
+            int casters = 0;
+            var counted = new HashSet<Renderer>();
+            foreach (LODGroup group in flora.Select(r => r != null ? r.GetComponentInParent<LODGroup>() : null).Where(g => g != null).Distinct())
+            {
+                LOD[] lods = group.GetLODs();
+                foreach (LOD lod in lods) { foreach (Renderer r in lod.renderers) { if (r != null) { counted.Add(r); } } }
+                Vector3 centre = group.transform.TransformPoint(group.localReferencePoint);
+                float size = group.size * Mathf.Max(group.transform.lossyScale.x, Mathf.Max(group.transform.lossyScale.y, group.transform.lossyScale.z));
+                if (!GeometryUtility.TestPlanesAABB(planes, new Bounds(centre, Vector3.one * size))) { continue; }
+                float relative = size * QualitySettings.lodBias / Mathf.Max(0.001f, Vector3.Distance(camera.transform.position, centre) * viewHeightPerMetre);
+                int shown = -1;
+                for (int i = 0; i < lods.Length; i++) { if (relative >= lods[i].screenRelativeTransitionHeight) { shown = i; break; } }
+                if (shown < 0) { continue; }
+                foreach (Renderer r in lods[shown].renderers)
+                {
+                    if (r == null || !r.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) { continue; }
+                    for (int m = 0; m < filter.sharedMesh.subMeshCount; m++) { triangles[Mathf.Min(shown, 4)] += (long)filter.sharedMesh.GetIndexCount(m) / 3; }
+                    if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off) { casters++; }
+                }
+            }
+            foreach (Renderer r in flora)
+            {
+                if (r == null || counted.Contains(r) || !GeometryUtility.TestPlanesAABB(planes, r.bounds)) { continue; }
+                if (!r.TryGetComponent(out MeshFilter filter) || filter.sharedMesh == null) { continue; }
+                for (int m = 0; m < filter.sharedMesh.subMeshCount; m++) { triangles[0] += (long)filter.sharedMesh.GetIndexCount(m) / 3; }
+                if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off) { casters++; }
+            }
+            return $"{string.Join(" / ", triangles.Take(4).Select(t => t.ToString("N0")))}, {casters} casters";
+        }
+
         /// <summary>The samplers that time a camera's whole render, in the order tried.</summary>
         private static readonly string[] GpuSamplerNames = { "UniversalRenderPipeline.RenderSingleCameraInternal", "RenderSingleCameraInternal", "Render Camera" };
 
@@ -465,6 +545,12 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
 
         private static void SetGrass(List<GameObject> tufts, List<Behaviour> fields, bool on)
         {
+            if (measureFlora)
+            {
+                // Measure Foliage: the flora's renderers off and on (turning renderers off rebuilds nothing).
+                foreach (Renderer r in flora) { if (r != null) { r.enabled = on; } }
+                return;
+            }
             foreach (GameObject o in tufts) { o.SetActive(on); }
             // Suspended, not disabled: a field turned on again remakes everything it's drawn with (see GrassField.Suspended).
             GrassField.Suspended = !on;
@@ -498,6 +584,40 @@ namespace MeridianMotion.Showcase.Grass.EditorTools
                 float reach = Mathf.Max(b.size.x, b.size.z) * 0.5f;
                 Vector3 above = middle + new Vector3(-reach, reach * 0.6f + 6f, -reach);
                 spots.Add(($"{name}, from above", above, Quaternion.LookRotation(middle - above)));
+            }
+            spots.AddRange(CloseUps());
+            return spots;
+        }
+
+        /// <summary>
+        /// Close-ups of the flora where the levels put it (the first of each in the scene), to judge its look by: a
+        /// planter's shrubs, a bush at a lawn's edge, and ivy and vines on a wall (seen from a little way out, as from the
+        /// level's middle).
+        /// </summary>
+        private static List<(string, Vector3, Quaternion)> CloseUps()
+        {
+            var spots = new List<(string, Vector3, Quaternion)>();
+            List<GameObject> plants = AllObjects().Where(o => PrefabUtility.IsOutermostPrefabInstanceRoot(o) &&
+                AssetDatabase.GetAssetPath(PrefabUtility.GetCorrespondingObjectFromSource(o)).StartsWith("Assets/Showcase/Prefabs/Flora/")).ToList();
+            string ParentName(GameObject o) => o.transform.parent != null ? o.transform.parent.name : "";
+            void Near(string name, GameObject plant, Vector3 from, float lookUp)
+            {
+                if (plant == null) { return; }
+                Vector3 at = plant.transform.position + Vector3.up * lookUp;
+                spots.Add((name, at + from, Quaternion.LookRotation(-from)));
+            }
+            GameObject planted = plants.FirstOrDefault(o => ParentName(o) != "Tree" && !ParentName(o).StartsWith("Lawn (") && ParentName(o) is not ("Ivy" or "Vines"));
+            Near("A planter, close up", planted, new Vector3(-2.2f, 1.6f, -2.2f), 0.5f);
+            Near("A bush at a lawn's edge, close up", plants.FirstOrDefault(o => ParentName(o).StartsWith("Lawn (")), new Vector3(-2.2f, 1.4f, -2.2f), 0.5f);
+            GameObject ivy = plants.FirstOrDefault(o => ParentName(o) == "Ivy");
+            if (ivy != null)
+            {
+                // Out from the wall it's on (the way from the wall to it), far enough to see a stretch of it.
+                Bounds b = ivy.GetComponentsInChildren<Renderer>().Select(r => r.bounds).Aggregate((x, y) => { x.Encapsulate(y); return x; });
+                Vector3 across = Vector3.ProjectOnPlane(ivy.transform.forward, Vector3.up).normalized;
+                Vector3 outward = Physics.Raycast(b.center, across, 1f) ? -across : across;
+                Vector3 from = outward * 14f + Vector3.up * 2f;
+                spots.Add(("Ivy on a wall", b.center + from, Quaternion.LookRotation(-from)));
             }
             return spots;
         }

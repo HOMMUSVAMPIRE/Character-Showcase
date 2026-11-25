@@ -74,7 +74,8 @@ namespace MeridianMotion.Showcase.Levels
         /// <summary>Records a level's build as a spec. The level's left built in the open scene; returns its root too.</summary>
         internal static LevelSpec Record(LevelDefinition level, out Transform root)
         {
-            var spec = new LevelSpec { Name = level.Name, Scene = level.ScenePath };
+            var spec = new LevelSpec { Name = level.Name, Scene = level.ScenePath, FloraSeed = level.FloraSeed };
+            Graybox.FloraSeed = level.FloraSeed;
             root = BuildParts(level.Name, level.Parts,
                 (partName, levelRoot) =>
                 {
@@ -91,8 +92,10 @@ namespace MeridianMotion.Showcase.Levels
             spec.Parts.Select(part => (part.Name, (Action<Transform, Material>)((root, material) =>
             {
                 Graybox.Begin(material);
+                // Each part, so a spec's parts built without the level's steps (BuildParts) have it too.
+                Graybox.FloraSeed = spec.FloraSeed;
                 LevelSpec.Build(part, root);
-            }))).ToArray());
+            }))).ToArray()) { FloraSeed = spec.FloraSeed };
 
         /// <summary>
         /// Records a level as a spec, writes it out and reads it back, and builds that: returns the spec, and how what
@@ -421,6 +424,7 @@ namespace MeridianMotion.Showcase.Levels
                     ("version", Obj(("type", "integer"), ("maximum", LevelSpec.Version))),
                     ("name", Obj(("type", "string"), ("minLength", 1))),
                     ("scene", Obj(("type", "string"), ("pattern", "^Assets/.+\\.unity$"))),
+                    ("floraSeed", Obj(("type", "integer"), ("description", "The level's flora seed: which variant of its kind each tree and shrub gets, and how it's mirrored and shaped (LevelDefinition.FloraSeed). Left out: 0."))),
                     ("parts", Obj(("type", "array"), ("items", Ref("part")))))),
                 ("required", L("format", "name", "scene", "parts")),
                 ("additionalProperties", false),

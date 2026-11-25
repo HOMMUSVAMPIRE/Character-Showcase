@@ -78,7 +78,8 @@ namespace MeridianMotion.Showcase.Levels
             /* White    */ new(new Color(0.86f, 0.87f, 0.88f), 0f, 0.3f, 0.003f, 0.1f, 0f, 0.05f),
             // Foliage and soil get coarse grain and strong stains: leafy and earthy mottling, from the same noise.
             /* Foliage  */ new(new Color(0.26f, 0.42f, 0.17f), 0f, 0.12f, 0.02f, 0.9f, 0f, 0.35f),
-            /* Soil     */ new(new Color(0.27f, 0.2f, 0.14f), 0f, 0.08f, 0.02f, 0.7f, 0.2f, 0.25f),
+            // Soil a warm mid brown: the darker one read as a black hole under the planters' bushes, in their rims' shade.
+            /* Soil     */ new(new Color(0.42f, 0.31f, 0.21f), 0f, 0.08f, 0.02f, 0.7f, 0.2f, 0.25f),
             // Grass: a fresher green than the trees' leaves, with strong stains for patchy, mown-lawn mottling.
             /* Grass    */ new(new Color(0.3f, 0.46f, 0.19f), 0f, 0.1f, 0.018f, 0.85f, 0f, 0.3f),
             // Water is made with its own shader (see MakeWaterMaterial): only its tint is used, for its shallows.
@@ -98,6 +99,11 @@ namespace MeridianMotion.Showcase.Levels
         public readonly string Name;
         /// <summary>Where the scene is saved.</summary>
         public readonly string ScenePath;
+        /// <summary>
+        /// The level's flora seed (Graybox.FloraSeed): which variant of its kind each tree and shrub gets, and how it's
+        /// mirrored and shaped. Changing it reshuffles them, leaving every plant where it is. A spec's "floraSeed".
+        /// </summary>
+        public int FloraSeed;
         private readonly string skyPath, profilePath, lightingPath, lightingName;
         private readonly (string name, Action<Transform, Material> build)[] parts;
 
@@ -229,6 +235,7 @@ namespace MeridianMotion.Showcase.Levels
                     build.root = new GameObject(Name).transform;
                     Graybox.ClearDeferred();
                     Graybox.ForgetFlora();
+                    Graybox.FloraSeed = FloraSeed;
                 }),
             };
             foreach ((string name, Action<Transform, Material> buildPart) in parts)

@@ -256,3 +256,17 @@ A Grass Bender on each character pushes the grass with the hitbox capsules on it
 
 **Against:** the Animator's foot bones (a humanoid's only), and colliders on the grass (the movement never reads it, and nothing needs to stop at it).
 
+## The flora is leaf cards from a generator of our own, on the grass's wind (November 2026)
+The levels' trees, bushes, ferns, ivy and vines are leaf-card models made in Blender by the project's own script (`Tools/Flora/generate_flora.py`, run by Generate Flora), each variant from a seed of its own, with LODs down to a crossed-card billboard; their shaders (Flora Leaf, Flora Bark) are hand-written HLSL, swaying in the grass's wind and recoloured to the grass's palette.
+
+**Why:** the faceted trees and shrubs read as placeholders beside the new grass. Generated, the plants are ours to change (a seed, a kind regenerated) and come in as many variants as wanted, and a level's flora seed reshuffles them without moving anything. Hand-written shaders, as the grass's are, avoid Shader Graph's workarounds on Metal and share the grass's wind and colours, so a lawn and the bush on it move and look as one; the grass's lessons (no main-light `distanceAttenuation`, nothing that can make a pixel that isn't a number) apply to both.
+
+**Against:** the reference set's own Unity side (an import postprocessor keyed on a folder name, Shader Graphs needing workarounds, a wind of its own), and its flat-colour low-poly set, too close to what it replaced.
+
+## The GPU Resident Drawer is left off (November 2026)
+The flora's shaders support it (DOTS instancing in every pass), and it was measured on and off in the levels; it's off.
+
+**Why:** it made no measurable difference to a frame, and its GPU occlusion culling made the Meridian Complex slower (there's little to occlude there). What it saves is the CPU's draw submission, which these levels barely ask of it; copies of a plant are already drawn instanced. Turn it on in the PC render pipeline asset if a profile ever shows the flora's draw calls (a build with many cameras or characters, say): the shaders are ready for it.
+
+**Against:** keeping it on for its own sake, and every LOD but the first two not casting shadows (cheaper, but far trees without shadows looked like they floated).
+

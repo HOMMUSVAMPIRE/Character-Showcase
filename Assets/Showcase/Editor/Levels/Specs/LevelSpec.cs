@@ -33,6 +33,7 @@ namespace MeridianMotion.Showcase.Levels
     /// In JSON (see ToJson, and Tools/LevelSpec/level-spec.schema.json, written by LevelSpecTools):
     /// <code>
     /// {"format": "character-showcase-level", "version": 1, "name": "Level Playground", "scene": "Assets/…/LevelPlayground.unity",
+    ///  "floraSeed": 7 (optional: see LevelDefinition.FloraSeed),
     ///  "parts": [{"name": "P2 Gap Run", "pieces": [
     ///     {"piece": "Group", "parent": "", "name": "P2 Gap Run"},
     ///     {"piece": "Platform", "parent": "P2 Gap Run", "name": "Platform A (+4)", "x0": 136, "x1": 148, …},
@@ -58,6 +59,8 @@ namespace MeridianMotion.Showcase.Levels
         public string Name;
         /// <summary>The scene it's built into.</summary>
         public string Scene;
+        /// <summary>The level's flora seed, "floraSeed" (LevelDefinition.FloraSeed, Graybox.FloraSeed): 0 if it's left out.</summary>
+        public int FloraSeed;
         /// <summary>Its parts, in build order.</summary>
         public readonly List<Part> Parts = new();
 
@@ -102,6 +105,7 @@ namespace MeridianMotion.Showcase.Levels
             sb.Append("  \"version\": ").Append(Version).Append(",\n");
             sb.Append("  \"name\": ").Append(LevelSpecJson.Write(Name)).Append(",\n");
             sb.Append("  \"scene\": ").Append(LevelSpecJson.Write(Scene)).Append(",\n");
+            if (FloraSeed != 0) { sb.Append("  \"floraSeed\": ").Append(FloraSeed).Append(",\n"); }
             sb.Append("  \"parts\": [");
             for (int p = 0; p < Parts.Count; p++)
             {
@@ -134,6 +138,7 @@ namespace MeridianMotion.Showcase.Levels
             {
                 Name = root.TryGetValue("name", out object name) ? name as string : null,
                 Scene = root.TryGetValue("scene", out object scene) ? scene as string : null,
+                FloraSeed = root.TryGetValue("floraSeed", out object floraSeed) ? Convert.ToInt32(floraSeed) : 0,
             };
             if (string.IsNullOrEmpty(spec.Name)) { throw new FormatException("A level spec needs a \"name\"."); }
             if (string.IsNullOrEmpty(spec.Scene) || !spec.Scene.StartsWith("Assets/") || !spec.Scene.EndsWith(".unity"))

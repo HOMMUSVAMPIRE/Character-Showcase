@@ -16,6 +16,8 @@ Each piece is one of the builders' pieces (`Graybox`'s methods marked `[Piece]`)
 
 Points are `[x, z]` (or `[x, y, z]`), areas `[xMin, zMin, xMax, zMax]`, surfaces by name, and a parent is a path under the level's root (`""` the root, `"Building/Catwalk (+4)"`, `"G#2"` for the second group named G). `Placed` and `Turned` make groups set at a position or turned, whose contents are laid out in their own coordinates. A `"State"` entry changes the stair step size or the deck and rail dimensions for the pieces after it in its part.
 
+A spec may also have a `"floraSeed"` (an integer; left out, 0): it picks which variant of each tree and bush a piece places, whether it's mirrored, and how wide it is. Change it to reshuffle the level's plants: each one stays where it was, as tall and as turned.
+
 The whole format, every piece and its settings and defaults, is described by a JSON Schema, Tools/LevelSpec/level-spec.schema.json, written by Unity from the pieces themselves (Tools > Meridian Motion > Showcase > Levels > Specs > Write Spec Schema, or `-executeMethod MeridianMotion.Showcase.Levels.LevelSpecTools.WriteSchemaFromCommandLine`, and every export).
 
 **The specs in Assets/Showcase/Levels:**

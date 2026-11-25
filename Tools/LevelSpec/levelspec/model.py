@@ -46,7 +46,7 @@ def normalize(spec):
     numbers as ints. Doesn't validate."""
     sc = schema()
     out = {"format": spec.get("format", FORMAT), "version": spec.get("version", VERSION)}
-    for key in ("name", "scene", "parts"):
+    for key in ("name", "scene", "floraSeed", "parts"):
         if key in spec:
             out[key] = spec[key]
     for key in spec:
@@ -92,7 +92,7 @@ def to_json(spec):
         return json.dumps(_tidy(value), ensure_ascii=False, separators=(", ", ": "))
 
     lines = ["{"]
-    for key in ("format", "version", "name", "scene"):
+    for key in ("format", "version", "name", "scene", "floraSeed"):
         if key in spec:
             lines.append(f"  {json.dumps(key)}: {one(spec[key])},")
     parts = spec.get("parts", [])

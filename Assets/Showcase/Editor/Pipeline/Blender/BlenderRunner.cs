@@ -81,16 +81,17 @@ namespace MeridianMotion.Showcase.Pipeline
         /// <summary>
         /// Runs a generator script (a path from the project's root) in Blender, writing the FBX at modelPath (an asset
         /// path). The script prints lines starting "[tag]", and "[tag] exported" once it's written the file. Returns
-        /// whether it succeeded, logging Blender's output as from logName, its progress shown under title.
+        /// whether it succeeded, logging Blender's output as from logName, its progress shown under title. extraArguments
+        /// go to the script after the path (each quoted by the caller where it needs to be).
         /// </summary>
-        public static bool RunScript(string blenderPath, string script, string modelPath, string tag, string title, string logName)
+        public static bool RunScript(string blenderPath, string script, string modelPath, string tag, string title, string logName, string extraArguments = "")
         {
             string projectRoot = Path.GetDirectoryName(Application.dataPath);
             string output = Path.Combine(projectRoot, modelPath);
             var start = new ProcessStartInfo
             {
                 FileName = blenderPath,
-                Arguments = $"-b --factory-startup -P \"{script}\" -- \"{output}\"",
+                Arguments = $"-b --factory-startup -P \"{script}\" -- \"{output}\" {extraArguments}".TrimEnd(),
                 WorkingDirectory = projectRoot,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,

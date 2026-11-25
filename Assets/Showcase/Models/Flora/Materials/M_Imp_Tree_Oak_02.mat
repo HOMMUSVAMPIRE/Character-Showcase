@@ -33,11 +33,13 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _Brightness: 0.7
     - _CanopyNormal: 0.3
     - _Cutoff: 0.5
     - _Flutter: 0
     - _LeafLuma: 0.25
     - _PaletteBlend: 1
+    - _ShadowFloor: 0.45
     - _Sway: 1
     - _Translucency: 0.2
     - _Wrap: 0.25

@@ -22,10 +22,12 @@ namespace MeridianMotion.Showcase.Pipeline
     /// (Assets/Showcase/Flora): leaf cards, bush cores and billboards on Flora Leaf, bark on Flora Bark. A material that's
     /// there keeps its settings (they're hand-tuned): only its shader and textures are set again;</item>
     /// <item>makes a prefab of each model in PrefabFolder (a variant of the model, so it follows it), its LOD Group
-    /// cross-fading between LODs, and its last LOD (the billboard) casting no shadow.</item>
+    /// cross-fading between LODs, its LODs casting shadows (CastingLODs).</item>
     /// </list>
-    /// The level builders place the prefabs (Graybox.Tree, Planter, and the lawns' shrubs). With -skipBlender (or from the
-    /// menu, without Blender), it does all but the first step, from the models that are there.
+    /// The level builders place the prefabs (Graybox.Tree, Planter, and the lawns' shrubs). The variants of each kind come
+    /// from the Flora Seeds asset (FloraSeeds: a seed per variant, in slots), whose inspector regenerates one kind at a
+    /// time; -kinds oak,birch does that from the command line. With -skipBlender (or from the menu, without Blender), it
+    /// does all but the first step, from the models that are there.
     /// </summary>
     public static class FloraGenerator
     {
@@ -43,6 +45,9 @@ namespace MeridianMotion.Showcase.Pipeline
         private const string LeafShaderPath = "Assets/Showcase/Flora/FloraLeaf.shader";
         private const string BarkShaderPath = "Assets/Showcase/Flora/FloraBark.shader";
         private static readonly string[] Categories = { "Trees", "Bushes", "Vines", "Ivy" };
+
+        /// <summary>How many of a plant's LODs, from the nearest, cast shadows (see MakePrefab): all of them.</summary>
+        private const int CastingLODs = 4;
 
         /// <summary>Each texture kind's largest size (texels): billboards are a few pixels across where they're drawn.</summary>
         private static int MaxSize(string name) => name.StartsWith("T_Card_") ? 1024 : 512;
@@ -65,18 +70,42 @@ namespace MeridianMotion.Showcase.Pipeline
                 CommandLine.Finish(false);
                 return;
             }
-            CommandLine.Finish(Generate(blender));
+            string kinds = CommandLine.Argument("-kinds");
+            CommandLine.Finish(Generate(blender, kinds?.Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToArray()));
         }
 
-        /// <summary>Generates the flora (in Blender, unless blenderPath is null), then sets it up (see the class). Returns whether it succeeded.</summary>
-        public static bool Generate(string blenderPath)
+        /// <summary>The variants' seeds (FloraSeeds): made where missing, with the seeds the first flora was made with.</summary>
+        public const string SeedsPath = ModelFolder + "/Flora Seeds.asset";
+
+        /// <summary>The flora's seeds asset, made if it's missing.</summary>
+        public static FloraSeeds Seeds()
+        {
+            var seeds = AssetDatabase.LoadAssetAtPath<FloraSeeds>(SeedsPath);
+            if (seeds != null) { return seeds; }
+            Directory.CreateDirectory(ModelFolder);
+            seeds = ScriptableObject.CreateInstance<FloraSeeds>();
+            AssetDatabase.CreateAsset(seeds, SeedsPath);
+            AssetDatabase.SaveAssets();
+            return seeds;
+        }
+
+        /// <summary>
+        /// Generates the flora (in Blender, unless blenderPath is null: then only the setup, from what's there): every
+        /// kind, or only kinds (oak, birch: see FloraSeeds), from the Flora Seeds asset's seeds. Then deletes those kinds'
+        /// surplus variants (their seeds' lists shortened), and sets up every model there is (see the class). Returns
+        /// whether it succeeded.
+        /// </summary>
+        public static bool Generate(string blenderPath, string[] kinds = null)
         {
             Directory.CreateDirectory(ModelFolder);
-            if (blenderPath != null && !BlenderRunner.RunScript(blenderPath, GeneratorScript, ModelFolder, "flora", "Generate Flora", LogName))
+            FloraSeeds seeds = Seeds();
+            string arguments = $"--seeds \"{seeds.Argument()}\"" + (kinds != null && kinds.Length > 0 ? $" --kinds {string.Join(",", kinds)}" : "");
+            if (blenderPath != null && !BlenderRunner.RunScript(blenderPath, GeneratorScript, ModelFolder, "flora", "Generate Flora", LogName, arguments))
             {
                 return false;
             }
             AssetDatabase.Refresh();
+            DeleteSurplus(seeds, kinds);
             string[] models = Categories.Where(c => AssetDatabase.IsValidFolder($"{ModelFolder}/{c}"))
                 .SelectMany(c => AssetDatabase.FindAssets("t:Model", new[] { $"{ModelFolder}/{c}" })).Select(AssetDatabase.GUIDToAssetPath)
                 .Where(p => p.EndsWith(".fbx")).Distinct().OrderBy(p => p).ToArray();
@@ -98,6 +127,34 @@ namespace MeridianMotion.Showcase.Pipeline
             AssetDatabase.SaveAssets();
             Debug.Log($"[{LogName}] Made {made.Count} flora prefabs in '{PrefabFolder}': {string.Join(", ", made.Select(Path.GetFileNameWithoutExtension))}.");
             return true;
+        }
+
+        /// <summary>
+        /// Deletes the variants past the end of each kind's seeds (of kinds, or every kind): their model, prefab, and
+        /// billboard material and textures. A level that placed one shows it missing until it's rebuilt.
+        /// </summary>
+        private static void DeleteSurplus(FloraSeeds seeds, string[] kinds)
+        {
+            var deleted = new List<string>();
+            foreach (FloraSeeds.Kind kind in seeds.kinds)
+            {
+                if (string.IsNullOrEmpty(kind.kind) || (kinds != null && kinds.Length > 0 && !kinds.Contains(kind.kind))) { continue; }
+                for (int slot = kind.seeds?.Length ?? 0; slot < 64; slot++)
+                {
+                    string variant = FloraSeeds.VariantName(kind.kind, slot);
+                    if (variant == null || !File.Exists($"{ModelFolder}/{variant}.fbx")) { break; }
+                    string name = Path.GetFileName(variant);
+                    foreach (string path in new[]
+                             {
+                                 $"{ModelFolder}/{variant}.fbx", $"{PrefabFolder}/{name}.prefab", $"{MaterialFolder}/M_Imp_{name}.mat",
+                                 $"{TextureFolder}/T_Imp_{name}_BaseColor.png", $"{TextureFolder}/T_Imp_{name}_Normal.png",
+                             })
+                    {
+                        if (AssetDatabase.DeleteAsset(path)) { deleted.Add(path); }
+                    }
+                }
+            }
+            if (deleted.Count > 0) { Debug.Log($"[{LogName}] Deleted the surplus variants: {string.Join(", ", deleted)}."); }
         }
 
         /// <summary>The textures' imports: see the class.</summary>
@@ -188,7 +245,7 @@ namespace MeridianMotion.Showcase.Pipeline
                     LOD[] lods = group.GetLODs();
                     float[] heights = lods.Length switch
                     {
-                        4 => new[] { 0.45f, 0.2f, 0.07f, 0.01f },
+                        4 => new[] { 0.4f, 0.2f, 0.11f, 0.01f },
                         3 => new[] { 0.3f, 0.1f, 0.015f },
                         2 => new[] { 0.12f, 0.03f },
                         _ => lods.Select(l => l.screenRelativeTransitionHeight).ToArray(),
@@ -196,14 +253,22 @@ namespace MeridianMotion.Showcase.Pipeline
                     for (int i = 0; i < lods.Length; i++)
                     {
                         lods[i].screenRelativeTransitionHeight = heights[i];
-                        lods[i].fadeTransitionWidth = 0.25f;
+                        lods[i].fadeTransitionWidth = 0.35f;
                     }
                     group.SetLODs(lods);
                     // Dithered between LODs rather than switched, so they don't pop (the flora's shaders cross-fade).
                     group.fadeMode = LODFadeMode.CrossFade;
                     group.animateCrossFading = true;
-                    // The last LOD (a billboard, a flat card) casts no shadow: a few pixels across, and its shadow a card's.
-                    foreach (Renderer renderer in lods[^1].renderers) { if (renderer != null) { renderer.shadowCastingMode = ShadowCastingMode.Off; } }
+                    // Which LODs cast shadows (CastingLODs). Every one does: with only the nearest two, far trees stood on no
+                    // shadow and looked like they floated (seen from above, 2026-11-24), and the far LODs' shadows are cheap
+                    // (a billboard's is a crossed card). The cost is the near LODs' many cards, which a tree needs.
+                    for (int i = 0; i < lods.Length; i++)
+                    {
+                        foreach (Renderer renderer in lods[i].renderers)
+                        {
+                            if (renderer != null) { renderer.shadowCastingMode = i < CastingLODs ? ShadowCastingMode.On : ShadowCastingMode.Off; }
+                        }
+                    }
                     group.RecalculateBounds();
                 }
                 string path = $"{PrefabFolder}/{model.name}.prefab";

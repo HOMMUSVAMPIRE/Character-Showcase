@@ -10,7 +10,7 @@ namespace MeridianMotion.Showcase.Grass
     /// field places its blades, a compute pass (GrassBlades.compute, Bend) lets every push spring back a little and adds
     /// the benders'. The map wraps (a texel stands for wherever in the window the world's x and z, over its size, have
     /// its fraction), so it follows the camera without its contents being moved; texels the window has moved past start
-    /// flat.
+    /// flat. It's published as globals too (_FloraBendMap, _FloraBendWindow), for the flora's leaves to be brushed aside by.
     /// </summary>
     public static class GrassBending
     {
@@ -47,6 +47,8 @@ namespace MeridianMotion.Showcase.Grass
             public static readonly int Count = Shader.PropertyToID("_PusherCount"), Step = Shader.PropertyToID("_BendStep");
             public static readonly int Shape = Shader.PropertyToID("_BendShape");
             public static readonly int Window = Shader.PropertyToID("_BendWindow");
+            // The flora's leaves read the map too (FloraCommon.hlsl): brushed aside as the grass is.
+            public static readonly int FloraMap = Shader.PropertyToID("_FloraBendMap"), FloraWindow = Shader.PropertyToID("_FloraBendWindow");
         }
 
         /// <summary>Forgets every push: the map's made again, flat, when next needed (a test's start, say).</summary>
@@ -57,6 +59,7 @@ namespace MeridianMotion.Showcase.Grass
             map = null;
             pushers = null;
             window.w = 0f;
+            Shader.SetGlobalVector(Ids.FloraWindow, window);
             lastFrame = -1;
         }
 
@@ -66,7 +69,7 @@ namespace MeridianMotion.Showcase.Grass
             if (Time.frameCount == lastFrame) { return; }
             lastFrame = Time.frameCount;
             // Without a bender there's nothing to push, until there's been one; after, the map keeps springing back.
-            if (GrassBender.All.Count == 0 && map == null) { window.w = 0f; return; }
+            if (GrassBender.All.Count == 0 && map == null) { window.w = 0f; Shader.SetGlobalVector(Ids.FloraWindow, window); return; }
 
             if (map == null)
             {
@@ -107,6 +110,8 @@ namespace MeridianMotion.Showcase.Grass
             int groups = Mathf.CeilToInt(MapResolution / 8f);
             generator.Dispatch(kernel, groups, groups, 1);
             lastCorner = corner;
+            Shader.SetGlobalTexture(Ids.FloraMap, map);
+            Shader.SetGlobalVector(Ids.FloraWindow, window);
         }
     }
 }

@@ -45,6 +45,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Generic Rig Setup.** What a generic-rig character (a model that isn't a humanoid) is made of, by its bones' names: its root bone, legs, eyes, the bones its paw placement turns and its hitboxes go on, and its animation set (`GenericRigSetup`, beside its model in Assets/Showcase/Models/Generic). Made by Prepare Generic Rig Models with its bones guessed from their names, then checked; Prepare Generic Rig Models makes the generic-rig character from it. See [A generic rig of your own](generic-rigs.md#a-generic-rig-of-your-own).
 
+**Flora.** *(showcase levels)* The levels' leaf-card trees, bushes, ferns, ivy and vines: prefabs Generate Flora makes, each kind in variants from seeds of their own (Flora Seeds), which a level's flora seed picks between. See [Flora](showcase/levels.md#flora).
+
 **Grass Bender.** *(showcase levels)* What pushes the lawns' grass aside as a character goes through it: its lower legs' and feet's hitboxes (a circle at its feet without any), into a map round the camera that springs back (`GrassBender`, `GrassBending`). Set Up Scene gives the showcase's characters one. See [Grass](showcase/levels.md#grass).
 
 **Grass Field.** *(showcase levels)* The grass over a group of lawns: a mask of where they are, one layer per floor, from which a compute shader places blades on the GPU before each camera renders (`GrassField`). See [Grass](showcase/levels.md#grass).

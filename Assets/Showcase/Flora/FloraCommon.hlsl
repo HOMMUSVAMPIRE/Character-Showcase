@@ -5,7 +5,8 @@
 // grass move in the same gusts. How much each part of a plant moves is in its mesh's vertex colours, which the flora's
 // generator (Tools/Flora/generate_flora.py) bakes: R how much it sways (0 at the trunk's foot, 1 at the top), G how much
 // a leaf card flutters, B a phase per card. How much it all moves is the level's grass's Sway too (its style's), so
-// one setting moves the grass and the flora alike.
+// one setting moves the grass and the flora alike. And what walks through a bush brushes its leaves aside, as it does
+// the grass (FloraBrushed).
 //
 // The palette is the level's grass's colours (GrassField publishes its style's root and tip colours as
 // _FloraRootColour and _FloraTipColour, and _FloraPalette 1 while there are any): the leaves' greens are recoloured to
@@ -22,6 +23,29 @@ float4 _FloraWindFlutter; // x: the flutter's speed (radians a second)
 half4 _FloraRootColour, _FloraTipColour;
 half _FloraPalette;
 float _FloraSwayScale;    // the grass style's Sway (GrassField publishes it with the palette): 1 without grass
+// The grass's bend map (GrassBending publishes it): where what walks through the grass has pushed it, and so the
+// bushes' leaves. Its window: its corner (x, z), its size (m), and whether there's one (w).
+TEXTURE2D(_FloraBendMap); SAMPLER(sampler_FloraBendMap);
+float4 _FloraBendWindow;
+
+// How far (m) a full push moves the part of a plant that sways most, and how high over the bottom of what pushed it
+// (a leg's) the push reaches: a bush's leaves are brushed aside, a tree's crown, over a character's head, isn't.
+#define FLORA_BRUSH_DISTANCE 0.3
+#define FLORA_BRUSH_REACH 1.4
+
+// How far a part of a plant at positionWS is brushed aside by what walks through it (see _FloraBendMap): out from it,
+// by how much the part sways (colour.r).
+float3 FloraBrushed(float3 positionWS, float4 colour)
+{
+    if (_FloraBendWindow.w < 0.5) { return float3(0.0, 0.0, 0.0); }
+    float2 inWindow = (positionWS.xz - _FloraBendWindow.xy) / _FloraBendWindow.z;
+    if (any(inWindow < 0.02) || any(inWindow > 0.98)) { return float3(0.0, 0.0, 0.0); }
+    float4 pushed = SAMPLE_TEXTURE2D_LOD(_FloraBendMap, sampler_FloraBendMap, positionWS.xz / _FloraBendWindow.z, 0);
+    // Only from below it and not far: the push's height (z) is the bottom of what pushed, a foot or a leg's.
+    float above = positionWS.y - pushed.z;
+    float among = saturate((FLORA_BRUSH_REACH - above) / 0.5) * saturate((above + 0.3) / 0.3);
+    return float3(pushed.x, 0.0, pushed.y) * FLORA_BRUSH_DISTANCE * among * colour.r;
+}
 
 // Where a vertex is in the wind: the whole plant swaying with the gust at its foot (so its parts move together), by
 // how much its part sways (colour.r) and the plant's size, and each leaf card fluttering along its normal.
@@ -41,7 +65,7 @@ float3 FloraSway(float3 positionWS, float3 normalWS, float4 colour, float sway, 
     // A leaf card's flutter: gentle and slow. Every card shaking at the wind's flutter rate, each at its own phase, read
     // as a crown in constant agitation, far busier than the grass beside it (the user, 2026-11-24).
     float wave = sin(_FloraWind.w * _FloraWindFlutter.x * 0.5 + colour.b * 6.2831853) * _FloraWindGusts.w * 0.35 * colour.g * flutter * size * scale;
-    return positionWS + float3(direction.x, 0.0, direction.y) * bend + normalWS * wave;
+    return positionWS + float3(direction.x, 0.0, direction.y) * bend + normalWS * wave + FloraBrushed(positionWS, colour);
 }
 
 // A leaf's colour: its greens recoloured to the palette (a gradient from the root colour, for the darkest, to the tip

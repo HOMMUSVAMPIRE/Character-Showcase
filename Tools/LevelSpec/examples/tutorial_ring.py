@@ -663,6 +663,7 @@ def face_half_length():
 def build():
     CROSSINGS.clear()
     WALL_PLAN.clear()
+    WALL_FLORA.clear()
     TOPS.clear()
     s = Spec("Tutorial Ring", SCENE)
     A = s.add
@@ -949,6 +950,25 @@ def _subtract(intervals, cuts):
     return out
 
 
+WALL_FLORA = []                    # The inner walls' stretches given flora, in order: each its own seed (salt).
+IVY_COVER = 0.5                   # How much of the inner walls' middle side ivy covers, from the ground up to the decks,
+VINE_COVER = 0.35                 # and how much has vines hanging from under their coping, stopping above the windows.
+
+
+def wall_flora(A, frame, x0, x1, salt):
+    """
+    Ivy and vines on an inner wall's middle side, from x0 to x1 along its face: out of reach (the ring's middle is a
+    hazard, and the walls too tall to get onto), so the flora can't be taken for a way up. The ivy from the ground to
+    the decks' height, under the windows; the vines from under the coping, ending above them.
+    """
+    WALL_FLORA.append((frame, x0, x1))
+    face = RING_APOTHEM - LANE / 2
+    a, b = [r(x0), r(face)], [r(x1), r(face)]
+    A("Ivy", parent=frame, a=a, b=b, outward=[0, -1], y0=GROUND, y1=FLOOR, salt=salt, cover=IVY_COVER)
+    A("Vines", parent=frame, a=a, b=b, outward=[0, -1], top=r(FLOOR + WALL_HEIGHT - COPING), drop=r(GLASS_BELOW_TOP - COPING - 0.3),
+      salt=salt, cover=VINE_COVER)
+
+
 def build_walls(s, h):
     """
     The ring's walls: along both edges of each lane the whole way round, gaps and climbs included, from the ground to
@@ -1001,6 +1021,8 @@ def build_walls(s, h):
                     face = edge + toward_lane * WALL_THICKNESS / 2
                     window(A, plan["frame"], [h - w0, face], [h - w1, face], -toward_lane)
                 dress_wall(A, plan["frame"], a, b, WALL_THICKNESS, FLOOR + WALL_HEIGHT, band=False)
+                if side == "inner":
+                    wall_flora(A, plan["frame"], h - u0, h - u1, salt=100 * i + len(WALL_FLORA))
                 ring_wall_dressing(A, plan, side, edge, toward_lane, u0, u1, h, pipes=i >= 4 and side == "outer", skip=windows)
                 # Where it stops for an opening, an end post with an orange strip down its lane side, so the break reads as meant.
                 for u in (u0, u1):

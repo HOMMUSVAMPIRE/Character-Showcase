@@ -339,12 +339,18 @@ namespace MeridianMotion.Showcase.Levels
             public float lawnThickness = 0.015f;
             [Tooltip("The chance a lawn cell at the lawn's edge gets a shrub, for a planted border.")]
             [Range(0f, 1f)] public float borderShrubChance = 0.12f;
-            [Tooltip("The trees a tree is picked from (flora prefabs, by name, in Assets/Showcase/Prefabs/Flora: Generate Flora makes them). Empty, or missing: faceted trees.")]
-            public string[] trees = { "Tree_Oak_01", "Tree_Oak_02", "Tree_Oak_03", "Tree_Birch_01", "Tree_Birch_02" };
-            [Tooltip("The shrubs a lawn's border shrub is picked from (flora prefabs, by name).")]
-            public string[] shrubs = { "Bush_Round_01", "Bush_Round_02", "Bush_Round_03" };
-            [Tooltip("The shrubs a planter's are picked from (flora prefabs, by name): flowering ones among the round.")]
-            public string[] plantedShrubs = { "Bush_Flowering_Pink", "Bush_Flowering_White", "Bush_Flowering_Yellow", "Bush_Flowering_Purple", "Bush_Round_01", "Bush_Round_02" };
+            [Tooltip("The kinds of tree a tree is picked from (flora prefabs in Assets/Showcase/Prefabs/Flora, Generate Flora makes them): a kind (Tree_Oak) stands for each of its variants (Tree_Oak_01...), which the level's flora seed picks between; a full name for itself. Empty, or none there: faceted trees.")]
+            public string[] trees = { "Tree_Oak", "Tree_Birch" };
+            [Tooltip("The kinds of shrub a lawn's border shrub is picked from (as Trees). Ferns are lost in a lawn's long edge grass: they're the planters'.")]
+            public string[] shrubs = { "Bush_Round" };
+            [Tooltip("The kinds of shrub a planter's are picked from (as Trees): flowering ones among the round, and the odd fern.")]
+            public string[] plantedShrubs = { "Bush_Flowering", "Bush_Flowering", "Bush_Round", "Fern" };
+            [Tooltip("A fern's height, as a share of the height a bush of the same radius has: ferns are lower than bushes.")]
+            [Range(0.2f, 1f)] public float fernHeight = 0.6f;
+            [Tooltip("The kinds of ivy an Ivy piece covers a wall with (as Trees): panels that climb a wall from its foot.")]
+            public string[] ivy = { "Ivy_Wall" };
+            [Tooltip("The kinds of vine a Vines piece hangs from a wall's top (as Trees).")]
+            public string[] vines = { "Vines_Hanging" };
         }
 
         /// <summary>
