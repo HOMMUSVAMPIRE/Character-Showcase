@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ec63a4672d24308a18f1d3ce50d3b47, type: 3}
+  m_Name: Level Sound Set
+  m_EditorClassIdentifier: MeridianMotion.Showcase.CharacterAudio::MeridianMotion.Showcase.CharacterAudio.LevelSoundSet
+  checkpointReached: {fileID: 11400000, guid: 07fd081c64bce4cccb0909caa15cf891, type: 2}
+  respawn: {fileID: 11400000, guid: 0cd686272151e407484d1b23cf5d2aa2, type: 2}
+  gateOpened: {fileID: 11400000, guid: 70e5bfc32f56a4fee823e0f14a762830, type: 2}
+  courseSplit: {fileID: 11400000, guid: 81c6983af82334e12ba699b66fc99688, type: 2}
+  courseFinished: {fileID: 11400000, guid: 3b238f3c004094c32bf95a8b39abd056, type: 2}

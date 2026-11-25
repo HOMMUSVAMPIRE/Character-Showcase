@@ -1,0 +1,31 @@
+{
+    "name": "MeridianMotion.Showcase.Tests.Audio",
+    "rootNamespace": "MeridianMotion.Showcase.Tests.Audio",
+    "references": [
+        "MeridianMotion.Showcase.Audio",
+        "MeridianMotion.Showcase.CharacterAudio",
+        "MeridianMotion.Showcase.Grass",
+        "MeridianMotion.Characters",
+        "MeridianMotion.Levels",
+        "MeridianMotion.Tests.Shared",
+        "MeridianMotion.Tests.PlayMode",
+        "MeridianMotion.Showcase.UIAudio",
+        "MeridianMotion.UI",
+        "UnityEngine.UI",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

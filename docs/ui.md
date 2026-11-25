@@ -169,3 +169,14 @@ The UI raises; the scene connects. Set Up Scene connects these, as persistent li
 | On Game Input Blocked Changed | the player's input reader's Set Suppressed | a window that stops the game (a dialog, the pause menu) stops the player; a key held through it isn't taken as a press when it closes |
 
 Back is the UI's: Set Up Scene sets the camera's Unlock Key to None, and the pause menu frees the cursor. In a scene without the UI, Escape still releases the cursor as before.
+
+For what reacts to the UI as a whole without knowing its windows (its sounds, say: the showcase's are in [Audio](showcase/audio.md)), the UI raises four static events, with nothing of the game in them:
+
+| Event | Raised |
+| --- | --- |
+| `RootUIPrefab.AnyOpened` | with any window as it opens, or is shown again after Hide All UI (beside its own On Opened) |
+| `RootUIPrefab.AnyClosed` | with any window as its closing ends (beside its own On Closed) |
+| `UIManager.BackPressed` | as the Back key is given to a window or the fallback (not while a text field has the keyboard) |
+| `Notifications.AnyShown` | with each notification shown |
+
+They're static, so a listener stops listening as it goes (in its OnDisable): a restarted scene doesn't hear the old one's.

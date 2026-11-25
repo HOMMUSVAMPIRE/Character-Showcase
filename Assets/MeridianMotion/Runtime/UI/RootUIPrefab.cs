@@ -112,6 +112,14 @@ namespace MeridianMotion.UI
         /// <summary>Raised as its closing ends, just before it's destroyed.</summary>
         public event Action<RootUIPrefab> OnClosed;
 
+        /// <summary>
+        /// Raised with any window as it opens, or is shown again after HideAllUI (with its own OnOpened): for what reacts
+        /// to the UI as a whole without knowing its windows (sound, say). Static, so a listener stops listening as it goes.
+        /// </summary>
+        public static event Action<RootUIPrefab> AnyOpened;
+        /// <summary>Raised with any window as its closing ends (with its own OnClosed). See AnyOpened.</summary>
+        public static event Action<RootUIPrefab> AnyClosed;
+
         private bool HasCancelOverrides => cancelActionOverrides != null && cancelActionOverrides.GetPersistentEventCount() > 0;
         private bool animatingClose, closed;
         private float closeStartedAt;
@@ -129,6 +137,7 @@ namespace MeridianMotion.UI
             BringToFront();
             if (UIManager.instance != null) { UIManager.instance.Track(this); }
             OnOpened?.Invoke(this);
+            AnyOpened?.Invoke(this);
         }
 
         protected virtual void OnDisable()
@@ -234,6 +243,7 @@ namespace MeridianMotion.UI
             closed = true;
             animatingClose = false;
             OnClosed?.Invoke(this);
+            AnyClosed?.Invoke(this);
             Destroy(gameObject);
         }
 

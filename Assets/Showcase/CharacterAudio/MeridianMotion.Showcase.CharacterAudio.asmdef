@@ -1,0 +1,19 @@
+{
+    "name": "MeridianMotion.Showcase.CharacterAudio",
+    "rootNamespace": "MeridianMotion.Showcase.CharacterAudio",
+    "references": [
+        "MeridianMotion.Showcase.Audio",
+        "MeridianMotion.Characters",
+        "MeridianMotion.Levels",
+        "MeridianMotion.Showcase.Grass"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

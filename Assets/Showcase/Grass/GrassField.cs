@@ -23,7 +23,7 @@ namespace MeridianMotion.Showcase.Grass
     /// </summary>
     [ExecuteAlways]
     [AddComponentMenu("Meridian Motion/Showcase/Grass Field")]
-    public sealed class GrassField : MonoBehaviour
+    public sealed partial class GrassField : MonoBehaviour
     {
         /// <summary>The mask's chunks are this many texels square: the unit the CPU culls by.</summary>
         public const int ChunkTexels = 32;

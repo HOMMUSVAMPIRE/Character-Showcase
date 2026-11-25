@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88dd147a4d8f423eb57daa93dce3fd82, type: 3}
+  m_Name: UI Sound Set
+  m_EditorClassIdentifier: MeridianMotion.Showcase.UIAudio::MeridianMotion.Showcase.UIAudio.UISoundSet
+  hover: {fileID: 11400000, guid: 2ab5beee0506541709efa350ab3afa0a, type: 2}
+  click: {fileID: 11400000, guid: 2c55e357f951f4427a217a71f8e2ec22, type: 2}
+  denied: {fileID: 11400000, guid: 802d736b32210433ab40d32383fe1754, type: 2}
+  toggleOn: {fileID: 11400000, guid: 70ecc2d7f83a14a9b8262217330eafef, type: 2}
+  toggleOff: {fileID: 11400000, guid: 19a7a23484fea47718062c306069675f, type: 2}
+  slider: {fileID: 11400000, guid: 6a477663d581046238ca29465c0277a7, type: 2}
+  tab: {fileID: 11400000, guid: 9d8456d3cb523465aabfe982bc274085, type: 2}
+  windowOpen: {fileID: 11400000, guid: f541009ac3e0948e786af2c05f3b6176, type: 2}
+  windowClose: {fileID: 11400000, guid: a5fd6f3de59414de08abc6af2226b377, type: 2}
+  back: {fileID: 11400000, guid: 68c3fa5ef4dbe4f8e8bf313a85e8e2de, type: 2}
+  notification: {fileID: 11400000, guid: 3be54220320914539bbe4cb8e4adc16e, type: 2}

@@ -141,6 +141,19 @@ Tools > Meridian Motion > Showcase > Measure Grass times it at fixed spots (with
 **The characters don't push the grass.**
 The scene's setup needs a Grass Benders object, which Set Up Scene adds to the showcase's levels with grass, connected to the spawner's On Character Spawned and On Npc Spawned; a character pushes with its hitboxes on the Grass Benders' Hitbox Layer (a model without hitboxes pushes with a circle at its feet: fit them, Tools > Meridian Motion > Prepare > Fit Hitboxes).
 
+## The audio
+**No sound at all.**
+The character's clips may not be generated or assigned (`python3 Tools/Audio/make_sfx.py --out Assets/Showcase/Audio/Clips`, then Assign Generated Clips), and the level's, the UI's sounds and the music are empty slots until given clips (see [Audio](showcase/audio.md)). Otherwise: the scene needs an `AudioService` (Set Up Scene adds the Audio prefab to the showcase's scenes) and an `AudioListener` (on the camera rig); a bus's saved volume may be 0 (PlayerPrefs, under the service's Volume Key Prefix); a 3D sound farther from the listener than its Max Distance isn't started.
+
+**One sound plays, another doesn't.**
+A request by id finds its sound in the Sound Library: a Sound Event it doesn't list (its inspector warns) isn't found (press the library's Find Every Sound Event). A sound may be held back by its Max Instances or its Cooldown, or lose its voice to sounds of higher priority when every voice is busy (the service's Voice Count).
+
+**A character makes no sound.**
+`CharacterSounds` is added as characters spawn, by the scene's Character Audio Director, which Set Up Scene connects to the spawner's On Character Spawned and On Npc Spawned. A Sound Set row naming a flag that isn't one is warned about once and left out.
+
+**Footsteps on a lawn sound like the floor.**
+The grass is asked how much grass is under the feet (`GrassField.CoverAt`): below the Surface Map's Grass Cover, it's the floor's surface. A field's mask covers only its lawns (rebuild the level after changing them).
+
 ## The flora
 **The trees and shrubs are faceted shapes, and there's no ivy.**
 The flora's prefabs are missing: Tools > Meridian Motion > Showcase > Generate Flora makes them (it needs Blender: see [Generated assets](#generated-assets)), then rebuild the level. A foliage setting naming a kind with no prefabs (a typo) does the same for those pieces, with a warning.

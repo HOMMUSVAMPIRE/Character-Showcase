@@ -86,6 +86,10 @@ CHANGE_RULES = (
     ("Assets/MeridianMotion/Runtime/LevelElements/", LEVELS, "the level elements"),
     ("Assets/Showcase/Editor/Levels/", LEVELS, "the level builders"),
     ("Assets/Showcase/Grass/", ("Levels",), "the levels' grass"),
+    ("Assets/Showcase/Audio/", ("Audio",), "the audio core"),
+    ("Assets/Showcase/CharacterAudio/", ("Audio",), "the character's sounds"),
+    ("Assets/Showcase/UIAudio/", ("Audio", "UI"), "the UI's sounds"),
+    ("Assets/Showcase/Editor/Audio/", ("Audio", "Spawning"), "the audio's editor tools (its assets, Set Up Scene)"),
     ("Assets/Showcase/Flora/", ("Levels",), "the flora's shaders"),
     ("Assets/Showcase/Ivy/", ("Levels",), "the walls' ivy"),
     ("Assets/Showcase/Editor/Grass/", ("Levels",), "the grass's editor tools (the benchmark)"),
@@ -163,15 +167,32 @@ def declared_areas(text, areas):
     return {areas[name] for name in re.findall(r"\bTestArea\.(\w+)", text) if name in areas}
 
 
+def showcase_test_platform(path):
+    """
+    The platform a showcase test file runs on: its assembly's (the nearest .asmdef in its folder or above it). An
+    Editor-only assembly's tests (the level builders' and checks') are EditMode's; the rest (the grass's, the HUD's, the
+    Tutorial Ring's, the audio's) run on every platform, so they're PlayMode's. A file with no assembly found is EditMode's.
+    """
+    for folder in path.parents:
+        for asmdef in folder.glob("*.asmdef"):
+            try:
+                platforms = json.loads(asmdef.read_text(encoding="utf-8")).get("includePlatforms", [])
+            except (OSError, ValueError):
+                platforms = []
+            return "EditMode" if "Editor" in platforms else "PlayMode"
+        if folder.name == "Tests":
+            break
+    return "EditMode"
+
+
 def platform_areas(root, areas):
     """The areas each platform has fixtures in, read from the fixtures: EditMode has only some of them."""
-    found = {}
+    found = {platform: set() for platform in PLATFORMS}
     for platform in PLATFORMS:
-        found[platform] = set()
-        # The showcase's tests (the level builders' and checks') are EditMode tests.
-        folders = [root / PACKAGE_TESTS / platform] + ([root / SHOWCASE_TESTS] if platform == "EditMode" else [])
-        for path in (p for folder in folders for p in folder.rglob("*.cs")):
+        for path in (root / PACKAGE_TESTS / platform).rglob("*.cs"):
             found[platform] |= declared_areas(path.read_text(encoding="utf-8", errors="replace"), areas)
+    for path in (root / SHOWCASE_TESTS).rglob("*.cs"):
+        found[showcase_test_platform(path)] |= declared_areas(path.read_text(encoding="utf-8", errors="replace"), areas)
     return found
 
 

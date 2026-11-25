@@ -1,6 +1,16 @@
 # Audio system: design
 
-Date: 2026-11-25. Status: draft, for approval.
+Date: 2026-11-25. Status: approved and built (see docs/showcase/audio.md for how it is now).
+
+**As built, where it differs from below:** the character's component is `CharacterSounds`, not `CharacterAudio` (the
+assembly's namespace is `MeridianMotion.Showcase.CharacterAudio`, and a type named as it would be ambiguous). Footsteps
+follow the model's feet (its foot IK's planted, checked on the movement's steps, `MMotionCharacter.BeforeStep`), with
+a cadence by speed only without a model: a fixed stride, as first built, stepped three to four times too often at the
+game's speeds. An event row's speed is the step
+before the event's, the faster of how it began and ended (a landing step's own velocity is the motor's snap). The hard
+landing's Min Speed is 16 m/s, about a 4 m fall at the default gravity. There's no Water surface (footsteps are silent
+while wading, whose loop plays). `UISounds` sits on the scene's Audio object, not beside the UI Manager. The UI hooks are
+`RootUIPrefab.AnyOpened`/`AnyClosed`, `UIManager.BackPressed` and `Notifications.AnyShown`.
 
 ## Why
 

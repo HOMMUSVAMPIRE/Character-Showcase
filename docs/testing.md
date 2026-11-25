@@ -394,6 +394,8 @@ The UI's fixtures share `UITestsBase`: a UI Manager made in code, with its canva
 ## Edit mode tests
 Edit mode tests in Assets/MeridianMotion/Tests/EditMode check Prepare Humanoid Models, the motion-capture clips and the shared controller's locomotion, the movement mode's composition and data, tuning presets, the physics query buffers, input frames, the level elements' editor tools (setting up a level's mechanics, climbable paint) and Set Up Scene, without entering Play mode, so a change to preparing (or a model added without preparing it) fails fast. As in Play mode, each check's tolerances are in the test, and each fixture is a file in a folder for its area (Movement, InputAndDeterminism, Animations, Models, LevelElements, Spawning, Levels), in a namespace of the same name.
 
+The showcase's audio has its own PlayMode fixtures, in `MeridianMotion.Showcase.Tests.Audio` (Assets/Showcase/Tests/Audio, the `Audio` area: see [Audio](showcase/audio.md#its-tests)).
+
 They're in two assemblies. The main one, `MeridianMotion.Tests.EditMode`, tests the package (the character's code, its editor tools, and the level elements and theirs), and references no level builder code. The level builders' tests (and the movement envelope's, which the level checks write) are in their own, `MeridianMotion.Showcase.Tests.Levels` (Assets/Showcase/Tests/Levels), with the builders, the Level Editor and the level checks: none of those is part of the package, so neither is this assembly.
 
 | Fixture | Folder | Category | What it checks |

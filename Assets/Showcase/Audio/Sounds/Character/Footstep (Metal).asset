@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3026cbf8e6426385719e0351d18082, type: 3}
+  m_Name: Footstep (Metal)
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Audio::MeridianMotion.Showcase.Audio.SoundEvent
+  clips:
+  - {fileID: 8300000, guid: e23d850161c6c4bfdb55049a899af762, type: 3}
+  - {fileID: 8300000, guid: 2a5a77d77dcf34d78abd1b6137fb2106, type: 3}
+  - {fileID: 8300000, guid: 8b0fba9f60cfc41e8a48404649287dc3, type: 3}
+  - {fileID: 8300000, guid: f4d6ca447a5c24ad0b944bd92312c437, type: 3}
+  - {fileID: 8300000, guid: 7b8e4d739575f4882910d5595b0cce7a, type: 3}
+  - {fileID: 8300000, guid: 4900896746f6546b6b4f602abb1d83a2, type: 3}
+  order: 0
+  volume: {x: 0.9, y: 1}
+  pitch: {x: 0.96, y: 1.04}
+  bus: {fileID: 11400000, guid: ee473a97449f5456fb83163e2f4e6161, type: 2}
+  loop: 0
+  spatial: 1
+  minDistance: 1
+  maxDistance: 30
+  maxInstances: 4
+  cooldown: 0.05
+  priority: 100
+  id: 17

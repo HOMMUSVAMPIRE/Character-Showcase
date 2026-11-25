@@ -21,6 +21,8 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Builder.** *(showcase levels)* An editor script that generates one level from pieces (`MeridianComplexBuilder`, `LevelPlaygroundBuilder`). See [Test Levels](showcase/levels.md).
 
+**Bus.** *(showcase)* A group of sounds with one saved volume (an `AudioBus`: Music, Effects, UI), paused with the game or not. See [Audio](showcase/audio.md).
+
 **Cancel stack.** The windows that take the Back key, the last opened on top (`UIManager`): destroyed, hidden, closing and uncancellable ones are passed over. See [The Back key](ui.md#the-back-key).
 
 **Capabilities.** What the character can do as it's tuned and sized now (how far each kind of jump crosses, how high each climb reaches, how far a slide carries it), measured by running its own movement in a movement simulation (`MMotionMotor.Capabilities`). See [Capabilities](movement.md#capabilities).
@@ -107,6 +109,10 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 **Size scaling.** How the movement changes with the character's size: in proportion (a scaled copy) or naturally (as real animals do). The MMotionMotor's Size Scaling. See [Character Size](movement.md#character-size).
 
+**Sound Event.** *(showcase)* One kind of sound (a `SoundEvent`: its clips, volume and pitch ranges, bus, 2D or 3D, loop, limits and priority), named by its id in the requests the `AudioService` plays. See [Audio](showcase/audio.md).
+
+**Sound Set.** *(showcase)* What a character sounds like (a `CharacterSoundSet`): which movement events and states play which sounds, by the surface under it, and its footsteps. See [Audio](showcase/audio.md).
+
 **Stable ID.** An ID for a level object that's the same on every machine that loads the level (`MeridianMotion.Levels.StableId`): a hash of its scene and path of names. What a character's written state names the ground it's on, or the rope it holds, by.
 
 **Start Here.** The editor window (Tools > Meridian Motion > Start Here, `StartHereWindow`) with every everyday tool in sections (play it, characters, abilities, checking your work, learning), each with a line saying what it does, and the commands for the test and hygiene scripts. It opens by itself the first time a project is opened on a machine (its Open On First Load turns that off).
@@ -127,5 +133,7 @@ Terms this project uses with a meaning of its own, and where each is explained. 
 
 
 **Window.** A piece of UI opened, closed and stacked by the UI Manager: a prefab with a `RootUIPrefab` on its root, on one of its canvases. See [Windows](ui.md#windows).
+
+**Voice.** *(showcase)* One of the `AudioService`'s fixed pool of AudioSources: a sound plays on one, and gives it up to a sound of higher priority when every voice is busy. See [Audio](showcase/audio.md).
 
 **Window catalog.** The list of a project's own window prefabs (`UIWindowCatalog`, named on the UI Manager), which `UIManager.Open<T>` finds a window in by its component. See [A window of your own](ui.md#a-window-of-your-own).

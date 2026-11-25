@@ -98,6 +98,8 @@ namespace MeridianMotion.Characters
         {
             public float offset, offsetVelocity;
             public Vector3 normal;
+            // How planted it was as last placed (see Planted).
+            public float planted;
             // Foot lock: held where the foot was put down (see Foot Lock).
             public PlantLock plantLock;
             // Debug
@@ -108,6 +110,14 @@ namespace MeridianMotion.Characters
         // The character's grounded and dashing state comes from AbilityIK's state source (its MMotionAnimator, in the
         // model's parents). Without one, the feet are always placed.
         private FootState left, right;
+
+        /// <summary>
+        /// How planted a foot (0 the left, 1 the right) was in the pose last placed, by how high the animation lifted it
+        /// over the ground under it: 1 down, 0 lifted (see Planted Height and Lifted Height), as LegPlacementIK.Planted
+        /// says for a generic rig's legs. For what follows the feet (footsteps). Not updated while the feet aren't placed
+        /// (in the air, stepping up).
+        /// </summary>
+        public float Planted(int foot) => foot == 0 ? left.planted : foot == 1 ? right.planted : 0f;
         private float pelvisOffset, pelvisVelocity;
         // The step up's tuck: how far it's eased in, and the edge stepped up onto (kept while easing out).
         private float stepUpWeight;
@@ -293,6 +303,7 @@ namespace MeridianMotion.Characters
             float size = animator.isHuman && animator.humanScale > 0f ? animator.humanScale * transform.lossyScale.y : 1f;
             float plantedLift = plantedHeight * size, liftedLift = liftedHeight * size;
             float planted = 1f - Mathf.InverseLerp(plantedLift, Mathf.Max(liftedLift, plantedLift + 1e-3f), lift);
+            foot.planted = planted;
             rotation = Quaternion.FromToRotation(Vector3.up, foot.normal) * animatedRotation;
             rotationWeight = planted * alignToGround;
 

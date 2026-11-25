@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fff64074d0b54ed592041814dda5fefb, type: 3}
+  m_Name: Complex Theme
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Audio::MeridianMotion.Showcase.Audio.MusicTrack
+  intro: {fileID: 0}
+  loop: {fileID: 0}
+  volume: 0.8
+  bus: {fileID: 11400000, guid: 1404872958fe44166a0d84862fefe596, type: 2}

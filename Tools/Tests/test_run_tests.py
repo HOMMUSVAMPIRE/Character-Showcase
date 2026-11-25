@@ -89,6 +89,20 @@ class FindingUnity(ProjectCase):
         self.assertEqual({"Movement"}, found["EditMode"])
         self.assertEqual({"Movement", "Abilities", "Camera"}, found["PlayMode"])
 
+    def test_a_showcase_test_assembly_that_isnt_editor_only_is_play_mode(self):
+        # The showcase's PlayMode tests (the grass's, the HUD's, the audio's) are in assemblies of their own that run
+        # on every platform; its EditMode ones (the levels') are Editor-only.
+        audio = self.root / run_tests.SHOWCASE_TESTS / "Audio"
+        audio.mkdir(parents=True)
+        (audio / "Showcase.Tests.Audio.asmdef").write_text('{ "name": "Showcase.Tests.Audio", "includePlatforms": [] }')
+        (audio / "AudioFixture.cs").write_text("[TestTiming, Category(TestArea.Audio)]\npublic class AudioFixture { }\n")
+        levels = self.root / run_tests.SHOWCASE_TESTS / "Levels"
+        (levels / "Showcase.Tests.Levels.asmdef").write_text('{ "name": "Showcase.Tests.Levels", "includePlatforms": ["Editor"] }')
+        found = run_tests.platform_areas(self.root, self.areas)
+        self.assertIn("Audio", found["PlayMode"])
+        self.assertNotIn("Audio", found["EditMode"])
+        self.assertEqual({"Movement"}, found["EditMode"])
+
     def test_an_explicit_path_is_used(self):
         unity = self.root / "MyUnity"
         unity.write_text("")

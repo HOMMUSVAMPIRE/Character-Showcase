@@ -26,5 +26,7 @@ namespace MeridianMotion.Tests
         public const string Levels = "Levels";
         /// <summary>The UI framework: its windows, the Back key, dialogs, lists and the rest.</summary>
         public const string UI = "UI";
+        /// <summary>The showcase's audio: its core, the character's sounds and the UI's.</summary>
+        public const string Audio = "Audio";
     }
 }

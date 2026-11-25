@@ -1,0 +1,30 @@
+{
+    "name": "MeridianMotion.Showcase.Tests.Audio.EditMode",
+    "rootNamespace": "MeridianMotion.Showcase.Tests.Audio",
+    "references": [
+        "MeridianMotion.Showcase.Audio",
+        "MeridianMotion.Showcase.CharacterAudio",
+        "MeridianMotion.Showcase.UIAudio",
+        "MeridianMotion.Showcase.Audio.EditorTools",
+        "MeridianMotion.Characters",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.Tests.Shared",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

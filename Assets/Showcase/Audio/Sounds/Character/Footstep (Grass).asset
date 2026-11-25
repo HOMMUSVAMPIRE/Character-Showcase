@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3026cbf8e6426385719e0351d18082, type: 3}
+  m_Name: Footstep (Grass)
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Audio::MeridianMotion.Showcase.Audio.SoundEvent
+  clips:
+  - {fileID: 8300000, guid: c2bebbcdbc72641d4b5a50cbb63f557d, type: 3}
+  - {fileID: 8300000, guid: b8d33e4e866d1423d96c15400865cdea, type: 3}
+  - {fileID: 8300000, guid: 736c52ec528c14e6bb69b9987518486d, type: 3}
+  - {fileID: 8300000, guid: c36cf2f11bc7946ec91621ffba598ace, type: 3}
+  - {fileID: 8300000, guid: 7af70c741907c4a40a298a61e20e140d, type: 3}
+  - {fileID: 8300000, guid: 95f9b07a5d88d49c58b50c2bba416094, type: 3}
+  order: 0
+  volume: {x: 0.9, y: 1}
+  pitch: {x: 0.96, y: 1.04}
+  bus: {fileID: 11400000, guid: ee473a97449f5456fb83163e2f4e6161, type: 2}
+  loop: 0
+  spatial: 1
+  minDistance: 1
+  maxDistance: 30
+  maxInstances: 4
+  cooldown: 0.05
+  priority: 100
+  id: 16

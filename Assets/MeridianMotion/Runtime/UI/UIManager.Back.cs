@@ -60,8 +60,17 @@ namespace MeridianMotion.UI
             if (IsFocusedOnText() || IsInputCaptured) { return; }
             RootUIPrefab top = TopWindow;
             if (top != null) { top.OnCancelButton(); }
-            else if (allowFallback) { fallbackBackHandler?.Invoke(); }
+            else if (allowFallback && fallbackBackHandler != null) { fallbackBackHandler(); }
+            else { return; }
+            BackPressed?.Invoke();
         }
+
+        /// <summary>
+        /// Raised when the Back key is given to a window, or to the fallback (HandleBack): not when it's the text field's,
+        /// or nothing takes it. For what reacts to the UI as a whole (sound, say). Static, so a listener stops listening as
+        /// it goes.
+        /// </summary>
+        public static event Action BackPressed;
 
         /// <summary>
         /// The Submit key (Enter), pressed: the top window gets it (OnSubmitButton: a dialog presses OK). Nothing while a

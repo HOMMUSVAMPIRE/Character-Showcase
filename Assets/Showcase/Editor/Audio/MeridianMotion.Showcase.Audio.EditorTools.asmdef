@@ -1,0 +1,23 @@
+{
+    "name": "MeridianMotion.Showcase.Audio.EditorTools",
+    "rootNamespace": "MeridianMotion.Showcase.Audio.EditorTools",
+    "references": [
+        "MeridianMotion.Showcase.Audio",
+        "MeridianMotion.Showcase.CharacterAudio",
+        "MeridianMotion.Showcase.UIAudio",
+        "MeridianMotion.UI",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.Characters"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

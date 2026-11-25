@@ -105,6 +105,7 @@ About this repository's own levels and tools, which don't ship with the package 
 - [Test levels](docs/showcase/levels.md): the Meridian Complex, the Level Playground, the mechanics in them
 - [Level specs](docs/showcase/level-specs.md): the level format, the Level Editor and the levelspec tool
 - [Adding level content](docs/showcase/adding-level-content.md): a new level mechanic, a new piece, changing a builder
+- [Audio](docs/showcase/audio.md): the music, the character's, the level's and the UI's sounds, and adding to them
 
 Every tunable value is a setting in the inspector: the movement assets in Assets/MeridianMotion/Content/Movement for the movement and its abilities (StandardMovementMode for the character, Fox Movement for the fox; Character Body holds the character's body), the components on the Character prefab and its models, the camera rig, and Assets/Showcase/Editor/Levels/LevelBuilderSettings.asset for the levels. The docs name the setting rather than repeating its value, so they stay right when it's retuned.
 

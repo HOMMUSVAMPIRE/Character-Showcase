@@ -114,3 +114,7 @@ TestResults*.xml
 
 # Schematics the levelspec tool writes by default (python3 Tools/LevelSpec/levelspec build)
 /Schematics/
+
+# make_sfx.py's list for its browser preview (Tools/Audio/make_sfx.py writes it beside the clips; the game doesn't use it).
+Assets/Showcase/Audio/Clips/manifest.js
+Assets/Showcase/Audio/Clips/manifest.js.meta

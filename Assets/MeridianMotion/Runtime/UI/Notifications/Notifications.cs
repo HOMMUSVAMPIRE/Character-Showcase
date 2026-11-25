@@ -119,8 +119,15 @@ namespace MeridianMotion.UI
                 shown.Close();
                 ofType--;
             }
+            AnyShown?.Invoke(entry);
             return entry;
         }
+
+        /// <summary>
+        /// Raised with each notification shown (ShowNotification), for what reacts to the UI as a whole (sound, say).
+        /// Static, so a listener stops listening as it goes.
+        /// </summary>
+        public static event Action<NotificationEntry> AnyShown;
 
         /// <summary>Closes every passive notification (the toasts), leaving the rest.</summary>
         public void ClearAllPassiveNotifications()

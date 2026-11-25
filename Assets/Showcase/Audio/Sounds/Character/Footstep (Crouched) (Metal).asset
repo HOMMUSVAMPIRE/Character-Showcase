@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3026cbf8e6426385719e0351d18082, type: 3}
+  m_Name: Footstep (Crouched) (Metal)
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Audio::MeridianMotion.Showcase.Audio.SoundEvent
+  clips:
+  - {fileID: 8300000, guid: b930cb00817304025b842bb945626162, type: 3}
+  - {fileID: 8300000, guid: 07055f4fd9eb247dfaf8a70c146cd6e9, type: 3}
+  - {fileID: 8300000, guid: 09afdae8f73d343fcafb12de1cf53f68, type: 3}
+  - {fileID: 8300000, guid: 78e5c2d7c2484419086dee9d1f10419a, type: 3}
+  - {fileID: 8300000, guid: 7d674e21af6a54df1ac43665fc9c1db0, type: 3}
+  - {fileID: 8300000, guid: 7a68179182cec401592668b9ff858a89, type: 3}
+  order: 0
+  volume: {x: 0.9, y: 1}
+  pitch: {x: 0.96, y: 1.04}
+  bus: {fileID: 11400000, guid: ee473a97449f5456fb83163e2f4e6161, type: 2}
+  loop: 0
+  spatial: 1
+  minDistance: 1
+  maxDistance: 30
+  maxInstances: 4
+  cooldown: 0.05
+  priority: 100
+  id: 12

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c3026cbf8e6426385719e0351d18082, type: 3}
+  m_Name: Rope Release
+  m_EditorClassIdentifier: MeridianMotion.Showcase.Audio::MeridianMotion.Showcase.Audio.SoundEvent
+  clips:
+  - {fileID: 8300000, guid: ae64fbbd384f54262ab7b044657bfc07, type: 3}
+  - {fileID: 8300000, guid: b0e04849e0dab4345841c62798eebd30, type: 3}
+  - {fileID: 8300000, guid: 536499198e674415db5106f3c7f6644c, type: 3}
+  order: 0
+  volume: {x: 0.9, y: 1}
+  pitch: {x: 0.96, y: 1.04}
+  bus: {fileID: 11400000, guid: ee473a97449f5456fb83163e2f4e6161, type: 2}
+  loop: 0
+  spatial: 1
+  minDistance: 1
+  maxDistance: 30
+  maxInstances: 4
+  cooldown: 0.05
+  priority: 128
+  id: 56
