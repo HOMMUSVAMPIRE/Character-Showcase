@@ -1,10 +1,12 @@
 // Places a GrassField's blades for one camera (see GrassField). One thread per cell of a fine grid over each chunk in
 // view (the dispatch's z is the chunk), where the field's mask has grass: culled by the view, thinned out with distance,
-// and written to the near or the far list, whose draw arguments count them. Then Finish clamps the counts to what the
-// lists hold, keeping what was asked for so the field can grow them.
+// pushed by the wind and by what walks through it, and written to the near or the far list, whose draw arguments count
+// them. Then Finish clamps the counts to what the lists hold, keeping what was asked for so the field can grow them.
+// Bend, once a frame, updates the bend map: what the grass benders have pushed (see GrassBending).
 
 #pragma kernel Generate
 #pragma kernel Finish
+#pragma kernel Bend
 
 #include "GrassCommon.hlsl"
 
@@ -26,6 +28,12 @@ float4 _Distances; // draw distance, detail distance, thinning starts
 float4 _Thinning;  // x: the fraction left at the draw distance
 float2 _Length, _Width, _Bend;
 float4 _Clumps;    // size, how much length varies by clump, how much a clump's blades lean out from its middle, edge length
+float4 _Wind;      // direction (x, z), strength, time (s)
+float4 _WindGusts; // gusts' size (m), speed (m/s), strength, flutter
+float4 _Sway;      // x: how much this grass moves in the wind, y: the flutter's speed (radians a second)
+Texture2D<float4> _BendMap;   // xy: the push (out from what pushed it, 0 to 1), z: the height it was pushed at
+SamplerState sampler_linear_repeat;
+float4 _BendWindow;           // the map's corner (x, z, in the world), its size (m), and whether there's one
 
 [numthreads(8, 8, 1)]
 void Generate(uint3 id : SV_DispatchThreadID)
@@ -72,7 +80,8 @@ void Generate(uint3 id : SV_DispatchThreadID)
     float3 middle = root + float3(0.0, 0.5 * bladeLength, 0.0);
     [unroll] for (int p = 0; p < 6; p++)
     {
-        if (dot(_FrustumPlanes[p].xyz, middle) + _FrustumPlanes[p].w < -bladeLength) { return; }
+        // As far as a pushed blade can lean (1.5 of its lengths) and more.
+        if (dot(_FrustumPlanes[p].xyz, middle) + _FrustumPlanes[p].w < -1.7 * bladeLength) { return; }
     }
 
     // Which way it bends: its own way, turned toward pointing out from its clump's middle.
@@ -83,14 +92,40 @@ void Generate(uint3 id : SV_DispatchThreadID)
     float2 facing = lerp(own, away, _Clumps.z);
     facing = dot(facing, facing) > 1e-6 ? normalize(facing) : own;
 
+    // The wind: gusts (a noise moving downwind) and a flutter of each blade's own; then what walks through it, from the
+    // bend map.
+    float2 windDirection = _Wind.xy;
+    float2 across = float2(-windDirection.y, windDirection.x);
+    float2 gustAt = float2(dot(root.xz, windDirection) - _Wind.w * _WindGusts.y, dot(root.xz, across)) / max(_WindGusts.x, 0.01);
+    float gust = GrassNoise(gustAt);
+    float flutter = sin(_Wind.w * _Sway.y + r2.z * 6.2831853) * _WindGusts.w;
+    float2 push = windDirection * (_Wind.z * (0.35 + _WindGusts.z * gust) + flutter) * _Sway.x;
+    float bend = lerp(_Bend.x, _Bend.y, r2.y);
+    if (_BendWindow.w > 0.0)
+    {
+        // Read halfway up the blade, where it leans to (so a long blade leaning into a leg is pushed by it too).
+        float2 at = root.xz + facing * bend * bladeLength * 0.5;
+        float2 inWindow = (at - _BendWindow.xy) / _BendWindow.z;
+        if (all(inWindow > 0.02) && all(inWindow < 0.98))
+        {
+            float4 pushed = _BendMap.SampleLevel(sampler_linear_repeat, at / _BendWindow.z, 0);
+            // Only while what pushed it was down among the blades: its bottom (z) no higher than most of the blade's
+            // length above its root (a foot lifted clear lets it go), and not well below it (a lawn on the floor above).
+            float above = pushed.z - root.y;
+            float among = saturate((bladeLength - above) / max(0.5 * bladeLength, 0.01)) * saturate(1.0 + (above + 0.3) / 0.4);
+            push += pushed.xy * 1.3 * among;
+        }
+    }
+
     Blade blade;
     blade.position = root;
     blade.facing = atan2(facing.y, facing.x);
     blade.length = bladeLength;
     blade.width = lerp(_Width.x, _Width.y, r2.x) * min(rsqrt(keep), 3.0);
-    blade.bend = lerp(_Bend.x, _Bend.y, r2.y);
+    blade.bend = bend;
     blade.hash = r2.z;
     blade.clump = clump;
+    blade.push = push;
 
     uint index;
     if (distance < _Distances.y)
@@ -112,4 +147,62 @@ void Finish(uint3 id : SV_DispatchThreadID)
     _Counts.Store2(0, uint2(near, far));
     _NearArgs.Store(4, min(near, _NearCapacity));
     _FarArgs.Store(4, min(far, _FarCapacity));
+}
+
+// ---- The bend map (GrassBending) ----
+
+RWTexture2D<float4> _BendTarget;
+// Each pusher: a capsule (a leg's hitbox, or a circle at a character's feet: both ends the same), as three float4s: one
+// end and its radius; the other end and how far its bottom is below its line; its velocity (x, z, m/s).
+StructuredBuffer<float4> _Pushers;
+uint _PusherCount;
+float4 _BendStep;   // the window's corner last frame (x, z), how much of a push is left after this frame, the map's resolution
+float4 _BendShape;  // how far past a pusher's radius its push fades out (m), how much of it is along its movement, the speed that's a full drag
+
+// The world point (x, z) a texel of the map stands for, with its window's corner there: the map wraps (a texel is
+// where the world's x and z, over the map's size, have its fraction), so it follows the camera without being moved.
+float2 TexelPoint(uint2 texel, float2 corner)
+{
+    float2 at = (float2(texel) + 0.5) / _BendStep.w;
+    return corner + frac(at - corner / _BendWindow.z) * _BendWindow.z;
+}
+
+[numthreads(8, 8, 1)]
+void Bend(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= (uint)_BendStep.w || id.y >= (uint)_BendStep.w) { return; }
+    float2 here = TexelPoint(id.xy, _BendWindow.xy);
+    float4 value = _BendTarget[id.xy];
+    // A texel that now stands for another point (the window moved past it) starts flat; the rest spring back.
+    if (any(abs(here - TexelPoint(id.xy, _BendStep.xy)) > 0.5 * _BendWindow.z / _BendStep.w)) { value = 0.0; }
+    value.xy *= _BendStep.z;
+    for (uint i = 0; i < _PusherCount; i++)
+    {
+        float4 a = _Pushers[3 * i], b = _Pushers[3 * i + 1], velocity = _Pushers[3 * i + 2];
+        // The nearest point on the capsule's line, seen from above, and how far it is.
+        float2 span = b.xz - a.xz;
+        float along = saturate(dot(here - a.xz, span) / max(dot(span, span), 1e-6));
+        float3 nearest = lerp(a.xyz, b.xyz, along);
+        float2 away = here - nearest.xz;
+        float distance = length(away);
+        float reach = a.w + _BendShape.x;
+        if (distance >= reach) { continue; }
+        float strength = saturate((reach - distance) / max(_BendShape.x, 0.01));
+        strength = strength * strength * (3.0 - 2.0 * strength);
+        // Out from the leg, and partly along the way it's going (a foot drags the grass it steps through); behind it,
+        // all along the way it went, so the grass it's passed is laid forward, not pushed back after it.
+        float2 outward = distance > 1e-4 ? away / distance : 0.0;
+        float speed = length(velocity.xy);
+        float moving = saturate(speed / max(_BendShape.z, 0.01));
+        float2 drag = speed > 1e-3 ? velocity.xy / speed : 0.0;
+        float share = lerp(_BendShape.y, 1.0, saturate(-dot(outward, drag))) * moving;
+        float2 push = normalize(lerp(outward, drag, share) + 1e-5) * strength;
+        float bottom = nearest.y - b.w;
+        // The strongest push stays: a fresh one over a fading one, or one at another height.
+        if (dot(push, push) > dot(value.xy, value.xy) || abs(value.z - bottom) > 1.0 && dot(push, push) > 0.01)
+        {
+            value = float4(push, bottom, 0.0);
+        }
+    }
+    _BendTarget[id.xy] = value;
 }

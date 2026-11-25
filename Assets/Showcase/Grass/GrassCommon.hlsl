@@ -3,7 +3,7 @@
 #ifndef MERIDIAN_GRASS_COMMON_INCLUDED
 #define MERIDIAN_GRASS_COMMON_INCLUDED
 
-// A blade, as GrassBlades.compute writes it and Grass.shader reads it: 9 floats (GrassField.BladeStride).
+// A blade, as GrassBlades.compute writes it and Grass.shader reads it: 11 floats (GrassField.BladeStride).
 struct Blade
 {
     float3 position; // its root, in the world
@@ -13,6 +13,7 @@ struct Blade
     float bend;      // 0 straight up, 1 its tip about its length forward
     float hash;      // 0 to 1, the blade's own variation
     float clump;     // 0 to 1, its clump's (see GrassClump)
+    float2 push;     // how far its tip is pushed (x and z, in its lengths) by the wind and by what walks through it
 };
 
 // A well-mixed hash of three integers (Jarzynski and Olano's pcg3d), each output a different random.
@@ -48,6 +49,19 @@ void GrassClump(float2 p, float size, out float2 centre, out float value)
             if (d2 < nearest) { nearest = d2; centre = seed; value = r.z; }
         }
     }
+}
+
+// Smooth value noise, 0 to 1, over the plane (a hash at each whole point, blended between).
+float GrassNoise(float2 p)
+{
+    float2 i = floor(p), f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+    int2 c = int2(i);
+    float a = GrassRandom(uint3(asuint(c.x), asuint(c.y), 31u)).x;
+    float b = GrassRandom(uint3(asuint(c.x + 1), asuint(c.y), 31u)).x;
+    float d = GrassRandom(uint3(asuint(c.x), asuint(c.y + 1), 31u)).x;
+    float e = GrassRandom(uint3(asuint(c.x + 1), asuint(c.y + 1), 31u)).x;
+    return lerp(lerp(a, b, f.x), lerp(d, e, f.x), f.y);
 }
 
 // A clump's tint, by its value: from a warm, dry green to a cool, lush one, by amount (0: none).

@@ -25,6 +25,10 @@ namespace MeridianMotion.Showcase.Grass
         [Tooltip("How much longer the grass grows at a lawn's edge, against walls and paving, than in its middle (1: no longer).")]
         [Min(0.1f)] public float edgeLength = 1.4f;
 
+        [Header("Motion")]
+        [Tooltip("How much this grass moves in the wind (the level's Grass Wind): 0 not at all, 1 as the wind says. The wind pushes a blade's tip by some of its length, so long grass sways further.")]
+        [Range(0f, 3f)] public float sway = 1f;
+
         [Header("Clumps")]
         [Tooltip("Blades grow in clumps about this wide (m), which differ in length and tint, and whose blades lean out from their middle.")]
         [Min(0.05f)] public float clumpSize = 0.6f;

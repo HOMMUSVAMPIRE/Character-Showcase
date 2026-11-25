@@ -149,8 +149,10 @@ ALLOWED_REFERENCES = {
     # The levels' grass (blades made on the GPU over the lawns) and its editor tools (the benchmark): the showcase's,
     # knowing nothing of the character, the level elements or the camera.
     "MeridianMotion.Showcase.Grass": set(),
-    "MeridianMotion.Showcase.Grass.EditorTools": {"MeridianMotion.Showcase.Grass", "Unity.RenderPipelines.Universal.Runtime"},
-    "MeridianMotion.Showcase.Tests.Grass": {"MeridianMotion.Showcase.Grass", "MeridianMotion.Tests.Shared", "Unity.RenderPipelines.Universal.Runtime"} | TEST_RUNNER,
+    "MeridianMotion.Showcase.Grass.EditorTools": {"MeridianMotion.Showcase.Grass", "Unity.RenderPipelines.Universal.Runtime",
+                                                  "MeridianMotion.EditorTools", "MeridianMotion.Characters"},
+    "MeridianMotion.Showcase.Tests.Grass": {"MeridianMotion.Showcase.Grass", "MeridianMotion.Characters", "MeridianMotion.Tests.Shared",
+                                            "Unity.RenderPipelines.Universal.Runtime"} | TEST_RUNNER,
     "MeridianMotion.Tests.EditMode": {"MeridianMotion.Characters", "MeridianMotion.EditorTools", "MeridianMotion.Tests.Shared",
                                       "MeridianMotion.PhysicsQueries", "MeridianMotion.Levels",
                                       "MeridianMotion.Levels.EditorTools", "MeridianMotion.UI", "MeridianMotion.UI.EditorTools",

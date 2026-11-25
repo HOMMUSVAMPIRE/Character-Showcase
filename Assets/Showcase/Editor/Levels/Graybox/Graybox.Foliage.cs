@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using GrassField = MeridianMotion.Showcase.Grass.GrassField;
 using GrassStyle = MeridianMotion.Showcase.Grass.GrassStyle;
+using GrassWind = MeridianMotion.Showcase.Grass.GrassWind;
 
 namespace MeridianMotion.Showcase.Levels
 {
@@ -241,6 +242,11 @@ namespace MeridianMotion.Showcase.Levels
             {
                 (byte[] densityMask, byte[] edgeMask) = LawnMask(grass, cell, size, density);
                 layers.Add(new GrassField.Layer { height = height, density = densityMask, edge = edgeMask });
+            }
+            // The level's wind, beside its first lawns.
+            if (lawns.root.GetComponentInChildren<GrassWind>(true) == null)
+            {
+                new GameObject("Grass Wind", typeof(GrassWind)).transform.SetParent(lawns.parent, false);
             }
             var obj = new GameObject("Grass");
             obj.transform.SetParent(lawns, false);

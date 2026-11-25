@@ -3,8 +3,9 @@
 // each segment's foot (left and right) and the tip. A blade uses as many as its length needs (a segment per
 // _SegmentLength), the rest folded into its tip, so short blades cost little and long ones curve smoothly. It curves
 // forward along a quadratic Bezier by its bend, long blades drooping under their own weight, and tapers to the tip.
-// Lit by the main light (with its shadows, and through the blade from behind), the ambient light and the fog; seen
-// from both sides. The field's style sets its material's values every frame.
+// Bowed by its push (the wind's, and what walks through it). Lit by the main light (with its shadows, and through the
+// blade from behind), the ambient light and the fog; seen from both sides. The field's style sets its material's values
+// every frame.
 Shader "Meridian Motion/Showcase/Grass"
 {
     Properties
@@ -87,6 +88,15 @@ Shader "Meridian Motion/Showcase/Grass"
             float distance = length(toCamera);
             float curved = _Segments > 1u ? saturate((_DetailDistance - distance) / max(0.3 * _DetailDistance, 0.01)) : 0.0;
             float3 p1 = lerp(0.5 * p2, up * h * (1.0 - 0.15 * droop), curved);
+            // Pushed by the wind and by what walks through it (worked out per blade by GrassBlades.compute): the tip
+            // moves with the push, the blade keeping its length, so a hard push bows it over rather than stretching it.
+            float2 push = blade.push;
+            float pushed = length(push);
+            if (pushed > 1.5) { push *= 1.5 / pushed; }
+            float3 offset = float3(push.x, 0.0, push.y) * h;
+            float reach = length(p2);
+            p2 = normalize(p2 + offset + float3(0.0, 1e-4, 0.0)) * reach;
+            p1 += offset * 0.35;
             float u = 1.0 - t;
             float3 curve = 2.0 * u * t * p1 + t * t * p2;
             float3 tangent = normalize(2.0 * u * p1 + 2.0 * t * (p2 - p1) + float3(0.0, 1e-4, 0.0));

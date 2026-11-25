@@ -16,7 +16,8 @@ namespace MeridianMotion.Showcase.Grass
     /// <item>draws each list in one indirect draw (Grass.shader), the near blades curved and the far ones a triangle each.</item>
     /// </list>
     /// A blade is placed by a hash of its cell, so it stays put as the camera moves. The field also colours the lawns
-    /// under it (SetLawns), so they match its grass. The level builders lay the mask
+    /// under it (SetLawns), so they match its grass. Its blades sway in the level's wind (GrassWind) and bow away from
+    /// what walks through them (GrassBender, GrassBending). The level builders lay the mask
     /// (Graybox.Lawns); the field knows nothing of the level, the character or the camera rig. It has no collider.
     /// Without compute shaders (or indirect draws), it draws nothing, and the lawn under it is all there is.
     /// </summary>
@@ -131,8 +132,8 @@ namespace MeridianMotion.Showcase.Grass
         /// <summary>A chunk of the mask with grass in it: its corner (in the field's space), its layer and its floor's height.</summary>
         private struct Chunk { public Vector2 corner; public int layer; public float height; }
 
-        /// <summary>A blade, as the compute shader writes it and Grass.shader reads it: 9 floats (Blade, in GrassCommon.hlsl).</summary>
-        private const int BladeStride = 9 * sizeof(float);
+        /// <summary>A blade, as the compute shader writes it and Grass.shader reads it: 11 floats (Blade, in GrassCommon.hlsl).</summary>
+        private const int BladeStride = 11 * sizeof(float);
 
         private readonly List<Chunk> chunks = new();
         private Vector4[] visible = Array.Empty<Vector4>();
@@ -195,7 +196,7 @@ namespace MeridianMotion.Showcase.Grass
 
         private readonly Dictionary<Camera, Lists> lists = new();
         private readonly List<Camera> gone = new();
-        private int kernelGenerate, kernelFinish;
+        private int kernelGenerate, kernelFinish, kernelBend;
         private static readonly uint[] ResetArgs = new uint[5];
 
         private static class Ids
@@ -218,6 +219,8 @@ namespace MeridianMotion.Showcase.Grass
             public static readonly int DrawDistance = Shader.PropertyToID("_DrawDistance"), Clumps = Shader.PropertyToID("_Clumps");
             public static readonly int ClumpSize = Shader.PropertyToID("_ClumpSize"), GroundShade = Shader.PropertyToID("_GroundShade");
             public static readonly int ThinFrom = Shader.PropertyToID("_ThinFrom"), DetailDistance = Shader.PropertyToID("_DetailDistance");
+            public static readonly int BendMap = Shader.PropertyToID("_BendMap"), BendWindow = Shader.PropertyToID("_BendWindow");
+            public static readonly int Wind = Shader.PropertyToID("_Wind"), WindGusts = Shader.PropertyToID("_WindGusts"), Sway = Shader.PropertyToID("_Sway");
         }
 
         private void OnEnable()
@@ -269,6 +272,7 @@ namespace MeridianMotion.Showcase.Grass
             visible = new Vector4[chunks.Count];
             kernelGenerate = generator.FindKernel("Generate");
             kernelFinish = generator.FindKernel("Finish");
+            kernelBend = generator.FindKernel("Bend");
             segments = 0;
             lawnLook = default;
             ready = true;
@@ -351,6 +355,8 @@ namespace MeridianMotion.Showcase.Grass
             foreach (Chunk c in chunks)
             {
                 Bounds b = WorldBounds(toWorld, c.corner, new Vector2(chunkSize, chunkSize), c.height, tallest);
+                // Blades lean out past their chunk when they're pushed (by up to 1.5 of their lengths).
+                b.Expand(new Vector3(3f * tallest, 0f, 3f * tallest));
                 if (b.SqrDistance(eye) > draw * draw || !GeometryUtility.TestPlanesAABB(frustum, b)) { continue; }
                 visible[count++] = new Vector4(c.corner.x, c.corner.y, c.layer, c.height);
             }
@@ -394,6 +400,16 @@ namespace MeridianMotion.Showcase.Grass
             g.SetVector(Ids.Width, s.width);
             g.SetVector(Ids.Bend, s.bend);
             g.SetVector(Ids.Clumps, new Vector4(s.clumpSize, s.clumpLength, s.clumpLean, s.edgeLength));
+
+            // The wind, and what's been walked through (the bend map, updated once a frame, before any field's blades).
+            GrassBending.Update(g, kernelBend, camera);
+            g.SetTexture(kernelGenerate, Ids.BendMap, GrassBending.Map != null ? GrassBending.Map : Texture2D.blackTexture);
+            g.SetVector(Ids.BendWindow, GrassBending.Window);
+            GrassWind wind = GrassWind.Active != null ? GrassWind.Active : GrassWind.Defaults;
+            Vector2 blowing = wind.Direction;
+            g.SetVector(Ids.Wind, new Vector4(blowing.x, blowing.y, wind.strength, GrassWind.Time));
+            g.SetVector(Ids.WindGusts, new Vector4(wind.gustSize, wind.gustSpeed, wind.gustStrength, wind.flutter));
+            g.SetVector(Ids.Sway, new Vector4(s.sway, wind.flutterSpeed, 0f, 0f));
             int groups = Mathf.CeilToInt(perSide / 8f);
             g.Dispatch(kernelGenerate, groups, groups, count);
 

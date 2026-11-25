@@ -26,6 +26,19 @@ namespace MeridianMotion.Showcase.Tests.Grass
     [TestTiming]
     public class GrassFlashDiagnostic
     {
+        private Scene scene;
+
+        /// <summary>Unloads the level it played, so nothing run after it finds it there.</summary>
+        [UnityTearDown]
+        public IEnumerator UnloadTheLevel()
+        {
+            if (scene.IsValid() && scene.isLoaded)
+            {
+                AsyncOperation unloading = SceneManager.UnloadSceneAsync(scene);
+                while (unloading != null && !unloading.isDone) { yield return null; }
+            }
+        }
+
         private const string ScenePath = "Assets/Showcase/Scenes/MeridianComplex/MeridianComplex.unity";
         private const int Frames = 300, Width = 960, Height = 540, Block = 16;
         private const float Step = 0.05f, Turn = 0.15f, EyeHeight = 1.7f;
@@ -34,8 +47,18 @@ namespace MeridianMotion.Showcase.Tests.Grass
         public IEnumerator FlashesInPlayMode()
         {
 #if UNITY_EDITOR
-            AsyncOperation loading = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Single));
+            // Explicit isn't kept to by a category filter (-testCategory, run_tests.py --area): in batch mode, unless the
+            // filter names this, it's skipped, so it never runs with a suite (it plays a whole level).
+            string[] arguments = Environment.GetCommandLineArgs();
+            int filter = Array.IndexOf(arguments, "-testFilter");
+            if (Application.isBatchMode && (filter < 0 || filter + 1 >= arguments.Length || !arguments[filter + 1].Contains("GrassFlashDiagnostic")))
+            {
+                Assert.Ignore("A diagnostic: run it by name (-testFilter GrassFlashDiagnostic).");
+            }
+            AsyncOperation loading = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(ScenePath, new LoadSceneParameters(LoadSceneMode.Additive));
             while (!loading.isDone) { yield return null; }
+            scene = SceneManager.GetSceneByPath(ScenePath);
+            SceneManager.SetActiveScene(scene);
 #else
             Assert.Ignore("Editor only.");
             yield break;

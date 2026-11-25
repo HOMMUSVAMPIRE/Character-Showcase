@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: MeridianComplex_PostProcessing
   m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.VolumeProfile
   components:
-  - {fileID: 8635039238917661638}
-  - {fileID: 8528545197863852118}
-  - {fileID: 6690886559467453160}
---- !u!114 &6690886559467453160
+  - {fileID: 6004127849918222647}
+  - {fileID: 5624678688208543906}
+  - {fileID: 3914916087593063657}
+--- !u!114 &3914916087593063657
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -44,7 +44,7 @@ MonoBehaviour:
   saturation:
     m_OverrideState: 1
     m_Value: 6
---- !u!114 &8528545197863852118
+--- !u!114 &5624678688208543906
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -94,7 +94,7 @@ MonoBehaviour:
   dirtIntensity:
     m_OverrideState: 0
     m_Value: 0
---- !u!114 &8635039238917661638
+--- !u!114 &6004127849918222647
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}

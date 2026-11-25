@@ -3,7 +3,9 @@
     "rootNamespace": "MeridianMotion.Showcase.Grass.EditorTools",
     "references": [
         "MeridianMotion.Showcase.Grass",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.RenderPipelines.Universal.Runtime",
+        "MeridianMotion.EditorTools",
+        "MeridianMotion.Characters"
     ],
     "includePlatforms": [
         "Editor"

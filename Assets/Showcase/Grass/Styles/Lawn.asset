@@ -12,12 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cae0e738d73409782d5807bb8d43e76, type: 3}
   m_Name: Lawn
   m_EditorClassIdentifier: MeridianMotion.Showcase.Grass::MeridianMotion.Showcase.Grass.GrassStyle
-  length: {x: 0.1, y: 0.3}
+  length: {x: 0.1, y: 1}
   width: {x: 0.025, y: 0.04}
   bend: {x: 0.15, y: 0.5}
   droop: 0.1
   spacing: 0.06
   edgeLength: 1.4
+  sway: 0
   clumpSize: 0.6
   clumpLength: 0.25
   clumpLean: 0.5
