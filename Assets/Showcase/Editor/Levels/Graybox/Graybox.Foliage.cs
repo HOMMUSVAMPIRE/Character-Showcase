@@ -7,15 +7,17 @@ using GrassWind = MeridianMotion.Showcase.Grass.GrassWind;
 
 namespace MeridianMotion.Showcase.Levels
 {
-    // Foliage, after the concept art and the style sheet's planters: lawns with grass, low-poly trees (a tapering trunk under stacked,
-    // faceted canopy tiers), shrubs, concrete planters with an orange band, and trees scattered over open ground. All
-    // seeded (the settings' seed), so every build grows the same ones. Trunks and planters have box colliders; canopies
-    // and shrubs, above head height or soft, have none.
+    // Foliage, after the concept art and the style sheet's planters: lawns with grass, trees and shrubs (the flora's
+    // leaf-card prefabs, Graybox.Flora.cs; faceted shapes without them), concrete planters with an orange band, and trees
+    // scattered over open ground. All seeded (the settings' seed), so every build grows the same ones. Trunks and
+    // planters have box colliders; canopies and shrubs, above head height or soft, have none.
     public static partial class Graybox
     {
         /// <summary>
-        /// A tree standing on a floor at "at", floor: a trunk and a canopy of three faceted tiers, its sizes and turn
-        /// picked by random (within the settings' ranges). Its trunk has a box collider.
+        /// A tree standing on a floor at "at", floor: one of the settings' trees (a flora prefab), or without them a trunk
+        /// and a canopy of three faceted tiers; its sizes and turn picked by random (within the settings' ranges: the
+        /// trunk's height and the canopy's radius give how tall it is). Its trunk has a box collider (on the "Tree"
+        /// object, the flora inside it).
         /// </summary>
         [Piece]
         public static void Tree(Transform parent, Vector2 at, float floor, System.Random random)
@@ -26,9 +28,16 @@ namespace MeridianMotion.Showcase.Levels
             LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float Range(Vector2 range) => Mathf.Lerp(range.x, range.y, (float)random.NextDouble());
             float trunk = Range(f.trunkHeight), radius = Range(f.canopyRadius), turn = (float)random.NextDouble() * 360f;
+            GameObject flora = PickFlora(f.trees, random);
             var tree = new GameObject("Tree");
             tree.transform.SetParent(parent, false);
             tree.transform.localPosition = new Vector3(at.x, floor, at.y);
+            if (flora != null)
+            {
+                AddBox(tree, new Vector3(0f, trunk / 2f, 0f), new Vector3(0.44f, trunk, 0.44f));
+                PlaceFlora(flora, tree.transform, Vector3.zero, turn, trunk + 1.9f * radius);
+                return;
+            }
             var mesh = new GrayboxMesh();
             mesh.Frustum(GrayboxMaterial.Soil, Vector3.zero, 0.22f, 0.14f, 0f, trunk + 0.3f, 6, turn, top: false);
             mesh.Frustum(GrayboxMaterial.Foliage, Vector3.zero, 0.4f * radius, radius, trunk - 0.2f, trunk + 0.5f * radius, 7, turn, top: false, bottom: true);
@@ -39,11 +48,20 @@ namespace MeridianMotion.Showcase.Levels
             MakeStatic(tree, occluder: false);
         }
 
-        /// <summary>A shrub in mesh, on a floor at centre: two faceted tiers, its size picked by random.</summary>
-        private static void Shrub(GrayboxMesh mesh, Vector3 centre, System.Random random)
+        /// <summary>
+        /// A shrub on a floor at centre, its size picked by random: one of variants (flora prefabs), gathered into placed to
+        /// place once what it stands in is made (PlaceShrubs); or without them, two faceted tiers in mesh.
+        /// </summary>
+        private static void Shrub(GrayboxMesh mesh, Vector3 centre, System.Random random, string[] variants, List<ShrubPlacement> placed)
         {
             LevelBuilderSettings.FoliageSettings f = Settings.foliage;
             float r = Mathf.Lerp(f.shrubRadius.x, f.shrubRadius.y, (float)random.NextDouble()), turn = (float)random.NextDouble() * 360f;
+            GameObject flora = PickFlora(variants, random);
+            if (flora != null)
+            {
+                placed.Add(new ShrubPlacement { prefab = flora, at = centre, turn = turn, height = ShrubHeight * r });
+                return;
+            }
             mesh.Frustum(GrayboxMaterial.Foliage, centre, 0.6f * r, r, 0f, 0.6f * r, 6, turn, top: false);
             mesh.Frustum(GrayboxMaterial.Foliage, centre, r, 0.1f, 0.6f * r, 1.3f * r, 6, turn + 30f, top: false);
         }
@@ -72,15 +90,17 @@ namespace MeridianMotion.Showcase.Levels
             mesh.Box(GrayboxMaterial.Soil, new Vector3(x0 + rim, 0f, z0 + rim), new Vector3(x1 - rim, soil, z1 - rim), bottom: false, sides: false, ends: false);
             mesh.Box(GrayboxMaterial.Accent, new Vector3(x0 - 0.01f, 0f, z0 - 0.01f), new Vector3(x1 + 0.01f, 0.1f, z1 + 0.01f), top: false, bottom: false);
             int shrubs = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(x1 - x0, z1 - z0) / 1.2f));
+            var planted = new List<ShrubPlacement>();
             bool alongX = x1 - x0 >= z1 - z0;
             for (int i = 0; i < shrubs; i++)
             {
                 float f = (i + 0.5f) / shrubs;
                 Vector3 at = alongX ? new Vector3(Mathf.Lerp(x0 + 0.5f, x1 - 0.5f, f), soil, (z0 + z1) / 2f) : new Vector3((x0 + x1) / 2f, soil, Mathf.Lerp(z0 + 0.5f, z1 - 0.5f, f));
                 if (tree && Mathf.Abs(f - 0.5f) < 0.2f) { continue; }
-                Shrub(mesh, at, random);
+                Shrub(mesh, at, random, Settings.foliage.plantedShrubs, planted);
             }
             mesh.AddTo(planter, name);
+            PlaceShrubs(planted, planter.transform);
             AddBox(planter, new Vector3((x0 + x1) / 2f, h / 2f, (z0 + z1) / 2f), new Vector3(x1 - x0, h, z1 - z0));
             MakeStatic(planter, occluder: false);
             if (tree) { Tree(parent, new Vector2((x0 + x1) / 2f, (z0 + z1) / 2f), floor + soil, random); }
@@ -140,13 +160,15 @@ namespace MeridianMotion.Showcase.Levels
                 float cell = f.lawnCell * spacing, half = cell / 2f, edge = f.lawnMargins.x, clear = f.lawnMargins.y, t = f.lawnThickness;
                 int nx = Mathf.FloorToInt(area.width / cell), nz = Mathf.FloorToInt(area.height / cell);
                 Transform lawns = Group(parent, "Lawns");
-                var masks = new List<(float height, bool[,] grass)>();
+                var masks = new List<(float height, bool[,] grass, List<Vector3> bushes)>();
                 var lawnRenderers = new List<MeshRenderer>();
                 bool FloorAt(float x, float z, float height) =>
                     FloorUnder(parent, new Vector2(x, z), height, out float under) && Mathf.Abs(under - height) < 0.06f;
                 foreach (float floor in floors)
                 {
                     var grass = new bool[nx, nz];
+                    // The border bushes on this floor's lawns (x, z, and their footprint's radius): no grass under them.
+                    var bushes = new List<Vector3>();
                     bool anyGrass = false;
                     for (int i = 0; i < nx; i++)
                     {
@@ -162,7 +184,7 @@ namespace MeridianMotion.Showcase.Levels
                             anyGrass = true;
                         }
                     }
-                    if (anyGrass) { masks.Add((floor + t, grass)); }
+                    if (anyGrass) { masks.Add((floor + t, grass, bushes)); }
                     bool Grass(int i, int j) => i >= 0 && j >= 0 && i < nx && j < nz && grass[i, j];
 
                     // In chunks of the squares between the cells' middles (see LawnSquare), which reach half a cell past
@@ -174,6 +196,7 @@ namespace MeridianMotion.Showcase.Levels
                         for (int cj = 0; cj <= nz; cj += chunk)
                         {
                             var mesh = new GrayboxMesh();
+                            var bordered = new List<ShrubPlacement>();
                             bool any = false;
                             for (int si = ci; si < Mathf.Min(ci + chunk, nx + 1); si++)
                             {
@@ -190,7 +213,7 @@ namespace MeridianMotion.Showcase.Levels
                                     bool border = !Grass(i - 1, j) || !Grass(i + 1, j) || !Grass(i, j - 1) || !Grass(i, j + 1);
                                     if (border && random.NextDouble() < f.borderShrubChance)
                                     {
-                                        Shrub(mesh, new Vector3(area.xMin + (i + 0.5f) * cell, top, area.yMin + (j + 0.5f) * cell), random);
+                                        Shrub(mesh, new Vector3(area.xMin + (i + 0.5f) * cell, top, area.yMin + (j + 0.5f) * cell), random, f.shrubs, bordered);
                                     }
                                 }
                             }
@@ -200,6 +223,8 @@ namespace MeridianMotion.Showcase.Levels
                             mesh.AddTo(lawn, lawn.name);
                             MakeStatic(lawn, occluder: false);
                             lawnRenderers.Add(lawn.GetComponent<MeshRenderer>());
+                            PlaceShrubs(bordered, lawn.transform);
+                            foreach (ShrubPlacement b in bordered) { bushes.Add(new Vector3(b.at.x, b.at.z, ShrubFootprint * b.height)); }
                         }
                     }
                 }
@@ -233,14 +258,15 @@ namespace MeridianMotion.Showcase.Levels
         /// layer for each floor that has any (its lawns' top, and which cells are lawn: see LawnMask), and the lawns under
         /// it (given the lawn material, so the field can colour them to match its grass).
         /// </summary>
-        private static void AddGrass(Transform lawns, Vector2 corner, float cell, int nx, int nz, List<(float height, bool[,] grass)> masks, float density,
+        private static void AddGrass(Transform lawns, Vector2 corner, float cell, int nx, int nz, List<(float height, bool[,] grass, List<Vector3> bushes)> masks, float density,
             List<MeshRenderer> lawnRenderers)
         {
             var size = new Vector2Int(Mathf.CeilToInt(nx * cell / GrassTexel), Mathf.CeilToInt(nz * cell / GrassTexel));
             var layers = new List<GrassField.Layer>();
-            foreach ((float height, bool[,] grass) in masks)
+            foreach ((float height, bool[,] grass, List<Vector3> bushes) in masks)
             {
                 (byte[] densityMask, byte[] edgeMask) = LawnMask(grass, cell, size, density);
+                ClearUnder(densityMask, size, corner, bushes);
                 layers.Add(new GrassField.Layer { height = height, density = densityMask, edge = edgeMask });
             }
             // The level's wind, beside its first lawns.
@@ -359,6 +385,33 @@ namespace MeridianMotion.Showcase.Levels
                 else if (Mathf.Sign(cross) != sign) { return false; }
             }
             return true;
+        }
+
+        /// <summary>A shrub is this many times its radius (the foliage's Shrub Radius) tall, and its footprint's radius this much of its height.</summary>
+        private const float ShrubHeight = 2f, ShrubFootprint = 0.45f;
+
+        /// <summary>
+        /// Clears a mask's grass under bushes (x, z, in the lawns' space, and their footprint's radius): none within most of
+        /// the footprint, thinning back in toward its edge, so a bush stands clear of the grass rather than in it.
+        /// </summary>
+        public static void ClearUnder(byte[] density, Vector2Int size, Vector2 corner, List<Vector3> bushes)
+        {
+            foreach (Vector3 bush in bushes)
+            {
+                float radius = bush.z;
+                int x0 = Mathf.Max(0, Mathf.FloorToInt((bush.x - radius - corner.x) / GrassTexel)), x1 = Mathf.Min(size.x - 1, Mathf.CeilToInt((bush.x + radius - corner.x) / GrassTexel));
+                int z0 = Mathf.Max(0, Mathf.FloorToInt((bush.y - radius - corner.y) / GrassTexel)), z1 = Mathf.Min(size.y - 1, Mathf.CeilToInt((bush.y + radius - corner.y) / GrassTexel));
+                for (int z = z0; z <= z1; z++)
+                {
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        float d = new Vector2(corner.x + (x + 0.5f) * GrassTexel - bush.x, corner.y + (z + 0.5f) * GrassTexel - bush.y).magnitude / radius;
+                        float keep = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 1f, d));
+                        int k = z * size.x + x;
+                        density[k] = (byte)Mathf.RoundToInt(density[k] * keep);
+                    }
+                }
+            }
         }
 
         /// <summary>

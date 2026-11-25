@@ -80,6 +80,10 @@ namespace MeridianMotion.Showcase.Tests.Grass
             var target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGBHalf) { name = "Grass Flash Diagnostic" };
             var bad = new StringBuilder();
             camera.targetTexture = target;
+            // A frame into the new target before reading any: read before the camera's first drawn into it, it's whatever
+            // the memory held (one run's frame 0 read as infinite red, 2026-11-24).
+            yield return null;
+            yield return null;
 
             (Vector3 start, Quaternion facing) = Start();
             Vector3 forward = facing * Vector3.forward;

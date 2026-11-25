@@ -6,7 +6,8 @@ namespace MeridianMotion.Showcase.Grass
     /// The wind the level's grass sways in: a direction and strength, gusts (patches of stronger wind blowing across
     /// the lawns) and a flutter of each blade's own. One per level (the level builders add it beside the first lawns);
     /// without one, the grass sways in Defaults. How much a lawn's grass moves in it is its style's Sway. It's only
-    /// seen: nothing reads it but the grass, and the movement never does.
+    /// seen: nothing reads it but the grass and the flora (whose shaders it gives it, as global values), and the
+    /// movement never does.
     /// </summary>
     [ExecuteAlways]
     [AddComponentMenu("Meridian Motion/Showcase/Grass Wind")]
@@ -54,6 +55,22 @@ namespace MeridianMotion.Showcase.Grass
         public static float Time => Application.isPlaying ? UnityEngine.Time.time : (float)UnityEngine.Time.realtimeSinceStartupAsDouble;
 
         private void OnEnable() => Active = this;
+
+        private static readonly int FloraWind = Shader.PropertyToID("_FloraWind"), FloraWindGusts = Shader.PropertyToID("_FloraWindGusts");
+        private static readonly int FloraWindFlutter = Shader.PropertyToID("_FloraWindFlutter");
+
+        /// <summary>
+        /// Publishes the wind for everything else that sways in it (the flora's shaders, FloraCommon.hlsl), as global
+        /// shader values, each frame: the grass reads it directly (GrassField).
+        /// </summary>
+        private void Update()
+        {
+            if (Active != this) { return; }
+            Vector2 blowing = Direction;
+            Shader.SetGlobalVector(FloraWind, new Vector4(blowing.x, blowing.y, strength, Time));
+            Shader.SetGlobalVector(FloraWindGusts, new Vector4(gustSize, gustSpeed, gustStrength, flutter));
+            Shader.SetGlobalVector(FloraWindFlutter, new Vector4(flutterSpeed, 0f, 0f, 0f));
+        }
 
         private void OnDisable()
         {

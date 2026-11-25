@@ -359,6 +359,8 @@ namespace MeridianMotion.Showcase.Grass
             public static readonly int DrawDistance = Shader.PropertyToID("_DrawDistance"), Clumps = Shader.PropertyToID("_Clumps");
             public static readonly int ClumpSize = Shader.PropertyToID("_ClumpSize"), GroundShade = Shader.PropertyToID("_GroundShade");
             public static readonly int ThinFrom = Shader.PropertyToID("_ThinFrom"), DetailDistance = Shader.PropertyToID("_DetailDistance");
+            public static readonly int FloraRootColour = Shader.PropertyToID("_FloraRootColour"), FloraTipColour = Shader.PropertyToID("_FloraTipColour");
+            public static readonly int FloraPalette = Shader.PropertyToID("_FloraPalette"), FloraSwayScale = Shader.PropertyToID("_FloraSwayScale");
             public static readonly int BendMap = Shader.PropertyToID("_BendMap"), BendWindow = Shader.PropertyToID("_BendWindow");
             public static readonly int ChunkOffset = Shader.PropertyToID("_ChunkOffset"), Step = Shader.PropertyToID("_Step"), Tallest = Shader.PropertyToID("_Tallest");
             public static readonly int Wind = Shader.PropertyToID("_Wind"), WindGusts = Shader.PropertyToID("_WindGusts"), Sway = Shader.PropertyToID("_Sway");
@@ -708,6 +710,12 @@ namespace MeridianMotion.Showcase.Grass
         /// <summary>Gives the lawns the style's colours, clumps and distances (see SetLawns), if they've changed.</summary>
         private void UpdateLawns(GrassStyle s)
         {
+            // The level's palette, for the flora's leaves (FloraCommon.hlsl): this grass's colours. Converted to linear
+            // here: a global colour isn't, as a material's is, and read as linear the grass's colours came out pale.
+            Shader.SetGlobalVector(Ids.FloraRootColour, s.rootColour.linear);
+            Shader.SetGlobalVector(Ids.FloraTipColour, s.tipColour.linear);
+            Shader.SetGlobalFloat(Ids.FloraPalette, 1f);
+            Shader.SetGlobalFloat(Ids.FloraSwayScale, s.sway);
             var look = (s.rootColour, s.tipColour, s.clumpSize, s.clumpTint, s.groundShade, Mathf.Clamp(s.thinFrom, 0.1f, s.drawDistance * 0.99f), s.drawDistance);
             if (look.Equals(lawnLook) || lawns.Count == 0) { return; }
             lawnLook = look;

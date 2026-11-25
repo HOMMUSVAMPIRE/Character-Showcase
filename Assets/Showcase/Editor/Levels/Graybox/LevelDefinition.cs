@@ -228,6 +228,7 @@ namespace MeridianMotion.Showcase.Levels
                     build.concrete = build.palette[(int)Graybox.GrayboxMaterial.Concrete];
                     build.root = new GameObject(Name).transform;
                     Graybox.ClearDeferred();
+                    Graybox.ForgetFlora();
                 }),
             };
             foreach ((string name, Action<Transform, Material> buildPart) in parts)

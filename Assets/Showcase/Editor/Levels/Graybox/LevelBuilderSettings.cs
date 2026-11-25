@@ -311,8 +311,8 @@ namespace MeridianMotion.Showcase.Levels
         }
 
         /// <summary>
-        /// Sizes and scatters the foliage: trees, shrubs, planters and lawns. The grass on the lawns is its GrassField's
-        /// (its Grass Style), not these.
+        /// Sizes and scatters the foliage: trees, shrubs, planters and lawns, and which of the flora's prefabs the trees
+        /// and shrubs are. The grass on the lawns is its GrassField's (its Grass Style), not these.
         /// </summary>
         [Serializable]
         public sealed class FoliageSettings
@@ -339,6 +339,12 @@ namespace MeridianMotion.Showcase.Levels
             public float lawnThickness = 0.015f;
             [Tooltip("The chance a lawn cell at the lawn's edge gets a shrub, for a planted border.")]
             [Range(0f, 1f)] public float borderShrubChance = 0.12f;
+            [Tooltip("The trees a tree is picked from (flora prefabs, by name, in Assets/Showcase/Prefabs/Flora: Generate Flora makes them). Empty, or missing: faceted trees.")]
+            public string[] trees = { "Tree_Oak_01", "Tree_Oak_02", "Tree_Oak_03", "Tree_Birch_01", "Tree_Birch_02" };
+            [Tooltip("The shrubs a lawn's border shrub is picked from (flora prefabs, by name).")]
+            public string[] shrubs = { "Bush_Round_01", "Bush_Round_02", "Bush_Round_03" };
+            [Tooltip("The shrubs a planter's are picked from (flora prefabs, by name): flowering ones among the round.")]
+            public string[] plantedShrubs = { "Bush_Flowering_Pink", "Bush_Flowering_White", "Bush_Flowering_Yellow", "Bush_Flowering_Purple", "Bush_Round_01", "Bush_Round_02" };
         }
 
         /// <summary>
