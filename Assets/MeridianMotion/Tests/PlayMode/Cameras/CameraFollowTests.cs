@@ -20,11 +20,20 @@ namespace MeridianMotion.Tests.Cameras
         [UnityTest]
         public IEnumerator FollowsMovedTarget_Smoothly()
         {
+            // The frame after the move is exactly DipFrameTime of game time, however long it really takes: FrameTimeLimit
+            // can only cap a frame by how long the last one took, so a frame much longer than the one before (on CI
+            // especially) let the easing cover nearly all the way in one go. As in MeasureLandingDip, the limit is off
+            // and the time scale 1 while it's measured.
+            timeLimit.enabled = false;
+            Time.timeScale = 1f;
+            Time.captureDeltaTime = DipFrameTime;
             yield return Frames(3);
 
             target.position += new Vector3(2f, 0f, 0f); // Under the teleport distance, so the camera should ease over.
             yield return PhysicsStepAndFrame();
             Vector3 shortlyAfter = cam.transform.position;
+            Time.captureDeltaTime = 0f;
+            timeLimit.enabled = true;
             Vector3 expected = ExpectedThirdPersonPosition(rig.Zoom.defaultDistance);
             yield return WaitUntil(() => Vector3.Distance(cam.transform.position, expected) < 0.01f);
 

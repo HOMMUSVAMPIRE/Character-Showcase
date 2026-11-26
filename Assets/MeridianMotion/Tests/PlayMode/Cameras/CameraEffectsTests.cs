@@ -30,6 +30,9 @@ namespace MeridianMotion.Tests.Cameras
                 largestOffset = Mathf.Max(largestOffset, Vector3.Distance(cam.transform.position, rest));
             }
             yield return WaitUntil(() => rig.Trauma == 0f);
+            // The frame its trauma runs out, the rig may still have placed the camera with the last of it (how much is left
+            // depends on how long frames are, longer on CI): let it settle before measuring.
+            yield return WaitUntilSettled(() => cam.transform.position, 1e-5f);
 
             Assert.That(largestOffset, Is.GreaterThan(0.001f), "Trauma should shake the camera.");
             Assert.That(rig.Trauma, Is.EqualTo(0f), "Trauma should decay away.");
