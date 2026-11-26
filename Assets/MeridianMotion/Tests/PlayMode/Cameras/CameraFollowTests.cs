@@ -22,9 +22,13 @@ namespace MeridianMotion.Tests.Cameras
         {
             yield return Frames(3);
 
+            // The frame after the move is exactly DipFrameTime of game time, however long it really takes: a slow frame (on
+            // CI especially) would otherwise let the easing cover most of the way in one go.
+            Time.captureDeltaTime = DipFrameTime;
             target.position += new Vector3(2f, 0f, 0f); // Under the teleport distance, so the camera should ease over.
             yield return PhysicsStepAndFrame();
             Vector3 shortlyAfter = cam.transform.position;
+            Time.captureDeltaTime = 0f;
             Vector3 expected = ExpectedThirdPersonPosition(rig.Zoom.defaultDistance);
             yield return WaitUntil(() => Vector3.Distance(cam.transform.position, expected) < 0.01f);
 
