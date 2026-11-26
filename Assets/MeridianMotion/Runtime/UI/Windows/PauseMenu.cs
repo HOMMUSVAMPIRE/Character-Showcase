@@ -300,12 +300,30 @@ namespace MeridianMotion.UI
                 text.Append(ControlsList.Spaced(action.name));
                 for (int i = 0; i < controlSchemes.Length; i++)
                 {
-                    string binding = action.GetBindingDisplayString(InputBinding.MaskByGroup(controlSchemes[i]));
+                    InputBinding mask = InputBinding.MaskByGroup(controlSchemes[i]);
+                    string binding = action.GetBindingDisplayString(mask);
+                    if (string.IsNullOrWhiteSpace(binding)) { binding = LayoutDisplayString(action, mask); }
                     text.Append($"<pos={column * (i + 1):0}%>").Append(string.IsNullOrEmpty(binding) ? "-" : binding);
                 }
                 text.Append('\n');
             }
             return text.ToString().TrimEnd('\n');
+        }
+
+        /// <summary>
+        /// An action's bindings in a scheme, named by the control layouts rather than the devices: a key's display name
+        /// comes from the keyboard layout in use, and some (Space on Linux, or with no keyboard at all) are blank there.
+        /// </summary>
+        private static string LayoutDisplayString(InputAction action, InputBinding mask)
+        {
+            var names = new List<string>();
+            foreach (InputBinding binding in action.bindings)
+            {
+                if (binding.isComposite || !mask.Matches(binding)) { continue; }
+                string name = InputControlPath.ToHumanReadableString(binding.effectivePath, InputControlPath.HumanReadableStringOptions.OmitDevice);
+                if (!string.IsNullOrWhiteSpace(name)) { names.Add(name); }
+            }
+            return string.Join(" | ", names);
         }
     }
 }
